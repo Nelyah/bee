@@ -33,16 +33,78 @@ pub struct Manager {
 
 pub trait TaskManager {
     fn add_task(&mut self, description: &str);
+    fn complete_task_by_id(&mut self, id: usize);
+    fn complete_task_by_uuid(&mut self, uuid: &Uuid);
     fn delete_task_by_id(&mut self, id: usize);
-    fn delete_task_by_uuid(&mut self, uuid: Uuid);
+    fn delete_task_by_uuid(&mut self, uuid: &Uuid);
     fn load_task_data(&mut self, data_file: &str);
     fn write_task_data(&self, data_file: &str);
 }
 
-impl TaskManager for Manager {
-    fn delete_task_by_id(&mut self, _id: usize) {}
+fn delete_task_with_uuid(tasks: &mut Vec<Task>, uuid: &Uuid) {
+    let mut i = 0;
+    while i < tasks.len() {
+        if tasks[i].uuid == *uuid {
+            tasks.swap_remove(i);
+            return;
+        }
+        i += 1;
+    }
+}
 
-    fn delete_task_by_uuid(&mut self, _uuid: Uuid) {}
+fn complete_task_with_uuid(
+    pending_tasks: &mut Vec<Task>,
+    completed_tasks: &mut Vec<Task>,
+    uuid: &Uuid,
+) {
+    let mut i = 0;
+    while i < pending_tasks.len() {
+        if pending_tasks[i].uuid == *uuid {
+            let task = pending_tasks.swap_remove(i);
+            completed_tasks.push(task);
+            return;
+        }
+        i += 1;
+    }
+}
+
+impl TaskManager for Manager {
+    fn delete_task_by_id(&mut self, id: usize) {
+        let mut i = 0;
+        while i < self.data.pending.len() {
+            if self.data.pending[i].id == id {
+                let temp_uuid = self.data.pending[i].uuid.clone();
+                delete_task_with_uuid(&mut self.data.pending, &temp_uuid);
+                return;
+            }
+            i += 1;
+        }
+    }
+
+    fn delete_task_by_uuid(&mut self, uuid: &Uuid) {
+        delete_task_with_uuid(&mut self.data.completed, uuid);
+        delete_task_with_uuid(&mut self.data.pending, uuid);
+    }
+
+    fn complete_task_by_id(&mut self, id: usize) {
+        let mut i = 0;
+        while i < self.data.pending.len() {
+            if self.data.pending[i].id == id {
+                let temp_uuid = self.data.pending[i].uuid.clone();
+                complete_task_with_uuid(
+                    &mut self.data.pending,
+                    &mut self.data.completed,
+                    &temp_uuid,
+                );
+                return;
+            }
+            i += 1;
+        }
+    }
+
+    fn complete_task_by_uuid(&mut self, uuid: &Uuid) {
+        complete_task_with_uuid(&mut self.data.pending, &mut self.data.completed, uuid);
+    }
 
     fn add_task(&mut self, description: &str) {
         self.data.pending.push(Task {

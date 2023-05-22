@@ -10,6 +10,15 @@ struct TaskData {
     pub deleted: Vec<Task>,
 }
 
+impl serde::Serialize for TaskData {
+
+}
+// TODO: Task need to have:
+// - Status
+// - Due date
+// - Project
+// - Link to other tasks (RelatesTo, Blocks, Depend, etc.)
+
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 struct Task {
     id: usize,
@@ -30,6 +39,8 @@ struct Task {
 pub struct Manager {
     data: TaskData,
 }
+
+// TODO: We probably don't need a trait for this
 
 pub trait TaskManager {
     fn add_task(&mut self, description: &str);
@@ -81,6 +92,7 @@ impl TaskManager for Manager {
         }
     }
 
+    // TODO: Need to return whether we could delete the task or not
     fn delete_task_by_uuid(&mut self, uuid: &Uuid) {
         delete_task_with_uuid(&mut self.data.completed, uuid);
         delete_task_with_uuid(&mut self.data.pending, uuid);

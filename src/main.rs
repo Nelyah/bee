@@ -35,11 +35,11 @@ fn complete_task(data: Json<IdTaskData>) -> Json<StatusResponse> {
 
     match data.uuid {
         Some(uuid) => {
-            manager.complete_task_by_uuid(&uuid);
+            manager.complete_task(&uuid);
         }
         None => match data.id {
             Some(id) => {
-                manager.complete_task_by_id(id);
+                manager.complete_task(&manager.id_to_uuid(&id));
             }
             None => {return Json(StatusResponse{status: String::from("FAIL")}); }
         },
@@ -57,11 +57,11 @@ fn delete_task(data: Json<IdTaskData>) -> Json<StatusResponse> {
 
     match data.uuid {
         Some(uuid) => {
-            manager.delete_task_by_uuid(&uuid);
+            manager.delete_task(&uuid);
         }
         None => match data.id {
             Some(id) => {
-                manager.delete_task_by_id(id);
+                manager.delete_task(&manager.id_to_uuid(&id));
             }
             None => {return Json(StatusResponse{status: String::from("FAIL")}); }
         },

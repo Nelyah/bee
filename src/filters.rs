@@ -412,6 +412,11 @@ mod tests {
         ]);
         assert_eq!(expected, actual);
 
+        let actual = build_filter_from_strings(&[
+            String::from("one or two"),
+        ]);
+        assert_eq!(expected, actual);
+
         // Operator XOR
         let expected = Filter {
             operator: FilterCombinationType::Xor,

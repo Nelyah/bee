@@ -125,9 +125,22 @@ pub trait TaskHandler {
     fn write_task_data(&self, data_file: &str);
     fn id_to_uuid(&self, id: &usize) -> Uuid;
     fn filter_tasks(&self, filter: &Filter) -> Vec<&Task>;
+    fn filter_tasks_from_string(&self, filter_str: &str) -> Vec<&Task>;
 }
 
 impl TaskHandler for TaskManager {
+    fn filter_tasks_from_string(&self, filter_str: &str) -> Vec<&Task> {
+        let tokens: Vec<String> = filter_str
+            .split_whitespace()
+            .map(|t| String::from(t))
+            .collect();
+        self.data
+            .tasks
+            .values()
+            .filter(|t| validate_task(t, &build_filter_from_strings(tokens.as_slice())))
+            .collect()
+    }
+
     fn filter_tasks(&self, filter: &Filter) -> Vec<&Task> {
         self.data
             .tasks

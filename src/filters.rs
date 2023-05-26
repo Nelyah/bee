@@ -165,7 +165,7 @@ fn task_matches_status_filter(t: &Task, f: &Filter) -> bool {
     false
 }
 
-fn validate_task(t: &Task, f: &Filter) -> bool {
+pub fn validate_task(t: &Task, f: &Filter) -> bool {
     match f.operator {
         FilterCombinationType::None => {
             if !f.has_value {
@@ -211,16 +211,6 @@ fn validate_task(t: &Task, f: &Filter) -> bool {
             count_true == 1
         }
     }
-}
-
-pub fn validate_tasks<'a>(tasks: Vec<&'a Task>, f: &'a Filter) -> Vec<&'a Task> {
-    let mut result = Vec::new();
-    for task in tasks {
-        if validate_task(task, f) {
-            result.push(task);
-        }
-    }
-    result
 }
 
 pub fn build_filter_from_strings(values: &[String]) -> Filter {

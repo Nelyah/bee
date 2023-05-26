@@ -420,4 +420,18 @@ mod tests {
         assert_eq!(filtered_tasks.len(), 1);
         assert_eq!(filtered_tasks[0].description, "Task 1");
     }
+
+    #[test]
+    fn test_filter_tasks_from_string() {
+        let mut manager = TaskManager::default();
+        manager.add_task("A task about llamss");
+        manager.add_task("Socket is the most beautiful cat in the world");
+        manager.add_task("Task 1");
+
+        assert_eq!(manager.filter_tasks_from_string("some filter string").len(), 0);
+        assert_eq!(manager.filter_tasks_from_string("1").len(), 2);
+        assert_eq!(manager.filter_tasks_from_string("task").len(), 2);
+        assert_eq!(manager.filter_tasks_from_string("task and cat").len(), 0);
+        assert_eq!(manager.filter_tasks_from_string("task or cat").len(), 3);
+    }
 }

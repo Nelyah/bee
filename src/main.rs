@@ -2,21 +2,22 @@ pub mod filters;
 pub mod manager;
 pub mod task;
 
-use task::Task;
 use manager::{TaskHandler, TaskManager};
 use rocket::serde::json::Json;
 use rocket::{launch, post, routes};
+use task::Task;
 use uuid::Uuid;
-
-#[derive(serde::Serialize, serde::Deserialize, Default)]
-struct IdTaskData {
-    uuid: Option<Uuid>,
-    id: Option<usize>,
-}
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 struct TaskQuery {
     query: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+struct TaskData {
+    description: String,
+    tags: Option<Vec<String>>,
+    sub_tasks: Option<Vec<String>>,
 }
 
 #[derive(serde::Serialize)]
@@ -24,35 +25,47 @@ struct StatusResponse {
     status: String,
 }
 
-#[post("/add_task")]
-fn add_task() {
+#[post("/add_task", data = "<data>")]
+fn add_task(data: Json<TaskData>) -> Json<StatusResponse> {
     let data_file = "data.json";
     let mut manager = TaskManager::default();
     manager.load_task_data(data_file);
-    manager.add_task("new description");
+
+    let mut sub_tasks_uuid: Vec<Uuid> = Default::default();
+    if let Some(sub_tasks) = data.sub_tasks.clone() {
+        for i in sub_tasks {
+            if let Ok(uuid) = Uuid::parse_str(&i) {
+                sub_tasks_uuid.push(uuid);
+            }
+        }
+    }
+
+    let mut tags_vec: Vec<String> = Default::default();
+    if let Some(tags) = data.tags.clone() {
+        tags_vec = tags;
+    }
+
+    manager.add_task(&data.description, tags_vec, sub_tasks_uuid);
     manager.write_task_data(data_file);
+
+    return Json(StatusResponse {
+        status: "OK".to_string(),
+    });
 }
 
 #[post("/complete_task", data = "<data>")]
-fn complete_task(data: Json<IdTaskData>) -> Json<StatusResponse> {
+fn complete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
     let data_file = "data.json";
     let mut manager = TaskManager::default();
     manager.load_task_data(data_file);
 
-    match data.uuid {
-        Some(uuid) => {
-            manager.complete_task(&uuid);
-        }
-        None => match data.id {
-            Some(id) => {
-                manager.complete_task(&manager.id_to_uuid(&id));
-            }
-            None => {
-                return Json(StatusResponse {
-                    status: String::from("FAIL"),
-                });
-            }
-        },
+    let tasks_uuid: Vec<Uuid> = manager
+        .filter_tasks_from_string(&data.query)
+        .iter()
+        .map(|t| t.uuid)
+        .collect();
+    for uuid in tasks_uuid {
+        manager.complete_task(&uuid);
     }
 
     manager.write_task_data(data_file);
@@ -68,31 +81,24 @@ fn get_tasks(data: Json<TaskQuery>) -> Json<Vec<Task>> {
 
     manager.load_task_data(data_file);
     let filtered_tasks = manager.filter_tasks_from_string(&data.query);
-    let owned_tasks : Vec<Task> = filtered_tasks.iter().map(|&t| t.to_owned()).collect();
+    let owned_tasks: Vec<Task> = filtered_tasks.iter().map(|&t| t.to_owned()).collect();
 
     return Json(owned_tasks);
 }
 
-#[post("/remove_task", data = "<data>")]
-fn delete_task(data: Json<IdTaskData>) -> Json<StatusResponse> {
+#[post("/delete_task", data = "<data>")]
+fn delete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
     let data_file = "data.json";
     let mut manager = TaskManager::default();
     manager.load_task_data(data_file);
 
-    match data.uuid {
-        Some(uuid) => {
-            manager.delete_task(&uuid);
-        }
-        None => match data.id {
-            Some(id) => {
-                manager.delete_task(&manager.id_to_uuid(&id));
-            }
-            None => {
-                return Json(StatusResponse {
-                    status: String::from("FAIL"),
-                });
-            }
-        },
+    let tasks_uuid: Vec<Uuid> = manager
+        .filter_tasks_from_string(&data.query)
+        .iter()
+        .map(|t| t.uuid)
+        .collect();
+    for uuid in tasks_uuid {
+        manager.delete_task(&uuid);
     }
 
     manager.write_task_data(data_file);

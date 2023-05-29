@@ -1,6 +1,5 @@
-pub mod filters;
-pub mod manager;
-pub mod task;
+use rusk::manager;
+use rusk::task;
 
 use manager::{TaskHandler, TaskManager};
 use rocket::serde::json::Json;
@@ -10,7 +9,7 @@ use uuid::Uuid;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 struct TaskQuery {
-    query: String,
+    query: Vec<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -20,9 +19,10 @@ struct TaskData {
     sub_tasks: Option<Vec<String>>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Default)]
 struct StatusResponse {
     status: String,
+    tasks: Vec<Task>,
 }
 
 #[post("/add_task", data = "<data>")]
@@ -45,11 +45,14 @@ fn add_task(data: Json<TaskData>) -> Json<StatusResponse> {
         tags_vec = tags;
     }
 
-    manager.add_task(&data.description, tags_vec, sub_tasks_uuid);
+    let new_task: Task = manager
+        .add_task(&data.description, tags_vec, sub_tasks_uuid)
+        .clone();
     manager.write_task_data(data_file);
 
     return Json(StatusResponse {
         status: "OK".to_string(),
+        tasks: vec![new_task],
     });
 }
 
@@ -71,11 +74,12 @@ fn complete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
     manager.write_task_data(data_file);
     return Json(StatusResponse {
         status: String::from("OK"),
+        ..Default::default()
     });
 }
 
 #[post("/get_tasks", data = "<data>")]
-fn get_tasks(data: Json<TaskQuery>) -> Json<Vec<Task>> {
+fn get_tasks(data: Json<TaskQuery>) -> Json<StatusResponse> {
     let data_file = "data.json";
     let mut manager = TaskManager::default();
 
@@ -83,7 +87,10 @@ fn get_tasks(data: Json<TaskQuery>) -> Json<Vec<Task>> {
     let filtered_tasks = manager.filter_tasks_from_string(&data.query);
     let owned_tasks: Vec<Task> = filtered_tasks.iter().map(|&t| t.to_owned()).collect();
 
-    return Json(owned_tasks);
+    return Json(StatusResponse {
+        status: "OK".to_string(),
+        tasks: owned_tasks,
+    });
 }
 
 #[post("/delete_task", data = "<data>")]
@@ -104,6 +111,7 @@ fn delete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
     manager.write_task_data(data_file);
     return Json(StatusResponse {
         status: String::from("OK"),
+        ..Default::default()
     });
 }
 

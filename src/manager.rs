@@ -118,20 +118,20 @@ pub struct TaskManager {
 // // TODO: We probably don't need a trait for this
 
 pub trait TaskHandler {
-    fn add_task(&mut self, description: &str, tags: Vec<String>, sub_tasks: Vec<Uuid>);
+    fn add_task(&mut self, description: &str, tags: Vec<String>, sub_tasks: Vec<Uuid>) -> &Task;
     fn complete_task(&mut self, uuid: &Uuid);
     fn delete_task(&mut self, uuid: &Uuid);
     fn load_task_data(&mut self, data_file: &str);
     fn write_task_data(&self, data_file: &str);
     fn id_to_uuid(&self, id: &usize) -> Uuid;
     fn filter_tasks(&self, filter: &Filter) -> Vec<&Task>;
-    fn filter_tasks_from_string(&self, filter_str: &str) -> Vec<&Task>;
+    fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task>;
 }
 
 impl TaskHandler for TaskManager {
-    fn filter_tasks_from_string(&self, filter_str: &str) -> Vec<&Task> {
+    fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task> {
         let tokens: Vec<String> = filter_str
-            .split_whitespace()
+            .iter()
             .map(|t| String::from(t))
             .collect();
         self.data
@@ -153,7 +153,7 @@ impl TaskHandler for TaskManager {
         return self.data.id_to_uuid[id];
     }
 
-    fn add_task(&mut self, description: &str, tags: Vec<String>, sub_tasks: Vec<Uuid>) {
+    fn add_task(&mut self, description: &str, tags: Vec<String>, sub_tasks: Vec<Uuid>) -> &Task{
         let new_id = self.data.get_pending_count() + 1;
         let new_uuid = Uuid::new_v4();
         self.data.id_to_uuid.insert(new_id, new_uuid);
@@ -168,6 +168,8 @@ impl TaskHandler for TaskManager {
             ..Default::default()
         };
         self.data.tasks.insert(task.uuid, task);
+
+        &self.data.tasks[&new_uuid]
     }
 
     fn complete_task(&mut self, uuid: &Uuid) {

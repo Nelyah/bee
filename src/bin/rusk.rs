@@ -4,13 +4,11 @@
 use rusk::task::Task;
 
 use serde::Deserialize;
-use serde::Serialize;
 
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize)]
 struct Ip {
-    status: String,
     tasks: Vec<Task>,
 }
 

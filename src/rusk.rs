@@ -2,9 +2,12 @@
 // use reqwest::Response;
 
 use rusk::task::Task;
+mod config;
+use config::CONFIG;
 
-#[macro_use] extern crate prettytable;
-use prettytable::{Table, format};
+#[macro_use]
+extern crate prettytable;
+use prettytable::{format, Table};
 
 use serde::Deserialize;
 
@@ -21,7 +24,7 @@ async fn make_add_request(args: CommandLineArgs) -> Result<(), reqwest::Error> {
 
     let client = reqwest::Client::new();
     client
-        .post("http://127.0.0.1:8000/v1/add_task")
+        .post(format!("{}/v1/add_task", CONFIG.server))
         .json(&map)
         .send()
         .await?
@@ -36,7 +39,7 @@ async fn make_delete_request(args: CommandLineArgs) -> Result<(), reqwest::Error
 
     let client = reqwest::Client::new();
     client
-        .post("http://127.0.0.1:8000/v1/delete_task")
+        .post(format!("{}/v1/delete_task", CONFIG.server))
         .json(&map)
         .send()
         .await?
@@ -51,7 +54,7 @@ async fn make_completed_request(args: CommandLineArgs) -> Result<(), reqwest::Er
 
     let client = reqwest::Client::new();
     client
-        .post("http://127.0.0.1:8000/v1/complete_task")
+        .post(format!("{}/v1/complete_task", CONFIG.server))
         .json(&map)
         .send()
         .await?
@@ -66,7 +69,7 @@ async fn make_list_request(args: CommandLineArgs) -> Result<(), reqwest::Error> 
 
     let client = reqwest::Client::new();
     let res = client
-        .post("http://127.0.0.1:8000/v1/get_tasks")
+        .post(&format!("{}/v1/get_tasks", CONFIG.server))
         .json(&map)
         .send()
         .await?
@@ -86,7 +89,9 @@ async fn make_list_request(args: CommandLineArgs) -> Result<(), reqwest::Error> 
 
     // TODO: Fetch this from the config file
     table.set_titles(row!["ID", "Description", "Status"]);
-    for task in res.tasks {
+    let mut tasks = res.tasks;
+    tasks.sort_by_key(|t| t.date_created);
+    for task in tasks {
         let task_id: String = match task.id {
             Some(value) => value.to_string(),
             _ => String::from("none"),
@@ -137,7 +142,7 @@ fn parse_command_line() -> CommandLineArgs {
 
 fn is_command(arg: &str) -> bool {
     match arg {
-        "add" | "complete" | "delete" | "list" => true,
+        "add" | "complete" | "done" | "delete" | "list" => true,
         _ => false,
     }
 }
@@ -146,6 +151,7 @@ fn parse_command(arg: &str) -> Command {
     match arg {
         "add" => Command::Add,
         "complete" => Command::Complete,
+        "done" => Command::Complete,
         "delete" => Command::Delete,
         "list" => Command::List,
         _ => Command::List,

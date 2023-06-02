@@ -3,6 +3,9 @@
 
 use rusk::task::Task;
 
+#[macro_use] extern crate prettytable;
+use prettytable::{Table, format};
+
 use serde::Deserialize;
 
 use std::collections::HashMap;
@@ -69,9 +72,29 @@ async fn make_list_request(args: CommandLineArgs) -> Result<(), reqwest::Error> 
         .await?
         .json::<Ip>()
         .await?;
+    let mut table = Table::new();
+    let format = format::FormatBuilder::new()
+        .column_separator('|')
+        .borders('|')
+        .separators(
+            &[format::LinePosition::Top, format::LinePosition::Bottom],
+            format::LineSeparator::new('-', '+', '+', '+'),
+        )
+        .padding(1, 1)
+        .build();
+    table.set_format(format);
+
+    // TODO: Fetch this from the config file
+    table.set_titles(row!["ID", "Description", "Status"]);
     for task in res.tasks {
-        println!("{}", serde_json::to_string(&task).unwrap());
+        let task_id: String = match task.id {
+            Some(value) => value.to_string(),
+            _ => String::from("none"),
+        };
+        table.add_row(row![task_id, task.description, task.status.to_string()]);
     }
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.printstd();
     Ok(())
 }
 

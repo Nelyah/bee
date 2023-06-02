@@ -461,3 +461,29 @@ fn test_task_matches_status_filter() {
     assert_eq!(task_matches_status_filter(&task, &deleted_filter), true);
     assert_eq!(task_matches_status_filter(&task, &other_filter), false);
 }
+
+#[test]
+fn test_filterview() {
+    let filter_view = FilterView::default();
+
+    // Test the `iter()` method
+    let iter_values: Vec<_> = filter_view.iter().collect();
+    assert_eq!(iter_values.len(), 4); // Make sure all 4 views are present
+
+    // Test the `values()` method
+    let values: Vec<_> = filter_view.values().collect();
+    assert_eq!(values.len(), 4); // Make sure all 4 views are present
+
+    // Test the `get_view()` method
+    let view = filter_view.get_view("pending");
+    assert_eq!(view.value, "status:pending");
+    let view = filter_view.get_view("completed");
+    assert_eq!(view.value, "status:completed");
+    let view = filter_view.get_view("deleted");
+    assert_eq!(view.value, "status:deleted");
+    let view = filter_view.get_view("all");
+    assert_eq!(view.value, "");
+
+    // Test a non-existent view
+    assert!(std::panic::catch_unwind(|| filter_view.get_view("nonexistent")).is_err());
+}

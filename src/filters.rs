@@ -144,7 +144,7 @@ impl Default for FilterView {
                     "deleted".to_owned(),
                     Filter {
                         has_value: true,
-                        value: "status:completed".to_owned(),
+                        value: "status:deleted".to_owned(),
                         operator: FilterCombinationType::And,
                         ..Default::default()
                     },

@@ -118,6 +118,7 @@ enum Command {
     List,
 }
 
+// TODO: Parse this to extract tags and projects, etc.
 fn parse_command_line() -> CommandLineArgs {
     let args: Vec<String> = std::env::args().skip(1).collect();
 
@@ -131,7 +132,12 @@ fn parse_command_line() -> CommandLineArgs {
         .find(|&arg| is_command(arg))
         .map(|arg| parse_command(arg))
         .unwrap_or(Command::List);
-    let text = args.iter().skip_while(|&arg| !is_text(arg)).nth(1).cloned();
+    let text_tokens = args.iter().skip_while(|&arg| !is_text(arg));
+    let text: Option<String> = if text_tokens.clone().count() > 0 {
+        Some(text_tokens.cloned().collect::<Vec<String>>().join(" "))
+    } else {
+        None
+    };
 
     CommandLineArgs {
         filters,

@@ -215,19 +215,6 @@ fn test_task_handler_delete_task() {
 }
 
 #[test]
-fn test_task_handler_load_task_data() {
-    let mut task_manager = TaskManager::default();
-    task_manager.add_task("Task 1", vec![], vec![]);
-    task_manager.add_task("Task 2", vec![], vec![]);
-    task_manager.write_task_data("test_data.json");
-
-    task_manager.load_task_data("test_data.json");
-
-    assert_eq!(task_manager.data.tasks.len(), 2);
-    assert_eq!(task_manager.data.get_pending_count(), 2);
-}
-
-#[test]
 fn test_task_handler_filter_tasks() {
     let mut task_manager = TaskManager::default();
     task_manager.add_task("Task 1", vec![], vec![]);

@@ -1,5 +1,4 @@
 #[cfg(test)]
-
 use super::*;
 
 #[test]
@@ -233,7 +232,6 @@ fn test_task_handler_filter_tasks() {
     let mut task_manager = TaskManager::default();
     task_manager.add_task("Task 1", vec![], vec![]);
     task_manager.add_task("Task 2", vec![], vec![]);
-    task_manager.complete_task(&task_manager.data.tasks.keys().next().unwrap().clone());
 
     let filter_str = "task 1".to_owned();
     let filter = build_filter_from_strings(&[filter_str]);
@@ -255,12 +253,18 @@ fn test_filter_tasks_from_string() {
     );
     manager.add_task("Task 1", vec![], vec![]);
 
-    assert_eq!(
-        manager.filter_tasks_from_string("some filter string").len(),
-        0
-    );
-    assert_eq!(manager.filter_tasks_from_string("1").len(), 2);
-    assert_eq!(manager.filter_tasks_from_string("task").len(), 2);
-    assert_eq!(manager.filter_tasks_from_string("task and cat").len(), 0);
-    assert_eq!(manager.filter_tasks_from_string("task or cat").len(), 3);
+    let tokens = vec!["some".to_owned(), "filter".to_owned(), "string".to_owned()];
+    assert_eq!(manager.filter_tasks_from_string(&tokens).len(), 0);
+
+    let tokens = vec!["1".to_owned()];
+    assert_eq!(manager.filter_tasks_from_string(&tokens).len(), 1);
+
+    let tokens = vec!["task".to_owned()];
+    assert_eq!(manager.filter_tasks_from_string(&tokens).len(), 2);
+
+    let tokens = vec!["task".to_owned(), "and".to_owned(), "cat".to_owned()];
+    assert_eq!(manager.filter_tasks_from_string(&tokens).len(), 0);
+
+    let tokens = vec!["task".to_owned(), "or".to_owned(), "cat".to_owned()];
+    assert_eq!(manager.filter_tasks_from_string(&tokens).len(), 3);
 }

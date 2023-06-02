@@ -55,6 +55,7 @@ fn test_split_parenthesis() {
 fn test_filters() {
     // Empty input
     let expected = Filter::default();
+
     let actual = build_filter_from_strings(&[]);
     assert_eq!(expected, actual);
 
@@ -80,6 +81,7 @@ fn test_filters() {
         String::from("and"),
         String::from("two"),
     ]);
+    // The default view filter is applied, and we just skip it here
     assert_eq!(expected, actual);
     let actual = build_filter_from_strings(&[String::from("one"), String::from("two")]);
     assert_eq!(expected, actual);

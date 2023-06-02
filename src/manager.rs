@@ -1,4 +1,4 @@
-use crate::filters::{build_filter_from_strings, validate_task, Filter};
+use crate::filters::{build_filter_from_strings, validate_task, Filter, FilterView};
 use crate::task::{Task, TaskStatus};
 use serde::{
     ser::{SerializeStruct, Serializer},
@@ -130,15 +130,19 @@ pub trait TaskHandler {
 
 impl TaskHandler for TaskManager {
     fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task> {
-        let tokens: Vec<String> = filter_str
+        let tokens: Vec<String> = filter_str.iter().map(|t| String::from(t)).collect();
+        let mut filter = build_filter_from_strings(tokens.as_slice());
+        let mentions_view: bool = filter
             .iter()
-            .map(|t| String::from(t))
-            .collect();
-        self.data
-            .tasks
-            .values()
-            .filter(|t| validate_task(t, &build_filter_from_strings(tokens.as_slice())))
-            .collect()
+            .filter(|f| f.has_value)
+            .take_while(|f| f.value.starts_with("view:"))
+            .count()
+            == 0;
+
+        if mentions_view {
+            filter = filter.and(FilterView::default().get_view("pending"));
+        }
+        self.filter_tasks(&filter)
     }
 
     fn filter_tasks(&self, filter: &Filter) -> Vec<&Task> {
@@ -153,7 +157,7 @@ impl TaskHandler for TaskManager {
         return self.data.id_to_uuid[id];
     }
 
-    fn add_task(&mut self, description: &str, tags: Vec<String>, sub_tasks: Vec<Uuid>) -> &Task{
+    fn add_task(&mut self, description: &str, tags: Vec<String>, sub_tasks: Vec<Uuid>) -> &Task {
         let new_id = self.data.get_pending_count() + 1;
         let new_uuid = Uuid::new_v4();
         self.data.id_to_uuid.insert(new_id, new_uuid);
@@ -163,7 +167,7 @@ impl TaskHandler for TaskManager {
             id: Some(new_id),
             date_created: chrono::offset::Local::now(),
             description: description.to_string(),
-            tags: tags,
+            tags,
             sub: sub_tasks,
             ..Default::default()
         };
@@ -205,4 +209,3 @@ impl TaskHandler for TaskManager {
 }
 #[path = "manager_test.rs"]
 mod manager_test;
-

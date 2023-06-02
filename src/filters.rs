@@ -2,6 +2,8 @@ use crate::task::{Task, TaskStatus};
 use std::str::FromStr;
 use uuid::Uuid;
 
+use std::collections::HashMap;
+
 #[path = "filters_test.rs"]
 mod filters_test;
 
@@ -19,10 +21,10 @@ impl Default for FilterCombinationType {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct Filter {
-    has_value: bool,
-    value: String,
+    pub has_value: bool,
+    pub value: String,
     operator: FilterCombinationType,
     childs: Vec<Filter>,
 }
@@ -45,25 +47,117 @@ impl PartialEq for Filter {
 }
 
 impl Filter {
-    pub fn to_string(&self, indent: &str) {
+    pub fn to_string(&self) -> String {
+        self.to_string_impl("")
+    }
+
+    fn to_string_impl(&self, indent: &str) -> String {
         let str_op = match self.operator {
             FilterCombinationType::And => "AND",
             FilterCombinationType::Or => "OR",
             FilterCombinationType::Xor => "XOR",
             FilterCombinationType::None => "NONE",
         };
+        let mut out_str = String::default();
 
         if self.has_value {
-            println!(
-                "{}Operator is {} (value: \"{}\")",
-                indent, str_op, self.value
-            );
+            out_str = out_str
+                + "\n"
+                + &format!(
+                    "{}Operator is {} (value: \"{}\")",
+                    indent, str_op, self.value
+                );
         } else {
-            println!("{}Operator is {}", indent, str_op);
+            out_str = out_str + "\n" + &format!("{}Operator is {}", indent, str_op);
         }
 
         for c in &self.childs {
-            c.to_string(&(indent.to_owned() + "    "));
+            out_str = out_str + &c.to_string_impl(&(indent.to_owned() + "    "));
+        }
+        out_str
+    }
+
+    pub fn and(self, other: Filter) -> Self {
+        Filter {
+            has_value: false,
+            operator: FilterCombinationType::And,
+            childs: vec![self, other],
+            ..Default::default()
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Filter> {
+        std::iter::once(self).chain(self.childs.iter())
+    }
+}
+
+impl std::fmt::Debug for Filter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+pub struct FilterView {
+    views: HashMap<String, Filter>,
+}
+
+impl FilterView {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Filter)> {
+        return self.views.iter();
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &Filter> {
+        return self.views.values();
+    }
+
+    pub fn get_view(&self, name: &str) -> Filter {
+        if let Some(filter) = self.views.get(name) {
+            return filter.clone();
+        }
+        panic!("Error: unknown filter view: {}", name);
+    }
+}
+
+impl Default for FilterView {
+    fn default() -> FilterView {
+        Self {
+            views: HashMap::from([
+                (
+                    "pending".to_owned(),
+                    Filter {
+                        has_value: true,
+                        value: "status:pending".to_owned(),
+                        operator: FilterCombinationType::And,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "completed".to_owned(),
+                    Filter {
+                        has_value: true,
+                        value: "status:completed".to_owned(),
+                        operator: FilterCombinationType::And,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "deleted".to_owned(),
+                    Filter {
+                        has_value: true,
+                        value: "status:completed".to_owned(),
+                        operator: FilterCombinationType::And,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "all".to_owned(),
+                    Filter {
+                        has_value: false,
+                        operator: FilterCombinationType::And,
+                        ..Default::default()
+                    },
+                ),
+            ]),
         }
     }
 }
@@ -141,7 +235,13 @@ fn task_matches_filter(t: &Task, f: &Filter) -> bool {
             if parsed_id == id_value {
                 return true;
             }
+            return false;
         }
+        return false;
+    }
+
+    if f.value.starts_with("status:") {
+        return task_matches_status_filter(t, f);
     }
 
     if t.description
@@ -149,10 +249,6 @@ fn task_matches_filter(t: &Task, f: &Filter) -> bool {
         .contains(&f.value.to_lowercase())
     {
         return true;
-    }
-
-    if f.value.starts_with("status:") {
-        return task_matches_status_filter(t, f);
     }
 
     false

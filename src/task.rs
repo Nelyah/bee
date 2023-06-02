@@ -20,6 +20,8 @@ impl Default for TaskStatus {
     fn default() -> TaskStatus {
         TaskStatus::PENDING
     }
+
+
 }
 
 impl TaskStatus {
@@ -29,6 +31,14 @@ impl TaskStatus {
             "completed" => Ok(TaskStatus::COMPLETED),
             "deleted" => Ok(TaskStatus::DELETED),
             _ => Err("Invalid task status".to_string()),
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            TaskStatus::PENDING => "pending".to_string(),
+            TaskStatus::COMPLETED => "completed".to_string(),
+            TaskStatus::DELETED => "deleted".to_string(),
         }
     }
 }

@@ -1,7 +1,7 @@
 use rusk::manager;
 use rusk::task;
 
-use manager::{TaskHandler, JsonTaskManager};
+use manager::{json_manager::JsonTaskManager, TaskHandler};
 use rocket::serde::json::Json;
 use rocket::{launch, post, routes};
 use task::Task;

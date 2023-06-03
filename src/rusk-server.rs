@@ -1,7 +1,7 @@
 use rusk::manager;
 use rusk::task;
 
-use manager::{TaskHandler, TaskManager};
+use manager::{TaskHandler, JsonTaskManager};
 use rocket::serde::json::Json;
 use rocket::{launch, post, routes};
 use task::Task;
@@ -28,7 +28,7 @@ struct StatusResponse {
 #[post("/add_task", data = "<data>")]
 fn add_task(data: Json<TaskData>) -> Json<StatusResponse> {
     let data_file = "data.json";
-    let mut manager = TaskManager::default();
+    let mut manager = JsonTaskManager::default();
     manager.load_task_data(data_file);
 
     let mut sub_tasks_uuid: Vec<Uuid> = Default::default();
@@ -59,7 +59,7 @@ fn add_task(data: Json<TaskData>) -> Json<StatusResponse> {
 #[post("/complete_task", data = "<data>")]
 fn complete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
     let data_file = "data.json";
-    let mut manager = TaskManager::default();
+    let mut manager = JsonTaskManager::default();
     manager.load_task_data(data_file);
 
     let tasks_uuid: Vec<Uuid> = manager
@@ -81,7 +81,7 @@ fn complete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
 #[post("/get_tasks", data = "<data>")]
 fn get_tasks(data: Json<TaskQuery>) -> Json<StatusResponse> {
     let data_file = "data.json";
-    let mut manager = TaskManager::default();
+    let mut manager = JsonTaskManager::default();
 
     manager.load_task_data(data_file);
     let filtered_tasks = manager.filter_tasks_from_string(&data.query);
@@ -96,7 +96,7 @@ fn get_tasks(data: Json<TaskQuery>) -> Json<StatusResponse> {
 #[post("/delete_task", data = "<data>")]
 fn delete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
     let data_file = "data.json";
-    let mut manager = TaskManager::default();
+    let mut manager = JsonTaskManager::default();
     manager.load_task_data(data_file);
 
     let tasks_uuid: Vec<Uuid> = manager

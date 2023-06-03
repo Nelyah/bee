@@ -111,7 +111,7 @@ impl TaskData {
 ///
 /// The manager owns the data
 #[derive(Default)]
-pub struct TaskManager {
+pub struct JsonTaskManager {
     data: TaskData,
 }
 
@@ -128,7 +128,7 @@ pub trait TaskHandler {
     fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task>;
 }
 
-impl TaskHandler for TaskManager {
+impl TaskHandler for JsonTaskManager {
     fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task> {
         let tokens: Vec<String> = filter_str.iter().map(|t| String::from(t)).collect();
         let mut filter = build_filter_from_strings(tokens.as_slice());

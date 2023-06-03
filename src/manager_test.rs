@@ -123,7 +123,7 @@ fn test_task_data_get_pending_count() {
 
 #[test]
 fn test_task_manager_add_task() {
-    let mut task_manager = TaskManager::default();
+    let mut task_manager = JsonTaskManager::default();
     task_manager.add_task("Task 1", vec![], vec![]);
     task_manager.add_task("Task 2", vec![], vec![]);
     task_manager.add_task("Task 3", vec![], vec![]);
@@ -159,7 +159,7 @@ fn test_task_manager_add_task() {
 #[cfg(test)]
 #[test]
 fn test_task_handler_complete_task() {
-    let mut task_manager = TaskManager::default();
+    let mut task_manager = JsonTaskManager::default();
     let task_uuid = Uuid::new_v4();
     task_manager.add_task("Task 1", vec![], vec![]);
     task_manager.add_task("Task 2", vec![], vec![]);
@@ -188,7 +188,7 @@ fn test_task_handler_complete_task() {
 
 #[test]
 fn test_task_handler_delete_task() {
-    let mut task_manager = TaskManager::default();
+    let mut task_manager = JsonTaskManager::default();
     let task_uuid = Uuid::new_v4();
     task_manager.add_task("Task 1", vec![], vec![]);
     task_manager.add_task("Task 2", vec![], vec![]);
@@ -216,7 +216,7 @@ fn test_task_handler_delete_task() {
 
 #[test]
 fn test_task_handler_filter_tasks() {
-    let mut task_manager = TaskManager::default();
+    let mut task_manager = JsonTaskManager::default();
     task_manager.add_task("Task 1", vec![], vec![]);
     task_manager.add_task("Task 2", vec![], vec![]);
 
@@ -231,7 +231,7 @@ fn test_task_handler_filter_tasks() {
 
 #[test]
 fn test_filter_tasks_from_string() {
-    let mut manager = TaskManager::default();
+    let mut manager = JsonTaskManager::default();
     manager.add_task("A task about llamss", vec![], vec![]);
     manager.add_task(
         "Socket is the most beautiful cat in the world",

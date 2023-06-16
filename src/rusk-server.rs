@@ -1,11 +1,13 @@
 use rusk::manager;
 use rusk::task;
+use rusk::operation::{GenerateOperation, Operation};
 
 use manager::{json_manager::JsonTaskManager, TaskHandler};
 use rocket::serde::json::Json;
 use rocket::{launch, post, routes};
-use task::Task;
 use uuid::Uuid;
+
+use crate::task::Task;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 struct TaskQuery {
@@ -95,6 +97,28 @@ fn get_tasks(data: Json<TaskQuery>) -> Json<StatusResponse> {
 
 #[post("/delete_task", data = "<data>")]
 fn delete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
+    let data_file = "data.json";
+    let mut manager = JsonTaskManager::default();
+    manager.load_task_data(data_file);
+
+    let tasks_uuid: Vec<Uuid> = manager
+        .filter_tasks_from_string(&data.query)
+        .iter()
+        .map(|t| t.uuid)
+        .collect();
+    for uuid in tasks_uuid {
+        manager.delete_task(&uuid);
+    }
+
+    manager.write_task_data(data_file);
+    return Json(StatusResponse {
+        status: String::from("OK"),
+        ..Default::default()
+    });
+}
+
+#[post("/sync", data = "<data>")]
+fn sync(data: Json<TaskQuery>) -> Json<StatusResponse> {
     let data_file = "data.json";
     let mut manager = JsonTaskManager::default();
     manager.load_task_data(data_file);

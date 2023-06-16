@@ -16,6 +16,7 @@ pub mod json_manager;
 struct TaskData {
     pub tasks: HashMap<Uuid, Task>,
     pub id_to_uuid: HashMap<usize, Uuid>,
+    pub operations: Vec<Vec<Operation>>,
 }
 
 impl GenerateOperation for TaskData {
@@ -126,11 +127,12 @@ impl Serialize for TaskData {
             .collect();
 
         // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("TaskData", 3)?;
+        let mut state = serializer.serialize_struct("TaskData", 4)?;
 
         state.serialize_field("completed", &completed_values)?;
         state.serialize_field("pending", &pending_values)?;
         state.serialize_field("deleted", &deleted_values)?;
+        state.serialize_field("operations", &self.operations)?;
         state.end()
     }
 }
@@ -145,6 +147,7 @@ impl<'de> Deserialize<'de> for TaskData {
             completed: Vec<Task>,
             pending: Vec<Task>,
             deleted: Vec<Task>,
+            operations: Vec<Vec<Operation>>,
         }
 
         let mut task_data_fields: TaskDataFields = Deserialize::deserialize(deserializer)?;
@@ -173,6 +176,7 @@ impl<'de> Deserialize<'de> for TaskData {
         Ok(TaskData {
             tasks: task_map,
             id_to_uuid,
+            operations: task_data_fields.operations,
         })
     }
 }

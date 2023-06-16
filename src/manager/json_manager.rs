@@ -1,5 +1,6 @@
 use crate::filters::{build_filter_from_strings, validate_task, Filter, FilterView};
 use crate::task::{Task, TaskStatus};
+use crate::operation::{GenerateOperation, Operation};
 use std::fs;
 use uuid::Uuid;
 
@@ -59,23 +60,36 @@ impl TaskHandler for JsonTaskManager {
             sub: sub_tasks,
             ..Default::default()
         };
+        let mut op = Operation::default();
+            let task_bytes = serde_json::to_vec::<Task>(&task).expect(&format!(
+                "Failed to serialize Task `{}'",
+                task.uuid
+            ));
+        op.output.insert(task.uuid.to_string(), task_bytes);
         self.data.tasks.insert(task.uuid, task);
+        self.data.operations.push(vec![op]);
 
         &self.data.tasks[&new_uuid]
     }
 
     fn complete_task(&mut self, uuid: &Uuid) {
         if let Some(mut task) = self.data.tasks.get_mut(uuid) {
+            let task_before = task.clone();
             task.id = None;
             task.date_completed = Some(chrono::offset::Local::now());
             task.status = TaskStatus::COMPLETED;
+            let vec_op: Vec<Operation> = vec![task_before.generate_operation::<Task>(task)];
+            self.data.operations.push(vec_op);
+            
         }
     }
 
     fn delete_task(&mut self, uuid: &Uuid) {
         if let Some(mut task) = self.data.tasks.get_mut(uuid) {
+            let task_before = task.clone();
             task.id = None;
             task.status = TaskStatus::DELETED;
+            self.data.operations.push(vec![task_before.generate_operation::<Task>(task)]);
         }
     }
 

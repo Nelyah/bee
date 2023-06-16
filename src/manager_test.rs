@@ -20,11 +20,12 @@ fn test_task_data_serialize() {
     let task_data = TaskData {
         tasks,
         id_to_uuid: HashMap::new(),
+        operations: Vec::default(),
     };
 
     let serialized = serde_json::to_string(&task_data).unwrap();
     let expected = format!(
-        r#"{{"completed":[{}],"pending":[{}],"deleted":[]}}"#,
+        r#"{{"completed":[{}],"pending":[{}],"deleted":[],"operations":[]}}"#,
         serde_json::to_string(&task2).unwrap(),
         serde_json::to_string(&task1).unwrap(),
     );
@@ -62,7 +63,8 @@ fn test_task_data_deserialize() {
                     "tags": []
                 }
             ],
-            "deleted": []
+            "deleted": [],
+            "operations": []
         }"#;
 
     let task_data: TaskData = serde_json::from_str(json).unwrap();
@@ -116,6 +118,7 @@ fn test_task_data_get_pending_count() {
     let task_data = TaskData {
         tasks,
         id_to_uuid: HashMap::new(),
+        operations: Vec::default(),
     };
 
     assert_eq!(task_data.get_pending_count(), 2);

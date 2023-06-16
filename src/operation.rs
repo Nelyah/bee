@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::any::Any;
+use serde::{Serialize,Deserialize};
 
-#[derive(Default)]
+#[derive(Default,Serialize,Deserialize)]
 pub struct Operation {
 	// client_id: String,
 	pub input: HashMap<String, Vec<u8>>,

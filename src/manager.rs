@@ -1,11 +1,14 @@
-use crate::filters::Filter;
-use crate::task::{Task, TaskStatus};
 use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-use uuid::Uuid;
+use std::any::Any;
 use std::collections::HashMap;
+use uuid::Uuid;
+
+use crate::filters::Filter;
+use crate::operation::{GenerateOperation, Operation};
+use crate::task::{Task, TaskStatus};
 
 pub mod json_manager;
 
@@ -13,6 +16,91 @@ pub mod json_manager;
 struct TaskData {
     pub tasks: HashMap<Uuid, Task>,
     pub id_to_uuid: HashMap<usize, Uuid>,
+}
+
+impl GenerateOperation for TaskData {
+    fn generate_operation<T: Any>(&self, other: &dyn Any) -> Operation {
+        let mut operation = Operation::default();
+        let other_manager = other
+            .downcast_ref::<TaskData>()
+            .expect("Could not downcast `other' into a TaskData");
+
+        for (key, task) in self.tasks.iter().collect::<Vec<_>>() {
+            let other_task_option = other_manager.tasks.get(&key);
+            let input_task_bytes = serde_json::to_vec::<Task>(&task).expect(&format!(
+                "Failed to serialize Task `{}' from output task",
+                task.uuid
+            ));
+            operation.input.insert(key.to_string(), input_task_bytes);
+
+            if let Some(other_task) = other_task_option {
+                let output_task_bytes = serde_json::to_vec(&other_task).expect(&format!(
+                    "Failed to serialize Task `{}' from output task",
+                    task.uuid
+                ));
+                operation.output.insert(key.to_string(), output_task_bytes);
+            }
+        }
+
+        for (key, task) in other_manager.tasks.iter().collect::<Vec<_>>() {
+            match self.tasks.get(&key) {
+                None => {
+                    let output_task_bytes = serde_json::to_vec(&task).expect(&format!(
+                        "Failed to serialize Task `{}' from output task",
+                        task.uuid
+                    ));
+                    operation.output.insert(key.to_string(), output_task_bytes);
+                }
+                _ => {}
+            }
+        }
+
+        operation
+    }
+
+    fn apply_operation(&mut self, operation: Operation) -> Result<(), String> {
+        // TODO: The Err should be a merge conflict
+        for (key, input_task_bytes) in operation.input.iter().collect::<Vec<_>>() {
+            match operation.output.get(key) {
+                Some(output_task_bytes) => {
+                    let input_task: Task = serde_json::from_slice(&input_task_bytes)
+                        .map_err(|e| format!("Error deserializing 'task': {}", e))?;
+
+                    let output_task: Task = serde_json::from_slice(&output_task_bytes)
+                        .map_err(|e| format!("Error deserializing 'task': {}", e))?;
+
+                    let op = input_task.generate_operation::<Task>(&output_task);
+                    self.tasks
+                        .get_mut(&input_task.uuid)
+                        .expect(&format!(
+                            "could not find task with UUID {}",
+                            &input_task.uuid
+                        ))
+                        .apply_operation(op)?;
+                }
+                // This is the case where we have a task unknown to other
+                None => {}
+            }
+        }
+
+        for (key, task_bytes) in operation.output {
+            // This is the case where other has a task unknown to us
+            match operation.input.get(&key) {
+                None => {
+                    let output_task: Task = serde_json::from_slice(&task_bytes)
+                        .map_err(|e| format!("Error deserializing 'task': {}", e))?;
+
+                    let key_as_uuid: Uuid = Uuid::parse_str(&key)
+                        .expect(&format!("could not parse the uuid `{}'", key));
+
+                    self.tasks.insert(key_as_uuid, output_task);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Serialize for TaskData {

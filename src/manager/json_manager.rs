@@ -108,6 +108,18 @@ impl TaskHandler for JsonTaskManager {
             self.data = TaskData::default();
         }
     }
+
+    // TODO: Implement this
+    fn sync(&mut self, operations: &Vec<Vec<Operation>>) {
+        for batch in operations {
+            for op in batch {
+                match self.data.apply_operation(&op) {
+                    Ok(()) => {},
+                    _ => {},
+                }
+            }
+        }
+    }
 }
 #[path = "json_manager_test.rs"]
 mod jsonmanager_test;

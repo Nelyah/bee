@@ -100,9 +100,9 @@ impl GenerateOperation for Task {
         operation
     }
 
-    fn apply_operation(&mut self, operation: Operation) -> Result<(), String> {
+    fn apply_operation(&mut self, operation: &Operation) -> Result<(), String> {
         // TODO: The Err should be a merge conflict
-        for (key, value) in operation.input {
+        for (key, value) in &operation.input {
             match key.as_str() {
                 "id" | "uuid" | "date_created" => {
                     panic!("Trying to update either one of `id', `uuid' or `date_created' field.");
@@ -157,7 +157,7 @@ impl GenerateOperation for Task {
             }
         }
 
-        for (key, value) in operation.output {
+        for (key, value) in &operation.output {
             match key.as_str() {
                 "id" => panic!("Error: the `id' field should not be updated by an operation"),
                 "uuid" => panic!("Error: the `uuid' field should not be updated by an operation"),

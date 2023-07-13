@@ -59,7 +59,7 @@ impl GenerateOperation for TaskData {
         operation
     }
 
-    fn apply_operation(&mut self, operation: Operation) -> Result<(), String> {
+    fn apply_operation(&mut self, operation: &Operation) -> Result<(), String> {
         // TODO: The Err should be a merge conflict
         for (key, input_task_bytes) in operation.input.iter().collect::<Vec<_>>() {
             match operation.output.get(key) {
@@ -77,16 +77,16 @@ impl GenerateOperation for TaskData {
                             "could not find task with UUID {}",
                             &input_task.uuid
                         ))
-                        .apply_operation(op)?;
+                        .apply_operation(&op)?;
                 }
                 // This is the case where we have a task unknown to other
                 None => {}
             }
         }
 
-        for (key, task_bytes) in operation.output {
+        for (key, task_bytes) in &operation.output {
             // This is the case where other has a task unknown to us
-            match operation.input.get(&key) {
+            match operation.input.get(key) {
                 None => {
                     let output_task: Task = serde_json::from_slice(&task_bytes)
                         .map_err(|e| format!("Error deserializing 'task': {}", e))?;
@@ -207,6 +207,7 @@ pub trait TaskHandler {
     fn id_to_uuid(&self, id: &usize) -> Uuid;
     fn filter_tasks(&self, filter: &Filter) -> Vec<&Task>;
     fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task>;
+    fn sync(&mut self, operations: &Vec<Vec<Operation>>);
 }
 
 #[path = "manager_test.rs"]

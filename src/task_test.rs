@@ -117,7 +117,7 @@ fn test_apply_operation() {
         .collect(),
     };
 
-    let result = task.apply_operation(operation);
+    let result = task.apply_operation(&operation);
 
     assert_eq!(result, Ok(()));
     assert_eq!(task.status, TaskStatus::COMPLETED);

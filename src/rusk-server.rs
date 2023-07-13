@@ -1,6 +1,6 @@
 use rusk::manager;
-use rusk::task;
 use rusk::operation::{GenerateOperation, Operation};
+use rusk::task;
 
 use manager::{json_manager::JsonTaskManager, TaskHandler};
 use rocket::serde::json::Json;
@@ -14,6 +14,11 @@ struct TaskQuery {
     query: Vec<String>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TaskSync {
+    operations: Vec<Vec<Operation>>,
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 struct TaskData {
     description: String,
@@ -24,6 +29,7 @@ struct TaskData {
 #[derive(serde::Serialize, Default)]
 struct StatusResponse {
     status: String,
+    message: String,
     tasks: Vec<Task>,
 }
 
@@ -55,6 +61,7 @@ fn add_task(data: Json<TaskData>) -> Json<StatusResponse> {
     return Json(StatusResponse {
         status: "OK".to_string(),
         tasks: vec![new_task],
+        ..Default::default()
     });
 }
 
@@ -92,11 +99,13 @@ fn get_tasks(data: Json<TaskQuery>) -> Json<StatusResponse> {
     return Json(StatusResponse {
         status: "OK".to_string(),
         tasks: owned_tasks,
+        ..Default::default()
     });
 }
 
 #[post("/delete_task", data = "<data>")]
 fn delete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
+    // TODO: Move this to the config
     let data_file = "data.json";
     let mut manager = JsonTaskManager::default();
     manager.load_task_data(data_file);
@@ -106,6 +115,14 @@ fn delete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
         .iter()
         .map(|t| t.uuid)
         .collect();
+    if data.query.len() == 0 {
+        return Json(StatusResponse {
+            status: "FAIL".to_owned(),
+            message: "No task was specified".to_owned(),
+            ..Default::default()
+        });
+    }
+
     for uuid in tasks_uuid {
         manager.delete_task(&uuid);
     }
@@ -118,19 +135,12 @@ fn delete_task(data: Json<TaskQuery>) -> Json<StatusResponse> {
 }
 
 #[post("/sync", data = "<data>")]
-fn sync(data: Json<TaskQuery>) -> Json<StatusResponse> {
+fn sync(data: Json<TaskSync>) -> Json<StatusResponse> {
     let data_file = "data.json";
     let mut manager = JsonTaskManager::default();
     manager.load_task_data(data_file);
-
-    let tasks_uuid: Vec<Uuid> = manager
-        .filter_tasks_from_string(&data.query)
-        .iter()
-        .map(|t| t.uuid)
-        .collect();
-    for uuid in tasks_uuid {
-        manager.delete_task(&uuid);
-    }
+    let operations = &data.operations;
+    manager.sync(operations);
 
     manager.write_task_data(data_file);
     return Json(StatusResponse {
@@ -146,4 +156,5 @@ fn rocket() -> _ {
         .mount("/v1", routes![delete_task])
         .mount("/v1", routes![complete_task])
         .mount("/v1", routes![get_tasks])
+        .mount("/v1", routes![sync])
 }

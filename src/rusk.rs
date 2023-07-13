@@ -18,6 +18,15 @@ struct Ip {
     tasks: Vec<Task>,
 }
 
+// TODO: Instead of making requests, it should write to its own data file.
+// The only request this client really should be doing is the sync request
+// with the server
+//
+// TODO:
+// The data file should be configured in the CONFIG file
+
+// TODO: Add the ability to have multiple server endpoints in the config
+
 async fn make_add_request(args: CommandLineArgs) -> Result<(), reqwest::Error> {
     let mut map = HashMap::new();
     map.insert("description", args.text);

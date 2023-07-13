@@ -14,6 +14,6 @@ pub trait GenerateOperation {
     fn generate_operation<T: Any>(&self, other: &dyn Any) -> Operation;
 
     // TODO: Conflict in case of Err?
-	fn apply_operation(&mut self, operation: Operation) -> Result<(), String>;
+	fn apply_operation(&mut self, operation: &Operation) -> Result<(), String>;
 }
 

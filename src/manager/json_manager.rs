@@ -109,6 +109,14 @@ impl TaskHandler for JsonTaskManager {
         }
     }
 
+    fn get_operations(&self) -> &Vec<Vec<Operation>> {
+        &self.data.operations
+    }
+
+    fn wipe_operations(&mut self) {
+        self.data.operations = Vec::default();
+    }
+
     // TODO: Implement this
     fn sync(&mut self, operations: &Vec<Vec<Operation>>) {
         for batch in operations {

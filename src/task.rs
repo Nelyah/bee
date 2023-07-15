@@ -83,7 +83,7 @@ impl GenerateOperation for Task {
                 field_name
             ));
 
-            if self_value != other_value {
+            if self_value != other_value || field_name == "uuid" {
                 let input = serde_json::to_vec(self_value).expect(&format!(
                     "Failed to serialize field `{}' from input task",
                     field_name
@@ -104,7 +104,10 @@ impl GenerateOperation for Task {
         // TODO: The Err should be a merge conflict
         for (key, value) in &operation.input {
             match key.as_str() {
-                "id" | "uuid" | "date_created" => {
+                "uuid" => {
+                    continue;
+                }
+                "id" | "date_created" => {
                     panic!("Trying to update either one of `id', `uuid' or `date_created' field.");
                 }
                 "status" => {
@@ -160,7 +163,9 @@ impl GenerateOperation for Task {
         for (key, value) in &operation.output {
             match key.as_str() {
                 "id" => panic!("Error: the `id' field should not be updated by an operation"),
-                "uuid" => panic!("Error: the `uuid' field should not be updated by an operation"),
+                "uuid" => {
+                    continue;
+                }
                 "date_created" => {
                     panic!("Error: the `date_created' field should not be updated by an operation")
                 }

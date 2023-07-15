@@ -1,7 +1,9 @@
 // use reqwest::{Client, RequestBuilder, Response};
 // use reqwest::Response;
 
+use rusk::operation::Operation;
 use rusk::task::Task;
+use serde::Deserialize;
 mod config;
 use config::CONFIG;
 
@@ -9,81 +11,114 @@ use config::CONFIG;
 extern crate prettytable;
 use prettytable::{format, Table};
 
-use serde::Deserialize;
-
-use std::collections::HashMap;
-
 #[derive(Deserialize)]
 struct Ip {
     tasks: Vec<Task>,
 }
 
-// TODO: Instead of making requests, it should write to its own data file.
-// The only request this client really should be doing is the sync request
-// with the server
-//
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TaskSync {
+    operations: Vec<Vec<Operation>>,
+}
+
 // TODO:
 // The data file should be configured in the CONFIG file
 
 // TODO: Add the ability to have multiple server endpoints in the config
 
-async fn make_add_request(args: CommandLineArgs) -> Result<(), reqwest::Error> {
-    let mut map = HashMap::new();
-    map.insert("description", args.text);
+use rusk::manager::{json_manager::JsonTaskManager, TaskHandler};
+use uuid::Uuid;
 
-    let client = reqwest::Client::new();
-    client
-        .post(format!("{}/v1/add_task", CONFIG.server))
-        .json(&map)
-        .send()
-        .await?
-        .json::<Ip>()
-        .await?;
-    Ok(())
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+struct TaskData {
+    description: String,
+    tags: Option<Vec<String>>,
+    sub_tasks: Option<Vec<String>>,
 }
 
-async fn make_delete_request(args: CommandLineArgs) -> Result<(), reqwest::Error> {
-    let mut map = HashMap::new();
-    map.insert("query", args.filters);
-
-    let client = reqwest::Client::new();
-    client
-        .post(format!("{}/v1/delete_task", CONFIG.server))
-        .json(&map)
-        .send()
-        .await?
-        .json::<Ip>()
-        .await?;
-    Ok(())
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+struct TaskQuery {
+    query: Vec<String>,
 }
 
-async fn make_completed_request(args: CommandLineArgs) -> Result<(), reqwest::Error> {
-    let mut map = HashMap::new();
-    map.insert("query", args.filters);
+fn add_tasks(args: CommandLineArgs) {
+    let data_file = "data.json";
+    let mut manager = JsonTaskManager::default();
+    manager.load_task_data(data_file);
+    let sub_tasks: Vec<String> = Vec::default();
+    let tags: Vec<String> = Vec::default();
 
-    let client = reqwest::Client::new();
-    client
-        .post(format!("{}/v1/complete_task", CONFIG.server))
-        .json(&map)
-        .send()
-        .await?
-        .json::<Ip>()
-        .await?;
-    Ok(())
+    let mut sub_tasks_uuid: Vec<Uuid> = Default::default();
+    if sub_tasks.len() > 0 {
+        for i in sub_tasks {
+            if let Ok(uuid) = Uuid::parse_str(&i) {
+                sub_tasks_uuid.push(uuid);
+            }
+        }
+    }
+    match &args.text {
+        Some(txt) => {
+            manager.add_task(&txt, tags, sub_tasks_uuid);
+            manager.write_task_data(data_file);
+        }
+        _ => {
+            println!("Error: no description provided for the task")
+        }
+    }
 }
 
-async fn make_list_request(args: CommandLineArgs) -> Result<(), reqwest::Error> {
-    let mut map = HashMap::new();
-    map.insert("query", args.filters);
+fn delete_tasks(args: CommandLineArgs) {
+    if args.filters.len() == 0 {
+        println!("Error: No filter specified");
+        return;
+    }
 
-    let client = reqwest::Client::new();
-    let res = client
-        .post(&format!("{}/v1/get_tasks", CONFIG.server))
-        .json(&map)
-        .send()
-        .await?
-        .json::<Ip>()
-        .await?;
+    let data_file = "data.json";
+    let mut manager = JsonTaskManager::default();
+    manager.load_task_data(data_file);
+
+    let tasks_uuid: Vec<Uuid> = manager
+        .filter_tasks_from_string(&args.filters)
+        .iter()
+        .map(|t| t.uuid)
+        .collect();
+
+    if tasks_uuid.len() == 0 {
+        println!("Error: no task corresponds to the filter mentioned.");
+        return;
+    }
+    for uuid in tasks_uuid {
+        manager.delete_task(&uuid);
+    }
+
+    manager.write_task_data(data_file);
+}
+
+fn complete_tasks(args: CommandLineArgs) {
+    let data_file = "data.json";
+    let mut manager = JsonTaskManager::default();
+    manager.load_task_data(data_file);
+
+    let tasks_uuid: Vec<Uuid> = manager
+        .filter_tasks_from_string(&args.filters)
+        .iter()
+        .map(|t| t.uuid)
+        .collect();
+    for uuid in tasks_uuid {
+        manager.complete_task(&uuid);
+    }
+
+    manager.write_task_data(data_file);
+}
+
+fn list_tasks(args: CommandLineArgs) {
+    let data_file = "data.json";
+    let mut manager = JsonTaskManager::default();
+
+    manager.load_task_data(data_file);
+    let filtered_tasks = manager.filter_tasks_from_string(&args.filters);
+    let owned_tasks: Vec<Task> = filtered_tasks.iter().map(|&t| t.to_owned()).collect();
+
     let mut table = Table::new();
     let format = format::FormatBuilder::new()
         .column_separator('|')
@@ -98,7 +133,7 @@ async fn make_list_request(args: CommandLineArgs) -> Result<(), reqwest::Error> 
 
     // TODO: Fetch this from the config file
     table.set_titles(row!["ID", "Description", "Status"]);
-    let mut tasks = res.tasks;
+    let mut tasks = owned_tasks;
     tasks.sort_by_key(|t| t.date_created);
     for task in tasks {
         let task_id: String = match task.id {
@@ -109,7 +144,6 @@ async fn make_list_request(args: CommandLineArgs) -> Result<(), reqwest::Error> 
     }
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
     table.printstd();
-    Ok(())
 }
 
 #[derive(Debug)]
@@ -125,6 +159,7 @@ enum Command {
     Complete,
     Delete,
     List,
+    Sync,
 }
 
 // TODO: Parse this to extract tags and projects, etc.
@@ -155,9 +190,41 @@ fn parse_command_line() -> CommandLineArgs {
     }
 }
 
+// TODO: Get new tasks from server as well
+async fn request_sync(_args: CommandLineArgs) -> Result<(), reqwest::Error> {
+    let data_file = "data.json";
+    let mut manager = JsonTaskManager::default();
+
+    manager.load_task_data(data_file);
+    let payload = TaskSync {
+        operations: manager.get_operations().to_vec(),
+    };
+
+    let client = reqwest::Client::new();
+    let result = client
+        .post(format!("{}/v1/sync", CONFIG.server))
+        .json(&payload)
+        .send()
+        .await?;
+
+    match result.error_for_status() {
+        Ok(res) => {
+            let value = res.json::<Ip>().await?;
+            // Operations were correctly sent
+            // Reset the current operations stack
+            // TODO: Keep the historic of operations so we can still undo
+            manager.wipe_operations();
+            manager.write_task_data(data_file);
+        }
+        Err(err) => {}
+    }
+
+    Ok(())
+}
+
 fn is_command(arg: &str) -> bool {
     match arg {
-        "add" | "complete" | "done" | "delete" | "list" => true,
+        "add" | "done" | "delete" | "list" | "sync" => true,
         _ => false,
     }
 }
@@ -165,10 +232,10 @@ fn is_command(arg: &str) -> bool {
 fn parse_command(arg: &str) -> Command {
     match arg {
         "add" => Command::Add,
-        "complete" => Command::Complete,
         "done" => Command::Complete,
         "delete" => Command::Delete,
         "list" => Command::List,
+        "sync" => Command::Sync,
         _ => Command::List,
     }
 }
@@ -181,9 +248,10 @@ fn is_text(arg: &str) -> bool {
 async fn main() {
     let args = parse_command_line();
     match args.command {
-        Command::Add => make_add_request(args).await.unwrap(),
-        Command::List => make_list_request(args).await.unwrap(),
-        Command::Delete => make_delete_request(args).await.unwrap(),
-        Command::Complete => make_completed_request(args).await.unwrap(),
+        Command::Add => add_tasks(args),
+        Command::List => list_tasks(args),
+        Command::Delete => delete_tasks(args),
+        Command::Complete => complete_tasks(args),
+        Command::Sync => request_sync(args).await.unwrap(),
     }
 }

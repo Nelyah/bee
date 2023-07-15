@@ -59,44 +59,44 @@ impl GenerateOperation for TaskData {
         operation
     }
 
+    // TODO: Currently, this is an Operation of Tasks instead of being an operation of TaskData
     fn apply_operation(&mut self, operation: &Operation) -> Result<(), String> {
         // TODO: The Err should be a merge conflict
-        for (key, input_task_bytes) in operation.input.iter().collect::<Vec<_>>() {
-            match operation.output.get(key) {
-                Some(output_task_bytes) => {
-                    let input_task: Task = serde_json::from_slice(&input_task_bytes)
-                        .map_err(|e| format!("Error deserializing 'task': {}", e))?;
 
-                    let output_task: Task = serde_json::from_slice(&output_task_bytes)
-                        .map_err(|e| format!("Error deserializing 'task': {}", e))?;
+        // Grab the UUID for the task amongst the fields we have
+        match operation.input.get("uuid") {
+            Some(bytes) => {
+                let uuid: Uuid = serde_json::from_slice(&bytes)
+                    .map_err(|e| format!("deserializing 'uuid': {}", e))
+                    .expect("error");
 
-                    let op = input_task.generate_operation::<Task>(&output_task);
-                    self.tasks
-                        .get_mut(&input_task.uuid)
-                        .expect(&format!(
-                            "could not find task with UUID {}",
-                            &input_task.uuid
-                        ))
-                        .apply_operation(&op)?;
-                }
-                // This is the case where we have a task unknown to other
-                None => {}
+                self.tasks
+                    .get_mut(&uuid)
+                    .expect(&format!("could not find task with UUID {}", &uuid))
+                    .apply_operation(operation)?;
+                return Ok(());
             }
+            None => {}
         }
 
-        for (key, task_bytes) in &operation.output {
-            // This is the case where other has a task unknown to us
-            match operation.input.get(key) {
-                None => {
-                    let output_task: Task = serde_json::from_slice(&task_bytes)
-                        .map_err(|e| format!("Error deserializing 'task': {}", e))?;
-
-                    let key_as_uuid: Uuid = Uuid::parse_str(&key)
-                        .expect(&format!("could not parse the uuid `{}'", key));
-
-                    self.tasks.insert(key_as_uuid, output_task);
+        match operation.output.get("uuid") {
+            Some(bytes) => {
+                let uuid: Uuid = serde_json::from_slice(&bytes)
+                    .map_err(|e| format!("deserializing 'uuid': {}", e))
+                    .expect("error");
+                let mut new_task = Task {
+                    uuid,
+                    ..Default::default()
+                };
+                match new_task.apply_operation(operation) {
+                    Ok(()) => {}
+                    _ => {}
                 }
-                _ => {}
+
+                self.tasks.insert(uuid, new_task);
+            }
+            None => {
+                panic!("Error during applying an operation to TaskData");
             }
         }
 
@@ -207,6 +207,8 @@ pub trait TaskHandler {
     fn id_to_uuid(&self, id: &usize) -> Uuid;
     fn filter_tasks(&self, filter: &Filter) -> Vec<&Task>;
     fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task>;
+    fn get_operations(&self) -> &Vec<Vec<Operation>>;
+    fn wipe_operations(&mut self);
     fn sync(&mut self, operations: &Vec<Vec<Operation>>);
 }
 

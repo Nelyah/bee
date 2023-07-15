@@ -65,7 +65,6 @@ impl TaskHandler for JsonTaskManager {
                 "Failed to serialize Task `{}'",
                 task.uuid
             ));
-        op.output.insert(task.uuid.to_string(), task_bytes);
         self.data.tasks.insert(task.uuid, task);
         self.data.operations.push(vec![op]);
 

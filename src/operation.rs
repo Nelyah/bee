@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::any::Any;
+use uuid::Uuid;
 use serde::{Serialize,Deserialize};
 
-#[derive(Default,Clone,Serialize,Deserialize)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Operation {
-	// client_id: String,
+    pub id: Uuid,
 	pub input: HashMap<String, Vec<u8>>,
 	pub output: HashMap<String, Vec<u8>>,
 }
@@ -17,3 +18,12 @@ pub trait GenerateOperation {
 	fn apply_operation(&mut self, operation: &Operation) -> Result<(), String>;
 }
 
+impl Default for Operation {
+    fn default() -> Self {
+        return Operation {
+            id: Uuid::new_v4(),
+            input: HashMap::default(),
+            output: HashMap::default(),
+        }
+    }
+}

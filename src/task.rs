@@ -58,6 +58,32 @@ pub struct Task {
     pub sub: Vec<Uuid>,
 }
 
+impl Task {
+    pub fn generate_operation_for_new_task(&self) -> Operation {
+        let mut operation = Operation::default();
+
+        let self_fields = serde_json::to_value(self).expect("Failed to serialize self");
+
+        let field_names = self_fields
+            .as_object()
+            .expect("Failed to retrieve field names");
+
+        for (field_name, self_value) in field_names.iter() {
+            if field_name == "id" || field_name == "date_created" {
+                continue;
+            }
+
+            let output = serde_json::to_vec(self_value).expect(&format!(
+                "Failed to serialize field `{}' from output task",
+                field_name
+            ));
+            operation.output.insert(field_name.to_owned(), output);
+        }
+
+        operation
+    }
+}
+
 impl GenerateOperation for Task {
     fn generate_operation<T: Any>(&self, other: &dyn Any) -> Operation {
         let mut operation = Operation::default();

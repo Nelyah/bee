@@ -76,6 +76,7 @@ impl GenerateOperation for TaskData {
                     .apply_operation(operation)?;
                 return Ok(());
             }
+            // The task didn't exist as input. There's only something in the output
             None => {}
         }
 

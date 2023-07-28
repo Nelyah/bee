@@ -61,11 +61,7 @@ impl TaskHandler for JsonTaskManager {
             sub: sub_tasks,
             ..Default::default()
         };
-        let mut op = Operation::default();
-            let task_bytes = serde_json::to_vec::<Task>(&task).expect(&format!(
-                "Failed to serialize Task `{}'",
-                task.uuid
-            ));
+        let op = task.generate_operation_for_new_task();
         self.data.tasks.insert(task.uuid, task);
         self.data.operations.push(vec![op]);
 

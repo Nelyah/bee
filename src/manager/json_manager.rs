@@ -21,14 +21,15 @@ impl TaskHandler for JsonTaskManager {
     fn filter_tasks_from_string(&self, filter_str: &Vec<String>) -> Vec<&Task> {
         let tokens: Vec<String> = filter_str.iter().map(|t| String::from(t)).collect();
         let mut filter = build_filter_from_strings(tokens.as_slice());
-        let mentions_view: bool = filter
+
+        let mentions_status_or_view: bool = filter
             .iter()
             .filter(|f| f.has_value)
-            .take_while(|f| f.value.starts_with("view:"))
+            .take_while(|f| f.value.starts_with("status:") || f.value.starts_with("view:"))
             .count()
-            == 0;
+            != 0;
 
-        if mentions_view {
+        if !mentions_status_or_view {
             filter = filter.and(FilterView::default().get_view("pending"));
         }
         self.filter_tasks(&filter)

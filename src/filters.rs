@@ -64,8 +64,8 @@ impl Filter {
             out_str = out_str
                 + "\n"
                 + &format!(
-                    "{}Operator is {} (value: \"{}\")",
-                    indent, str_op, self.value
+                    "{}Operator is {} (has_value: {}, value: \"{}\")",
+                    indent, str_op, self.has_value, self.value
                 );
         } else {
             out_str = out_str + "\n" + &format!("{}Operator is {}", indent, str_op);

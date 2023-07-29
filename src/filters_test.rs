@@ -171,6 +171,16 @@ fn test_filters() {
     ]);
     assert_eq!(expected, actual);
 
+    let actual = build_filter_from_strings(&[
+        String::from("one"),
+        String::from("or"),
+        String::from("(two"),
+        String::from("and"),
+        String::from("three"),
+        String::from(")"),
+    ]);
+    assert_eq!(expected, actual);
+
     // Operator OR and AND with parenthesis
     let actual = build_filter_from_strings(&[
         String::from("(one"),

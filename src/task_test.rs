@@ -115,6 +115,7 @@ fn test_apply_operation() {
         ]
         .into_iter()
         .collect(),
+        ..Default::default()
     };
 
     let result = task.apply_operation(&operation);

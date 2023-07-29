@@ -1,6 +1,9 @@
 // use reqwest::{Client, RequestBuilder, Response};
 // use reqwest::Response;
 
+use env_logger;
+use log::debug;
+
 use rusk::operation::Operation;
 use rusk::task::Task;
 use serde::Deserialize;
@@ -10,6 +13,9 @@ use config::CONFIG;
 #[macro_use]
 extern crate prettytable;
 use prettytable::{format, Table};
+
+#[path = "rusk_test.rs"]
+mod filters_test;
 
 #[derive(Deserialize)]
 struct Ip {
@@ -153,7 +159,7 @@ struct CommandLineArgs {
     text: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum Command {
     Add,
     Complete,
@@ -163,25 +169,37 @@ enum Command {
 }
 
 // TODO: Parse this to extract tags and projects, etc.
-fn parse_command_line() -> CommandLineArgs {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+fn parse_command_line(args_raw: &Vec<String>) -> CommandLineArgs {
+    let args: Vec<String> = args_raw
+        .iter()
+        .skip(1)
+        .flat_map(|s| s.split_whitespace())
+        .map(|s| s.to_string())
+        .collect();
+    println!("Args parsed: {:#?}", args);
 
     let filters = args
         .iter()
         .take_while(|&arg| !is_command(arg))
         .cloned()
         .collect();
+    println!("filters parsed: {:#?}", filters);
+
     let command = args
         .iter()
         .find(|&arg| is_command(arg))
         .map(|arg| parse_command(arg))
         .unwrap_or(Command::List);
-    let text_tokens = args.iter().skip_while(|&arg| !is_text(arg));
+
+    let text_tokens = args.iter().skip_while(|&arg| !is_command(arg)).skip(1);
+    println!("Text tokens before: {:#?}", text_tokens);
     let text: Option<String> = if text_tokens.clone().count() > 0 {
         Some(text_tokens.cloned().collect::<Vec<String>>().join(" "))
     } else {
         None
     };
+    println!("Text tokens: {:#?}", text);
+    println!("blah");
 
     CommandLineArgs {
         filters,
@@ -240,13 +258,10 @@ fn parse_command(arg: &str) -> Command {
     }
 }
 
-fn is_text(arg: &str) -> bool {
-    !is_command(arg)
-}
-
 #[tokio::main]
 async fn main() {
-    let args = parse_command_line();
+    env_logger::init();
+    let args = parse_command_line(&std::env::args().into_iter().collect());
     match args.command {
         Command::Add => add_tasks(args),
         Command::List => list_tasks(args),

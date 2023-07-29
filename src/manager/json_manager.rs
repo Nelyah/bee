@@ -1,10 +1,12 @@
 use crate::filters::{build_filter_from_strings, validate_task, Filter, FilterView};
-use crate::task::{Task, TaskStatus};
 use crate::operation::{GenerateOperation, Operation};
+use crate::task::{Task, TaskStatus};
 use std::fs;
 use uuid::Uuid;
+use log::{debug};
 
-use super::{TaskData,TaskHandler};
+
+use super::{TaskData, TaskHandler};
 
 /// TaskManager is there to interact with the data
 /// It implements the trait TaskHandler which allows it to modify the data.
@@ -13,6 +15,14 @@ use super::{TaskData,TaskHandler};
 #[derive(Default)]
 pub struct JsonTaskManager {
     data: TaskData,
+}
+
+impl JsonTaskManager {
+    fn complete_tasks(&mut self, uuids: &Vec<Uuid>) {
+        for uuid in uuids {
+            self.complete_task(uuid);
+        }
+    }
 }
 
 // // TODO: We probably don't need a trait for this
@@ -36,6 +46,7 @@ impl TaskHandler for JsonTaskManager {
     }
 
     fn filter_tasks(&self, filter: &Filter) -> Vec<&Task> {
+        debug!("{}", filter.to_string());
         self.data
             .tasks
             .values()
@@ -76,7 +87,6 @@ impl TaskHandler for JsonTaskManager {
             task.status = TaskStatus::COMPLETED;
             let vec_op: Vec<Operation> = vec![task_before.generate_operation::<Task>(task)];
             self.data.operations.push(vec_op);
-            
         }
     }
 
@@ -85,7 +95,9 @@ impl TaskHandler for JsonTaskManager {
             let task_before = task.clone();
             task.id = None;
             task.status = TaskStatus::DELETED;
-            self.data.operations.push(vec![task_before.generate_operation::<Task>(task)]);
+            self.data
+                .operations
+                .push(vec![task_before.generate_operation::<Task>(task)]);
         }
     }
 
@@ -118,8 +130,8 @@ impl TaskHandler for JsonTaskManager {
         for batch in operations {
             for op in batch {
                 match self.data.apply_operation(&op) {
-                    Ok(()) => {},
-                    _ => {},
+                    Ok(()) => {}
+                    _ => {}
                 }
             }
         }

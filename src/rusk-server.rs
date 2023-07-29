@@ -1,5 +1,5 @@
 use rusk::manager;
-use rusk::operation::{GenerateOperation, Operation};
+use rusk::operation::Operation;
 use rusk::task;
 
 use manager::{json_manager::JsonTaskManager, TaskHandler};

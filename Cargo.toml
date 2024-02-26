@@ -10,10 +10,6 @@ debug = true
 path = "src/rusk.rs"
 name = "rusk"
 
-[[bin]]
-path = "src/rusk-server.rs"
-name = "rusk-server"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

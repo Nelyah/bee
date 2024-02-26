@@ -1,46 +1,44 @@
+use std::fmt;
+
 use chrono::prelude::DateTime;
-use std::any::Any;
+use serde_json::Value;
 use uuid::Uuid;
+
+use chrono::Local;
+use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
+
+use super::filters::Filter;
 
 #[path = "task_test.rs"]
 #[cfg(test)]
 mod task_test;
 
-use crate::operation::{GenerateOperation, Operation};
-
-// TODO: Task need to have:
-// - Due date
-// - Project
-// - Link to other tasks (RelatesTo, Blocks, Depend, etc.)
-
-#[derive(Clone, Debug, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize, Default)]
 pub enum TaskStatus {
-    PENDING,
-    COMPLETED,
-    DELETED,
-}
-
-impl Default for TaskStatus {
-    fn default() -> TaskStatus {
-        TaskStatus::PENDING
-    }
+    #[default]
+    Pending,
+    Completed,
+    Deleted,
 }
 
 impl TaskStatus {
-    pub fn from_str(input: &str) -> Result<TaskStatus, String> {
+    pub fn from_string(input: &str) -> Result<TaskStatus, String> {
         match input.to_lowercase().as_str() {
-            "pending" => Ok(TaskStatus::PENDING),
-            "completed" => Ok(TaskStatus::COMPLETED),
-            "deleted" => Ok(TaskStatus::DELETED),
+            "pending" => Ok(TaskStatus::Pending),
+            "completed" => Ok(TaskStatus::Completed),
+            "deleted" => Ok(TaskStatus::Deleted),
             _ => Err("Invalid task status".to_string()),
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for TaskStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TaskStatus::PENDING => "pending".to_string(),
-            TaskStatus::COMPLETED => "completed".to_string(),
-            TaskStatus::DELETED => "deleted".to_string(),
+            TaskStatus::Pending => write!(f, "pending"),
+            TaskStatus::Completed => write!(f, "completed"),
+            TaskStatus::Deleted => write!(f, "deleted"),
         }
     }
 }
@@ -59,166 +57,159 @@ pub struct Task {
 }
 
 impl Task {
-    pub fn generate_operation_for_new_task(&self) -> Operation {
-        let mut operation = Operation::default();
+    pub fn get_id(&self) -> Option<usize> {
+        self.id
+    }
 
-        let self_fields = serde_json::to_value(self).expect("Failed to serialize self");
+    pub fn get_tags(&self) -> &Vec<String> {
+        &self.tags
+    }
 
-        let field_names = self_fields
-            .as_object()
-            .expect("Failed to retrieve field names");
+    pub fn get_status(&self) -> &TaskStatus {
+        &self.status
+    }
 
-        for (field_name, self_value) in field_names.iter() {
-            if field_name == "id" || field_name == "date_created" {
-                continue;
-            }
+    pub fn get_uuid(&self) -> &Uuid {
+        &self.uuid
+    }
 
-            let output = serde_json::to_vec(self_value).expect(&format!(
-                "Failed to serialize field `{}' from output task",
-                field_name
-            ));
-            operation.output.insert(field_name.to_owned(), output);
+    pub fn get_field(&self, field_name: &str) -> Value {
+        let v = serde_json::to_value(self).unwrap();
+        if let Some(value) = v.get(field_name) {
+            value.clone()
+        } else {
+            panic!("Could not get the value of '{}'", field_name);
         }
+    }
 
-        operation
+    pub fn delete(&mut self) {
+        self.status = TaskStatus::Deleted;
+        self.id = None;
+    }
+
+    pub fn done(&mut self) {
+        self.status = TaskStatus::Completed;
+        self.id = None;
     }
 }
 
-impl GenerateOperation for Task {
-    fn generate_operation<T: Any>(&self, other: &dyn Any) -> Operation {
-        let mut operation = Operation::default();
-        let other_task = other
-            .downcast_ref::<Task>()
-            .expect("Could not downcast `other' into a Task");
+#[derive(Default)]
+pub struct TaskData {
+    pub tasks: HashMap<Uuid, Task>,
+    max_id: usize,
+}
 
-        let self_fields = serde_json::to_value(self).expect("Failed to serialize self");
-        let other_fields =
-            serde_json::to_value(other_task).expect("Failed to serialize other_task");
-
-        let field_names = self_fields
-            .as_object()
-            .expect("Failed to retrieve field names");
-
-        for (field_name, self_value) in field_names.iter() {
-            if field_name == "id" {
-                continue;
-            }
-
-            let other_value = other_fields.get(field_name).expect(&format!(
-                "Could not get the field {} from the other task",
-                field_name
-            ));
-
-            if self_value != other_value || field_name == "uuid" {
-                let input = serde_json::to_vec(self_value).expect(&format!(
-                    "Failed to serialize field `{}' from input task",
-                    field_name
-                ));
-                let output = serde_json::to_vec(other_value).expect(&format!(
-                    "Failed to serialize field `{}' from output task",
-                    field_name
-                ));
-                operation.input.insert(field_name.to_owned(), input);
-                operation.output.insert(field_name.to_owned(), output);
-            }
-        }
-
-        operation
+impl TaskData {
+    pub fn get_task_map(&self) -> &HashMap<Uuid, Task> {
+        &self.tasks
     }
 
-    fn apply_operation(&mut self, operation: &Operation) -> Result<(), String> {
-        // TODO: The Err should be a merge conflict
-        for (key, value) in &operation.input {
-            match key.as_str() {
-                "uuid" => {
-                    continue;
-                }
-                "id" | "date_created" => {
-                    panic!("Trying to update either one of `id', `uuid' or `date_created' field.");
-                }
-                "status" => {
-                    let input_status: TaskStatus = serde_json::from_slice(&value)
-                        .map_err(|e| format!("Error deserializing 'status': {}", e))?;
-                    if self.status != input_status {
-                        return Err("Error: operation.input 'status' does not match self.status"
-                            .to_string());
-                    }
-                }
-                "description" => {
-                    let input_description: String = serde_json::from_slice(&value)
-                        .map_err(|e| format!("Error deserializing 'description': {}", e))?;
-                    if self.description != input_description {
-                        return Err(
-                            "Error: operation.input 'description' does not match self.description"
-                                .to_string(),
-                        );
-                    }
-                }
-                "tags" => {
-                    let input_tags: Vec<String> = serde_json::from_slice(&value)
-                        .map_err(|e| format!("Error deserializing 'tags': {}", e))?;
-                    if self.tags != input_tags {
-                        return Err(
-                            "Error: operation.input 'tags' does not match self.tags".to_string()
-                        );
-                    }
-                }
-                "date_completed" => {
-                    let input_date_completed: Option<DateTime<chrono::Local>> =
-                        serde_json::from_slice(&value)
-                            .map_err(|e| format!("Error deserializing 'date_completed': {}", e))?;
-                    if self.date_completed != input_date_completed {
-                        return Err("Error: operation.input 'date_completed' does not match self.date_completed".to_string());
-                    }
-                }
-                "sub" => {
-                    let input_sub: Vec<Uuid> = serde_json::from_slice(&value)
-                        .map_err(|e| format!("Error deserializing 'sub': {}", e))?;
-                    if self.sub != input_sub {
-                        return Err(
-                            "Error: operation.input 'sub' does not match self.sub".to_string()
-                        );
-                    }
-                }
-                _ => {
-                    panic!("Error: trying to update an unknown field: '{}'", key);
-                }
+    pub fn to_vec(&self) -> Vec<&Task> {
+        self.tasks.values().collect()
+    }
+
+    pub fn set_task(&mut self, task: Task) {
+        self.tasks.insert(*task.get_uuid(), task.clone());
+    }
+
+    pub fn has_uuid(&self, uuid: &Uuid) -> bool {
+        self.tasks.contains_key(uuid)
+    }
+
+    pub fn task_done(&mut self, uuid: &Uuid) {
+        self.tasks.get_mut(uuid).unwrap().done();
+    }
+
+    pub fn task_delete(&mut self, uuid: &Uuid) {
+        self.tasks.get_mut(uuid).unwrap().delete();
+    }
+
+    #[allow(clippy::borrowed_box)]
+    pub fn filter(&self, filter: &Box<dyn Filter>) -> Self {
+        let mut new_data = TaskData {
+            tasks: HashMap::new(),
+            max_id: self.max_id,
+        };
+
+        for (key, task) in &self.tasks {
+            if filter.validate_task(task) {
+                new_data.tasks.insert(key.to_owned(), task.to_owned());
             }
         }
 
-        for (key, value) in &operation.output {
-            match key.as_str() {
-                "id" => panic!("Error: the `id' field should not be updated by an operation"),
-                "uuid" => {
-                    continue;
-                }
-                "date_created" => {
-                    panic!("Error: the `date_created' field should not be updated by an operation")
-                }
-                "status" => {
-                    self.status =
-                        serde_json::from_slice(&value).expect("Error deserialising `status'");
-                }
-                "description" => {
-                    self.description =
-                        serde_json::from_slice(&value).expect("Error deserialising `description'");
-                }
-                "tags" => {
-                    self.tags = serde_json::from_slice(&value).expect("Error deserialising `tags'")
-                }
-                "date_completed" => {
-                    self.date_completed = serde_json::from_slice(&value)
-                        .expect("Error deserialising `date_completed'");
-                }
-                "sub" => {
-                    self.sub = serde_json::from_slice(&value).expect("Error deserialising `sub'")
-                }
-                _ => {
-                    panic!("Error: trying to update an unknown field");
-                }
-            }
-        }
+        new_data
+    }
 
-        Ok(())
+    pub fn add_task(
+        &mut self,
+        description: String,
+        tags: Vec<String>,
+        status: TaskStatus,
+    ) -> &Task {
+        let new_id: Option<usize> = match status {
+            TaskStatus::Pending => {
+                self.max_id += 1;
+                Some(self.max_id)
+            }
+            TaskStatus::Completed | TaskStatus::Deleted => None,
+        };
+
+        let date_completed: Option<DateTime<chrono::Local>> = match status {
+            TaskStatus::Pending => None,
+            TaskStatus::Completed | TaskStatus::Deleted => Some(Local::now()),
+        };
+
+        let t = Task {
+            description,
+            id: new_id,
+            status,
+            uuid: Uuid::new_v4(),
+            tags,
+            date_created: Local::now(),
+            date_completed,
+            sub: Vec::default(),
+        };
+        let owned_uuid = t.get_uuid().to_owned();
+        self.tasks.insert(owned_uuid, t);
+        self.tasks.get(&owned_uuid).unwrap()
     }
 }
+
+impl Serialize for TaskData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut tasks: Vec<&Task> = self.tasks.values().collect();
+        tasks.sort_by(|lhs, rhs| lhs.date_created.cmp(&rhs.date_created));
+        tasks.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for TaskData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let tasks: Vec<Task> = Deserialize::deserialize(deserializer)?;
+
+        let task_map: HashMap<Uuid, Task> = tasks
+            .into_iter()
+            .map(|t| (t.get_uuid().to_owned(), t))
+            .collect();
+        let max_id = task_map
+            .values()
+            .filter_map(|t| t.get_id())
+            .max()
+            .unwrap_or(0);
+
+        Ok(TaskData {
+            tasks: task_map,
+            max_id,
+        })
+    }
+}
+
+#[cfg(test)]
+#[path = "manager_test.rs"]
+mod manager_test;

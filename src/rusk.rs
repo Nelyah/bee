@@ -1,272 +1,37 @@
-// use reqwest::{Client, RequestBuilder, Response};
-// use reqwest::Response;
-
-use env_logger;
-use log::debug;
-
-use rusk::operation::Operation;
-use rusk::task::Task;
-use serde::Deserialize;
+mod actions;
+mod command_parser;
 mod config;
-use config::CONFIG;
+mod filters;
+mod lexer;
+mod printer;
+mod storage;
+mod task;
 
-#[macro_use]
-extern crate prettytable;
-use prettytable::{format, Table};
+use printer::cli::SimpleTaskTextPrinter;
+use storage::{JsonStore, Store};
 
-#[path = "rusk_test.rs"]
-mod filters_test;
+use crate::{actions::ActionRegisty, printer::cli::Printer};
 
-#[derive(Deserialize)]
-struct Ip {
-    tasks: Vec<Task>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct TaskSync {
-    operations: Vec<Vec<Operation>>,
-}
-
-// TODO:
-// The data file should be configured in the CONFIG file
-
-// TODO: Add the ability to have multiple server endpoints in the config
-
-use rusk::manager::{json_manager::JsonTaskManager, TaskHandler};
-use uuid::Uuid;
-
-#[derive(serde::Serialize, serde::Deserialize, Default)]
-struct TaskData {
-    description: String,
-    tags: Option<Vec<String>>,
-    sub_tasks: Option<Vec<String>>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Default)]
-struct TaskQuery {
-    query: Vec<String>,
-}
-
-fn add_tasks(args: CommandLineArgs) {
-    let data_file = "data.json";
-    let mut manager = JsonTaskManager::default();
-    manager.load_task_data(data_file);
-    let sub_tasks: Vec<String> = Vec::default();
-    let tags: Vec<String> = Vec::default();
-
-    let mut sub_tasks_uuid: Vec<Uuid> = Default::default();
-    if sub_tasks.len() > 0 {
-        for i in sub_tasks {
-            if let Ok(uuid) = Uuid::parse_str(&i) {
-                sub_tasks_uuid.push(uuid);
-            }
-        }
-    }
-    match &args.text {
-        Some(txt) => {
-            manager.add_task(&txt, tags, sub_tasks_uuid);
-            manager.write_task_data(data_file);
-        }
-        _ => {
-            println!("Error: no description provided for the task")
-        }
-    }
-}
-
-fn delete_tasks(args: CommandLineArgs) {
-    if args.filters.len() == 0 {
-        println!("Error: No filter specified");
-        return;
-    }
-
-    let data_file = "data.json";
-    let mut manager = JsonTaskManager::default();
-    manager.load_task_data(data_file);
-
-    let tasks_uuid: Vec<Uuid> = manager
-        .filter_tasks_from_string(&args.filters)
-        .iter()
-        .map(|t| t.uuid)
-        .collect();
-
-    if tasks_uuid.len() == 0 {
-        println!("Error: no task corresponds to the filter mentioned.");
-        return;
-    }
-    for uuid in tasks_uuid {
-        manager.delete_task(&uuid);
-    }
-
-    manager.write_task_data(data_file);
-}
-
-fn complete_tasks(args: CommandLineArgs) {
-    let data_file = "data.json";
-    let mut manager = JsonTaskManager::default();
-    manager.load_task_data(data_file);
-
-    let tasks_uuid: Vec<Uuid> = manager
-        .filter_tasks_from_string(&args.filters)
-        .iter()
-        .map(|t| t.uuid)
-        .collect();
-    for uuid in tasks_uuid {
-        manager.complete_task(&uuid);
-    }
-
-    manager.write_task_data(data_file);
-}
-
-fn list_tasks(args: CommandLineArgs) {
-    let data_file = "data.json";
-    let mut manager = JsonTaskManager::default();
-
-    manager.load_task_data(data_file);
-    let filtered_tasks = manager.filter_tasks_from_string(&args.filters);
-    let owned_tasks: Vec<Task> = filtered_tasks.iter().map(|&t| t.to_owned()).collect();
-
-    let mut table = Table::new();
-    let format = format::FormatBuilder::new()
-        .column_separator('|')
-        .borders('|')
-        .separators(
-            &[format::LinePosition::Top, format::LinePosition::Bottom],
-            format::LineSeparator::new('-', '+', '+', '+'),
-        )
-        .padding(1, 1)
-        .build();
-    table.set_format(format);
-
-    // TODO: Fetch this from the config file
-    table.set_titles(row!["ID", "Description", "Status"]);
-    let mut tasks = owned_tasks;
-    tasks.sort_by_key(|t| t.date_created);
-    for task in tasks {
-        let task_id: String = match task.id {
-            Some(value) => value.to_string(),
-            _ => String::from("none"),
-        };
-        table.add_row(row![task_id, task.description, task.status.to_string()]);
-    }
-    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.printstd();
-}
-
-#[derive(Debug)]
-struct CommandLineArgs {
-    filters: Vec<String>,
-    command: Command,
-    text: Option<String>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum Command {
-    Add,
-    Complete,
-    Delete,
-    List,
-    Sync,
-}
-
-// TODO: Parse this to extract tags and projects, etc.
-fn parse_command_line(args_raw: &Vec<String>) -> CommandLineArgs {
-    let args: Vec<String> = args_raw
-        .iter()
-        .skip(1)
-        .flat_map(|s| s.split_whitespace())
-        .map(|s| s.to_string())
-        .collect();
-    println!("Args parsed: {:#?}", args);
-
-    let filters = args
-        .iter()
-        .take_while(|&arg| !is_command(arg))
-        .cloned()
-        .collect();
-    println!("filters parsed: {:#?}", filters);
-
-    let command = args
-        .iter()
-        .find(|&arg| is_command(arg))
-        .map(|arg| parse_command(arg))
-        .unwrap_or(Command::List);
-
-    let text_tokens = args.iter().skip_while(|&arg| !is_command(arg)).skip(1);
-    println!("Text tokens before: {:#?}", text_tokens);
-    let text: Option<String> = if text_tokens.clone().count() > 0 {
-        Some(text_tokens.cloned().collect::<Vec<String>>().join(" "))
-    } else {
-        None
-    };
-    println!("Text tokens: {:#?}", text);
-    println!("blah");
-
-    CommandLineArgs {
-        filters,
-        command,
-        text,
-    }
-}
-
-// TODO: Get new tasks from server as well
-async fn request_sync(_args: CommandLineArgs) -> Result<(), reqwest::Error> {
-    let data_file = "data.json";
-    let mut manager = JsonTaskManager::default();
-
-    manager.load_task_data(data_file);
-    let payload = TaskSync {
-        operations: manager.get_operations().to_vec(),
-    };
-
-    let client = reqwest::Client::new();
-    let result = client
-        .post(format!("{}/v1/sync", CONFIG.server))
-        .json(&payload)
-        .send()
-        .await?;
-
-    match result.error_for_status() {
-        Ok(res) => {
-            let value = res.json::<Ip>().await?;
-            // Operations were correctly sent
-            // Reset the current operations stack
-            // TODO: Keep the historic of operations so we can still undo
-            manager.wipe_operations();
-            manager.write_task_data(data_file);
-        }
-        Err(err) => {}
-    }
-
-    Ok(())
-}
-
-fn is_command(arg: &str) -> bool {
-    match arg {
-        "add" | "done" | "delete" | "list" | "sync" => true,
-        _ => false,
-    }
-}
-
-fn parse_command(arg: &str) -> Command {
-    match arg {
-        "add" => Command::Add,
-        "done" => Command::Complete,
-        "delete" => Command::Delete,
-        "list" => Command::List,
-        "sync" => Command::Sync,
-        _ => Command::List,
-    }
-}
-
-#[tokio::main]
-async fn main() {
+fn main() {
     env_logger::init();
-    let args = parse_command_line(&std::env::args().into_iter().collect());
-    match args.command {
-        Command::Add => add_tasks(args),
-        Command::List => list_tasks(args),
-        Command::Delete => delete_tasks(args),
-        Command::Complete => complete_tasks(args),
-        Command::Sync => request_sync(args).await.unwrap(),
+    let undo_count = 1;
+
+    let mut arg_parser = command_parser::Parser::default();
+    let registry = ActionRegisty::default();
+    for cmd in registry.get_action_parsed_command() {
+        arg_parser.register_command_parser(cmd);
     }
+
+    let command = arg_parser.parse_command_line_arguments(std::env::args().collect());
+
+    let undos = JsonStore::load_undos(undo_count);
+    let tasks = JsonStore::load_tasks(Some(&command.filters));
+
+    let mut action = registry.get_action_from_command_parser(&command);
+    action.set_tasks(tasks);
+    action.set_undos(undos);
+    action.do_action(&SimpleTaskTextPrinter);
+
+    JsonStore::log_undo(undo_count, action.get_undos().to_owned());
+    JsonStore::write_tasks(action.get_tasks());
 }

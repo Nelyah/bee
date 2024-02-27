@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
-enum TokenType {
+pub enum TokenType {
     String,
     TagPlus,
     TagMinus,
@@ -16,13 +16,21 @@ enum TokenType {
     OperatorXor,
 }
 
+#[path = "lexer_test.rs"]
+mod lexer_test;
+
 #[derive(Debug)]
-struct Token {
-    token_type: TokenType,
-    literal: String,
+pub struct Token {
+    pub token_type: TokenType,
+    pub literal: String,
 }
 
-struct Lexer {
+fn is_segment_character(ch: &char) -> bool {
+    println!("segment: {}", ch);
+    ch.is_whitespace() || *ch == '(' || *ch == ')' || *ch == '\0'
+}
+
+pub struct Lexer {
     input: String,
     position: usize,
     read_position: usize,
@@ -30,7 +38,7 @@ struct Lexer {
 }
 
 impl Lexer {
-    fn new(input: String) -> Lexer {
+    pub fn new(input: String) -> Lexer {
         let mut lexer = Lexer {
             input,
             position: 0,
@@ -65,11 +73,6 @@ impl Lexer {
         self.input[starting_pos..self.position].to_string()
     }
 
-    // Helper method to check if a character is a space
-    fn is_space_character(&self) -> bool {
-        matches!(self.ch, Some(ch) if ch.is_whitespace())
-    }
-
     // Method to check if the current substring is a valid UUID
     fn is_uuid(&self) -> bool {
         let end_pos = self.position + 36; // UUID length is 36
@@ -99,23 +102,30 @@ impl Lexer {
     }
 
     fn is_tag_prefix(&self) -> bool {
-        matches!(self.ch, Some('+') | Some('-'))
+        if !matches!(self.ch, Some('+') | Some('-')) {
+            return false;
+        }
+        if self.read_position >= self.input.len() {
+            return false;
+        }
+        if let Some(ch) = self.input.chars().nth(self.read_position) {
+            return ch.is_alphanumeric() || ch == '_';
+        }
+        false
     }
 
     // Method to read a tag
-    fn read_tag(&mut self) -> Result<String, String> {
-        if !self.is_tag_prefix() {
-            return Err("Input doesn't start with a tag prefix".to_string());
-        }
+    fn read_tag(&mut self) -> String {
+        assert!(self.is_tag_prefix());
         let starting_pos = self.position;
         self.read_char(); // Skip tag prefix
 
         // Check for word characters after tag prefix
-        while matches!(self.ch, Some(ch) if ch.is_alphanumeric() || ch == '_') {
+        while self.is_word_character() {
             self.read_char();
         }
 
-        Ok(self.input[starting_pos..self.position].to_string())
+        self.input[starting_pos..self.position].to_string()
     }
 
     // Helper method to check if the current character is part of a word
@@ -125,23 +135,42 @@ impl Lexer {
 
     // Method to match a specific keyword
     fn match_keyword(&self, word: &str) -> bool {
-        self.input[self.position..].starts_with(word) && !self.is_word_character()
+        if word == "and" {
+            println!("hello: {}", &self.input[self.position..]);
+            println!("hello: {}", self.input[self.position..].starts_with(word));
+        }
+        self.input[self.position..].starts_with(word)
     }
 
     // Method to read the next word
     fn read_next_word(&mut self) -> String {
         let starting_pos = self.position;
-        while !matches!(self.ch, Some(ch) if ch.is_whitespace() || ch == '(' || ch == ')' || ch == '\0')
-        {
+        while let Some(ch) = self.ch {
+            if is_segment_character(&ch) {
+                break;
+            }
             self.read_char();
         }
         self.input[starting_pos..self.position].to_string()
     }
 
+    fn read_word(&mut self, word: &str) -> String {
+        if !self.match_keyword(word) {
+            panic!("error in read_word: Trying to read a word that can't be found");
+        }
+
+        let start_pos = self.position;
+        for _ in 0..word.len() {
+            self.read_char();
+        }
+
+        self.input[start_pos..self.position].to_string()
+    }
+
     // Method to tokenize the next part of the input
-    fn next_token(&mut self) -> Result<Token, String> {
+    pub fn next_token(&mut self) -> Result<Token, String> {
         // Skip whitespace
-        while self.is_space_character() {
+        while matches!(self.ch, Some(ch) if ch.is_whitespace()) {
             self.read_char();
         }
 
@@ -152,30 +181,109 @@ impl Lexer {
                 literal: String::new(),
             },
             Some(ch) => match ch {
-                // Handle different character types (e.g., digits, parentheses)
-                // ...
-
-                // Example for a digit
-                _ if ch.is_digit(10) => Token {
+                _ if self.is_uuid() => Token {
+                    literal: self.read_uuid()?,
+                    token_type: TokenType::Uuid,
+                },
+                _ if self.is_digit() => Token {
                     token_type: TokenType::Int,
                     literal: self.read_int(),
                 },
-
-                // Example for a UUID
-                _ => {
-                    let uuid = self.read_uuid()?;
-                    Token {
-                        token_type: TokenType::Uuid,
-                        literal: uuid,
+                _ if self.is_tag_prefix() => {
+                    let tag_prefix = ch;
+                    let tag_value = self.read_tag();
+                    match tag_prefix {
+                        '+' => Token {
+                            token_type: TokenType::TagPlus,
+                            literal: tag_value,
+                        },
+                        '-' => Token {
+                            token_type: TokenType::TagMinus,
+                            literal: tag_value,
+                        },
+                        _ => return Err("Error in parsing tag token".to_string()),
                     }
                 }
+                _ if self.match_keyword("and") => {
+                    let mut literal_value = self.read_word("and");
+
+                    let token_type = match self.ch {
+                        Some(c) if !is_segment_character(&c) => {
+                            literal_value += &self.read_next_word();
+                            TokenType::String
+                        }
+                        _ => TokenType::OperatorAnd,
+                    };
+
+                    Token {
+                        literal: literal_value,
+                        token_type,
+                    }
+                }
+                _ if self.match_keyword("or") => {
+                    let mut literal_value = self.read_word("or");
+
+                    let token_type = match self.ch {
+                        Some(c) if !is_segment_character(&c) => {
+                            literal_value += &self.read_next_word();
+                            TokenType::String
+                        }
+                        _ => TokenType::OperatorOr,
+                    };
+
+                    Token {
+                        literal: literal_value,
+                        token_type,
+                    }
+                }
+                _ if self.match_keyword("xor") => {
+                    let mut literal_value = self.read_word("xor");
+
+                    let token_type = match self.ch {
+                        Some(c) if !is_segment_character(&c) => {
+                            literal_value += &self.read_next_word();
+                            TokenType::String
+                        }
+                        _ => TokenType::OperatorXor,
+                    };
+
+                    Token {
+                        literal: literal_value,
+                        token_type,
+                    }
+                }
+                _ if self.match_keyword("status:") => {
+                    println!("test");
+                    Token {
+                        literal: self.read_word("status:"),
+                        token_type: TokenType::FilterStatus,
+                    }
+                }
+                _ if ch == ')' => {
+                    self.read_char();
+                    Token {
+                        literal: ")".to_string(),
+                        token_type: TokenType::RightParenthesis,
+                    }
+                }
+                _ if ch == '(' => {
+                    self.read_char();
+                    Token {
+                        literal: "(".to_string(),
+                        token_type: TokenType::LeftParenthesis,
+                    }
+                }
+                _ => Token {
+                    literal: self.read_next_word(),
+                    token_type: TokenType::String,
+                },
             },
         };
 
         // Read the next character and return the token
-        self.read_char();
         Ok(token)
     }
 
     // Other helper methods...
 }
+

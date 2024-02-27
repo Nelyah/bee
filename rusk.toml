@@ -1,0 +1,11 @@
+[report.List]
+default=true
+filters=['status:pending']
+columns=["Id", "Uuid", "Description", "Tags"]
+column_names=["ID", "UUID",  "Description", "Tags"]
+
+[report.other]
+default=false
+filters=['status:pending', "test", "-main"]
+columns=["Id", "Uuid", "DateCreated", "Description", "Tags"]
+column_names=["ID", "UUID", "Date Created", "Description", "Tags"]

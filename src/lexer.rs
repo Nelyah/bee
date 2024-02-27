@@ -26,7 +26,6 @@ pub struct Token {
 }
 
 fn is_segment_character(ch: &char) -> bool {
-    println!("segment: {}", ch);
     ch.is_whitespace() || *ch == '(' || *ch == ')' || *ch == '\0'
 }
 
@@ -135,10 +134,6 @@ impl Lexer {
 
     // Method to match a specific keyword
     fn match_keyword(&self, word: &str) -> bool {
-        if word == "and" {
-            println!("hello: {}", &self.input[self.position..]);
-            println!("hello: {}", self.input[self.position..].starts_with(word));
-        }
         self.input[self.position..].starts_with(word)
     }
 
@@ -253,7 +248,6 @@ impl Lexer {
                     }
                 }
                 _ if self.match_keyword("status:") => {
-                    println!("test");
                     Token {
                         literal: self.read_word("status:"),
                         token_type: TokenType::FilterStatus,

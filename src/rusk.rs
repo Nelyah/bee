@@ -1,4 +1,5 @@
 mod config;
+pub mod printer;
 pub mod parser;
 pub mod lexer;
 pub mod storage;

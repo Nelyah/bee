@@ -1,4 +1,5 @@
 use chrono::prelude::DateTime;
+use serde_json::Value;
 use uuid::Uuid;
 
 #[path = "task_test.rs"]
@@ -57,5 +58,10 @@ impl Task {
 
     pub fn get_uuid(&self) -> &Uuid {
         &self.uuid
+    }
+
+    pub fn get_field(&self, field_name: &str) -> Option<Value> {
+        let serialized = serde_json::to_value(self).ok()?;
+        serialized.get(field_name).cloned()
     }
 }

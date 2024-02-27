@@ -1,6 +1,8 @@
 #[cfg(test)]
 use super::*;
 
+use crate::task::TaskStatus;
+
 #[test]
 fn test_task_data_serialize() {
     let mut tasks = HashMap::new();
@@ -17,10 +19,7 @@ fn test_task_data_serialize() {
     tasks.insert(task1.uuid, task1.clone());
     tasks.insert(task2.uuid, task2.clone());
 
-    let task_data = TaskData {
-        tasks,
-        id_to_uuid: HashMap::new(),
-    };
+    let task_data = TaskData { tasks };
 
     let serialized = serde_json::to_string(&task_data).unwrap();
     let expected = format!(

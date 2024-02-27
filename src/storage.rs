@@ -1,4 +1,3 @@
-
 use crate::actions::common::ActionUndo;
 use crate::filters::Filter;
 use crate::manager::TaskData;
@@ -6,8 +5,11 @@ use crate::manager::TaskData;
 use std::env;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
 use std::io::Read;
+use std::path::{Path, PathBuf};
+
+#[path = "storage_test.rs"]
+mod storage_test;
 
 pub trait Store {
     fn load_tasks(filter: Option<&Filter>) -> TaskData;
@@ -80,7 +82,8 @@ impl Store for JsonStore {
 
         if let Ok(mut file) = fs::File::open(&data_file) {
             let mut data = String::new();
-            file.read_to_string(&mut data).expect("Failed to read data file");
+            file.read_to_string(&mut data)
+                .expect("Failed to read data file");
             if !data.is_empty() {
                 undos = serde_json::from_str(&data).expect("Failed to parse JSON");
             }
@@ -138,25 +141,26 @@ impl Env for RealEnv {
 
 // Function to find data file
 fn find_data_file() -> Result<String, io::Error> {
-    get_data_file_impl(RealFileSystem, RealEnv, "rusk-data.json", true)
+    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-data.json", true)
 }
 
 fn get_data_file_path() -> String {
-    get_data_file_impl(RealFileSystem, RealEnv, "rusk-data.json", false).unwrap_or_default()
+    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-data.json", false).unwrap_or_default()
 }
 
 fn get_logged_tasks_file_path() -> String {
-    get_data_file_impl(RealFileSystem, RealEnv, "rusk-logged-tasks.json", false).unwrap_or_default()
+    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-logged-tasks.json", false)
+        .unwrap_or_default()
 }
 
 fn find_logged_file() -> Result<String, io::Error> {
-    get_data_file_impl(RealFileSystem, RealEnv, "rusk-logged-tasks.json", true)
+    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-logged-tasks.json", true)
 }
 
 // getDataFileImpl provides utility to find where we store the file on the filesystem
-fn get_data_file_impl(
-    fs: impl FileSystem,
-    env: impl Env,
+fn get_data_file_impl<'a>(
+    fs: &(impl FileSystem + 'a),
+    env: &(impl Env + 'a),
     filename: &str,
     find_file_only: bool,
 ) -> Result<String, io::Error> {
@@ -196,5 +200,8 @@ fn get_data_file_impl(
         return Ok(local_path.to_string_lossy().into_owned());
     }
 
-    Err(io::Error::new(io::ErrorKind::NotFound, "File not found"))
+    if find_file_only {
+        return Err(io::Error::new(io::ErrorKind::NotFound, "File not found"));
+    }
+    Ok(filename.to_owned())
 }

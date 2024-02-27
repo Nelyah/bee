@@ -24,7 +24,8 @@ impl Serialize for TaskData {
     where
         S: Serializer,
     {
-        let tasks: Vec<&Task> = self.tasks.values().collect();
+        let mut tasks: Vec<&Task> = self.tasks.values().collect();
+        tasks.sort_by(|lhs, rhs| lhs.date_created.cmp(&rhs.date_created));
         tasks.serialize(serializer)
     }
 }

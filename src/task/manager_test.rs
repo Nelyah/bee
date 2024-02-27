@@ -1,5 +1,4 @@
 #[cfg(test)]
-
 use super::*;
 
 // the warning only shows because this is a test file
@@ -26,17 +25,16 @@ fn test_task_data_serialize() {
 
     let serialized = serde_json::to_string(&task_data).unwrap();
     let expected = format!(
-        r#"{{"completed":[{}],"pending":[{}],"deleted":[]}}"#,
-        serde_json::to_string(&task2).unwrap(),
+        r#"[{},{}]"#,
         serde_json::to_string(&task1).unwrap(),
+        serde_json::to_string(&task2).unwrap(),
     );
     assert_eq!(serialized, expected);
 }
 
 #[test]
 fn test_task_data_deserialize() {
-    let json = r#"{
-            "completed": [
+    let json = r#"[
                 {
                     "uuid": "00000000-0000-0000-0000-000000000001",
                     "date_created": "2023-05-25T21:25:24.899710+02:00",
@@ -44,14 +42,12 @@ fn test_task_data_deserialize() {
                     "description": "task1",
                     "sub": [],
                     "tags": []
-                }
-            ],
-            "pending": [
+                },
                 {
                     "uuid": "00000000-0000-0000-0000-000000000002",
                     "date_created": "2023-05-25T21:25:24.899710+02:00",
                     "status": "COMPLETED",
-                    "description": "task2",
+                    "description": "task3",
                     "sub": [],
                     "tags": []
                 },
@@ -63,9 +59,7 @@ fn test_task_data_deserialize() {
                     "sub": [],
                     "tags": []
                 }
-            ],
-            "deleted": []
-        }"#;
+        ]"#;
 
     let task_data: TaskData = serde_json::from_str(json).unwrap();
 

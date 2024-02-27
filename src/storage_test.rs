@@ -16,12 +16,6 @@ struct MockEnv {
     vars: HashMap<String, String>,
 }
 
-impl MockFileSystem {
-    fn new(files: HashSet<String>) -> MockFileSystem {
-        MockFileSystem { files }
-    }
-}
-
 impl FileSystem for MockFileSystem {
     fn stat(&self, name: &str) -> io::Result<fs::Metadata> {
         if self.files.contains(name) {
@@ -39,14 +33,16 @@ impl Env for MockEnv {
 
 #[test]
 fn test_find_data_file() {
-    let mock_fs = MockFileSystem::new(HashSet::from([
-        ("/custom/xdg/rusk/rusk-data.json".to_string()),
-        ("/home/user/.local/share/rusk/rusk-data.json".to_string()),
-        ("/custom/xdg/rusk/rusk-logged-tasks.json".to_string()),
-        ("/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string()),
-        ("rusk-data.json".to_string()),
-        ("rusk-logged-tasks.json".to_string()),
-    ]));
+    let mock_fs = MockFileSystem {
+        files: HashSet::from([
+            ("/custom/xdg/rusk/rusk-data.json".to_string()),
+            ("/home/user/.local/share/rusk/rusk-data.json".to_string()),
+            ("/custom/xdg/rusk/rusk-logged-tasks.json".to_string()),
+            ("/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string()),
+            ("rusk-data.json".to_string()),
+            ("rusk-logged-tasks.json".to_string()),
+        ]),
+    };
 
     let mut mock_env = MockEnv {
         vars: HashMap::from([
@@ -123,12 +119,14 @@ fn test_find_data_file() {
         }
     }
 
-    let mock_fs = MockFileSystem::new(HashSet::from([
-        "/custom/xdg/rusk/rusk-data.json".to_string(),
-        "/home/user/.local/share/rusk/rusk-data.json".to_string(),
-        "/custom/xdg/rusk/rusk-logged-tasks.json".to_string(),
-        "/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string(),
-    ]));
+    let mock_fs = MockFileSystem {
+        files: HashSet::from([
+            "/custom/xdg/rusk/rusk-data.json".to_string(),
+            "/home/user/.local/share/rusk/rusk-data.json".to_string(),
+            "/custom/xdg/rusk/rusk-logged-tasks.json".to_string(),
+            "/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string(),
+        ]),
+    };
 
     let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
     assert!(path.is_err());
@@ -136,12 +134,14 @@ fn test_find_data_file() {
     let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-logged-tasks.json", true);
     assert!(path.is_err());
 
-    let mock_fs = MockFileSystem::new(HashSet::from([
-        "/custom/xdg/rusk/rusk-data.json".to_string(),
-        "/home/user/.local/share/rusk/rusk-data.json".to_string(),
-        "/custom/xdg/rusk/rusk-logged-tasks.json".to_string(),
-        "/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string(),
-    ]));
+    let mock_fs = MockFileSystem {
+        files: HashSet::from([
+            "/custom/xdg/rusk/rusk-data.json".to_string(),
+            "/home/user/.local/share/rusk/rusk-data.json".to_string(),
+            "/custom/xdg/rusk/rusk-logged-tasks.json".to_string(),
+            "/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string(),
+        ]),
+    };
 
     let mock_env = MockEnv {
         vars: HashMap::from([]),

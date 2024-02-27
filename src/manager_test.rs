@@ -1,6 +1,9 @@
 #[cfg(test)]
+
 use super::*;
 
+// the warning only shows because this is a test file
+#[allow(unused_imports)]
 use crate::task::TaskStatus;
 
 #[test]

@@ -4,7 +4,7 @@ use super::*;
 
 // the warning only shows because this is a test file
 #[allow(unused_imports)]
-use crate::task::TaskStatus;
+use crate::task::task::TaskStatus;
 
 #[test]
 fn test_task_data_serialize() {

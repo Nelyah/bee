@@ -2,7 +2,7 @@ use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::task::Task;
+use super::task::Task;
 
 #[derive(Default)]
 pub struct TaskData {

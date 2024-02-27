@@ -1,6 +1,6 @@
 use crate::actions::common::ActionUndo;
-use crate::filters::Filter;
-use crate::manager::TaskData;
+use crate::task::filters::Filter;
+use crate::task::manager::TaskData;
 
 use std::env;
 use std::fs;

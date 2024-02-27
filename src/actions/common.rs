@@ -1,4 +1,4 @@
-use crate::task::Task;
+use crate::task::task::Task;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]

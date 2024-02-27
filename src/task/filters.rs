@@ -1,11 +1,11 @@
-use super::task::{Task,TaskStatus};
+use super::task::{Task, TaskStatus};
 use uuid::Uuid;
 
 #[path = "filters_test.rs"]
 mod filters_test;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-enum FilterCombinationType {
+pub enum FilterCombinationType {
     None,
     And,
     Or,
@@ -22,24 +22,69 @@ impl Default for FilterCombinationType {
 pub struct Filter {
     pub has_value: bool,
     pub value: String,
-    operator: FilterCombinationType,
-    childs: Vec<Filter>,
+    pub operator: FilterCombinationType,
+    pub children: Vec<Filter>,
 }
 
 impl PartialEq for Filter {
     fn eq(&self, other: &Self) -> bool {
         if self.has_value != other.has_value
             || self.value != other.value
-            || self.childs.len() != other.childs.len()
+            || self.children.len() != other.children.len()
         {
             false
-        } else if self.childs.len() == 0 {
+        } else if self.children.len() == 0 {
             true
         } else if self.operator != other.operator {
             false
         } else {
-            self.childs == other.childs
+            self.children == other.children
         }
+    }
+}
+
+pub fn new_empty() -> Filter {
+    Filter {
+        has_value: false,
+        value: "".to_string(),
+        operator: FilterCombinationType::None,
+        children: Vec::new(),
+    }
+}
+
+pub fn new_with_value(value: &str) -> Filter {
+    Filter {
+        has_value: true,
+        value: value.to_string(),
+        operator: FilterCombinationType::None,
+        children: Vec::new(),
+    }
+}
+
+pub fn add_filter(lhs: &Filter, rhs: &Filter, operator: FilterCombinationType) -> Filter {
+    if lhs.operator == FilterCombinationType::None && lhs.value.is_empty() {
+        return rhs.to_owned();
+    }
+    if rhs.operator == FilterCombinationType::None && rhs.value.is_empty() {
+        return lhs.to_owned();
+    }
+
+    if lhs.operator == operator {
+        let mut new_lhs = lhs.to_owned();
+        new_lhs.children.push(rhs.to_owned());
+        return new_lhs.to_owned();
+    }
+    if rhs.operator == operator {
+        let mut new_rhs = rhs.to_owned();
+        new_rhs.children.push(lhs.to_owned());
+        return new_rhs.to_owned();
+    }
+
+    Filter {
+        operator,
+        has_value: false,
+        children: vec![lhs.to_owned(), rhs.to_owned()],
+        ..Default::default()
     }
 }
 
@@ -68,7 +113,7 @@ impl Filter {
             out_str = out_str + "\n" + &format!("{}Operator is {}", indent, str_op);
         }
 
-        for c in &self.childs {
+        for c in &self.children {
             out_str = out_str + &c.to_string_impl(&(indent.to_owned() + "    "));
         }
         out_str
@@ -78,13 +123,13 @@ impl Filter {
         Filter {
             has_value: false,
             operator: FilterCombinationType::And,
-            childs: vec![self, other],
+            children: vec![self, other],
             ..Default::default()
         }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Filter> {
-        std::iter::once(self).chain(self.childs.iter())
+        std::iter::once(self).chain(self.children.iter())
     }
 }
 
@@ -152,7 +197,7 @@ pub fn validate_task(t: &Task, f: &Filter) -> bool {
             if f.has_value && !task_matches_filter(t, f) {
                 return false;
             }
-            for fc in &f.childs {
+            for fc in &f.children {
                 if !validate_task(t, fc) {
                     return false;
                 }
@@ -163,7 +208,7 @@ pub fn validate_task(t: &Task, f: &Filter) -> bool {
             if f.has_value && task_matches_filter(t, f) {
                 return true;
             }
-            for fc in &f.childs {
+            for fc in &f.children {
                 if validate_task(t, fc) {
                     return true;
                 }
@@ -175,7 +220,7 @@ pub fn validate_task(t: &Task, f: &Filter) -> bool {
             if f.has_value && task_matches_filter(t, f) {
                 count_true += 1;
             }
-            for fc in &f.childs {
+            for fc in &f.children {
                 if validate_task(t, fc) {
                     count_true += 1;
                 }
@@ -184,4 +229,3 @@ pub fn validate_task(t: &Task, f: &Filter) -> bool {
         }
     }
 }
-

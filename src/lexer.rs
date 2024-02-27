@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub enum TokenType {
     String,
     TagPlus,
@@ -8,6 +8,7 @@ pub enum TokenType {
     FilterStatus,
     Int,
     Uuid,
+    #[default]
     Eof,
     LeftParenthesis,
     RightParenthesis,
@@ -15,11 +16,30 @@ pub enum TokenType {
     OperatorOr,
     OperatorXor,
 }
+impl std::fmt::Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let token_str = match self {
+            TokenType::String => "String",
+            TokenType::TagPlus => "TagPlus",
+            TokenType::TagMinus => "TagMinus",
+            TokenType::FilterStatus => "FilterStatus",
+            TokenType::Int => "Int",
+            TokenType::Uuid => "Uuid",
+            TokenType::Eof => "Eof",
+            TokenType::LeftParenthesis => "LeftParenthesis",
+            TokenType::RightParenthesis => "RightParenthesis",
+            TokenType::OperatorAnd => "OperatorAnd",
+            TokenType::OperatorOr => "OperatorOr",
+            TokenType::OperatorXor => "OperatorXor",
+        };
+        write!(f, "{}", token_str)
+    }
+}
 
 #[path = "lexer_test.rs"]
 mod lexer_test;
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
@@ -247,12 +267,10 @@ impl Lexer {
                         token_type,
                     }
                 }
-                _ if self.match_keyword("status:") => {
-                    Token {
-                        literal: self.read_word("status:"),
-                        token_type: TokenType::FilterStatus,
-                    }
-                }
+                _ if self.match_keyword("status:") => Token {
+                    literal: self.read_word("status:"),
+                    token_type: TokenType::FilterStatus,
+                },
                 _ if ch == ')' => {
                     self.read_char();
                     Token {

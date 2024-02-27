@@ -1,11 +1,12 @@
 mod config;
+pub mod parser;
 pub mod lexer;
 pub mod storage;
 pub mod task;
 pub mod actions;
 
-use crate::task::manager::TaskData;
-use crate::storage::Store;
+// use crate::task::manager::TaskData;
+// use crate::storage::Store;
 use crate::lexer::{Lexer,TokenType};
 
 fn main() {

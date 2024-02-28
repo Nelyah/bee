@@ -60,8 +60,12 @@ impl Task {
         &self.uuid
     }
 
-    pub fn get_field(&self, field_name: &str) -> Option<Value> {
-        let serialized = serde_json::to_value(self).ok()?;
-        serialized.get(field_name).cloned()
+    pub fn get_field(&self, field_name: &str) -> Value {
+        let v = serde_json::to_value(self).unwrap();
+        if let Some(value) = v.get(field_name) {
+            value.clone()
+        } else {
+            panic!("Could not get the value of '{}'", field_name);
+        }
     }
 }

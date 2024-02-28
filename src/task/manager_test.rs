@@ -1,3 +1,5 @@
+use chrono::{Duration, Local};
+
 #[cfg(test)]
 use super::*;
 
@@ -11,11 +13,13 @@ fn test_task_data_serialize() {
     let task1 = Task {
         uuid: Uuid::new_v4(),
         status: TaskStatus::PENDING,
+        date_created: Local::now() - Duration::seconds(2),
         ..Default::default()
     };
     let task2 = Task {
         uuid: Uuid::new_v4(),
         status: TaskStatus::COMPLETED,
+        date_created: Local::now(),
         ..Default::default()
     };
     tasks.insert(task1.uuid, task1.clone());

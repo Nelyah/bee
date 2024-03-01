@@ -1,6 +1,9 @@
+#[cfg(test)]
+
+#[allow(unused_imports)]
 use chrono::{Duration, Local};
 
-#[cfg(test)]
+#[allow(unused_imports)]
 use super::*;
 
 // the warning only shows because this is a test file

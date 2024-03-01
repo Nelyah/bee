@@ -1,14 +1,11 @@
 pub mod actions;
 mod config;
-pub mod lexer;
-pub mod parser;
+pub mod parse;
 pub mod printer;
 pub mod storage;
 pub mod task;
 
-use std::thread::yield_now;
-
-use chrono::{DateTime, Local};
+use chrono::Local;
 use config::CONFIG;
 use printer::cli::SimpleTaskTextPrinter;
 use uuid::Uuid;
@@ -22,6 +19,24 @@ fn main() {
     println!("default report is {}", CONFIG.default_report);
     let p: SimpleTaskTextPrinter = SimpleTaskTextPrinter::default();
     let ts: Vec<Task> = vec![Task {
+        description: "bar".to_string(),
+        id: Some(1),
+        status: task::task::TaskStatus::PENDING,
+        uuid: Uuid::default(),
+        tags: vec!["one".to_string(), "two".to_string()],
+        date_created: Local::now(),
+        date_completed: None,
+        sub: Vec::default(),
+    },Task {
+        description: "foo".to_string(),
+        id: Some(2),
+        status: task::task::TaskStatus::PENDING,
+        uuid: Uuid::default(),
+        tags: Vec::default(),
+        date_created: Local::now(),
+        date_completed: None,
+        sub: Vec::default(),
+    },Task {
         description: "foo".to_string(),
         id: Some(2),
         status: task::task::TaskStatus::PENDING,

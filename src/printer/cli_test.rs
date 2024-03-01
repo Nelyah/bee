@@ -1,8 +1,8 @@
-use chrono::offset::TimeZone;
-use chrono::{DateTime, Duration, Local};
-
 #[cfg(test)]
 use super::*;
+
+#[allow(unused_imports)]
+use chrono::Duration;
 
 #[test]
 fn test_format_relative_time() {

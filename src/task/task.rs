@@ -68,4 +68,14 @@ impl Task {
             panic!("Could not get the value of '{}'", field_name);
         }
     }
+
+    pub fn delete(&mut self) {
+        self.status = TaskStatus::DELETED;
+        self.id = None;
+    }
+
+    pub fn done(&mut self) {
+        self.status = TaskStatus::COMPLETED;
+        self.id = None;
+    }
 }

@@ -1,7 +1,9 @@
+use super::table::Table;
 use crate::config::ReportConfig;
 use crate::task::task::Task;
 use chrono::{DateTime, Local};
 use serde_json::Value;
+use std::io;
 
 pub trait Printer {
     fn print_list_of_tasks(&self, tasks: &Vec<Task>, report_kind: &ReportConfig);
@@ -42,7 +44,10 @@ pub struct SimpleTaskTextPrinter;
 
 impl Printer for SimpleTaskTextPrinter {
     fn print_list_of_tasks(&self, tasks: &Vec<Task>, report_kind: &ReportConfig) {
+        let mut tbl = Table::new(&report_kind.column_names, io::stdout()).unwrap();
+
         for t in tasks {
+            let mut row: Vec<String> = Vec::default();
             for field in &report_kind.columns {
                 match field.as_str() {
                     "date_created" | "date_completed" => {
@@ -50,14 +55,20 @@ impl Printer for SimpleTaskTextPrinter {
                             let local_date: DateTime<Local> = DateTime::from(
                                 DateTime::parse_from_rfc3339(date_str).ok().unwrap(),
                             );
-                            print!("{} ", format_relative_time(local_date));
+                            row.push(format_relative_time(local_date))
                         }
                     }
-                    _ => print!("{} ", print_value(&t.get_field(field))),
+
+                    _ => {
+                        let value = t.get_field(field);
+                        row.push(print_value(&value))
+                    }
                 }
             }
-            println!();
+            tbl.add_row(row).unwrap();
         }
+
+        tbl.print();
     }
 
     fn show_information_message(&self, message: &str) {
@@ -83,5 +94,5 @@ fn print_value(value: &Value) -> String {
     }
 }
 
-#[path ="cli_test.rs"]
+#[path = "cli_test.rs"]
 mod cli_test;

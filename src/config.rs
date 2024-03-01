@@ -15,15 +15,38 @@ pub struct Config {
     pub default_report: String,
     #[serde(default = "default_report_map")]
     #[serde(rename = "report")]
-    pub report_map: HashMap<String, ReportConfig>,
+    report_map: HashMap<String, ReportConfig>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+impl Config {
+    pub fn get_report(&self, name: &str) -> Option<&ReportConfig> {
+        Some(&self.report_map[name])
+    }
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 pub struct ReportConfig {
     pub filters: Vec<String>,
     pub columns: Vec<String>,
     pub column_names: Vec<String>,
     pub default: bool,
+}
+
+impl Default for ReportConfig {
+    fn default() -> Self {
+        ReportConfig {
+            default: true,
+            filters: vec!["status:pending".to_string()],
+            columns: vec!["id", "uuid", "date_created", "description", "tags"]
+                .iter()
+                .map(|&s| s.to_string())
+                .collect(),
+            column_names: vec!["ID", "UUID", "Date Created", "Description", "Tags"]
+                .iter()
+                .map(|&s| s.to_string())
+                .collect(),
+        }
+    }
 }
 
 // The code is used as soon as it is first acces, thanks to the Lazy library
@@ -65,6 +88,7 @@ fn load_config_from_string(content: &str) -> Config {
             panic!("Error: Could not parse the configuration file.");
         }
     };
+
     for (name, report) in &config.report_map {
         if report.default {
             config.default_report = name.clone();

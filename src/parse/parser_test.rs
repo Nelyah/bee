@@ -150,7 +150,7 @@ fn test_parse_filter() {
 fn test_build_filter() {
     // Empty input
     let expected = filters::new_empty();
-    let actual = build_filter_from_strings(vec![]);
+    let actual = build_filter_from_strings(&vec![]);
     assert_eq!(expected, actual, "they should be equal");
 
     // Operator AND and empty operator
@@ -164,14 +164,14 @@ fn test_build_filter() {
         ],
     };
     let actual = build_filter_from_strings(
-        vec!["one", "and", "two"]
+        &vec!["one", "and", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),
     );
     assert_eq!(expected, actual, "they should be equal");
     let actual =
-        build_filter_from_strings(vec!["one", "two"].iter().map(|&s| s.to_string()).collect());
+        build_filter_from_strings(&vec!["one", "two"].iter().map(|&s| s.to_string()).collect());
     assert_eq!(expected, actual, "they should be equal");
 
     // Operator OR
@@ -185,7 +185,7 @@ fn test_build_filter() {
         ],
     };
     let actual = build_filter_from_strings(
-        vec!["one", "or", "two"]
+        &vec!["one", "or", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),
@@ -203,7 +203,7 @@ fn test_build_filter() {
         ],
     };
     let actual = build_filter_from_strings(
-        vec!["one", "xor", "two"]
+        &vec!["one", "xor", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),
@@ -229,7 +229,7 @@ fn test_build_filter() {
         ],
     };
     let actual = build_filter_from_strings(
-        vec!["one", "or", "two", "and", "three"]
+        &vec!["one", "or", "two", "and", "three"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),
@@ -239,7 +239,7 @@ fn test_build_filter() {
     // Operator OR and AND with parenthesis
     // Note: Handling parenthesis might require additional parsing logic
     let actual = build_filter_from_strings(
-        vec!["(one", "or", "two)", "and", "three"]
+        &vec!["(one", "or", "two)", "and", "three"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),
@@ -267,7 +267,7 @@ fn test_build_filter() {
 
     // Operator OR and AND with parenthesis and XOR
     let actual = build_filter_from_strings(
-        vec!["(one", "or", "two)", "xor", "three"]
+        &vec!["(one", "or", "two)", "xor", "three"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),
@@ -295,7 +295,7 @@ fn test_build_filter() {
 
     // Extended XOR case
     let actual = build_filter_from_strings(
-        vec!["(one", "or", "two)", "xor", "three", "and", "four"]
+        &vec!["(one", "or", "two)", "xor", "three", "and", "four"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),
@@ -330,7 +330,7 @@ fn test_build_filter() {
     assert_eq!(expected, actual, "they should be equal");
 
     // Simple OR case with numbers
-    let actual = build_filter_from_strings(vec!["1", "4"].iter().map(|&s| s.to_string()).collect());
+    let actual = build_filter_from_strings(&vec!["1", "4"].iter().map(|&s| s.to_string()).collect());
     let expected = Filter {
         has_value: false,
         value: "".to_string(),
@@ -341,7 +341,7 @@ fn test_build_filter() {
 
     // Simple AND case with mixed inputs
     let actual = build_filter_from_strings(
-        vec!["1", "4", "hello"]
+        &vec!["1", "4", "hello"]
             .iter()
             .map(|&s| s.to_string())
             .collect(),

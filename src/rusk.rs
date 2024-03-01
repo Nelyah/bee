@@ -46,5 +46,5 @@ fn main() {
         date_completed: None,
         sub: Vec::default(),
     }];
-    p.print_list_of_tasks(&ts, &CONFIG.report_map[&CONFIG.default_report])
+    p.print_list_of_tasks(&ts, &CONFIG.get_report(&CONFIG.default_report).unwrap())
 }

@@ -213,7 +213,7 @@ impl ParserN {
     }
 }
 
-pub fn build_filter_from_strings(values: Vec<String>) -> Filter {
+pub fn build_filter_from_strings(values: &Vec<String>) -> Filter {
     let lexer = Lexer::new(values.join(" "));
     let mut parser = ParserN::new(lexer);
     parser.parse_filter()

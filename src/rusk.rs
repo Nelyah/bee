@@ -6,14 +6,13 @@ pub mod storage;
 pub mod task;
 
 use printer::cli::SimpleTaskTextPrinter;
-use storage::{JsonStore,Store};
+use storage::{JsonStore, Store};
 
 use crate::{actions::common::ActionRegisty, printer::cli::Printer};
 
 fn main() {
     let p: SimpleTaskTextPrinter = SimpleTaskTextPrinter::default();
     // let undo_count = 1;
-
 
     let mut arg_parser = parse::command_parser::Parser::default();
     let registry = ActionRegisty::default();

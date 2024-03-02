@@ -1,7 +1,6 @@
 #[cfg(test)]
 use super::*;
 
-
 #[test]
 fn test_task_matches_status_filter() {
     let task = Task {
@@ -61,7 +60,7 @@ fn test_task_matches_status_filter() {
 
 #[test]
 fn test_validate_task() {
-    let mut t = Task{
+    let mut t = Task {
         description: "this is a task".to_string(),
         id: Some(1),
         ..Default::default()
@@ -71,10 +70,7 @@ fn test_validate_task() {
         has_value: false,
         value: "".to_string(),
         operator: FilterCombinationType::Or,
-        children: vec![
-            new_with_value("task"),
-            new_with_value("hello"),
-        ],
+        children: vec![new_with_value("task"), new_with_value("hello")],
     };
     assert_eq!(validate_task(&t, &f), true);
 
@@ -85,10 +81,7 @@ fn test_validate_task() {
         has_value: false,
         value: "".to_string(),
         operator: FilterCombinationType::And,
-        children: vec![
-            new_with_value("task"),
-            new_with_value("hello"),
-        ],
+        children: vec![new_with_value("task"), new_with_value("hello")],
     };
     assert_eq!(validate_task(&t, &f), false);
 
@@ -99,10 +92,7 @@ fn test_validate_task() {
         has_value: false,
         value: "".to_string(),
         operator: FilterCombinationType::Xor,
-        children: vec![
-            new_with_value("task"),
-            new_with_value("hello"),
-        ],
+        children: vec![new_with_value("task"), new_with_value("hello")],
     };
     assert_eq!(validate_task(&t, &f), true);
 
@@ -113,10 +103,7 @@ fn test_validate_task() {
         has_value: false,
         value: "".to_string(),
         operator: FilterCombinationType::And,
-        children: vec![
-            new_with_value("task"),
-            new_with_value("1"),
-        ],
+        children: vec![new_with_value("task"), new_with_value("1")],
     };
     assert_eq!(validate_task(&t, &f), true);
 
@@ -124,10 +111,7 @@ fn test_validate_task() {
         has_value: false,
         value: "".to_string(),
         operator: FilterCombinationType::And,
-        children: vec![
-            new_with_value("task"),
-            new_with_value("2"),
-        ],
+        children: vec![new_with_value("task"), new_with_value("2")],
     };
     assert_eq!(validate_task(&t, &f), false);
 
@@ -141,15 +125,12 @@ fn test_validate_task() {
         operator: FilterCombinationType::Xor,
         children: vec![
             new_with_value("this"),
-            Filter{
+            Filter {
                 has_value: false,
                 value: "".to_string(),
                 operator: FilterCombinationType::And,
-                children: vec![
-                    new_with_value("task"),
-                    new_with_value("2"),
-                ],
-            }
+                children: vec![new_with_value("task"), new_with_value("2")],
+            },
         ],
     };
     assert_eq!(validate_task(&t, &f), true);

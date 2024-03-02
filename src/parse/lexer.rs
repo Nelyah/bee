@@ -298,4 +298,3 @@ impl Lexer {
 
     // Other helper methods...
 }
-

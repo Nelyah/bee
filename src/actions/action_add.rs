@@ -15,7 +15,7 @@ impl TaskAction for AddTaskAction {
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, printer: &Box<dyn Printer>) {
         let input_description = self.base.get_arguments().join(" ");
-        
+
         let new_task: &Task = self.base.get_tasks_mut().add_task(
             input_description.to_owned(),
             vec![],
@@ -36,7 +36,6 @@ impl TaskAction for AddTaskAction {
                 ));
             }
         }
-
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {

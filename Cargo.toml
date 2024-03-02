@@ -1,33 +1,31 @@
+[[bin]]
+name = "rusk"
+path = "src/rusk.rs"
+
+[dependencies]
+chrono = {version = "0.4", features = ["serde"]}
+colored = "2.1"
+lazy_static = "1.4"
+once_cell = "1.17"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+shellexpand = "3.1"
+term_size = "0.3"
+toml = "0.7"
+
+[dependencies.uuid]
+features = [
+    "v4",  # Lets you generate random UUIDs
+    "serde",
+    "fast-rng",  # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics"  # Enable better diagnostics for compile-time UUIDs
+]
+version = "1.3.0"
+
 [package]
+edition = "2021"
 name = "rusk"
 version = "0.1.0"
-edition = "2021"
 
 [profile.test]
 debug = true
-
-[[bin]]
-path = "src/rusk.rs"
-name = "rusk"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-colored = "2.1"
-term_size = "0.3"
-lazy_static = "1.4"
-shellexpand = "3.1"
-once_cell = "1.17"
-toml = "0.7"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-chrono = {version = "0.4", features = ["serde"]}
-
-[dependencies.uuid]
-version = "1.3.0"
-features = [
-    "v4",                # Lets you generate random UUIDs
-    "serde",
-    "fast-rng",          # Use a faster (but still sufficiently random) RNG
-    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
-]

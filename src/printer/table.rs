@@ -1,5 +1,5 @@
 use colored::{ColoredString, Colorize, Styles};
-use std::io::{Write, BufWriter};
+use std::io::{BufWriter, Write};
 use term_size;
 
 #[derive(Clone)]
@@ -86,7 +86,6 @@ impl<W: Write> Table<W> {
             },
         })
     }
-
 
     pub fn add_row(&mut self, row: Vec<String>) -> Result<&mut Self, &'static str> {
         if row.len() != self.columns.len() {

@@ -330,7 +330,8 @@ fn test_build_filter() {
     assert_eq!(expected, actual, "they should be equal");
 
     // Simple OR case with numbers
-    let actual = build_filter_from_strings(&vec!["1", "4"].iter().map(|&s| s.to_string()).collect());
+    let actual =
+        build_filter_from_strings(&vec!["1", "4"].iter().map(|&s| s.to_string()).collect());
     let expected = Filter {
         has_value: false,
         value: "".to_string(),

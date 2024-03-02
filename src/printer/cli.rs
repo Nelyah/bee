@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::io;
 
 pub trait Printer {
-    fn print_list_of_tasks(&self, tasks: &Vec<Task>, report_kind: &ReportConfig);
+    fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig);
     fn show_information_message(&self, message: &str);
 }
 
@@ -43,7 +43,7 @@ fn format_relative_time(t: DateTime<Local>) -> String {
 pub struct SimpleTaskTextPrinter;
 
 impl Printer for SimpleTaskTextPrinter {
-    fn print_list_of_tasks(&self, tasks: &Vec<Task>, report_kind: &ReportConfig) {
+    fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig) {
         let mut tbl = Table::new(&report_kind.column_names, io::stdout()).unwrap();
 
         for t in tasks {

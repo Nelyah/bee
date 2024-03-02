@@ -18,17 +18,22 @@ pub trait Store {
     fn log_undo(count: usize, updated_undos: Vec<ActionUndo>);
 }
 
-pub struct JsonStore;
+#[derive(Default)]
+pub struct JsonStore {}
 
 impl Store for JsonStore {
-    fn load_tasks(_: Option<&Filter>) -> TaskData {
-        match find_data_file() {
+    fn load_tasks(filter: Option<&Filter>) -> TaskData {
+        let mut data = match find_data_file() {
             Ok(data_file) => {
                 serde_json::from_str(&fs::read_to_string(data_file).expect("unable to read file"))
                     .unwrap()
             }
             Err(_) => TaskData::default(),
+        };
+        if filter.is_some() {
+            data = data.filter(filter.unwrap());
         }
+        data
     }
 
     fn write_tasks(data: &TaskData) {
@@ -38,7 +43,7 @@ impl Store for JsonStore {
         }
 
         let tasks_as_json =
-            serde_json::to_string(&stored_tasks).expect("Failed to serialize tasks to JSON");
+            serde_json::to_string_pretty(&stored_tasks).expect("Failed to serialize tasks to JSON");
 
         match find_data_file() {
             Ok(_) => (),

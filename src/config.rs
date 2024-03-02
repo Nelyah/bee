@@ -20,7 +20,7 @@ pub struct Config {
 
 impl Config {
     pub fn get_report(&self, name: &str) -> Option<&ReportConfig> {
-        Some(&self.report_map[name])
+        self.report_map.get(name)
     }
 }
 

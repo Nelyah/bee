@@ -184,7 +184,6 @@ impl ParserN {
                         );
                     }
                     // Assuming string_is_valid_task_status is a function to validate task status
-                    println!("{}", &self.peek_token.literal);
                     task::TaskStatus::from_string(&self.peek_token.literal).unwrap();
 
                     let status_string =

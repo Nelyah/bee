@@ -5,46 +5,27 @@ pub mod printer;
 pub mod storage;
 pub mod task;
 
-use chrono::Local;
-use config::CONFIG;
 use printer::cli::SimpleTaskTextPrinter;
-use uuid::Uuid;
+use storage::{JsonStore,Store};
 
-use crate::{printer::cli::Printer, task::task::Task};
+use crate::{actions::common::ActionRegisty, printer::cli::Printer};
 
 fn main() {
-    println!("hello world");
-
-    println!("{}", CONFIG.default_report);
-    println!("default report is {}", CONFIG.default_report);
     let p: SimpleTaskTextPrinter = SimpleTaskTextPrinter::default();
-    let ts: Vec<Task> = vec![Task {
-        description: "bar".to_string(),
-        id: Some(1),
-        status: task::task::TaskStatus::PENDING,
-        uuid: Uuid::default(),
-        tags: vec!["one".to_string(), "two".to_string()],
-        date_created: Local::now(),
-        date_completed: None,
-        sub: Vec::default(),
-    },Task {
-        description: "foo".to_string(),
-        id: Some(2),
-        status: task::task::TaskStatus::PENDING,
-        uuid: Uuid::default(),
-        tags: Vec::default(),
-        date_created: Local::now(),
-        date_completed: None,
-        sub: Vec::default(),
-    },Task {
-        description: "foo".to_string(),
-        id: Some(2),
-        status: task::task::TaskStatus::PENDING,
-        uuid: Uuid::default(),
-        tags: Vec::default(),
-        date_created: Local::now(),
-        date_completed: None,
-        sub: Vec::default(),
-    }];
-    p.print_list_of_tasks(&ts, &CONFIG.get_report(&CONFIG.default_report).unwrap())
+    // let undo_count = 1;
+
+
+    let mut arg_parser = parse::command_parser::Parser::default();
+    let registry = ActionRegisty::default();
+    for cmd in registry.get_action_parsed_command() {
+        arg_parser.register_command_parser(cmd);
+    }
+
+    let command = arg_parser.parse_command_line_arguments(std::env::args().collect());
+    let tasks = JsonStore::load_tasks(Some(&command.filters));
+    let mut action = registry.get_action_from_command_parser(&command);
+    action.set_tasks(tasks);
+    action.do_action(&(Box::new(p) as Box<dyn Printer>));
+
+    JsonStore::write_tasks(&action.get_tasks());
 }

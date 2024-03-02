@@ -28,6 +28,18 @@ impl TaskData {
         self.tasks.insert(task.get_uuid().clone(), task.clone());
     }
 
+    pub fn has_uuid(&self, uuid: &Uuid) -> bool {
+        self.tasks.contains_key(uuid)
+    }
+
+    pub fn task_done(&mut self, uuid: &Uuid) {
+        self.tasks.get_mut(uuid).unwrap().done();
+    }
+
+    pub fn task_delete(&mut self, uuid: &Uuid) {
+        self.tasks.get_mut(uuid).unwrap().delete();
+    }
+
     pub fn filter(&self, filter: &Filter) -> Self {
         let mut new_data = TaskData {
             tasks: HashMap::new(),

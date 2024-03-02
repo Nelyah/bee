@@ -18,11 +18,11 @@ impl TaskAction for AddTaskAction {
         let input_description = self.base.get_arguments().join(" ");
 
         // Clone here to avoid having multiple mutable borrows
-        let new_task: Task = self.base.get_tasks_mut().add_task(
-            input_description.to_owned(),
-            vec![],
-            TaskStatus::PENDING,
-        ).clone();
+        let new_task: Task = self
+            .base
+            .get_tasks_mut()
+            .add_task(input_description.to_owned(), vec![], TaskStatus::PENDING)
+            .clone();
         if let Some(new_id) = new_task.get_id() {
             printer.show_information_message(&format!("Created task {}.", new_id));
         } else {
@@ -39,7 +39,7 @@ impl TaskAction for AddTaskAction {
             }
         }
 
-        self.base.get_undos_mut().push(ActionUndo{
+        self.base.get_undos_mut().push(ActionUndo {
             action_type: ActionUndoType::Add,
             tasks: vec![new_task.to_owned()],
         });

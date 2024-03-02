@@ -1,3 +1,4 @@
+use log::debug;
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -117,7 +118,7 @@ fn find_config_file() -> Option<PathBuf> {
 
         if let Ok(full_path) = Path::new(&expanded_path).canonicalize() {
             if full_path.exists() {
-                println!("Found config file {}", expanded_path);
+                debug!("Found config file {}", expanded_path);
                 return Some(full_path);
             }
         }

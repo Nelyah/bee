@@ -11,6 +11,7 @@ use storage::{JsonStore, Store};
 use crate::{actions::common::ActionRegisty, printer::cli::Printer};
 
 fn main() {
+    env_logger::init();
     let p: SimpleTaskTextPrinter = SimpleTaskTextPrinter::default();
     let undo_count = 1;
 

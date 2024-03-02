@@ -27,7 +27,7 @@ fn test_task_data_serialize() {
     tasks.insert(task1.uuid, task1.clone());
     tasks.insert(task2.uuid, task2.clone());
 
-    let task_data = TaskData { tasks };
+    let task_data = TaskData { tasks, max_id: 0 };
 
     let serialized = serde_json::to_string(&task_data).unwrap();
     let expected = format!(

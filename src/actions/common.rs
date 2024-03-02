@@ -66,6 +66,10 @@ impl BaseTaskAction {
         self.undos = undos;
     }
 
+    pub fn get_undos(&self) -> &Vec<ActionUndo> {
+        &self.undos
+    }
+
     pub fn get_undos_mut(&mut self) -> &mut Vec<ActionUndo> {
         &mut self.undos
     }
@@ -81,6 +85,7 @@ pub trait TaskAction {
     fn post_action_hook(&self);
     fn get_command_description(&self) -> String;
     fn set_undos(&mut self, undos: Vec<ActionUndo>);
+    fn get_undos(&self) -> &Vec<ActionUndo>;
     fn get_undos_mut(&mut self) -> &mut Vec<ActionUndo>;
     fn set_tasks(&mut self, tasks: TaskData);
     fn get_tasks(&self) -> &TaskData;
@@ -94,6 +99,9 @@ macro_rules! delegate_to_base {
     () => {
         fn set_undos(&mut self, undos: Vec<ActionUndo>) {
             self.base.set_undos(undos)
+        }
+        fn get_undos(&self) -> &Vec<ActionUndo> {
+            self.base.get_undos()
         }
         fn get_undos_mut(&mut self) -> &mut Vec<ActionUndo> {
             self.base.get_undos_mut()
@@ -126,6 +134,7 @@ pub struct ActionRegisty {
 enum ActionType {
     List,
     Add,
+    Undo,
 }
 
 impl ActionType {
@@ -133,6 +142,7 @@ impl ActionType {
         match self {
             Self::List => vec!["list".to_string()],
             Self::Add => vec!["add".to_string()],
+            Self::Undo => vec!["undo".to_string()],
         }
     }
 
@@ -140,6 +150,7 @@ impl ActionType {
         match self {
             Self::List => true,
             Self::Add => false,
+            Self::Undo => false,
         }
     }
 }
@@ -147,7 +158,7 @@ impl ActionType {
 impl Default for ActionRegisty {
     fn default() -> Self {
         ActionRegisty {
-            registered_type: vec![ActionType::List, ActionType::Add],
+            registered_type: vec![ActionType::List, ActionType::Add, ActionType::Undo],
         }
     }
 }
@@ -173,6 +184,10 @@ impl ActionRegisty {
                 base: BaseTaskAction::default(),
             }),
             "add" => Box::new(super::action_add::AddTaskAction {
+                base: BaseTaskAction::default(),
+                ..Default::default()
+            }),
+            "undo" => Box::new(super::action_undo::UndoTaskAction {
                 base: BaseTaskAction::default(),
                 ..Default::default()
             }),

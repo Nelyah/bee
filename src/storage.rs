@@ -1,4 +1,7 @@
+use log::debug;
+
 use crate::actions::common::ActionUndo;
+use crate::task::filters;
 use crate::task::filters::Filter;
 use crate::task::manager::TaskData;
 
@@ -23,6 +26,10 @@ pub struct JsonStore {}
 
 impl Store for JsonStore {
     fn load_tasks(filter: Option<&Filter>) -> TaskData {
+        debug!(
+            "Loading tasks using filter:{}",
+            &filter.unwrap_or(&filters::new_empty()).to_string()
+        );
         let mut data = match find_data_file() {
             Ok(data_file) => {
                 serde_json::from_str(&fs::read_to_string(data_file).expect("unable to read file"))

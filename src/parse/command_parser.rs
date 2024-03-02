@@ -2,7 +2,9 @@ use super::parser::build_filter_from_strings;
 
 use crate::config::ReportConfig;
 use crate::config::CONFIG;
+use crate::task::filters;
 use crate::task::filters::Filter;
+use crate::task::filters::FilterCombinationType;
 
 use std::collections::HashMap;
 
@@ -54,7 +56,11 @@ impl Parser {
                 } else {
                     parsed_command.arguments = command_args;
                 }
-                parsed_command.filters = build_filter_from_strings(&filters);
+                parsed_command.filters = filters::add_filter(
+                    &build_filter_from_strings(&filters),
+                    &build_filter_from_strings(&report_kind.filters),
+                    FilterCombinationType::And,
+                );
                 parsed_command.report_kind = report_kind;
                 return parsed_command.clone();
             }
@@ -69,7 +75,11 @@ impl Parser {
         }
 
         ParsedCommand {
-            filters: build_filter_from_strings(&filters),
+            filters: filters::add_filter(
+                &build_filter_from_strings(&filters),
+                &build_filter_from_strings(&report_kind.filters),
+                FilterCombinationType::And,
+            ),
             command: "list".to_string(),
             report_kind,
             ..Default::default()

@@ -25,7 +25,7 @@ impl TaskData {
     }
 
     pub fn set_task(&mut self, task: Task) {
-        self.tasks.insert(task.get_uuid().clone(), task.clone());
+        self.tasks.insert(*task.get_uuid(), task.clone());
     }
 
     pub fn has_uuid(&self, uuid: &Uuid) -> bool {
@@ -47,7 +47,7 @@ impl TaskData {
         };
 
         for (key, task) in &self.tasks {
-            if validate_task(&task, &filter) {
+            if validate_task(task, filter) {
                 new_data.tasks.insert(key.to_owned(), task.to_owned());
             }
         }
@@ -125,5 +125,6 @@ impl<'de> Deserialize<'de> for TaskData {
     }
 }
 
+#[cfg(test)]
 #[path = "manager_test.rs"]
 mod manager_test;

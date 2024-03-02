@@ -81,7 +81,7 @@ impl BaseTaskAction {
 
 pub trait TaskAction {
     fn pre_action_hook(&self);
-    fn do_action(&mut self, printer: &Box<dyn Printer>);
+    fn do_action(&mut self, printer: &dyn Printer);
     fn post_action_hook(&self);
     fn get_command_description(&self) -> String;
     fn set_undos(&mut self, undos: Vec<ActionUndo>);
@@ -185,11 +185,9 @@ impl ActionRegisty {
             }),
             "add" => Box::new(super::action_add::AddTaskAction {
                 base: BaseTaskAction::default(),
-                ..Default::default()
             }),
             "undo" => Box::new(super::action_undo::UndoTaskAction {
                 base: BaseTaskAction::default(),
-                ..Default::default()
             }),
             _ => panic!("Invalid command parsed, could not get an action from it!"),
         };

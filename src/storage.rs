@@ -45,7 +45,7 @@ impl Store for JsonStore {
 
     fn write_tasks(data: &TaskData) {
         let mut stored_tasks = Self::load_tasks(None);
-        for (_, t) in data.get_task_map() {
+        for t in data.get_task_map().values() {
             stored_tasks.set_task(t.clone());
         }
 

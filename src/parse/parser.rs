@@ -27,17 +27,17 @@ fn add_string_to_current_filter(
 ) -> Filter {
     match scope_operator {
         ScopeOperator::None | ScopeOperator::And => filters::add_filter(
-            &filter,
+            filter,
             &filters::new_with_value(value),
             FilterCombinationType::And,
         ),
         ScopeOperator::Or => filters::add_filter(
-            &filter,
+            filter,
             &filters::new_with_value(value),
             FilterCombinationType::Or,
         ),
         ScopeOperator::Xor => filters::add_filter(
-            &filter,
+            filter,
             &filters::new_with_value(value),
             FilterCombinationType::Xor,
         ),
@@ -212,7 +212,7 @@ impl ParserN {
     }
 }
 
-pub fn build_filter_from_strings(values: &Vec<String>) -> Filter {
+pub fn build_filter_from_strings(values: &[String]) -> Filter {
     let lexer = Lexer::new(values.join(" "));
     let mut parser = ParserN::new(lexer);
     parser.parse_filter()

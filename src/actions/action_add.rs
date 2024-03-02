@@ -14,7 +14,7 @@ pub struct AddTaskAction {
 impl TaskAction for AddTaskAction {
     delegate_to_base!();
     fn pre_action_hook(&self) {}
-    fn do_action(&mut self, printer: &Box<dyn Printer>) {
+    fn do_action(&mut self, printer: &dyn Printer) {
         let input_description = self.base.get_arguments().join(" ");
 
         // Clone here to avoid having multiple mutable borrows
@@ -25,18 +25,11 @@ impl TaskAction for AddTaskAction {
             .clone();
         if let Some(new_id) = new_task.get_id() {
             printer.show_information_message(&format!("Created task {}.", new_id));
+        } else if input_description.len() > 15 {
+            printer
+                .show_information_message(&format!("Logged task '{:.15}...'", &input_description));
         } else {
-            if input_description.len() > 15 {
-                printer.show_information_message(&format!(
-                    "Logged task '{:.15}...'",
-                    &input_description
-                ));
-            } else {
-                printer.show_information_message(&format!(
-                    "Logged task '{:.15}'.",
-                    &input_description
-                ));
-            }
+            printer.show_information_message(&format!("Logged task '{:.15}'.", &input_description));
         }
 
         self.base.get_undos_mut().push(ActionUndo {

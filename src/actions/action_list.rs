@@ -11,7 +11,7 @@ pub struct NewTaskAction {
 impl TaskAction for NewTaskAction {
     delegate_to_base!();
     fn pre_action_hook(&self) {}
-    fn do_action(&mut self, printer: &Box<dyn Printer>) {
+    fn do_action(&mut self, printer: &dyn Printer) {
         printer.print_list_of_tasks(self.base.get_tasks().to_vec(), self.base.get_report());
     }
     fn post_action_hook(&self) {}

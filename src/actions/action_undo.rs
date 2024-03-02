@@ -13,7 +13,7 @@ pub struct UndoTaskAction {
 impl TaskAction for UndoTaskAction {
     delegate_to_base!();
     fn pre_action_hook(&self) {}
-    fn do_action(&mut self, _: &Box<dyn Printer>) {
+    fn do_action(&mut self, _: &dyn Printer) {
         let undos = self.get_undos().to_owned();
         for current_undo in undos.iter().rev() {
             for t in &current_undo.tasks {

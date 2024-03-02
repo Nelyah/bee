@@ -1,3 +1,5 @@
+use std::fmt;
+
 use chrono::prelude::DateTime;
 use serde_json::Value;
 use uuid::Uuid;
@@ -6,17 +8,12 @@ use uuid::Uuid;
 #[cfg(test)]
 mod task_test;
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize, Default)]
 pub enum TaskStatus {
+    #[default]
     PENDING,
     COMPLETED,
     DELETED,
-}
-
-impl Default for TaskStatus {
-    fn default() -> TaskStatus {
-        TaskStatus::PENDING
-    }
 }
 
 impl TaskStatus {
@@ -28,12 +25,14 @@ impl TaskStatus {
             _ => Err("Invalid task status".to_string()),
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for TaskStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TaskStatus::PENDING => "pending".to_string(),
-            TaskStatus::COMPLETED => "completed".to_string(),
-            TaskStatus::DELETED => "deleted".to_string(),
+            TaskStatus::PENDING => write!(f, "pending"),
+            TaskStatus::COMPLETED => write!(f, "completed"),
+            TaskStatus::DELETED => write!(f, "deleted"),
         }
     }
 }

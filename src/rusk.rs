@@ -12,7 +12,6 @@ use crate::{actions::common::ActionRegisty, printer::cli::Printer};
 
 fn main() {
     env_logger::init();
-    let p: SimpleTaskTextPrinter = SimpleTaskTextPrinter::default();
     let undo_count = 1;
 
     let mut arg_parser = parse::command_parser::Parser::default();
@@ -29,8 +28,8 @@ fn main() {
     let mut action = registry.get_action_from_command_parser(&command);
     action.set_tasks(tasks);
     action.set_undos(undos);
-    action.do_action(&(Box::new(p) as Box<dyn Printer>));
+    action.do_action(&SimpleTaskTextPrinter);
 
     JsonStore::log_undo(undo_count, action.get_undos_mut().to_owned());
-    JsonStore::write_tasks(&action.get_tasks());
+    JsonStore::write_tasks(action.get_tasks());
 }

@@ -80,7 +80,7 @@ impl Lexer {
 
     // Helper method to check if the current character is a digit
     fn is_digit(&self) -> bool {
-        matches!(self.ch, Some(ch) if ch.is_digit(10))
+        matches!(self.ch, Some(ch) if ch.is_ascii_digit())
     }
 
     // Method to read an integer

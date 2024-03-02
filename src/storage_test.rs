@@ -58,7 +58,7 @@ fn test_find_data_file() {
             assert_eq!(p, "/custom/xdg/rusk/rusk-data.json");
         }
         Err(_) => {
-            assert!(false);
+            unreachable!();
         }
     }
 
@@ -68,7 +68,7 @@ fn test_find_data_file() {
             assert_eq!(p, "/custom/xdg/rusk/rusk-logged-tasks.json");
         }
         Err(_) => {
-            assert!(false);
+            unreachable!();
         }
     }
 
@@ -82,7 +82,7 @@ fn test_find_data_file() {
             assert_eq!(p, "/home/user/.local/share/rusk/rusk-data.json");
         }
         Err(_) => {
-            assert!(false);
+            unreachable!();
         }
     }
 
@@ -92,7 +92,7 @@ fn test_find_data_file() {
             assert_eq!(p, "/home/user/.local/share/rusk/rusk-logged-tasks.json");
         }
         Err(_) => {
-            assert!(false);
+            unreachable!();
         }
     }
 
@@ -105,7 +105,7 @@ fn test_find_data_file() {
             assert_eq!(p, "rusk-data.json");
         }
         Err(_) => {
-            assert!(false);
+            unreachable!();
         }
     }
 
@@ -115,7 +115,7 @@ fn test_find_data_file() {
             assert_eq!(p, "rusk-logged-tasks.json");
         }
         Err(_) => {
-            assert!(false);
+            unreachable!();
         }
     }
 
@@ -148,22 +148,12 @@ fn test_find_data_file() {
     };
 
     let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
-    match path {
-        Ok(p) => {
-            assert_eq!(p, "rusk-data.json");
-        }
-        Err(_) => {
-            assert!(true);
-        }
+    if let Ok(p) = path {
+        assert_eq!(p, "rusk-data.json");
     }
 
     let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-logged-tasks.json", true);
-    match path {
-        Ok(p) => {
-            assert_eq!(p, "rusk-logged-tasks.json");
-        }
-        Err(_) => {
-            assert!(true);
-        }
+    if let Ok(p) = path {
+        assert_eq!(p, "rusk-logged-tasks.json");
     }
 }

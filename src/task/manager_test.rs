@@ -1,12 +1,7 @@
-#[cfg(test)]
-#[allow(unused_imports)]
+use all_asserts::assert_true;
 use chrono::{Duration, Local};
 
-#[allow(unused_imports)]
 use super::*;
-
-// the warning only shows because this is a test file
-#[allow(unused_imports)]
 use crate::task::task::TaskStatus;
 
 #[test]
@@ -70,22 +65,13 @@ fn test_task_data_deserialize() {
     let task_data: TaskData = serde_json::from_str(json).unwrap();
 
     assert_eq!(task_data.tasks.len(), 3);
-    assert_eq!(
-        task_data
-            .tasks
-            .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap()),
-        true
-    );
-    assert_eq!(
-        task_data
-            .tasks
-            .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap()),
-        true
-    );
-    assert_eq!(
-        task_data
-            .tasks
-            .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap()),
-        true
-    );
+    assert_true!(task_data
+        .tasks
+        .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap()));
+    assert_true!(task_data
+        .tasks
+        .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap()));
+    assert_true!(task_data
+        .tasks
+        .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap()));
 }

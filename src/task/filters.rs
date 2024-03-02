@@ -1,21 +1,19 @@
+use std::fmt;
+
 use super::task::{Task, TaskStatus};
 use uuid::Uuid;
 
+#[cfg(test)]
 #[path = "filters_test.rs"]
 mod filters_test;
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Default)]
 pub enum FilterCombinationType {
+    #[default]
     None,
     And,
     Or,
     Xor,
-}
-
-impl Default for FilterCombinationType {
-    fn default() -> Self {
-        FilterCombinationType::None
-    }
 }
 
 #[derive(Clone, Default)]
@@ -33,7 +31,7 @@ impl PartialEq for Filter {
             || self.children.len() != other.children.len()
         {
             false
-        } else if self.children.len() == 0 {
+        } else if self.children.is_empty() {
             true
         } else if self.operator != other.operator {
             false
@@ -88,11 +86,13 @@ pub fn add_filter(lhs: &Filter, rhs: &Filter, operator: FilterCombinationType) -
     }
 }
 
-impl Filter {
-    pub fn to_string(&self) -> String {
-        self.to_string_impl("")
+impl fmt::Display for Filter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string_impl(""))
     }
+}
 
+impl Filter {
     fn to_string_impl(&self, indent: &str) -> String {
         let str_op = match self.operator {
             FilterCombinationType::And => "AND",
@@ -135,7 +135,7 @@ impl Filter {
 
 impl std::fmt::Debug for Filter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self.to_string_impl(""))
     }
 }
 

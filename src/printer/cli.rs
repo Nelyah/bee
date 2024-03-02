@@ -39,7 +39,6 @@ fn format_relative_time(t: DateTime<Local>) -> String {
     }
 }
 
-#[derive(Default)]
 pub struct SimpleTaskTextPrinter;
 
 impl Printer for SimpleTaskTextPrinter {

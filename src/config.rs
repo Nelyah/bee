@@ -6,8 +6,6 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use toml;
-
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -38,11 +36,11 @@ impl Default for ReportConfig {
         ReportConfig {
             default: true,
             filters: vec!["status:pending".to_string()],
-            columns: vec!["id", "uuid", "date_created", "description", "tags"]
+            columns: ["id", "uuid", "date_created", "description", "tags"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
-            column_names: vec!["ID", "UUID", "Date Created", "Description", "Tags"]
+            column_names: ["ID", "UUID", "Date Created", "Description", "Tags"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
@@ -82,7 +80,7 @@ fn load_config() -> Config {
     load_config_from_string(&content)
 }
 fn load_config_from_string(content: &str) -> Config {
-    let mut config: Config = match toml::from_str(&content) {
+    let mut config: Config = match toml::from_str(content) {
         Ok(value) => value,
         Err(e) => {
             eprintln!("{e}");
@@ -104,7 +102,7 @@ fn find_config_file() -> Option<PathBuf> {
         env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home_dir));
 
     let paths = [
-        &format!("rusk.toml"),
+        "rusk.toml",
         &format!("{}/rusk/config.toml", xdg_config_home),
         &format!("{}/.config/rusk/config.toml", home_dir),
         &format!("{}/.rusk.toml", home_dir),
@@ -166,7 +164,7 @@ mod test {
         // };
 
         // Call the function under test
-        let result = load_config_from_string(content);
+        let _result = load_config_from_string(content);
 
         // Assert that the result matches the expected Config struct
         // assert_eq!(result, expected_config);

@@ -1,5 +1,5 @@
-#[cfg(test)]
 use super::*;
+use all_asserts::{assert_false, assert_true};
 
 #[test]
 fn test_task_matches_status_filter() {
@@ -32,30 +32,30 @@ fn test_task_matches_status_filter() {
         ..Default::default()
     };
 
-    assert_eq!(task_matches_status_filter(&task, &completed_filter), true);
-    assert_eq!(task_matches_status_filter(&task, &pending_filter), false);
-    assert_eq!(task_matches_status_filter(&task, &deleted_filter), false);
-    assert_eq!(task_matches_status_filter(&task, &other_filter), false);
+    assert_true!(task_matches_status_filter(&task, &completed_filter));
+    assert_false!(task_matches_status_filter(&task, &pending_filter));
+    assert_false!(task_matches_status_filter(&task, &deleted_filter));
+    assert_false!(task_matches_status_filter(&task, &other_filter));
 
     let task = Task {
         status: TaskStatus::PENDING,
         ..Default::default()
     };
 
-    assert_eq!(task_matches_status_filter(&task, &completed_filter), false);
-    assert_eq!(task_matches_status_filter(&task, &pending_filter), true);
-    assert_eq!(task_matches_status_filter(&task, &deleted_filter), false);
-    assert_eq!(task_matches_status_filter(&task, &other_filter), false);
+    assert_false!(task_matches_status_filter(&task, &completed_filter));
+    assert_true!(task_matches_status_filter(&task, &pending_filter));
+    assert_false!(task_matches_status_filter(&task, &deleted_filter));
+    assert_false!(task_matches_status_filter(&task, &other_filter));
 
     let task = Task {
         status: TaskStatus::DELETED,
         ..Default::default()
     };
 
-    assert_eq!(task_matches_status_filter(&task, &completed_filter), false);
-    assert_eq!(task_matches_status_filter(&task, &pending_filter), false);
-    assert_eq!(task_matches_status_filter(&task, &deleted_filter), true);
-    assert_eq!(task_matches_status_filter(&task, &other_filter), false);
+    assert_false!(task_matches_status_filter(&task, &completed_filter));
+    assert_false!(task_matches_status_filter(&task, &pending_filter));
+    assert_true!(task_matches_status_filter(&task, &deleted_filter));
+    assert_false!(task_matches_status_filter(&task, &other_filter));
 }
 
 #[test]
@@ -72,10 +72,10 @@ fn test_validate_task() {
         operator: FilterCombinationType::Or,
         children: vec![new_with_value("task"), new_with_value("hello")],
     };
-    assert_eq!(validate_task(&t, &f), true);
+    assert_true!(validate_task(&t, &f));
 
     f = new_with_value("hello");
-    assert_eq!(validate_task(&t, &f), false);
+    assert_false!(validate_task(&t, &f));
 
     f = Filter {
         has_value: false,
@@ -83,10 +83,10 @@ fn test_validate_task() {
         operator: FilterCombinationType::And,
         children: vec![new_with_value("task"), new_with_value("hello")],
     };
-    assert_eq!(validate_task(&t, &f), false);
+    assert_false!(validate_task(&t, &f));
 
     f = new_empty();
-    assert_eq!(validate_task(&t, &f), true);
+    assert_true!(validate_task(&t, &f));
 
     f = Filter {
         has_value: false,
@@ -94,10 +94,10 @@ fn test_validate_task() {
         operator: FilterCombinationType::Xor,
         children: vec![new_with_value("task"), new_with_value("hello")],
     };
-    assert_eq!(validate_task(&t, &f), true);
+    assert_true!(validate_task(&t, &f));
 
     t.description = "hello task!".to_string();
-    assert_eq!(validate_task(&t, &f), false);
+    assert_false!(validate_task(&t, &f));
 
     f = Filter {
         has_value: false,
@@ -105,7 +105,7 @@ fn test_validate_task() {
         operator: FilterCombinationType::And,
         children: vec![new_with_value("task"), new_with_value("1")],
     };
-    assert_eq!(validate_task(&t, &f), true);
+    assert_true!(validate_task(&t, &f));
 
     f = Filter {
         has_value: false,
@@ -113,10 +113,10 @@ fn test_validate_task() {
         operator: FilterCombinationType::And,
         children: vec![new_with_value("task"), new_with_value("2")],
     };
-    assert_eq!(validate_task(&t, &f), false);
+    assert_false!(validate_task(&t, &f));
 
     f = new_with_value(&t.get_uuid().to_string());
-    assert_eq!(validate_task(&t, &f), true);
+    assert_true!(validate_task(&t, &f));
 
     t.description = "this is a task".to_string();
     f = Filter {
@@ -133,15 +133,15 @@ fn test_validate_task() {
             },
         ],
     };
-    assert_eq!(validate_task(&t, &f), true);
+    assert_true!(validate_task(&t, &f));
 
     t.description = "This is a task".to_string();
-    assert_eq!(validate_task(&t, &f), true);
+    assert_true!(validate_task(&t, &f));
 
     t.delete();
     f = new_with_value("0");
-    assert_eq!(validate_task(&t, &f), false);
+    assert_false!(validate_task(&t, &f));
 
     t.done();
-    assert_eq!(validate_task(&t, &f), false);
+    assert_false!(validate_task(&t, &f));
 }

@@ -13,8 +13,8 @@ pub enum ActionUndoType {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActionUndo {
-    action_type: ActionUndoType,
-    tasks: Vec<Task>,
+    pub action_type: ActionUndoType,
+    pub tasks: Vec<Task>,
 }
 
 use crate::task::filters::Filter;
@@ -66,8 +66,8 @@ impl BaseTaskAction {
         self.undos = undos;
     }
 
-    pub fn get_undos(&self) -> &Vec<ActionUndo> {
-        &self.undos
+    pub fn get_undos_mut(&mut self) -> &mut Vec<ActionUndo> {
+        &mut self.undos
     }
 
     pub fn get_filters(&self) -> &Filter {
@@ -81,7 +81,7 @@ pub trait TaskAction {
     fn post_action_hook(&self);
     fn get_command_description(&self) -> String;
     fn set_undos(&mut self, undos: Vec<ActionUndo>);
-    fn get_undos(&self) -> &Vec<ActionUndo>;
+    fn get_undos_mut(&mut self) -> &mut Vec<ActionUndo>;
     fn set_tasks(&mut self, tasks: TaskData);
     fn get_tasks(&self) -> &TaskData;
     fn get_filters(&self) -> &Filter;
@@ -95,8 +95,8 @@ macro_rules! delegate_to_base {
         fn set_undos(&mut self, undos: Vec<ActionUndo>) {
             self.base.set_undos(undos)
         }
-        fn get_undos(&self) -> &Vec<ActionUndo> {
-            self.base.get_undos()
+        fn get_undos_mut(&mut self) -> &mut Vec<ActionUndo> {
+            self.base.get_undos_mut()
         }
         fn set_tasks(&mut self, tasks: TaskData) {
             self.base.set_tasks(tasks)

@@ -12,7 +12,7 @@ use crate::{actions::common::ActionRegisty, printer::cli::Printer};
 
 fn main() {
     let p: SimpleTaskTextPrinter = SimpleTaskTextPrinter::default();
-    // let undo_count = 1;
+    let undo_count = 1;
 
     let mut arg_parser = parse::command_parser::Parser::default();
     let registry = ActionRegisty::default();
@@ -21,10 +21,15 @@ fn main() {
     }
 
     let command = arg_parser.parse_command_line_arguments(std::env::args().collect());
+
+    let undos = JsonStore::load_undos(undo_count);
     let tasks = JsonStore::load_tasks(Some(&command.filters));
+
     let mut action = registry.get_action_from_command_parser(&command);
     action.set_tasks(tasks);
+    action.set_undos(undos);
     action.do_action(&(Box::new(p) as Box<dyn Printer>));
 
+    JsonStore::log_undo(undo_count, action.get_undos_mut().to_owned());
     JsonStore::write_tasks(&action.get_tasks());
 }

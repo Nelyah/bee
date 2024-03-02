@@ -1,4 +1,5 @@
-use super::common::{ActionUndo, BaseTaskAction, TaskAction};
+use super::common::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
+
 use crate::task::task::{Task, TaskStatus};
 use crate::Printer;
 
@@ -16,11 +17,12 @@ impl TaskAction for AddTaskAction {
     fn do_action(&mut self, printer: &Box<dyn Printer>) {
         let input_description = self.base.get_arguments().join(" ");
 
-        let new_task: &Task = self.base.get_tasks_mut().add_task(
+        // Clone here to avoid having multiple mutable borrows
+        let new_task: Task = self.base.get_tasks_mut().add_task(
             input_description.to_owned(),
             vec![],
             TaskStatus::PENDING,
-        );
+        ).clone();
         if let Some(new_id) = new_task.get_id() {
             printer.show_information_message(&format!("Created task {}.", new_id));
         } else {
@@ -36,6 +38,11 @@ impl TaskAction for AddTaskAction {
                 ));
             }
         }
+
+        self.base.get_undos_mut().push(ActionUndo{
+            action_type: ActionUndoType::Add,
+            tasks: vec![new_task.to_owned()],
+        });
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {

@@ -107,6 +107,8 @@ enum ActionType {
     List,
     Add,
     Undo,
+    Done,
+    Delete,
 }
 
 impl ActionType {
@@ -115,6 +117,8 @@ impl ActionType {
             Self::List => vec!["list".to_string()],
             Self::Add => vec!["add".to_string()],
             Self::Undo => vec!["undo".to_string()],
+            Self::Done => vec!["done".to_string()],
+            Self::Delete => vec!["delete".to_string()],
         }
     }
 
@@ -123,6 +127,8 @@ impl ActionType {
             Self::List => true,
             Self::Add => false,
             Self::Undo => false,
+            Self::Done => false,
+            Self::Delete => false,
         }
     }
 }
@@ -130,7 +136,13 @@ impl ActionType {
 impl Default for ActionRegisty {
     fn default() -> Self {
         ActionRegisty {
-            registered_type: vec![ActionType::List, ActionType::Add, ActionType::Undo],
+            registered_type: vec![
+                ActionType::List,
+                ActionType::Add,
+                ActionType::Undo,
+                ActionType::Done,
+                ActionType::Delete,
+            ],
         }
     }
 }
@@ -161,18 +173,23 @@ impl ActionRegisty {
             "undo" => Box::new(action_undo::UndoTaskAction {
                 base: BaseTaskAction::default(),
             }),
+            "done" => Box::new(action_done::DoneTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            "delete" => Box::new(action_delete::DeleteTaskAction {
+                base: BaseTaskAction::default(),
+            }),
             _ => panic!("Invalid command parsed, could not get an action from it!"),
         };
-        // let action = actions.get_mut(&cp.command).expect("Unknown command");
         action.set_filters(cp.filters.clone());
         action.set_arguments(cp.arguments.clone());
         action.set_report(cp.report_kind.clone());
-        // action.clone()
-        //
         action
     }
 }
 
 mod action_add;
+mod action_delete;
+mod action_done;
 mod action_list;
 mod action_undo;

@@ -4,9 +4,9 @@
 
 ### Required for me using it
 
-- [ ] Action setters/getters macro
-- [ ] Done action
-- [ ] Delete action
+- [X] Action setters/getters macro
+- [X] Done action
+- [X] Delete action
 - [ ] Modify action
 - [ ] Parser for defining an action
 - [ ] Filters have subtypes

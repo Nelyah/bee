@@ -1,4 +1,4 @@
-use super::common::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
+use super::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
 
 use crate::task::{Task, TaskStatus};
 use crate::Printer;
@@ -12,15 +12,15 @@ pub struct AddTaskAction {
 }
 
 impl TaskAction for AddTaskAction {
-    delegate_to_base!();
+    impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, printer: &dyn Printer) {
-        let input_description = self.base.get_arguments().join(" ");
+        let input_description = self.base.arguments.join(" ");
 
         // Clone here to avoid having multiple mutable borrows
         let new_task: Task = self
             .base
-            .get_tasks_mut()
+            .tasks
             .add_task(input_description.to_owned(), vec![], TaskStatus::PENDING)
             .clone();
         if let Some(new_id) = new_task.get_id() {
@@ -32,7 +32,7 @@ impl TaskAction for AddTaskAction {
             printer.show_information_message(&format!("Logged task '{:.15}'.", &input_description));
         }
 
-        self.base.get_undos_mut().push(ActionUndo {
+        self.base.undos.push(ActionUndo {
             action_type: ActionUndoType::Add,
             tasks: vec![new_task.to_owned()],
         });

@@ -9,7 +9,7 @@ pub mod task;
 use printer::cli::SimpleTaskTextPrinter;
 use storage::{JsonStore, Store};
 
-use crate::{actions::common::ActionRegisty, printer::cli::Printer};
+use crate::{actions::ActionRegisty, printer::cli::Printer};
 
 fn main() {
     env_logger::init();
@@ -31,6 +31,6 @@ fn main() {
     action.set_undos(undos);
     action.do_action(&SimpleTaskTextPrinter);
 
-    JsonStore::log_undo(undo_count, action.get_undos_mut().to_owned());
+    JsonStore::log_undo(undo_count, action.get_undos().to_owned());
     JsonStore::write_tasks(action.get_tasks());
 }

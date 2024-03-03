@@ -4,6 +4,12 @@
 
 ### Required for me using it
 
+- [ ] Action setters/getters macro
+- [ ] Done action
+- [ ] Delete action
+- [ ] Modify action
+- [ ] Parser for defining an action
+- [ ] Filters have subtypes
 - [X] Customise fields in the table
 - [X] Better colours in the table (alternating rows)
 - [ ] Customise colours

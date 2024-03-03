@@ -1,6 +1,6 @@
 use log::debug;
 
-use crate::actions::common::ActionUndo;
+use crate::actions::ActionUndo;
 use crate::filters;
 use crate::filters::Filter;
 use crate::task::TaskData;

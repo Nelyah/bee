@@ -1,4 +1,4 @@
-use super::common::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
+use super::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
 
 use crate::Printer;
 
@@ -11,10 +11,10 @@ pub struct UndoTaskAction {
 }
 
 impl TaskAction for UndoTaskAction {
-    delegate_to_base!();
+    impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, _: &dyn Printer) {
-        let undos = self.get_undos().to_owned();
+        let undos = &self.base.undos;
         for current_undo in undos.iter().rev() {
             for t in &current_undo.tasks {
                 if !self.get_tasks().has_uuid(t.get_uuid()) {
@@ -22,12 +22,12 @@ impl TaskAction for UndoTaskAction {
                 }
 
                 match current_undo.action_type {
-                    ActionUndoType::Add => self.base.get_tasks_mut().task_delete(t.get_uuid()),
-                    ActionUndoType::Modify => self.base.get_tasks_mut().set_task(t.to_owned()),
+                    ActionUndoType::Add => self.base.tasks.task_delete(t.get_uuid()),
+                    ActionUndoType::Modify => self.base.tasks.set_task(t.to_owned()),
                 }
             }
         }
-        self.base.get_undos_mut().clear();
+        self.base.undos.clear();
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {

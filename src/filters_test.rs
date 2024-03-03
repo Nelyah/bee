@@ -74,6 +74,14 @@ fn test_validate_task() {
     };
     assert_true!(validate_task(&t, &f));
 
+    f = Filter {
+        has_value: false,
+        value: "".to_string(),
+        operator: FilterCombinationType::And,
+        children: vec![],
+    };
+    assert_true!(validate_task(&t, &f));
+
     f = new_with_value("hello");
     assert_false!(validate_task(&t, &f));
 

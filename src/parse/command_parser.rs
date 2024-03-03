@@ -2,9 +2,9 @@ use super::parser::build_filter_from_strings;
 
 use crate::config::ReportConfig;
 use crate::config::CONFIG;
-use crate::task::filters;
-use crate::task::filters::Filter;
-use crate::task::filters::FilterCombinationType;
+use crate::filters;
+use crate::filters::Filter;
+use crate::filters::FilterCombinationType;
 
 use std::collections::HashMap;
 

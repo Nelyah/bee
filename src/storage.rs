@@ -1,9 +1,9 @@
 use log::debug;
 
 use crate::actions::common::ActionUndo;
-use crate::task::filters;
-use crate::task::filters::Filter;
-use crate::task::manager::TaskData;
+use crate::filters;
+use crate::filters::Filter;
+use crate::task::TaskData;
 
 use std::env;
 use std::fs;

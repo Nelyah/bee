@@ -2,7 +2,7 @@ use all_asserts::assert_true;
 use chrono::{Duration, Local};
 
 use super::*;
-use crate::task::task::TaskStatus;
+use crate::task::TaskStatus;
 
 #[test]
 fn test_task_data_serialize() {

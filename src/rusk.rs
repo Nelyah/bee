@@ -1,5 +1,6 @@
 pub mod actions;
 mod config;
+pub mod filters;
 pub mod parse;
 pub mod printer;
 pub mod storage;

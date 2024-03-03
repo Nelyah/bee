@@ -2,8 +2,8 @@ use super::common::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
 
 use crate::Printer;
 
-use crate::task::filters::Filter;
-use crate::task::manager::TaskData;
+use crate::filters::Filter;
+use crate::task::TaskData;
 
 #[derive(Default)]
 pub struct UndoTaskAction {

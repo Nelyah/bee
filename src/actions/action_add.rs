@@ -1,10 +1,10 @@
 use super::common::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
 
-use crate::task::task::{Task, TaskStatus};
+use crate::task::{Task, TaskStatus};
 use crate::Printer;
 
-use crate::task::filters::Filter;
-use crate::task::manager::TaskData;
+use crate::filters::Filter;
+use crate::task::TaskData;
 
 #[derive(Default)]
 pub struct AddTaskAction {

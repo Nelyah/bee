@@ -1,8 +1,8 @@
 use super::common::{ActionUndo, BaseTaskAction, TaskAction};
 use crate::Printer;
 
-use crate::task::filters::Filter;
-use crate::task::manager::TaskData;
+use crate::filters::Filter;
+use crate::task::TaskData;
 
 pub struct NewTaskAction {
     pub base: BaseTaskAction,

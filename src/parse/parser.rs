@@ -1,6 +1,6 @@
 use super::lexer::{Lexer, Token, TokenType};
-use crate::task::filters::{Filter, FilterCombinationType};
-use crate::task::{filters, task};
+use crate::filters::{Filter, FilterCombinationType};
+use crate::{filters, task};
 
 pub struct ParserN {
     lexer: Lexer,

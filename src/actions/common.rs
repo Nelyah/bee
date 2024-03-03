@@ -1,4 +1,4 @@
-use crate::task::task::Task;
+use crate::task::Task;
 use serde::{Deserialize, Serialize};
 
 use crate::config::ReportConfig;
@@ -17,8 +17,8 @@ pub struct ActionUndo {
     pub tasks: Vec<Task>,
 }
 
-use crate::task::filters::Filter;
-use crate::task::manager::TaskData;
+use crate::filters::Filter;
+use crate::task::TaskData;
 
 #[derive(Default)]
 pub struct BaseTaskAction {

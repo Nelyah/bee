@@ -1,6 +1,6 @@
 use super::table::Table;
 use crate::config::ReportConfig;
-use crate::task::task::Task;
+use crate::task::Task;
 use chrono::{DateTime, Local};
 use serde_json::Value;
 use std::io;

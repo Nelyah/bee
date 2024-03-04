@@ -8,7 +8,7 @@ use chrono::Local;
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
-use super::filters::{validate_task, Filter};
+use super::filters::{Filter};
 
 #[path = "task_test.rs"]
 #[cfg(test)]
@@ -59,6 +59,14 @@ pub struct Task {
 impl Task {
     pub fn get_id(&self) -> Option<usize> {
         self.id
+    }
+
+    pub fn get_tags(&self) -> &Vec<String> {
+        &self.tags
+    }
+
+    pub fn get_status(&self) -> &TaskStatus {
+        &self.status
     }
 
     pub fn get_uuid(&self) -> &Uuid {
@@ -116,14 +124,14 @@ impl TaskData {
         self.tasks.get_mut(uuid).unwrap().delete();
     }
 
-    pub fn filter(&self, filter: &Filter) -> Self {
+    pub fn filter(&self, filter: &Box<dyn Filter>) -> Self {
         let mut new_data = TaskData {
             tasks: HashMap::new(),
             max_id: self.max_id,
         };
 
         for (key, task) in &self.tasks {
-            if validate_task(task, filter) {
+            if filter.validate_task(task) {
                 new_data.tasks.insert(key.to_owned(), task.to_owned());
             }
         }

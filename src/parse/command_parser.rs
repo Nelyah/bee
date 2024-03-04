@@ -2,9 +2,8 @@ use super::parser::build_filter_from_strings;
 
 use crate::config::ReportConfig;
 use crate::config::CONFIG;
-use crate::filters;
+use crate::filters::AndFilter;
 use crate::filters::Filter;
-use crate::filters::FilterCombinationType;
 
 use std::collections::HashMap;
 
@@ -22,7 +21,7 @@ impl Parser {
 #[derive(Debug, Clone, Default)]
 pub struct ParsedCommand {
     pub command: String,
-    pub filters: Filter,
+    pub filters: Box<dyn Filter>,
     pub arguments: Vec<String>,
     pub arguments_as_filters: bool,
     pub report_kind: ReportConfig,
@@ -56,11 +55,12 @@ impl Parser {
                 } else {
                     parsed_command.arguments = command_args;
                 }
-                parsed_command.filters = filters::add_filter(
-                    &build_filter_from_strings(&filters),
-                    &build_filter_from_strings(&report_kind.filters),
-                    FilterCombinationType::And,
-                );
+                parsed_command.filters = Box::new(AndFilter {
+                    children: vec![
+                        build_filter_from_strings(&filters),
+                        build_filter_from_strings(&report_kind.filters),
+                    ],
+                });
                 parsed_command.report_kind = report_kind;
                 return parsed_command.clone();
             }
@@ -75,11 +75,12 @@ impl Parser {
         }
 
         ParsedCommand {
-            filters: filters::add_filter(
-                &build_filter_from_strings(&filters),
-                &build_filter_from_strings(&report_kind.filters),
-                FilterCombinationType::And,
-            ),
+            filters: Box::new(AndFilter {
+                children: vec![
+                    build_filter_from_strings(&filters),
+                    build_filter_from_strings(&report_kind.filters),
+                ],
+            }),
             command: "list".to_string(),
             report_kind,
             ..Default::default()

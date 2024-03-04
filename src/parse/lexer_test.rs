@@ -22,12 +22,12 @@ fn test_lexer() {
     let mut lexer = Lexer::new("+main".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "+main");
-    assert_eq!(tok.token_type, TokenType::TagPlus);
+    assert_eq!(tok.token_type, TokenType::TagPlusPrefix);
 
     let mut lexer = Lexer::new("-main".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "-main");
-    assert_eq!(tok.token_type, TokenType::TagMinus);
+    assert_eq!(tok.token_type, TokenType::TagMinusPrefix);
 
     let mut lexer = Lexer::new("- main".to_string());
     let tok = lexer.next_token().unwrap();

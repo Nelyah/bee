@@ -17,23 +17,17 @@ pub struct ActionUndo {
     pub tasks: Vec<Task>,
 }
 
-use crate::filters::Filter;
 use crate::task::TaskData;
 
 #[derive(Default)]
 pub struct BaseTaskAction {
     tasks: TaskData,
     undos: Vec<ActionUndo>,
-    filters: Filter,
     arguments: Vec<String>,
     report: ReportConfig,
 }
 
 impl BaseTaskAction {
-    pub fn set_filters(&mut self, filters: Filter) {
-        self.filters = filters;
-    }
-
     pub fn set_arguments(&mut self, arguments: Vec<String>) {
         self.arguments = arguments;
     }
@@ -68,7 +62,6 @@ pub trait TaskAction {
     fn get_undos(&self) -> &Vec<ActionUndo>;
     fn set_tasks(&mut self, tasks: TaskData);
     fn get_tasks(&self) -> &TaskData;
-    fn set_filters(&mut self, filters: Filter);
     fn set_arguments(&mut self, arguments: Vec<String>);
     fn set_report(&mut self, report: ReportConfig);
 }
@@ -89,9 +82,6 @@ macro_rules! impl_taskaction_from_base {
         }
         fn set_report(&mut self, report: crate::config::ReportConfig) {
             self.base.set_report(report);
-        }
-        fn set_filters(&mut self, filters: Filter) {
-            self.base.set_filters(filters);
         }
         fn set_arguments(&mut self, arguments: Vec<String>) {
             self.base.set_arguments(arguments);
@@ -181,7 +171,6 @@ impl ActionRegisty {
             }),
             _ => panic!("Invalid command parsed, could not get an action from it!"),
         };
-        action.set_filters(cp.filters.clone());
         action.set_arguments(cp.arguments.clone());
         action.set_report(cp.report_kind.clone());
         action

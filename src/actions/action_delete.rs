@@ -4,7 +4,6 @@ use super::{ActionUndo, BaseTaskAction, TaskAction};
 
 use crate::Printer;
 
-use crate::filters::Filter;
 use crate::task::TaskData;
 
 #[derive(Default)]

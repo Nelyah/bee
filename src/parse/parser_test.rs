@@ -1,26 +1,4 @@
-#[cfg(test)]
 use super::*; // Import necessary structs, enums, and functions from the parent module
-
-#[test]
-fn test_is_number() {
-    let test_cases = vec![
-        ("123", true),
-        ("abc", false),
-        ("123abc", false),
-        ("1.23", false),
-        ("1-23", false),
-        ("", false),
-    ];
-
-    for (input, expected) in test_cases {
-        let result = is_number(input);
-        assert_eq!(
-            result, expected,
-            "is_number result should match expected for input {}",
-            input
-        );
-    }
-}
 
 #[test]
 fn test_new_parser() {
@@ -52,71 +30,91 @@ fn test_new_parser() {
 #[test]
 fn test_add_string_to_current_filter() {
     assert_eq!(
-        add_string_to_current_filter(
-            "testValue",
-            &filters::new_with_value("first value"),
-            ScopeOperator::None
+        add_to_current_filter(
+            Box::new(StringFilter {
+                value: "testValue".to_owned()
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned()
+            }),
+            &ScopeOperator::None
         ),
-        Filter {
-            value: "".to_string(),
-            has_value: false,
-            operator: FilterCombinationType::And,
+        Box::new(AndFilter {
             children: vec![
-                filters::new_with_value("first value"),
-                filters::new_with_value("testValue")
+                Box::new(StringFilter {
+                    value: "testValue".to_owned()
+                }),
+                Box::new(StringFilter {
+                    value: "first value".to_owned()
+                }),
             ]
-        }
+        })
     );
 
     assert_eq!(
-        add_string_to_current_filter(
-            "testValue",
-            &filters::new_with_value("first value"),
-            ScopeOperator::Or
+        add_to_current_filter(
+            Box::new(StringFilter {
+                value: "testValue".to_owned()
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned()
+            }),
+            &ScopeOperator::Or
         ),
-        Filter {
-            value: "".to_string(),
-            has_value: false,
-            operator: FilterCombinationType::Or,
+        Box::new(OrFilter {
             children: vec![
-                filters::new_with_value("first value"),
-                filters::new_with_value("testValue")
+                Box::new(StringFilter {
+                    value: "testValue".to_owned()
+                }),
+                Box::new(StringFilter {
+                    value: "first value".to_owned()
+                }),
             ]
-        }
+        })
     );
 
     assert_eq!(
-        add_string_to_current_filter(
-            "testValue",
-            &filters::new_with_value("first value"),
-            ScopeOperator::Xor
+        add_to_current_filter(
+            Box::new(StringFilter {
+                value: "testValue".to_owned()
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned()
+            }),
+            &ScopeOperator::Xor
         ),
-        Filter {
-            value: "".to_string(),
-            has_value: false,
-            operator: FilterCombinationType::Xor,
+        Box::new(XorFilter {
             children: vec![
-                filters::new_with_value("first value"),
-                filters::new_with_value("testValue")
+                Box::new(StringFilter {
+                    value: "testValue".to_owned()
+                }),
+                Box::new(StringFilter {
+                    value: "first value".to_owned()
+                }),
             ]
-        }
+        })
     );
 
     assert_eq!(
-        add_string_to_current_filter(
-            "testValue",
-            &filters::new_with_value("first value"),
-            ScopeOperator::And
+        add_to_current_filter(
+            Box::new(StringFilter {
+                value: "testValue".to_owned()
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned()
+            }),
+            &ScopeOperator::And,
         ),
-        Filter {
-            value: "".to_string(),
-            has_value: false,
-            operator: FilterCombinationType::And,
+        Box::new(AndFilter {
             children: vec![
-                filters::new_with_value("first value"),
-                filters::new_with_value("testValue")
+                Box::new(StringFilter {
+                    value: "testValue".to_owned()
+                }),
+                Box::new(StringFilter {
+                    value: "first value".to_owned()
+                }),
             ]
-        }
+        })
     );
 }
 

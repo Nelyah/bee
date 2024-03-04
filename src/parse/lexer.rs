@@ -3,8 +3,9 @@ use uuid::Uuid;
 #[derive(Debug, PartialEq, Default, Clone)]
 pub enum TokenType {
     String,
-    TagPlus,
-    TagMinus,
+    WordString,
+    TagPlusPrefix,
+    TagMinusPrefix,
     FilterStatus,
     Int,
     Uuid,
@@ -20,8 +21,9 @@ impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let token_str = match self {
             TokenType::String => "String",
-            TokenType::TagPlus => "TagPlus",
-            TokenType::TagMinus => "TagMinus",
+            TokenType::WordString => "WordString",
+            TokenType::TagPlusPrefix => "TagPlusPrefix",
+            TokenType::TagMinusPrefix => "TagMinusPrefix",
             TokenType::FilterStatus => "FilterStatus",
             TokenType::Int => "Int",
             TokenType::Uuid => "Uuid",
@@ -120,36 +122,9 @@ impl Lexer {
         }
     }
 
-    fn is_tag_prefix(&self) -> bool {
-        if !matches!(self.ch, Some('+') | Some('-')) {
-            return false;
-        }
-        if self.read_position >= self.input.len() {
-            return false;
-        }
-        if let Some(ch) = self.input.chars().nth(self.read_position) {
-            return ch.is_alphanumeric() || ch == '_';
-        }
-        false
-    }
-
-    // Method to read a tag
-    fn read_tag(&mut self) -> String {
-        assert!(self.is_tag_prefix());
-        let starting_pos = self.position;
-        self.read_char(); // Skip tag prefix
-
-        // Check for word characters after tag prefix
-        while self.is_word_character() {
-            self.read_char();
-        }
-
-        self.input[starting_pos..self.position].to_string()
-    }
-
     // Helper method to check if the current character is part of a word
     fn is_word_character(&self) -> bool {
-        matches!(self.ch, Some(ch) if ch.is_alphanumeric() || ch == '_')
+        matches!(self.ch, Some(ch) if !is_segment_character(&ch))
     }
 
     // Method to match a specific keyword
@@ -204,28 +179,21 @@ impl Lexer {
                     token_type: TokenType::Int,
                     literal: self.read_int(),
                 },
-                _ if self.is_tag_prefix() => {
-                    let tag_prefix = ch;
-                    let tag_value = self.read_tag();
-                    match tag_prefix {
-                        '+' => Token {
-                            token_type: TokenType::TagPlus,
-                            literal: tag_value,
-                        },
-                        '-' => Token {
-                            token_type: TokenType::TagMinus,
-                            literal: tag_value,
-                        },
-                        _ => return Err("Error in parsing tag token".to_string()),
-                    }
-                }
+                _ if ch == '+' => Token {
+                    token_type: TokenType::TagPlusPrefix,
+                    literal: "+".to_owned(),
+                },
+                _ if ch == '-' => Token {
+                    token_type: TokenType::TagMinusPrefix,
+                    literal: "-".to_owned(),
+                },
                 _ if self.match_keyword("and") => {
                     let mut literal_value = self.read_word("and");
 
                     let token_type = match self.ch {
                         Some(c) if !is_segment_character(&c) => {
                             literal_value += &self.read_next_word();
-                            TokenType::String
+                            TokenType::WordString
                         }
                         _ => TokenType::OperatorAnd,
                     };
@@ -285,6 +253,10 @@ impl Lexer {
                         token_type: TokenType::LeftParenthesis,
                     }
                 }
+                _ if self.is_word_character() => Token {
+                    literal: self.read_next_word(),
+                    token_type: TokenType::WordString,
+                },
                 _ => Token {
                     literal: self.read_next_word(),
                     token_type: TokenType::String,

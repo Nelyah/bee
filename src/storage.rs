@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 mod storage_test;
 
 pub trait Store {
-    fn load_tasks(filter: Option<&Filter>) -> TaskData;
+    fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData;
     fn write_tasks(data: &TaskData);
     fn load_undos(last_count: usize) -> Vec<ActionUndo>;
     fn log_undo(count: usize, updated_undos: Vec<ActionUndo>);
@@ -25,7 +25,7 @@ pub trait Store {
 pub struct JsonStore {}
 
 impl Store for JsonStore {
-    fn load_tasks(filter: Option<&Filter>) -> TaskData {
+    fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData {
         debug!(
             "Loading tasks using filter:{}",
             &filter.unwrap_or(&filters::new_empty()).to_string()

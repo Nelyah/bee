@@ -1,11 +1,44 @@
 use crate::task::{Task, TaskStatus};
-use std::fmt;
+use std::{any::Any, fmt};
+use log::error;
 use uuid::Uuid;
 
+#[derive(PartialEq,Debug)]
+pub enum FilterKind {
+    And,
+    Or,
+    Root,
+    Status,
+    String,
+    Tag,
+    TaskId,
+    Uuid,
+    Xor,
+}
+
+impl fmt::Display for FilterKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterKind::And => write!(f, "And"),
+            FilterKind::Or => write!(f, "Or"),
+            FilterKind::Root => write!(f, "Root"),
+            FilterKind::Status => write!(f, "Status"),
+            FilterKind::String => write!(f, "String"),
+            FilterKind::Tag => write!(f, "Tag"),
+            FilterKind::TaskId => write!(f, "TaskId"),
+            FilterKind::Uuid => write!(f, "Uuid"),
+            FilterKind::Xor => write!(f, "Xor"),
+        }
+    }
+}
+
+
 #[allow(private_bounds)]
-pub trait Filter: CloneFilter {
+pub trait Filter: CloneFilter + Any {
     fn validate_task(&self, task: &Task) -> bool;
     fn add_children(&mut self, child: Box<dyn Filter>);
+    fn get_kind(&self) -> FilterKind;
+    fn as_any(&self) -> &dyn Any;
 }
 
 // This trait is needed to enable cloning of `dyn Filter`.
@@ -35,21 +68,139 @@ impl Default for Box<dyn Filter> {
     }
 }
 
+
 impl PartialEq for Box<dyn Filter> {
     fn eq(&self, other: &Self) -> bool {
-        self == other
+        if self.get_kind() != other.get_kind() {
+            return false;
+        }
+
+        match self.get_kind() {
+            FilterKind::Root => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<RootFilter>(),
+                    other.as_any().downcast_ref::<RootFilter>(),
+                ) {
+
+                    if self_concrete.child.is_none() && other_concrete.child.is_none() {
+                        return true;
+                    }
+                    self_concrete.child == other_concrete.child
+                } else {
+                    error!("Unabled to downcast Filter to RootFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::And => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<AndFilter>(),
+                    other.as_any().downcast_ref::<AndFilter>(),
+                ) {
+                    self_concrete.children == other_concrete.children
+                } else {
+                    error!("Unabled to downcast Filter to AndFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::Or => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<OrFilter>(),
+                    other.as_any().downcast_ref::<OrFilter>(),
+                ) {
+                    self_concrete.children == other_concrete.children
+                } else {
+                    error!("Unabled to downcast Filter to OrFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::Xor => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<XorFilter>(),
+                    other.as_any().downcast_ref::<XorFilter>(),
+                ) {
+                    self_concrete.children == other_concrete.children
+                } else {
+                    error!("Unabled to downcast Filter to XorFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::String => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<StringFilter>(),
+                    other.as_any().downcast_ref::<StringFilter>(),
+                ) {
+                    self_concrete == other_concrete
+                } else {
+                    error!("Unabled to downcast Filter to StringFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::Status => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<StatusFilter>(),
+                    other.as_any().downcast_ref::<StatusFilter>(),
+                ) {
+                    self_concrete == other_concrete
+                } else {
+                    error!("Unabled to downcast Filter to StatusFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::Tag => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<TagFilter>(),
+                    other.as_any().downcast_ref::<TagFilter>(),
+                ) {
+                    self_concrete == other_concrete
+                } else {
+                    error!("Unabled to downcast Filter to TagFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::Uuid => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<UuidFilter>(),
+                    other.as_any().downcast_ref::<UuidFilter>(),
+                ) {
+                    self_concrete == other_concrete
+                } else {
+                    error!("Unabled to downcast Filter to UuidFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+            FilterKind::TaskId => {
+                if let (Some(self_concrete), Some(other_concrete)) = (
+                    self.as_any().downcast_ref::<TaskIdFilter>(),
+                    other.as_any().downcast_ref::<TaskIdFilter>(),
+                ) {
+                    self_concrete == other_concrete
+                } else {
+                    error!("Unabled to downcast Filter to TaskIdFilter");
+                    panic!("An error occured");
+                        
+                }
+            }
+        }
     }
 }
 
 impl fmt::Display for dyn Filter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "foo")
+        write!(f, "{}", self.get_kind())
     }
 }
 
 impl std::fmt::Debug for Box<dyn Filter> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "foo")
+        write!(f, "{}", self.get_kind())
     }
 }
 
@@ -79,6 +230,14 @@ impl Filter for RootFilter {
         }
         self.child = Some(child);
     }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Root
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -98,6 +257,14 @@ impl Filter for AndFilter {
 
     fn add_children(&mut self, child: Box<dyn Filter>) {
         self.children.push(child);
+    }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::And
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -131,6 +298,14 @@ impl Filter for XorFilter {
     fn add_children(&mut self, child: Box<dyn Filter>) {
         self.children.push(child);
     }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Xor
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl CloneFilter for XorFilter {
@@ -159,6 +334,14 @@ impl Filter for OrFilter {
     fn add_children(&mut self, child: Box<dyn Filter>) {
         self.children.push(child);
     }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Or
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl CloneFilter for OrFilter {
@@ -169,6 +352,7 @@ impl CloneFilter for OrFilter {
     }
 }
 
+#[derive(PartialEq)]
 pub struct StringFilter {
     pub value: String,
 }
@@ -183,6 +367,14 @@ impl Filter for StringFilter {
     fn add_children(&mut self, _: Box<dyn Filter>) {
         unreachable!("Trying to add a child to a StringFilter");
     }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::String
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl CloneFilter for StringFilter {
@@ -193,6 +385,7 @@ impl CloneFilter for StringFilter {
     }
 }
 
+#[derive(PartialEq)]
 pub struct StatusFilter {
     pub status: TaskStatus,
 }
@@ -205,6 +398,14 @@ impl Filter for StatusFilter {
     fn add_children(&mut self, _: Box<dyn Filter>) {
         unreachable!("Trying to add a child to a StatusFilter");
     }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Status
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl CloneFilter for StatusFilter {
@@ -215,7 +416,7 @@ impl CloneFilter for StatusFilter {
     }
 }
 
-
+#[derive(PartialEq)]
 pub struct TagFilter {
     pub include: bool,
     pub tag_name: String,
@@ -232,6 +433,14 @@ impl Filter for TagFilter {
     fn add_children(&mut self, _: Box<dyn Filter>) {
         unreachable!("Trying to add a child to a TagFilter");
     }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Tag
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl CloneFilter for TagFilter {
@@ -243,6 +452,7 @@ impl CloneFilter for TagFilter {
     }
 }
 
+#[derive(PartialEq)]
 pub struct UuidFilter {
     pub uuid: Uuid,
 }
@@ -255,6 +465,14 @@ impl Filter for UuidFilter {
     fn add_children(&mut self, _: Box<dyn Filter>) {
         unreachable!("Trying to add a child to a UuidFilter");
     }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Uuid
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl CloneFilter for UuidFilter {
@@ -265,6 +483,7 @@ impl CloneFilter for UuidFilter {
     }
 }
 
+#[derive(PartialEq)]
 pub struct TaskIdFilter {
     pub id: usize,
 }
@@ -279,6 +498,14 @@ impl Filter for TaskIdFilter {
 
     fn add_children(&mut self, _: Box<dyn Filter>) {
         unreachable!("Trying to add a child to a TaskIdFilter");
+    }
+
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::TaskId
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

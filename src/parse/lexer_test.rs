@@ -21,18 +21,24 @@ fn test_lexer() {
 
     let mut lexer = Lexer::new("+main".to_string());
     let tok = lexer.next_token().unwrap();
-    assert_eq!(tok.literal, "+main");
+    assert_eq!(tok.literal, "+");
     assert_eq!(tok.token_type, TokenType::TagPlusPrefix);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "main");
+    assert_eq!(tok.token_type, TokenType::WordString);
 
     let mut lexer = Lexer::new("-main".to_string());
     let tok = lexer.next_token().unwrap();
-    assert_eq!(tok.literal, "-main");
+    assert_eq!(tok.literal, "-");
     assert_eq!(tok.token_type, TokenType::TagMinusPrefix);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "main");
+    assert_eq!(tok.token_type, TokenType::WordString);
 
     let mut lexer = Lexer::new("- main".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "-");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::TagMinusPrefix);
 
     let mut lexer = Lexer::new("status:pending".to_string());
     let tok = lexer.next_token().unwrap();
@@ -40,7 +46,7 @@ fn test_lexer() {
     assert_eq!(tok.token_type, TokenType::FilterStatus);
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "pending");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::WordString);
 
     let mut lexer = Lexer::new(")(".to_string());
     let tok = lexer.next_token().unwrap();
@@ -71,28 +77,28 @@ fn test_lexer_operators() {
     let mut lexer = Lexer::new("ands".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "ands");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::WordString);
 
     let mut lexer = Lexer::new("ore".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "ore");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::WordString);
 
     let mut lexer = Lexer::new("xore".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "xore");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::WordString);
 
     let mut lexer = Lexer::new("xore xor hand(".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "xore");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::WordString);
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "xor");
     assert_eq!(tok.token_type, TokenType::OperatorXor);
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "hand");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::WordString);
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "(");
     assert_eq!(tok.token_type, TokenType::LeftParenthesis);
@@ -109,7 +115,7 @@ fn test_lexer_with_spaces() {
     assert_eq!(tok.token_type, TokenType::FilterStatus);
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "pending");
-    assert_eq!(tok.token_type, TokenType::String);
+    assert_eq!(tok.token_type, TokenType::WordString);
 
     let mut lexer = Lexer::new("   )   (   ".to_string());
     let tok = lexer.next_token().unwrap();

@@ -124,7 +124,7 @@ impl Lexer {
 
     // Helper method to check if the current character is part of a word
     fn is_word_character(&self) -> bool {
-        matches!(self.ch, Some(ch) if !is_segment_character(&ch))
+        matches!(self.ch, Some(ch) if !is_segment_character(&ch) && ch.is_ascii_alphabetic())
     }
 
     // Method to match a specific keyword
@@ -179,14 +179,20 @@ impl Lexer {
                     token_type: TokenType::Int,
                     literal: self.read_int(),
                 },
-                _ if ch == '+' => Token {
-                    token_type: TokenType::TagPlusPrefix,
-                    literal: "+".to_owned(),
-                },
-                _ if ch == '-' => Token {
-                    token_type: TokenType::TagMinusPrefix,
-                    literal: "-".to_owned(),
-                },
+                _ if ch == '+' => {
+                    self.read_char();
+                    Token {
+                        token_type: TokenType::TagPlusPrefix,
+                        literal: "+".to_owned(),
+                    }
+                }
+                _ if ch == '-' => {
+                    self.read_char();
+                    Token {
+                        token_type: TokenType::TagMinusPrefix,
+                        literal: "-".to_owned(),
+                    }
+                }
                 _ if self.match_keyword("and") => {
                     let mut literal_value = self.read_word("and");
 
@@ -209,7 +215,7 @@ impl Lexer {
                     let token_type = match self.ch {
                         Some(c) if !is_segment_character(&c) => {
                             literal_value += &self.read_next_word();
-                            TokenType::String
+                            TokenType::WordString
                         }
                         _ => TokenType::OperatorOr,
                     };
@@ -225,7 +231,7 @@ impl Lexer {
                     let token_type = match self.ch {
                         Some(c) if !is_segment_character(&c) => {
                             literal_value += &self.read_next_word();
-                            TokenType::String
+                            TokenType::WordString
                         }
                         _ => TokenType::OperatorXor,
                     };

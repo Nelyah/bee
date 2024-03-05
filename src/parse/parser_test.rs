@@ -1,3 +1,5 @@
+use crate::filters;
+
 use super::*; // Import necessary structs, enums, and functions from the parent module
 
 #[test]
@@ -29,93 +31,89 @@ fn test_new_parser() {
 
 #[test]
 fn test_add_string_to_current_filter() {
-    assert_eq!(
-        add_to_current_filter(
-            Box::new(StringFilter {
-                value: "testValue".to_owned()
-            }),
-            Box::new(StringFilter {
-                value: "first value".to_owned()
-            }),
-            &ScopeOperator::None
-        ),
-        Box::new(AndFilter {
-            children: vec![
-                Box::new(StringFilter {
-                    value: "testValue".to_owned()
-                }),
-                Box::new(StringFilter {
-                    value: "first value".to_owned()
-                }),
-            ]
-        })
+    let mut lhs: Box<dyn Filter> = add_to_current_filter(
+        Box::new(StringFilter {
+            value: "testValue".to_owned(),
+        }),
+        Box::new(StringFilter {
+            value: "first value".to_owned(),
+        }),
+        &ScopeOperator::None,
     );
+    let mut rhs: Box<dyn Filter> = Box::new(AndFilter {
+        children: vec![
+            Box::new(StringFilter {
+                value: "testValue".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned(),
+            }),
+        ],
+    });
+    assert_eq!(&lhs, &rhs,);
 
-    assert_eq!(
-        add_to_current_filter(
-            Box::new(StringFilter {
-                value: "testValue".to_owned()
-            }),
-            Box::new(StringFilter {
-                value: "first value".to_owned()
-            }),
-            &ScopeOperator::Or
-        ),
-        Box::new(OrFilter {
-            children: vec![
-                Box::new(StringFilter {
-                    value: "testValue".to_owned()
-                }),
-                Box::new(StringFilter {
-                    value: "first value".to_owned()
-                }),
-            ]
-        })
+    lhs = add_to_current_filter(
+        Box::new(StringFilter {
+            value: "testValue".to_owned(),
+        }),
+        Box::new(StringFilter {
+            value: "first value".to_owned(),
+        }),
+        &ScopeOperator::Or,
     );
+    rhs = Box::new(OrFilter {
+        children: vec![
+            Box::new(StringFilter {
+                value: "testValue".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned(),
+            }),
+        ],
+    });
+    assert_eq!(&lhs, &rhs);
 
-    assert_eq!(
-        add_to_current_filter(
-            Box::new(StringFilter {
-                value: "testValue".to_owned()
-            }),
-            Box::new(StringFilter {
-                value: "first value".to_owned()
-            }),
-            &ScopeOperator::Xor
-        ),
-        Box::new(XorFilter {
-            children: vec![
-                Box::new(StringFilter {
-                    value: "testValue".to_owned()
-                }),
-                Box::new(StringFilter {
-                    value: "first value".to_owned()
-                }),
-            ]
-        })
+    lhs = add_to_current_filter(
+        Box::new(StringFilter {
+            value: "testValue".to_owned(),
+        }),
+        Box::new(StringFilter {
+            value: "first value".to_owned(),
+        }),
+        &ScopeOperator::Xor,
     );
+    rhs = Box::new(XorFilter {
+        children: vec![
+            Box::new(StringFilter {
+                value: "testValue".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned(),
+            }),
+        ],
+    });
+    assert_eq!(&lhs, &rhs);
 
-    assert_eq!(
-        add_to_current_filter(
-            Box::new(StringFilter {
-                value: "testValue".to_owned()
-            }),
-            Box::new(StringFilter {
-                value: "first value".to_owned()
-            }),
-            &ScopeOperator::And,
-        ),
-        Box::new(AndFilter {
-            children: vec![
-                Box::new(StringFilter {
-                    value: "testValue".to_owned()
-                }),
-                Box::new(StringFilter {
-                    value: "first value".to_owned()
-                }),
-            ]
-        })
+    lhs = add_to_current_filter(
+        Box::new(StringFilter {
+            value: "testValue".to_owned(),
+        }),
+        Box::new(StringFilter {
+            value: "first value".to_owned(),
+        }),
+        &ScopeOperator::And,
     );
+    rhs = Box::new(AndFilter {
+        children: vec![
+            Box::new(StringFilter {
+                value: "testValue".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "first value".to_owned(),
+            }),
+        ],
+    });
+    assert_eq!(&lhs, &rhs);
 }
 
 #[test]
@@ -124,24 +122,24 @@ fn test_parse_filter() {
     let mut p = ParserN::new(lexer);
     let f = p.parse_filter();
 
-    let expected_filter = Filter {
-        operator: FilterCombinationType::Or,
-        has_value: false,
-        value: "".to_string(),
+    let expected_filter: Box<dyn Filter> = Box::new(OrFilter {
         children: vec![
-            Filter {
-                operator: FilterCombinationType::And,
-                has_value: false,
-                value: "".to_string(),
+            Box::new(AndFilter {
                 children: vec![
-                    filters::new_with_value("some"),
-                    filters::new_with_value("status:completed"),
+                    Box::new(StringFilter {
+                        value: "some".to_owned(),
+                    }),
+                    Box::new(StringFilter {
+                        value: "status:completed".to_owned(),
+                    }),
                 ],
-            },
-            filters::new_with_value("status:pending"),
+            }),
+            Box::new(StringFilter {
+                value: "status:completed".to_owned(),
+            }),
         ],
-    };
-    assert_eq!(f, expected_filter);
+    });
+    assert_eq!(&f, &expected_filter);
 }
 
 #[test]
@@ -149,94 +147,97 @@ fn test_build_filter() {
     // Empty input
     let expected = filters::new_empty();
     let actual = build_filter_from_strings(&[]);
-    assert_eq!(expected, actual, "they should be equal");
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator AND and empty operator
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::And,
+    let mut expected: Box<dyn Filter> = Box::new(AndFilter {
         children: vec![
-            filters::new_with_value("one"),
-            filters::new_with_value("two"),
+            Box::new(StringFilter {
+                value: "one".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "two".to_owned(),
+            }),
         ],
-    };
+    });
     let actual = build_filter_from_strings(
         &["one", "and", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_eq!(expected, actual, "they should be equal");
+    assert_eq!(&actual, &expected);
     let actual = build_filter_from_strings(
         &["one", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_eq!(expected, actual, "they should be equal");
+    assert_eq!(&expected, &actual);
 
     // Operator OR
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::Or,
+    expected = Box::new(OrFilter {
         children: vec![
-            filters::new_with_value("one"),
-            filters::new_with_value("two"),
+            Box::new(StringFilter {
+                value: "one".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "two".to_owned(),
+            }),
         ],
-    };
+    });
     let actual = build_filter_from_strings(
         &["one", "or", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_eq!(expected, actual, "they should be equal");
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator XOR
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::Xor,
+    expected = Box::new(XorFilter {
         children: vec![
-            filters::new_with_value("one"),
-            filters::new_with_value("two"),
+            Box::new(StringFilter {
+                value: "one".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "two".to_owned(),
+            }),
         ],
-    };
+    });
     let actual = build_filter_from_strings(
         &["one", "xor", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_eq!(expected, actual, "they should be equal");
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator OR and AND
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::Or,
+    expected = Box::new(OrFilter {
         children: vec![
-            filters::new_with_value("one"),
-            Filter {
-                has_value: false,
-                value: "".to_string(),
-                operator: FilterCombinationType::And,
+            Box::new(StringFilter {
+                value: "one".to_owned(),
+            }),
+            Box::new(AndFilter {
                 children: vec![
-                    filters::new_with_value("two"),
-                    filters::new_with_value("three"),
+                    Box::new(StringFilter {
+                        value: "two".to_owned(),
+                    }),
+                    Box::new(StringFilter {
+                        value: "three".to_owned(),
+                    }),
                 ],
-            },
+            }),
         ],
-    };
+    });
     let actual = build_filter_from_strings(
         &["one", "or", "two", "and", "three"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_eq!(expected, actual, "they should be equal");
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator OR and AND with parenthesis
     // Note: Handling parenthesis might require additional parsing logic
@@ -246,26 +247,26 @@ fn test_build_filter() {
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_ne!(expected, actual, "they should not be equal");
+    assert_ne!(&expected, &actual, "they should not be equal");
 
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::And,
+    expected = Box::new(AndFilter {
         children: vec![
-            Filter {
-                has_value: false,
-                value: "".to_string(),
-                operator: FilterCombinationType::Or,
+            Box::new(OrFilter {
                 children: vec![
-                    filters::new_with_value("one"),
-                    filters::new_with_value("two"),
+                    Box::new(StringFilter {
+                        value: "two".to_owned(),
+                    }),
+                    Box::new(StringFilter {
+                        value: "three".to_owned(),
+                    }),
                 ],
-            },
-            filters::new_with_value("three"),
+            }),
+            Box::new(StringFilter {
+                value: "one".to_owned(),
+            }),
         ],
-    };
-    assert_eq!(expected, actual, "they should be equal");
+    });
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator OR and AND with parenthesis and XOR
     let actual = build_filter_from_strings(
@@ -274,26 +275,26 @@ fn test_build_filter() {
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_ne!(expected, actual, "they should not be equal");
+    assert_ne!(&expected, &actual, "they should not be equal");
 
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::Xor,
+    expected = Box::new(XorFilter {
         children: vec![
-            Filter {
-                has_value: false,
-                value: "".to_string(),
-                operator: FilterCombinationType::Or,
+            Box::new(OrFilter {
                 children: vec![
-                    filters::new_with_value("one"),
-                    filters::new_with_value("two"),
+                    Box::new(StringFilter {
+                        value: "one".to_owned(),
+                    }),
+                    Box::new(StringFilter {
+                        value: "two".to_owned(),
+                    }),
                 ],
-            },
-            filters::new_with_value("three"),
+            }),
+            Box::new(StringFilter {
+                value: "one".to_owned(),
+            }),
         ],
-    };
-    assert_eq!(expected, actual, "they should be equal");
+    });
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Extended XOR case
     let actual = build_filter_from_strings(
@@ -302,34 +303,33 @@ fn test_build_filter() {
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    assert_ne!(expected, actual, "they should not be equal");
+    assert_ne!(&expected, &actual, "they should not be equal");
 
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::Xor,
+    expected = Box::new(XorFilter {
         children: vec![
-            Filter {
-                has_value: false,
-                value: "".to_string(),
-                operator: FilterCombinationType::Or,
+            Box::new(OrFilter {
                 children: vec![
-                    filters::new_with_value("one"),
-                    filters::new_with_value("two"),
+                    Box::new(StringFilter {
+                        value: "one".to_owned(),
+                    }),
+                    Box::new(StringFilter {
+                        value: "two".to_owned(),
+                    }),
                 ],
-            },
-            Filter {
-                has_value: false,
-                value: "".to_string(),
-                operator: FilterCombinationType::And,
+            }),
+            Box::new(AndFilter {
                 children: vec![
-                    filters::new_with_value("three"),
-                    filters::new_with_value("four"),
+                    Box::new(StringFilter {
+                        value: "three".to_owned(),
+                    }),
+                    Box::new(StringFilter {
+                        value: "four".to_owned(),
+                    }),
                 ],
-            },
+            }),
         ],
-    };
-    assert_eq!(expected, actual, "they should be equal");
+    });
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Simple OR case with numbers
     let actual = build_filter_from_strings(
@@ -338,13 +338,17 @@ fn test_build_filter() {
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::Or,
-        children: vec![filters::new_with_value("1"), filters::new_with_value("4")],
-    };
-    assert_eq!(expected, actual, "they should be equal");
+    expected = Box::new(OrFilter {
+        children: vec![
+            Box::new(StringFilter {
+                value: "1".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "4".to_owned(),
+            }),
+        ],
+    });
+    assert_eq!(&expected, &actual, "they should be equal");
 
     // Simple AND case with mixed inputs
     let actual = build_filter_from_strings(
@@ -353,15 +357,18 @@ fn test_build_filter() {
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
     );
-    let expected = Filter {
-        has_value: false,
-        value: "".to_string(),
-        operator: FilterCombinationType::And,
+    expected = Box::new(AndFilter {
         children: vec![
-            filters::new_with_value("1"),
-            filters::new_with_value("4"),
-            filters::new_with_value("hello"),
+            Box::new(StringFilter {
+                value: "1".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "4".to_owned(),
+            }),
+            Box::new(StringFilter {
+                value: "hello".to_owned(),
+            }),
         ],
-    };
-    assert_eq!(expected, actual, "they should be equal");
+    });
+    assert_eq!(&expected, &actual, "they should be equal");
 }

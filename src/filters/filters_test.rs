@@ -58,7 +58,7 @@ fn test_validate_task() {
         ..Default::default()
     };
 
-    let mut f_or = OrFilter {
+    let f_or = OrFilter {
         children: vec![
             Box::new(StringFilter {
                 value: "task".to_owned(),
@@ -73,7 +73,7 @@ fn test_validate_task() {
     let mut f_and = AndFilter { children: vec![] };
     assert_true!(f_and.validate_task(&t));
 
-    let mut f_string = StringFilter {
+    let f_string = StringFilter {
         value: "hello".to_owned(),
     };
     assert_false!(f_string.validate_task(&t));
@@ -90,10 +90,10 @@ fn test_validate_task() {
     };
     assert_false!(f_and.validate_task(&t));
 
-    let mut f_root = new_empty();
+    let f_root = new_empty();
     assert_true!(f_root.validate_task(&t));
 
-    let mut f_xor = XorFilter {
+    let f_xor = XorFilter {
         children: vec![
             Box::new(StringFilter {
                 value: "task".to_owned(),
@@ -128,14 +128,14 @@ fn test_validate_task() {
     };
     assert_false!(f_and.validate_task(&t));
 
-    let mut f_uuid = UuidFilter {
+    let f_uuid = UuidFilter {
         uuid: t.get_uuid().to_owned(),
     };
     assert_true!(f_uuid.validate_task(&t));
 
     t.description = "this is a task".to_string();
 
-    let mut f_xor = XorFilter {
+    let f_xor = XorFilter {
         children: vec![
             Box::new(StringFilter {
                 value: "this".to_owned(),
@@ -156,7 +156,7 @@ fn test_validate_task() {
     assert_true!(f_xor.validate_task(&t));
 
     t.delete();
-    let mut f_id = TaskIdFilter { id: 0 };
+    let f_id = TaskIdFilter { id: 0 };
     assert_false!(f_id.validate_task(&t));
 
     t.done();

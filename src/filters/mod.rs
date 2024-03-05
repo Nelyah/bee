@@ -2,13 +2,14 @@ use crate::task::{Task, TaskStatus};
 use std::fmt;
 use uuid::Uuid;
 
+#[allow(private_bounds)]
 pub trait Filter: CloneFilter {
     fn validate_task(&self, task: &Task) -> bool;
     fn add_children(&mut self, child: Box<dyn Filter>);
 }
 
 // This trait is needed to enable cloning of `dyn Filter`.
-pub trait CloneFilter {
+trait CloneFilter {
     fn clone_box(&self) -> Box<dyn Filter>;
 }
 

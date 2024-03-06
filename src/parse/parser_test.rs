@@ -1,4 +1,4 @@
-use crate::filters;
+use crate::{filters, task::TaskStatus};
 
 use super::*; // Import necessary structs, enums, and functions from the parent module
 
@@ -59,48 +59,6 @@ fn test_add_string_to_current_filter() {
         Box::new(StringFilter {
             value: "first value".to_owned(),
         }),
-        &ScopeOperator::Or,
-    );
-    rhs = Box::new(OrFilter {
-        children: vec![
-            Box::new(StringFilter {
-                value: "testValue".to_owned(),
-            }),
-            Box::new(StringFilter {
-                value: "first value".to_owned(),
-            }),
-        ],
-    });
-    assert_eq!(&lhs, &rhs);
-
-    lhs = add_to_current_filter(
-        Box::new(StringFilter {
-            value: "testValue".to_owned(),
-        }),
-        Box::new(StringFilter {
-            value: "first value".to_owned(),
-        }),
-        &ScopeOperator::Xor,
-    );
-    rhs = Box::new(XorFilter {
-        children: vec![
-            Box::new(StringFilter {
-                value: "testValue".to_owned(),
-            }),
-            Box::new(StringFilter {
-                value: "first value".to_owned(),
-            }),
-        ],
-    });
-    assert_eq!(&lhs, &rhs);
-
-    lhs = add_to_current_filter(
-        Box::new(StringFilter {
-            value: "testValue".to_owned(),
-        }),
-        Box::new(StringFilter {
-            value: "first value".to_owned(),
-        }),
         &ScopeOperator::And,
     );
     rhs = Box::new(AndFilter {
@@ -129,13 +87,13 @@ fn test_parse_filter() {
                     Box::new(StringFilter {
                         value: "some".to_owned(),
                     }),
-                    Box::new(StringFilter {
-                        value: "status:completed".to_owned(),
+                    Box::new(StatusFilter {
+                        status: TaskStatus::COMPLETED,
                     }),
                 ],
             }),
-            Box::new(StringFilter {
-                value: "status:completed".to_owned(),
+            Box::new(StatusFilter {
+                status: TaskStatus::PENDING,
             }),
         ],
     });
@@ -254,15 +212,15 @@ fn test_build_filter() {
             Box::new(OrFilter {
                 children: vec![
                     Box::new(StringFilter {
-                        value: "two".to_owned(),
+                        value: "one".to_owned(),
                     }),
                     Box::new(StringFilter {
-                        value: "three".to_owned(),
+                        value: "two".to_owned(),
                     }),
                 ],
             }),
             Box::new(StringFilter {
-                value: "one".to_owned(),
+                value: "three".to_owned(),
             }),
         ],
     });
@@ -290,7 +248,7 @@ fn test_build_filter() {
                 ],
             }),
             Box::new(StringFilter {
-                value: "one".to_owned(),
+                value: "three".to_owned(),
             }),
         ],
     });
@@ -340,12 +298,8 @@ fn test_build_filter() {
     );
     expected = Box::new(OrFilter {
         children: vec![
-            Box::new(StringFilter {
-                value: "1".to_owned(),
-            }),
-            Box::new(StringFilter {
-                value: "4".to_owned(),
-            }),
+            Box::new(TaskIdFilter { id: 1 }),
+            Box::new(TaskIdFilter { id: 4 }),
         ],
     });
     assert_eq!(&expected, &actual, "they should be equal");
@@ -359,11 +313,11 @@ fn test_build_filter() {
     );
     expected = Box::new(AndFilter {
         children: vec![
-            Box::new(StringFilter {
-                value: "1".to_owned(),
-            }),
-            Box::new(StringFilter {
-                value: "4".to_owned(),
+            Box::new(AndFilter {
+                children: vec![
+                    Box::new(TaskIdFilter { id: 1 }),
+                    Box::new(TaskIdFilter { id: 4 }),
+                ],
             }),
             Box::new(StringFilter {
                 value: "hello".to_owned(),

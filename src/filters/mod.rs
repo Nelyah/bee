@@ -1,9 +1,12 @@
 use crate::task::{Task, TaskStatus};
-use std::{any::Any, fmt};
 use log::error;
+use std::{
+    any::Any,
+    fmt::{self, Debug, Display},
+};
 use uuid::Uuid;
 
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq, Debug)]
 pub enum FilterKind {
     And,
     Or,
@@ -32,9 +35,8 @@ impl fmt::Display for FilterKind {
     }
 }
 
-
 #[allow(private_bounds)]
-pub trait Filter: CloneFilter + Any {
+pub trait Filter: CloneFilter + Any + Debug + Display{
     fn validate_task(&self, task: &Task) -> bool;
     fn add_children(&mut self, child: Box<dyn Filter>);
     fn get_kind(&self) -> FilterKind;
@@ -68,7 +70,6 @@ impl Default for Box<dyn Filter> {
     }
 }
 
-
 impl PartialEq for Box<dyn Filter> {
     fn eq(&self, other: &Self) -> bool {
         if self.get_kind() != other.get_kind() {
@@ -81,7 +82,6 @@ impl PartialEq for Box<dyn Filter> {
                     self.as_any().downcast_ref::<RootFilter>(),
                     other.as_any().downcast_ref::<RootFilter>(),
                 ) {
-
                     if self_concrete.child.is_none() && other_concrete.child.is_none() {
                         return true;
                     }
@@ -89,7 +89,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to RootFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::And => {
@@ -101,7 +100,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to AndFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::Or => {
@@ -113,7 +111,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to OrFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::Xor => {
@@ -125,7 +122,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to XorFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::String => {
@@ -137,7 +133,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to StringFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::Status => {
@@ -149,7 +144,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to StatusFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::Tag => {
@@ -161,7 +155,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to TagFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::Uuid => {
@@ -173,7 +166,6 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to UuidFilter");
                     panic!("An error occured");
-                        
                 }
             }
             FilterKind::TaskId => {
@@ -185,24 +177,32 @@ impl PartialEq for Box<dyn Filter> {
                 } else {
                     error!("Unabled to downcast Filter to TaskIdFilter");
                     panic!("An error occured");
-                        
                 }
             }
         }
     }
 }
 
-impl fmt::Display for dyn Filter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.get_kind())
-    }
+fn indent_string(input: &str, indent: usize) -> String {
+    let indent_str = " ".repeat(indent);
+    input
+        .lines()
+        .map(|line| format!("{}{}", indent_str, line))
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
-impl std::fmt::Debug for Box<dyn Filter> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.get_kind())
-    }
-}
+// impl fmt::Debug for dyn Filter {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "{}", self.get_kind())
+//     }
+// }
+
+// impl std::fmt::Debug for Box<dyn Filter> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{}", self.get_kind())
+//     }
+// }
 
 pub struct RootFilter {
     pub child: Option<Box<dyn Filter>>,
@@ -240,7 +240,33 @@ impl Filter for RootFilter {
     }
 }
 
-#[derive(Debug)]
+impl RootFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let child_string = if let Some(c) = &self.child {
+            c.to_string()
+        } else {
+            "None".to_string()
+        };
+        write!(
+            f,
+            "{}:\n{}",
+            self.get_kind(),
+            indent_string(&child_string, 4)
+        )
+    }
+}
+
+impl Display for RootFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for RootFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+
 pub struct AndFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
@@ -268,6 +294,32 @@ impl Filter for AndFilter {
     }
 }
 
+impl AndFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut children_string = String::default();
+        for c in &self.children {
+            children_string += &format!("\n{}", &c.to_string());
+        }
+        write!(
+            f,
+            "{}:{}",
+            self.get_kind(),
+            indent_string(&children_string, 4)
+        )
+    }
+}
+
+impl Display for AndFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for AndFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+
 impl CloneFilter for AndFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(AndFilter {
@@ -276,7 +328,6 @@ impl CloneFilter for AndFilter {
     }
 }
 
-#[derive(Debug)]
 pub struct XorFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
@@ -308,6 +359,33 @@ impl Filter for XorFilter {
     }
 }
 
+
+impl XorFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut children_string = String::default();
+        for c in &self.children {
+            children_string += &format!("\n{}", c);
+        }
+        write!(
+            f,
+            "{}:{}",
+            self.get_kind(),
+            indent_string(&children_string, 4)
+        )
+    }
+}
+
+impl Display for XorFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for XorFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+
 impl CloneFilter for XorFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(XorFilter {
@@ -316,7 +394,6 @@ impl CloneFilter for XorFilter {
     }
 }
 
-#[derive(Debug)]
 pub struct OrFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
@@ -341,6 +418,33 @@ impl Filter for OrFilter {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+
+impl OrFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut children_string = String::default();
+        for c in &self.children {
+            children_string += &format!("\n{}", c);
+        }
+        write!(
+            f,
+            "{}:{}",
+            self.get_kind(),
+            indent_string(&children_string, 4)
+        )
+    }
+}
+
+impl Display for OrFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for OrFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
     }
 }
 
@@ -377,6 +481,29 @@ impl Filter for StringFilter {
     }
 }
 
+
+impl StringFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.get_kind(),
+            &self.value
+        )
+    }
+}
+
+impl Display for StringFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for StringFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+
 impl CloneFilter for StringFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(StringFilter {
@@ -405,6 +532,28 @@ impl Filter for StatusFilter {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl StatusFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.get_kind(),
+            &self.status
+        )
+    }
+}
+
+impl Display for StatusFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for StatusFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
     }
 }
 
@@ -443,6 +592,29 @@ impl Filter for TagFilter {
     }
 }
 
+impl TagFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}: {}",
+            self.get_kind(),
+            &self.tag_name,
+            &self.include,
+        )
+    }
+}
+
+impl Display for TagFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for TagFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+
 impl CloneFilter for TagFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(TagFilter {
@@ -472,6 +644,28 @@ impl Filter for UuidFilter {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl UuidFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.get_kind(),
+            &self.uuid,
+        )
+    }
+}
+
+impl Display for UuidFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for UuidFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
     }
 }
 
@@ -506,6 +700,28 @@ impl Filter for TaskIdFilter {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl TaskIdFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.get_kind(),
+            &self.id,
+        )
+    }
+}
+
+impl Display for TaskIdFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
+    }
+}
+impl Debug for TaskIdFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.format_helper(f)
     }
 }
 

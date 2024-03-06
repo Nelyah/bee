@@ -22,10 +22,6 @@ enum ScopeOperator {
     None,
 }
 
-// fn is_number(value: &str) -> bool {
-//     value.parse::<i32>().is_ok()
-// }
-
 fn add_to_current_filter(
     filter1: Box<dyn Filter>,
     filter2: Box<dyn Filter>,
@@ -72,7 +68,7 @@ impl ParserN {
 
         if has_only_ids {
             let values: Vec<Box<dyn Filter>> = filter
-                .iter_filters()
+                .iter()
                 .filter(|f| f.get_kind() == FilterKind::TaskId)
                 .map(|f| f.clone_box())
                 .collect();
@@ -286,7 +282,7 @@ impl ParserN {
                         );
                     }
                     let tag_filter = Box::new(TagFilter {
-                        include: false,
+                        include: true,
                         tag_name: self.peek_token.literal.to_owned(),
                     });
                     filter = add_to_current_filter(filter, tag_filter, &ScopeOperator::And);

@@ -172,10 +172,11 @@ fn test_build_filter() {
     assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator OR and AND
+    let uuid_test = uuid::Uuid::new_v4();
     expected = Box::new(OrFilter {
         children: vec![
-            Box::new(StringFilter {
-                value: "one".to_owned(),
+            Box::new(UuidFilter {
+                uuid: uuid_test,
             }),
             Box::new(AndFilter {
                 children: vec![
@@ -190,7 +191,7 @@ fn test_build_filter() {
         ],
     });
     let actual = build_filter_from_strings(
-        &["one", "or", "two", "and", "three"]
+        &[&uuid_test.to_string(), "or", "two", "and", "three"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
@@ -200,7 +201,7 @@ fn test_build_filter() {
     // Operator OR and AND with parenthesis
     // Note: Handling parenthesis might require additional parsing logic
     let actual = build_filter_from_strings(
-        &["(one", "or", "two)", "and", "three"]
+        &["(one", "or", "+two)", "and", "-three"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
@@ -214,13 +215,15 @@ fn test_build_filter() {
                     Box::new(StringFilter {
                         value: "one".to_owned(),
                     }),
-                    Box::new(StringFilter {
-                        value: "two".to_owned(),
+                    Box::new(TagFilter {
+                        include: true,
+                        tag_name: "two".to_owned(),
                     }),
                 ],
             }),
-            Box::new(StringFilter {
-                value: "three".to_owned(),
+            Box::new(TagFilter {
+                include: false,
+                tag_name: "three".to_owned(),
             }),
         ],
     });

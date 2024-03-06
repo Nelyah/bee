@@ -2,6 +2,68 @@ use super::*;
 use all_asserts::{assert_false, assert_true};
 
 #[test]
+fn test_clone() {
+    let mut f: Box<dyn Filter> = Box::new(AndFilter {
+        children: vec![Box::new(StringFilter {
+            value: "hey".to_owned(),
+        })],
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(OrFilter {
+        children: vec![Box::new(StringFilter {
+            value: "hey".to_owned(),
+        })],
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(XorFilter {
+        children: vec![Box::new(StringFilter {
+            value: "hey".to_owned(),
+        })],
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(RootFilter {
+        child: Some(Box::new(StringFilter {
+            value: "hey".to_owned(),
+        })),
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(RootFilter {
+        child: None,
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(StatusFilter {
+        status: TaskStatus::PENDING,
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(StringFilter {
+        value: "Hey".to_owned(),
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(TagFilter {
+        include: true,
+        tag_name: "main".to_owned(),
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(TaskIdFilter {
+        id: 42,
+    });
+    assert_eq!(&f, &f.clone());
+
+    f = Box::new(UuidFilter {
+        uuid: uuid::Uuid::new_v4(),
+    });
+    assert_eq!(&f, &f.clone());
+}
+
+#[test]
 fn test_task_matches_status_filter() {
     let task = Task {
         status: TaskStatus::COMPLETED,

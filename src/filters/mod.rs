@@ -41,7 +41,7 @@ pub trait Filter: CloneFilter + Any + Debug + Display {
     fn add_children(&mut self, child: Box<dyn Filter>);
     fn get_kind(&self) -> FilterKind;
     fn as_any(&self) -> &dyn Any;
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_>;
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_>;
 }
 
 // This trait is needed to enable cloning of `dyn Filter`.
@@ -181,9 +181,9 @@ impl Filter for RootFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         if let Some(c) = &self.child {
-            Box::new(std::iter::once(self as &dyn Filter).chain(c.iter_filters()))
+            Box::new(std::iter::once(self as &dyn Filter).chain(c.iter()))
         } else {
             Box::new(std::iter::once(self as &dyn Filter))
         }
@@ -233,10 +233,10 @@ impl Filter for AndFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(
             std::iter::once(self as &dyn Filter)
-                .chain(self.children.iter().flat_map(|child| child.iter_filters())),
+                .chain(self.children.iter().flat_map(|child| child.iter())),
         )
     }
 }
@@ -295,10 +295,10 @@ impl Filter for XorFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(
             std::iter::once(self as &dyn Filter)
-                .chain(self.children.iter().flat_map(|child| child.iter_filters())),
+                .chain(self.children.iter().flat_map(|child| child.iter())),
         )
     }
 }
@@ -353,10 +353,10 @@ impl Filter for OrFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(
             std::iter::once(self as &dyn Filter)
-                .chain(self.children.iter().flat_map(|child| child.iter_filters())),
+                .chain(self.children.iter().flat_map(|child| child.iter())),
         )
     }
 }
@@ -408,7 +408,7 @@ impl Filter for StringFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
 }
@@ -449,7 +449,7 @@ impl Filter for StatusFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
 }
@@ -494,7 +494,7 @@ impl Filter for TagFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
 }
@@ -542,7 +542,7 @@ impl Filter for UuidFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
 }
@@ -586,7 +586,7 @@ impl Filter for TaskIdFilter {
         self
     }
 
-    fn iter_filters(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
 }

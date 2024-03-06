@@ -9,7 +9,7 @@
 - [X] Delete action
 - [ ] Modify action
 - [ ] Parser for defining an action
-- [O] Filters have subtypes
+- [X] Filters have subtypes
 - [X] Customise fields in the table
 - [X] Better colours in the table (alternating rows)
 - [ ] Customise colours

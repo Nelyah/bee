@@ -36,7 +36,7 @@ impl fmt::Display for FilterKind {
 }
 
 #[allow(private_bounds)]
-pub trait Filter: CloneFilter + Any + Debug + Display{
+pub trait Filter: CloneFilter + Any + Debug + Display {
     fn validate_task(&self, task: &Task) -> bool;
     fn add_children(&mut self, child: Box<dyn Filter>);
     fn get_kind(&self) -> FilterKind;
@@ -44,11 +44,12 @@ pub trait Filter: CloneFilter + Any + Debug + Display{
 }
 
 // This trait is needed to enable cloning of `dyn Filter`.
+// We cannot directly tell the trait to implement Clone because it
+// cannot be 'Sized'
 trait CloneFilter {
     fn clone_box(&self) -> Box<dyn Filter>;
 }
 
-// Implement `CloneFilter` for any type that implements `Filter` and `Clone`.
 impl<T> CloneFilter for T
 where
     T: 'static + Filter + Clone,
@@ -70,6 +71,21 @@ impl Default for Box<dyn Filter> {
     }
 }
 
+fn downcast_and_compare<T: Filter + PartialEq>(
+    self_filter: &Box<dyn Filter>,
+    other_filter: &Box<dyn Filter>,
+) -> bool {
+    if let (Some(self_concrete), Some(other_concrete)) = (
+        self_filter.as_any().downcast_ref::<T>(),
+        other_filter.as_any().downcast_ref::<T>(),
+    ) {
+        self_concrete == other_concrete
+    } else {
+        error!("Unable to downcast Filter");
+        panic!("An error occurred");
+    }
+}
+
 impl PartialEq for Box<dyn Filter> {
     fn eq(&self, other: &Self) -> bool {
         if self.get_kind() != other.get_kind() {
@@ -77,114 +93,50 @@ impl PartialEq for Box<dyn Filter> {
         }
 
         match self.get_kind() {
-            FilterKind::Root => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<RootFilter>(),
-                    other.as_any().downcast_ref::<RootFilter>(),
-                ) {
-                    if self_concrete.child.is_none() && other_concrete.child.is_none() {
-                        return true;
-                    }
-                    self_concrete.child == other_concrete.child
-                } else {
-                    error!("Unabled to downcast Filter to RootFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::And => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<AndFilter>(),
-                    other.as_any().downcast_ref::<AndFilter>(),
-                ) {
-                    self_concrete.children == other_concrete.children
-                } else {
-                    error!("Unabled to downcast Filter to AndFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::Or => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<OrFilter>(),
-                    other.as_any().downcast_ref::<OrFilter>(),
-                ) {
-                    self_concrete.children == other_concrete.children
-                } else {
-                    error!("Unabled to downcast Filter to OrFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::Xor => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<XorFilter>(),
-                    other.as_any().downcast_ref::<XorFilter>(),
-                ) {
-                    self_concrete.children == other_concrete.children
-                } else {
-                    error!("Unabled to downcast Filter to XorFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::String => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<StringFilter>(),
-                    other.as_any().downcast_ref::<StringFilter>(),
-                ) {
-                    self_concrete == other_concrete
-                } else {
-                    error!("Unabled to downcast Filter to StringFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::Status => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<StatusFilter>(),
-                    other.as_any().downcast_ref::<StatusFilter>(),
-                ) {
-                    self_concrete == other_concrete
-                } else {
-                    error!("Unabled to downcast Filter to StatusFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::Tag => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<TagFilter>(),
-                    other.as_any().downcast_ref::<TagFilter>(),
-                ) {
-                    self_concrete == other_concrete
-                } else {
-                    error!("Unabled to downcast Filter to TagFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::Uuid => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<UuidFilter>(),
-                    other.as_any().downcast_ref::<UuidFilter>(),
-                ) {
-                    self_concrete == other_concrete
-                } else {
-                    error!("Unabled to downcast Filter to UuidFilter");
-                    panic!("An error occured");
-                }
-            }
-            FilterKind::TaskId => {
-                if let (Some(self_concrete), Some(other_concrete)) = (
-                    self.as_any().downcast_ref::<TaskIdFilter>(),
-                    other.as_any().downcast_ref::<TaskIdFilter>(),
-                ) {
-                    self_concrete == other_concrete
-                } else {
-                    error!("Unabled to downcast Filter to TaskIdFilter");
-                    panic!("An error occured");
-                }
-            }
+            FilterKind::Root => downcast_and_compare::<RootFilter>(self, other),
+            FilterKind::And => downcast_and_compare::<AndFilter>(self, other),
+            FilterKind::Or => downcast_and_compare::<OrFilter>(self, other),
+            FilterKind::Xor => downcast_and_compare::<XorFilter>(self, other),
+            FilterKind::String => downcast_and_compare::<StringFilter>(self, other),
+            FilterKind::Status => downcast_and_compare::<StatusFilter>(self, other),
+            FilterKind::Tag => downcast_and_compare::<TagFilter>(self, other),
+            FilterKind::Uuid => downcast_and_compare::<UuidFilter>(self, other),
+            FilterKind::TaskId => downcast_and_compare::<TaskIdFilter>(self, other),
         }
     }
 }
 
+macro_rules! impl_display_and_debug {
+    ($($t:ty),*) => {
+        $(
+            impl Display for $t {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    self.format_helper(f)
+                }
+            }
+            impl Debug for $t {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    self.format_helper(f)
+                }
+            }
+        )*
+    }
+}
+
+impl_display_and_debug!(
+    AndFilter,
+    OrFilter,
+    RootFilter,
+    StatusFilter,
+    StringFilter,
+    TagFilter,
+    TaskIdFilter,
+    UuidFilter,
+    XorFilter
+);
+
 fn indent_string(input: &str, indent: usize) -> String {
-    let indent_str = " ".repeat(indent);
+    let indent_str = "|".to_owned() + &" ".repeat(indent-1);
     input
         .lines()
         .map(|line| format!("{}{}", indent_str, line))
@@ -192,18 +144,7 @@ fn indent_string(input: &str, indent: usize) -> String {
         .join("\n")
 }
 
-// impl fmt::Debug for dyn Filter {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "{}", self.get_kind())
-//     }
-// }
-
-// impl std::fmt::Debug for Box<dyn Filter> {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{}", self.get_kind())
-//     }
-// }
-
+#[derive(PartialEq)]
 pub struct RootFilter {
     pub child: Option<Box<dyn Filter>>,
 }
@@ -256,17 +197,7 @@ impl RootFilter {
     }
 }
 
-impl Display for RootFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for RootFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-
+#[derive(PartialEq)]
 pub struct AndFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
@@ -309,17 +240,6 @@ impl AndFilter {
     }
 }
 
-impl Display for AndFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for AndFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-
 impl CloneFilter for AndFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(AndFilter {
@@ -328,6 +248,7 @@ impl CloneFilter for AndFilter {
     }
 }
 
+#[derive(PartialEq)]
 pub struct XorFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
@@ -359,7 +280,6 @@ impl Filter for XorFilter {
     }
 }
 
-
 impl XorFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut children_string = String::default();
@@ -375,17 +295,6 @@ impl XorFilter {
     }
 }
 
-impl Display for XorFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for XorFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-
 impl CloneFilter for XorFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(XorFilter {
@@ -394,6 +303,7 @@ impl CloneFilter for XorFilter {
     }
 }
 
+#[derive(PartialEq)]
 pub struct OrFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
@@ -421,7 +331,6 @@ impl Filter for OrFilter {
     }
 }
 
-
 impl OrFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut children_string = String::default();
@@ -434,17 +343,6 @@ impl OrFilter {
             self.get_kind(),
             indent_string(&children_string, 4)
         )
-    }
-}
-
-impl Display for OrFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for OrFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
     }
 }
 
@@ -481,26 +379,9 @@ impl Filter for StringFilter {
     }
 }
 
-
 impl StringFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.get_kind(),
-            &self.value
-        )
-    }
-}
-
-impl Display for StringFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for StringFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
+        write!(f, "{}: {}", self.get_kind(), &self.value)
     }
 }
 
@@ -537,23 +418,7 @@ impl Filter for StatusFilter {
 
 impl StatusFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.get_kind(),
-            &self.status
-        )
-    }
-}
-
-impl Display for StatusFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for StatusFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
+        write!(f, "{}: {}", self.get_kind(), &self.status)
     }
 }
 
@@ -604,17 +469,6 @@ impl TagFilter {
     }
 }
 
-impl Display for TagFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for TagFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-
 impl CloneFilter for TagFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(TagFilter {
@@ -649,23 +503,7 @@ impl Filter for UuidFilter {
 
 impl UuidFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.get_kind(),
-            &self.uuid,
-        )
-    }
-}
-
-impl Display for UuidFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for UuidFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
+        write!(f, "{}: {}", self.get_kind(), &self.uuid,)
     }
 }
 
@@ -705,23 +543,7 @@ impl Filter for TaskIdFilter {
 
 impl TaskIdFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.get_kind(),
-            &self.id,
-        )
-    }
-}
-
-impl Display for TaskIdFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
-    }
-}
-impl Debug for TaskIdFilter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_helper(f)
+        write!(f, "{}: {}", self.get_kind(), &self.id,)
     }
 }
 
@@ -736,43 +558,6 @@ impl CloneFilter for TaskIdFilter {
 pub fn new_empty() -> Box<dyn Filter> {
     Default::default()
 }
-
-// fn to_string_impl(&self, indent: &str) -> String {
-//     let str_op = match self.operator {
-//         FilterCombinationType::And => "AND",
-//         FilterCombinationType::Or => "OR",
-//         FilterCombinationType::Xor => "XOR",
-//         FilterCombinationType::None => "NONE",
-//     };
-//     let mut out_str = String::default();
-
-//     if self.has_value {
-//         out_str = out_str
-//             + "\n"
-//             + &format!(
-//                 "{}Operator is {} (has_value: {}, value: \"{}\")",
-//                 indent, str_op, self.has_value, self.value
-//             );
-//     } else {
-//         out_str = out_str + "\n" + &format!("{}Operator is {}", indent, str_op);
-//     }
-
-//     for c in &self.children {
-//         out_str = out_str + &c.to_string_impl(&(indent.to_owned() + "    "));
-//     }
-//     out_str
-// }
-// impl fmt::Display for OldFilter {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "{}", self.to_string_impl(""))
-//     }
-// }
-
-// impl std::fmt::Debug for OldFilter {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{}", self.to_string_impl(""))
-//     }
-// }
 
 #[cfg(test)]
 #[path = "filters_test.rs"]

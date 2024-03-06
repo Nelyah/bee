@@ -73,7 +73,7 @@ impl ParserN {
                 .map(|f| f.clone_box())
                 .collect();
 
-            if values.len() > 0 {
+            if !values.is_empty() {
                 return Box::new(OrFilter { children: values });
             }
         }

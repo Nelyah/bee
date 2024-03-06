@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 mod storage_test;
 
 pub trait Store {
+    #[allow(clippy::borrowed_box)]
     fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData;
     fn write_tasks(data: &TaskData);
     fn load_undos(last_count: usize) -> Vec<ActionUndo>;
@@ -25,6 +26,7 @@ pub trait Store {
 pub struct JsonStore {}
 
 impl Store for JsonStore {
+    #[allow(clippy::borrowed_box)]
     fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData {
         debug!(
             "Loading tasks using filter:{}",

@@ -124,6 +124,7 @@ impl TaskData {
         self.tasks.get_mut(uuid).unwrap().delete();
     }
 
+    #[allow(clippy::borrowed_box)]
     pub fn filter(&self, filter: &Box<dyn Filter>) -> Self {
         let mut new_data = TaskData {
             tasks: HashMap::new(),

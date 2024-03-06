@@ -72,6 +72,7 @@ impl Default for Box<dyn Filter> {
     }
 }
 
+#[allow(clippy::borrowed_box)]
 fn downcast_and_compare<T: Filter + PartialEq>(
     self_filter: &Box<dyn Filter>,
     other_filter: &Box<dyn Filter>,
@@ -167,7 +168,7 @@ impl Filter for RootFilter {
     }
 
     fn add_children(&mut self, child: Box<dyn Filter>) {
-        if !self.child.is_none() {
+        if self.child.is_some() {
             panic!("Trying to add a child to a RootFilter that already has a value");
         }
         self.child = Some(child);

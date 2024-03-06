@@ -31,9 +31,7 @@ fn test_clone() {
     });
     assert_eq!(&f, &f.clone());
 
-    f = Box::new(RootFilter {
-        child: None,
-    });
+    f = Box::new(RootFilter { child: None });
     assert_eq!(&f, &f.clone());
 
     f = Box::new(StatusFilter {
@@ -52,9 +50,7 @@ fn test_clone() {
     });
     assert_eq!(&f, &f.clone());
 
-    f = Box::new(TaskIdFilter {
-        id: 42,
-    });
+    f = Box::new(TaskIdFilter { id: 42 });
     assert_eq!(&f, &f.clone());
 
     f = Box::new(UuidFilter {

@@ -175,9 +175,7 @@ fn test_build_filter() {
     let uuid_test = uuid::Uuid::new_v4();
     expected = Box::new(OrFilter {
         children: vec![
-            Box::new(UuidFilter {
-                uuid: uuid_test,
-            }),
+            Box::new(UuidFilter { uuid: uuid_test }),
             Box::new(AndFilter {
                 children: vec![
                     Box::new(StringFilter {

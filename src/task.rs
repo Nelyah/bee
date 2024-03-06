@@ -8,7 +8,7 @@ use chrono::Local;
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
-use super::filters::{Filter};
+use super::filters::Filter;
 
 #[path = "task_test.rs"]
 #[cfg(test)]

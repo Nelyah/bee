@@ -45,20 +45,28 @@ impl fmt::Display for TaskStatus {
 
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Task {
-    pub id: Option<usize>,
-    pub status: TaskStatus,
-    pub uuid: Uuid,
-    pub description: String,
-    pub tags: Vec<String>,
-    pub date_created: DateTime<chrono::Local>,
+    id: Option<usize>,
+    status: TaskStatus,
+    uuid: Uuid,
+    description: String,
+    tags: Vec<String>,
+    date_created: DateTime<chrono::Local>,
     #[serde(default)]
-    pub date_completed: Option<DateTime<chrono::Local>>,
-    pub sub: Vec<Uuid>,
+    date_completed: Option<DateTime<chrono::Local>>,
+    sub: Vec<Uuid>,
 }
 
 impl Task {
     pub fn get_id(&self) -> Option<usize> {
         self.id
+    }
+
+    pub fn get_description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn set_description(&mut self, value: &str) {
+        self.description = value.to_owned();
     }
 
     pub fn get_tags(&self) -> &Vec<String> {
@@ -95,7 +103,7 @@ impl Task {
 
 #[derive(Default)]
 pub struct TaskData {
-    pub tasks: HashMap<Uuid, Task>,
+    tasks: HashMap<Uuid, Task>,
     max_id: usize,
 }
 

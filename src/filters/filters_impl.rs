@@ -329,7 +329,7 @@ pub struct StringFilter {
 
 impl Filter for StringFilter {
     fn validate_task(&self, task: &Task) -> bool {
-        task.description
+        task.get_description()
             .to_lowercase()
             .contains(&self.value.to_lowercase())
     }

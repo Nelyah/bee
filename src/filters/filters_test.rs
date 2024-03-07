@@ -1,5 +1,5 @@
 use super::*;
-use crate::task::TaskStatus;
+use crate::task::{TaskData, TaskStatus};
 use all_asserts::{assert_false, assert_true};
 
 #[test]
@@ -62,10 +62,10 @@ fn test_clone() {
 
 #[test]
 fn test_task_matches_status_filter() {
-    let task = Task {
-        status: TaskStatus::Completed,
-        ..Default::default()
-    };
+    let mut task_data = TaskData::default();
+    let task = task_data
+        .add_task("foo".to_owned(), vec![], TaskStatus::Completed)
+        .clone();
 
     let completed_filter = StatusFilter {
         status: TaskStatus::Completed,
@@ -88,20 +88,18 @@ fn test_task_matches_status_filter() {
     assert_false!(deleted_filter.validate_task(&task));
     assert_false!(other_filter.validate_task(&task));
 
-    let task = Task {
-        status: TaskStatus::Pending,
-        ..Default::default()
-    };
+    let task = task_data
+        .add_task("foo".to_owned(), vec![], TaskStatus::Pending)
+        .clone();
 
     assert_false!(completed_filter.validate_task(&task));
     assert_true!(pending_filter.validate_task(&task));
     assert_false!(deleted_filter.validate_task(&task));
     assert_false!(other_filter.validate_task(&task));
 
-    let task = Task {
-        status: TaskStatus::Deleted,
-        ..Default::default()
-    };
+    let task = task_data
+        .add_task("foo".to_owned(), vec![], TaskStatus::Deleted)
+        .clone();
 
     assert_false!(completed_filter.validate_task(&task));
     assert_false!(pending_filter.validate_task(&task));
@@ -111,11 +109,10 @@ fn test_task_matches_status_filter() {
 
 #[test]
 fn test_validate_task() {
-    let mut t = Task {
-        description: "this is a task".to_string(),
-        id: Some(1),
-        ..Default::default()
-    };
+    let mut task_data = TaskData::default();
+    let mut t = task_data
+        .add_task("this is a task".to_owned(), vec![], TaskStatus::Pending)
+        .clone();
 
     let f_or = OrFilter {
         children: vec![
@@ -164,7 +161,7 @@ fn test_validate_task() {
     };
     assert_true!(f_xor.validate_task(&t));
 
-    t.description = "hello task!".to_string();
+    t.set_description("hello task!");
     assert_false!(f_xor.validate_task(&t));
 
     f_and = AndFilter {
@@ -172,7 +169,9 @@ fn test_validate_task() {
             Box::new(StringFilter {
                 value: "task".to_owned(),
             }),
-            Box::new(TaskIdFilter { id: 1 }),
+            Box::new(TaskIdFilter {
+                id: t.get_id().unwrap(),
+            }),
         ],
     };
     assert_true!(f_and.validate_task(&t));
@@ -182,7 +181,9 @@ fn test_validate_task() {
             Box::new(StringFilter {
                 value: "task".to_owned(),
             }),
-            Box::new(TaskIdFilter { id: 2 }),
+            Box::new(TaskIdFilter {
+                id: t.get_id().unwrap() + 1,
+            }),
         ],
     };
     assert_false!(f_and.validate_task(&t));
@@ -192,7 +193,7 @@ fn test_validate_task() {
     };
     assert_true!(f_uuid.validate_task(&t));
 
-    t.description = "this is a task".to_string();
+    t.set_description("this is a task");
 
     let f_xor = XorFilter {
         children: vec![
@@ -204,14 +205,16 @@ fn test_validate_task() {
                     Box::new(StringFilter {
                         value: "task".to_owned(),
                     }),
-                    Box::new(TaskIdFilter { id: 2 }),
+                    Box::new(TaskIdFilter {
+                        id: t.get_id().unwrap() + 1,
+                    }),
                 ],
             }),
         ],
     };
     assert_true!(f_xor.validate_task(&t));
 
-    t.description = "This is a task".to_string();
+    t.set_description("This is a task");
     assert_true!(f_xor.validate_task(&t));
 
     t.delete();

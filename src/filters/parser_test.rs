@@ -12,12 +12,19 @@ fn test_new_parser() {
         "should have been correctly initialised"
     );
     assert_eq!(
-        p.peek_token.literal, "input",
+        p.peek_token.literal, " ",
+        "should have been correctly initialised"
+    );
+    assert_eq!(
+        p.peek_token.token_type,
+        TokenType::Blank,
         "should have been correctly initialised"
     );
 
     p.next_token();
+    p.next_token();
     assert_eq!(p.current_token.literal, "input", "advances correctly");
+    p.next_token();
     assert_eq!(p.peek_token.literal, "string", "advances correctly");
 
     p.next_token();

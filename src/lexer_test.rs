@@ -94,8 +94,14 @@ fn test_lexer_operators() {
     assert_eq!(tok.literal, "xore");
     assert_eq!(tok.token_type, TokenType::WordString);
     let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, " ");
+    assert_eq!(tok.token_type, TokenType::Blank);
+    let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "xor");
     assert_eq!(tok.token_type, TokenType::OperatorXor);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, " ");
+    assert_eq!(tok.token_type, TokenType::Blank);
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "hand");
     assert_eq!(tok.token_type, TokenType::WordString);
@@ -114,14 +120,26 @@ fn test_lexer_with_spaces() {
     assert_eq!(tok.literal, "status:");
     assert_eq!(tok.token_type, TokenType::FilterStatus);
     let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "  ");
+    assert_eq!(tok.token_type, TokenType::Blank);
+    let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "pending");
     assert_eq!(tok.token_type, TokenType::WordString);
 
-    let mut lexer = Lexer::new("   )   (   ".to_string());
+    let mut lexer = Lexer::new("\t)   (\n".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "\t");
+    assert_eq!(tok.token_type, TokenType::Blank);
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, ")");
     assert_eq!(tok.token_type, TokenType::RightParenthesis);
     let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "   ");
+    assert_eq!(tok.token_type, TokenType::Blank);
+    let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "(");
     assert_eq!(tok.token_type, TokenType::LeftParenthesis);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "\n");
+    assert_eq!(tok.token_type, TokenType::Blank);
 }

@@ -16,6 +16,7 @@ pub enum TokenType {
     OperatorAnd,
     OperatorOr,
     OperatorXor,
+    Blank,
 }
 impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -33,6 +34,7 @@ impl std::fmt::Display for TokenType {
             TokenType::OperatorAnd => "OperatorAnd",
             TokenType::OperatorOr => "OperatorOr",
             TokenType::OperatorXor => "OperatorXor",
+            TokenType::Blank => "Blank",
         };
         write!(f, "{}", token_str)
     }
@@ -160,8 +162,16 @@ impl Lexer {
     // Method to tokenize the next part of the input
     pub fn next_token(&mut self) -> Result<Token, String> {
         // Skip whitespace
+        let mut whitespaces = String::default();
         while matches!(self.ch, Some(ch) if ch.is_whitespace()) {
+            whitespaces += &self.ch.unwrap().to_string();
             self.read_char();
+        }
+        if !whitespaces.is_empty() {
+            return Ok(Token {
+                literal: whitespaces,
+                token_type: TokenType::Blank,
+            });
         }
 
         // Define the token based on the current character

@@ -1,3 +1,4 @@
+mod parser;
 use std::fmt;
 
 use chrono::prelude::DateTime;
@@ -7,6 +8,8 @@ use uuid::Uuid;
 use chrono::Local;
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+
+use crate::lexer::Lexer;
 
 use super::filters::Filter;
 
@@ -40,6 +43,24 @@ impl fmt::Display for TaskStatus {
             TaskStatus::Completed => write!(f, "completed"),
             TaskStatus::Deleted => write!(f, "deleted"),
         }
+    }
+}
+
+// This structure contains information regarding setting fields for a Task
+// that can be parsed from a user query, i.e. from the command line
+// It only contains the fields that can be set by a User
+#[derive(Default, PartialEq, Debug)]
+pub struct TaskProperties {
+    description: Option<String>,
+    tags_remove: Option<Vec<String>>,
+    tags_add: Option<Vec<String>>,
+}
+
+impl TaskProperties {
+    pub fn from(values: &[String]) -> TaskProperties {
+        let lexer = Lexer::new(values.join(" "));
+        let mut parser = parser::Parser::new(lexer);
+        parser.parse_task_properties()
     }
 }
 

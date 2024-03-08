@@ -82,6 +82,12 @@ impl ParserN {
         filter
     }
 
+    fn skip_whitespace(&mut self) {
+        while self.current_token.token_type == TokenType::Blank {
+            self.next_token();
+        }
+    }
+
     fn parse_filter_impl(
         &mut self,
         parenthesis_scope: &usize,
@@ -96,6 +102,9 @@ impl ParserN {
 
         while self.current_token.token_type != TokenType::Eof {
             match self.current_token.token_type {
+                TokenType::Blank => {
+                    self.next_token();
+                }
                 TokenType::OperatorOr => {
                     *has_only_ids = false;
                     match self.peek_token.token_type {
@@ -201,7 +210,9 @@ impl ParserN {
                 }
                 TokenType::FilterStatus => {
                     *has_only_ids = false;
-                    if self.peek_token.token_type != TokenType::WordString {
+                    self.next_token();
+                    self.skip_whitespace();
+                    if self.current_token.token_type != TokenType::WordString {
                         panic!(
                             "Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
                             self.peek_token.token_type,
@@ -210,12 +221,11 @@ impl ParserN {
                     }
                     // Assuming string_is_valid_task_status is a function to validate task status
                     let status_filter = Box::new(StatusFilter {
-                        status: task::TaskStatus::from_string(&self.peek_token.literal)
+                        status: task::TaskStatus::from_string(&self.current_token.literal)
                             .unwrap_or_else(|err| panic!("{}", err)),
                     });
                     filter = add_to_current_filter(filter, status_filter, &ScopeOperator::And);
 
-                    self.next_token();
                     self.next_token();
                 }
                 TokenType::String | TokenType::WordString => {

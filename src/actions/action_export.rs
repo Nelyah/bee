@@ -3,18 +3,18 @@ use crate::Printer;
 
 use crate::task::TaskData;
 
-pub struct ListTaskAction {
+pub struct ExportTaskAction {
     pub base: BaseTaskAction,
 }
 
-impl TaskAction for ListTaskAction {
+impl TaskAction for ExportTaskAction {
     impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, printer: &dyn Printer) {
-        printer.print_list_of_tasks(self.base.get_tasks().to_vec(), &self.base.report);
+        printer.show_information_message(&serde_json::to_string_pretty(self.base.get_tasks()).unwrap());
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
-        "Show a list of tasks".to_string()
+        "Print the tasks as JSON format".to_string()
     }
 }

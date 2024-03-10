@@ -38,6 +38,6 @@ impl TaskAction for AddTaskAction {
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
-        "foo bar".to_string()
+        "Add a new task".to_string()
     }
 }

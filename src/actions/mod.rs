@@ -97,6 +97,7 @@ enum ActionType {
     List,
     Add,
     Undo,
+    Export,
     Done,
     Delete,
     Modify,
@@ -107,6 +108,7 @@ impl ActionType {
         match self {
             Self::List => vec!["list".to_string()],
             Self::Add => vec!["add".to_string()],
+            Self::Export => vec!["export".to_string()],
             Self::Undo => vec!["undo".to_string()],
             Self::Done => vec!["done".to_string()],
             Self::Delete => vec!["delete".to_string()],
@@ -118,6 +120,7 @@ impl ActionType {
         match self {
             Self::List => true,
             Self::Add => false,
+            Self::Export => true,
             Self::Undo => false,
             Self::Done => false,
             Self::Delete => false,
@@ -132,6 +135,7 @@ impl Default for ActionRegisty {
             registered_type: vec![
                 ActionType::List,
                 ActionType::Add,
+                ActionType::Export,
                 ActionType::Undo,
                 ActionType::Done,
                 ActionType::Delete,
@@ -164,6 +168,9 @@ impl ActionRegisty {
             "add" => Box::new(action_add::AddTaskAction {
                 base: BaseTaskAction::default(),
             }),
+            "export" => Box::new(action_export::ExportTaskAction {
+                base: BaseTaskAction::default(),
+            }),
             "undo" => Box::new(action_undo::UndoTaskAction {
                 base: BaseTaskAction::default(),
             }),
@@ -190,3 +197,4 @@ mod action_done;
 mod action_list;
 mod action_modify;
 mod action_undo;
+mod action_export;

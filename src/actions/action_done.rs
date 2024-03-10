@@ -41,6 +41,6 @@ impl TaskAction for DoneTaskAction {
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
-        "foo bar".to_string()
+        "Complete a task".to_string()
     }
 }

@@ -46,6 +46,6 @@ impl TaskAction for ModifyTaskAction {
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
-        "foo bar".to_string()
+        "Modify a task".to_string()
     }
 }

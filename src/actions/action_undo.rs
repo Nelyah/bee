@@ -30,6 +30,6 @@ impl TaskAction for UndoTaskAction {
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
-        "foo bar".to_string()
+        "Undo the last operation".to_string()
     }
 }

@@ -29,7 +29,7 @@
 
 - [ ] due
 - [ ] Recurring tasks
-- [ ] 'export' action
+- [X] 'export' action
 - [ ] Contexts
 - [ ] Descriptions
 - [ ] Priority

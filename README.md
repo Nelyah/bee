@@ -12,6 +12,7 @@
 - [X] Filters have subtypes
 - [X] Customise fields in the table
 - [X] Better colours in the table (alternating rows)
+- [ ] Parse date
 - [ ] Customise colours
     - [ ] conditionally
 - [X] Implement Undo for actions

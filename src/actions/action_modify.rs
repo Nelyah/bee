@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use super::{ActionUndo, BaseTaskAction, TaskAction};
 
-use crate::task::TaskProperties;
+use crate::task::{Task, TaskProperties};
 use crate::Printer;
 
 use crate::task::TaskData;
@@ -17,6 +17,7 @@ impl TaskAction for ModifyTaskAction {
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, p: &dyn Printer) {
         let props = TaskProperties::from(&self.base.arguments);
+        let mut undos: Vec<Task> = Vec::default();
 
         let uuids_to_modify: Vec<Uuid> = self
             .base
@@ -26,7 +27,8 @@ impl TaskAction for ModifyTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_modify {
-            let t = &self.base.tasks.get_task_map().get(&uuid).unwrap();
+            let t = self.base.tasks.get_task_map().get(&uuid).unwrap();
+            undos.push(t.to_owned());
             match t.get_id() {
                 Some(id) => {
                     p.show_information_message(&format!("Modified Task {}.", id));
@@ -37,6 +39,10 @@ impl TaskAction for ModifyTaskAction {
             }
             self.base.tasks.apply(&uuid, &props);
         }
+        self.base.undos.push(ActionUndo {
+            action_type: super::ActionUndoType::Modify,
+            tasks: undos,
+        });
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {

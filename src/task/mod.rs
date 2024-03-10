@@ -200,13 +200,14 @@ impl TaskData {
         &mut self,
         props: &TaskProperties,
         status: TaskStatus,
-    ) -> Result<&Task, String>  {
+    ) -> Result<&Task, String> {
         // This allows the user to override the default status of the task being
         // created (defined by the caller of this function, usually Pending)
         let status = match &props.status {
             Some(st) => st,
             None => &status,
-        }.clone();
+        }
+        .clone();
         let new_id: Option<usize> = match status {
             TaskStatus::Pending => {
                 self.max_id += 1;
@@ -222,7 +223,7 @@ impl TaskData {
 
         let description = match &props.description {
             Some(desc) => desc.to_owned(),
-            None => {return Err("A task must have a description".to_owned())},
+            None => return Err("A task must have a description".to_owned()),
         };
 
         let tags = match &props.tags_add {

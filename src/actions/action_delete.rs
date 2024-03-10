@@ -15,7 +15,7 @@ impl TaskAction for DeleteTaskAction {
     impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, p: &dyn Printer) {
-        let mut undos : Vec<Task> = Vec::default();
+        let mut undos: Vec<Task> = Vec::default();
         if self.base.tasks.get_task_map().is_empty() {
             p.show_information_message(" No task to complete.");
             return;

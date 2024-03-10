@@ -20,15 +20,21 @@ impl TaskAction for AddTaskAction {
         let new_task: Task = self
             .base
             .tasks
-            .add_task(&props, TaskStatus::Pending).unwrap()
+            .add_task(&props, TaskStatus::Pending)
+            .unwrap()
             .clone();
         if let Some(new_id) = new_task.get_id() {
             printer.show_information_message(&format!("Created task {}.", new_id));
         } else if new_task.get_description().len() > 15 {
-            printer
-                .show_information_message(&format!("Logged task '{:.15}...'", new_task.get_description()));
+            printer.show_information_message(&format!(
+                "Logged task '{:.15}...'",
+                new_task.get_description()
+            ));
         } else {
-            printer.show_information_message(&format!("Logged task '{:.15}'.", new_task.get_description()));
+            printer.show_information_message(&format!(
+                "Logged task '{:.15}'.",
+                new_task.get_description()
+            ));
         }
 
         self.base.undos.push(ActionUndo {

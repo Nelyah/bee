@@ -97,6 +97,7 @@ pub struct ActionRegisty {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum ActionType {
+    Annotate,
     List,
     Add,
     Undo,
@@ -113,6 +114,7 @@ impl ActionType {
         let a = ActionType::List;
         match a {
             ActionType::Add => (),
+            ActionType::Annotate => (),
             ActionType::List => (),
             ActionType::Export => (),
             ActionType::Undo => (),
@@ -124,6 +126,7 @@ impl ActionType {
 
         map.insert(ActionType::List, vec!["list".to_string()]);
         map.insert(ActionType::Add, vec!["add".to_string()]);
+        map.insert(ActionType::Annotate, vec!["annotate".to_string()]);
         map.insert(ActionType::Export, vec!["export".to_string()]);
         map.insert(ActionType::Undo, vec!["undo".to_string()]);
         map.insert(ActionType::Done, vec!["done".to_string()]);
@@ -154,6 +157,7 @@ impl ActionType {
         match self {
             Self::List => true,
             Self::Add => false,
+            Self::Annotate => false,
             Self::Export => true,
             Self::Undo => false,
             Self::Done => false,
@@ -169,6 +173,7 @@ impl Default for ActionRegisty {
             registered_type: vec![
                 ActionType::List,
                 ActionType::Add,
+                ActionType::Annotate,
                 ActionType::Export,
                 ActionType::Undo,
                 ActionType::Done,
@@ -214,6 +219,9 @@ impl ActionRegisty {
             ActionType::Delete => Box::new(action_delete::DeleteTaskAction {
                 base: BaseTaskAction::default(),
             }),
+            ActionType::Annotate => Box::new(action_annotate::AnnotateTaskAction {
+                base: BaseTaskAction::default(),
+            }),
             ActionType::Modify => Box::new(action_modify::ModifyTaskAction {
                 base: BaseTaskAction::default(),
             }),
@@ -225,6 +233,7 @@ impl ActionRegisty {
 }
 
 mod action_add;
+mod action_annotate;
 mod action_delete;
 mod action_done;
 mod action_export;

@@ -1,3 +1,5 @@
+use all_asserts::{assert_false, assert_true};
+
 use super::*;
 
 #[test]
@@ -30,6 +32,7 @@ fn setup_task() -> Task {
         tags: vec!["initial_tag1".to_string(), "initial_tag2".to_string()],
         date_created: chrono::Local::now(),
         date_completed: None,
+        annotations: Vec::default(),
         sub: vec![],
     }
 }
@@ -42,6 +45,7 @@ fn test_apply_summary() {
         tags_remove: None,
         tags_add: None,
         status: None,
+        annotation: None,
     };
 
     task.apply(&props);
@@ -56,6 +60,7 @@ fn test_apply_status() {
         tags_remove: None,
         tags_add: None,
         status: Some(TaskStatus::Completed),
+        annotation: None,
     };
 
     assert_eq!(task.status, TaskStatus::Pending);
@@ -71,6 +76,7 @@ fn test_apply_tags_add() {
         tags_remove: None,
         tags_add: Some(vec!["new_tag".to_string()]),
         status: None,
+        annotation: None,
     };
 
     task.apply(&props);
@@ -86,10 +92,31 @@ fn test_apply_tags_remove() {
         tags_remove: Some(vec!["initial_tag2".to_string()]),
         tags_add: None,
         status: None,
+        annotation: None,
     };
 
     task.apply(&props);
     assert_eq!(task.tags, vec!["initial_tag1"]);
+}
+
+#[test]
+fn test_apply_annotation() {
+    let mut task = setup_task();
+    let props = TaskProperties {
+        summary: None,
+        tags_remove: None,
+        tags_add: None,
+        status: None,
+        annotation: Some("hello there".to_owned()),
+    };
+
+    assert_true!(task.annotations.is_empty());
+    task.apply(&props);
+    assert_false!(task.annotations.is_empty());
+    assert_eq!(
+        task.annotations.first().unwrap().get_value(),
+        &"hello there".to_owned()
+    );
 }
 
 #[test]
@@ -100,6 +127,7 @@ fn test_apply_combined() {
         tags_remove: Some(vec!["initial_tag1".to_string()]),
         tags_add: Some(vec!["additional_tag".to_string()]),
         status: None,
+        annotation: None,
     };
 
     task.apply(&props);

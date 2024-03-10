@@ -55,13 +55,36 @@ pub struct TaskProperties {
     tags_remove: Option<Vec<String>>,
     tags_add: Option<Vec<String>>,
     status: Option<TaskStatus>,
+    annotation: Option<String>,
 }
 
+// We implement a specific function for annotate because we cannot know how to differenciate
+// it from a description
 impl TaskProperties {
+    pub fn set_annotate(&mut self, value: String) {
+        self.annotation = Some(value);
+    }
+
     pub fn from(values: &[String]) -> TaskProperties {
         let lexer = Lexer::new(values.join(" "));
         let mut parser = parser::Parser::new(lexer);
         parser.parse_task_properties()
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct TaskAnnotation {
+    value: String,
+    time: DateTime<chrono::Local>,
+}
+
+impl TaskAnnotation {
+    pub fn get_value(&self) -> &String {
+        &self.value
+    }
+
+    pub fn get_time(&self) -> &DateTime<chrono::Local> {
+        &self.time
     }
 }
 
@@ -71,6 +94,8 @@ pub struct Task {
     status: TaskStatus,
     uuid: Uuid,
     summary: String,
+    #[serde(default)]
+    annotations: Vec<TaskAnnotation>,
     tags: Vec<String>,
     date_created: DateTime<chrono::Local>,
     #[serde(default)]
@@ -81,6 +106,10 @@ pub struct Task {
 impl Task {
     pub fn get_id(&self) -> Option<usize> {
         self.id
+    }
+
+    pub fn get_annotations(&self) -> &Vec<TaskAnnotation> {
+        &self.annotations
     }
 
     pub fn get_summary(&self) -> &str {
@@ -121,6 +150,13 @@ impl Task {
             let existing_tags: HashSet<String> = self.tags.drain(..).collect();
             let new_tags: HashSet<String> = tags.iter().cloned().collect();
             self.tags = existing_tags.union(&new_tags).cloned().collect();
+        }
+
+        if let Some(ann) = &props.annotation {
+            self.annotations.push(TaskAnnotation {
+                value: ann.to_string(),
+                time: Local::now(),
+            });
         }
     }
 
@@ -239,6 +275,7 @@ impl TaskData {
             tags,
             date_created: Local::now(),
             date_completed,
+            annotations: Vec::default(),
             sub: Vec::default(),
         };
         let owned_uuid = t.get_uuid().to_owned();

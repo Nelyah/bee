@@ -17,8 +17,7 @@
     - [ ] conditionally
 - [X] Implement Undo for actions
 - [X] Implement the 'undo' action
-- [ ] Annotations
-    - Need to figure out how that's going to look on the table
+- [X] Annotations
 - [ ] date filters
 - [ ] Projects and sub projects
 - [ ] Import from Taskwarrior

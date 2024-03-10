@@ -1,4 +1,5 @@
 use colored::{ColoredString, Colorize, Styles};
+use log::debug;
 use std::io::{BufWriter, Write};
 
 #[derive(Clone)]
@@ -196,6 +197,24 @@ impl<W: Write> Table<W> {
     }
 }
 
+// This does the same as `split_whitespace` but ignores '\n' chars
+fn split_most_whitespaces(input: &str) -> Vec<String> {
+    let mut output = Vec::default();
+
+    let mut buffer = String::default();
+    for c in input.chars() {
+        if c.is_whitespace() && c != '\n' && !buffer.is_empty() {
+            output.push(buffer);
+            buffer = String::default();
+        } else {
+            buffer += &c.to_string();
+        }
+    }
+    output.push(buffer);
+
+    output
+}
+
 fn get_terminal_width() -> usize {
     term_size::dimensions().map_or(80, |(w, _)| w)
 }
@@ -208,16 +227,25 @@ fn wrap_text(text: &str, width: usize) -> String {
     let mut wrapped_text = String::new();
     let mut line_length = 0;
 
-    for word in text.split_whitespace() {
-        if line_length + word.len() + 1 > width {
-            wrapped_text.push('\n');
-            line_length = 0;
+    for outer_word in split_most_whitespaces(text) {
+        let mut first = true;
+        for word in outer_word.split('\n') {
+            if !first {
+                wrapped_text.push('\n');
+                line_length = 0;
+            }
+            first = false;
+            if line_length + word.len() + 1 > width {
+                wrapped_text.push('\n');
+                line_length = 0;
+            }
+            wrapped_text.push_str(word);
+            wrapped_text.push(' ');
+            line_length += word.len() + 1;
         }
-        wrapped_text.push_str(word);
-        wrapped_text.push(' ');
-        line_length += word.len() + 1;
     }
 
+    debug!("{}", wrapped_text);
     wrapped_text.trim().to_string()
 }
 

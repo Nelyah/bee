@@ -60,6 +60,17 @@ impl Printer for SimpleTaskTextPrinter {
                             row.push("None".to_owned());
                         }
                     }
+                    "summary" => {
+                        let mut out_str = t.get_summary().to_owned();
+                        t.get_annotations().iter().for_each(|ann| {
+                            out_str += &format!(
+                                "\n{}  {}",
+                                ann.get_time().format("%Y-%m-%d"),
+                                ann.get_value()
+                            )
+                        });
+                        row.push(out_str);
+                    }
 
                     _ => {
                         let value = t.get_field(field);

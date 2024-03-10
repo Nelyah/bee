@@ -134,14 +134,26 @@ mod tests {
 
     #[test]
     fn test_task_properties_parser() {
-        let tp = from_string("a new task summary");
+        let mut tp = from_string("a new task summary");
         assert_eq!(
             tp,
             TaskProperties {
                 summary: Some("a new task summary".to_owned()),
                 tags_remove: None,
                 tags_add: None,
-                status: None
+                status: None,
+                annotation: None,
+            }
+        );
+        tp.set_annotate("foo".to_owned());
+        assert_eq!(
+            tp,
+            TaskProperties {
+                summary: Some("a new task summary".to_owned()),
+                tags_remove: None,
+                tags_add: None,
+                status: None,
+                annotation: Some("foo".to_owned()),
             }
         );
 
@@ -153,6 +165,7 @@ mod tests {
                 tags_remove: None,
                 tags_add: None,
                 status: Some(TaskStatus::Completed),
+                annotation: None,
             }
         );
 
@@ -164,6 +177,7 @@ mod tests {
                 tags_remove: None,
                 tags_add: None,
                 status: Some(TaskStatus::Pending),
+                annotation: None,
             }
         );
 
@@ -175,6 +189,7 @@ mod tests {
                 tags_remove: Some(vec!["main".to_owned()]),
                 tags_add: Some(vec!["foo".to_owned()]),
                 status: None,
+                annotation: None,
             }
         );
 

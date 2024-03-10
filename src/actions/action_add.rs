@@ -25,15 +25,15 @@ impl TaskAction for AddTaskAction {
             .clone();
         if let Some(new_id) = new_task.get_id() {
             printer.show_information_message(&format!("Created task {}.", new_id));
-        } else if new_task.get_description().len() > 15 {
+        } else if new_task.get_summary().len() > 15 {
             printer.show_information_message(&format!(
                 "Logged task '{:.15}...'",
-                new_task.get_description()
+                new_task.get_summary()
             ));
         } else {
             printer.show_information_message(&format!(
                 "Logged task '{:.15}'.",
-                new_task.get_description()
+                new_task.get_summary()
             ));
         }
 

@@ -26,7 +26,7 @@ fn setup_task() -> Task {
         id: Some(1),
         status: TaskStatus::Pending, // Use an appropriate variant
         uuid: Uuid::new_v4(),
-        description: "Initial description".to_string(),
+        summary: "Initial summary".to_string(),
         tags: vec!["initial_tag1".to_string(), "initial_tag2".to_string()],
         date_created: chrono::Local::now(),
         date_completed: None,
@@ -35,24 +35,24 @@ fn setup_task() -> Task {
 }
 
 #[test]
-fn test_apply_description() {
+fn test_apply_summary() {
     let mut task = setup_task();
     let props = TaskProperties {
-        description: Some("New description".to_string()),
+        summary: Some("New summary".to_string()),
         tags_remove: None,
         tags_add: None,
         status: None,
     };
 
     task.apply(&props);
-    assert_eq!(task.description, "New description");
+    assert_eq!(task.summary, "New summary");
 }
 
 #[test]
 fn test_apply_status() {
     let mut task = setup_task();
     let props = TaskProperties {
-        description: None,
+        summary: None,
         tags_remove: None,
         tags_add: None,
         status: Some(TaskStatus::Completed),
@@ -67,7 +67,7 @@ fn test_apply_status() {
 fn test_apply_tags_add() {
     let mut task = setup_task();
     let props = TaskProperties {
-        description: None,
+        summary: None,
         tags_remove: None,
         tags_add: Some(vec!["new_tag".to_string()]),
         status: None,
@@ -82,7 +82,7 @@ fn test_apply_tags_add() {
 fn test_apply_tags_remove() {
     let mut task = setup_task();
     let props = TaskProperties {
-        description: None,
+        summary: None,
         tags_remove: Some(vec!["initial_tag2".to_string()]),
         tags_add: None,
         status: None,
@@ -96,14 +96,14 @@ fn test_apply_tags_remove() {
 fn test_apply_combined() {
     let mut task = setup_task();
     let props = TaskProperties {
-        description: Some("Updated description".to_string()),
+        summary: Some("Updated summary".to_string()),
         tags_remove: Some(vec!["initial_tag1".to_string()]),
         tags_add: Some(vec!["additional_tag".to_string()]),
         status: None,
     };
 
     task.apply(&props);
-    assert_eq!(task.description, "Updated description");
+    assert_eq!(task.summary, "Updated summary");
     assert_eq!(task.tags, vec!["initial_tag2", "additional_tag"]);
 }
 
@@ -113,6 +113,6 @@ fn test_apply_no_change() {
     let props = TaskProperties::default(); // Assumes no change
 
     task.apply(&props);
-    assert_eq!(task.description, "Initial description");
+    assert_eq!(task.summary, "Initial summary");
     assert_eq!(task.tags, vec!["initial_tag1", "initial_tag2"]);
 }

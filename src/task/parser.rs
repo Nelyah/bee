@@ -13,10 +13,10 @@ pub struct Parser {
 macro_rules! process_tag_prefix {
     ($self:ident, $props:ident, $tag_vector:ident) => {
         if $self.peek_token.token_type != TokenType::WordString {
-            if let Some(desc) = $props.description {
-                $props.description = Some(desc + &$self.current_token.literal);
+            if let Some(summary) = $props.summary {
+                $props.summary = Some(summary + &$self.current_token.literal);
             } else {
-                $props.description = Some($self.current_token.literal.to_owned());
+                $props.summary = Some($self.current_token.literal.to_owned());
             }
             $self.next_token();
         } else {
@@ -78,10 +78,10 @@ impl Parser {
                 | TokenType::OperatorXor
                 | TokenType::LeftParenthesis
                 | TokenType::RightParenthesis => {
-                    if let Some(desc) = props.description {
-                        props.description = Some(desc + &self.current_token.literal);
+                    if let Some(summary) = props.summary {
+                        props.summary = Some(summary + &self.current_token.literal);
                     } else {
-                        props.description = Some(self.current_token.literal.to_owned());
+                        props.summary = Some(self.current_token.literal.to_owned());
                     }
                     self.next_token();
                 }
@@ -115,8 +115,8 @@ impl Parser {
                 TokenType::Eof => unreachable!("We should not be trying to read EOF"),
             }
         }
-        if let Some(desc) = &mut props.description {
-            *desc = desc.trim().to_string();
+        if let Some(summary) = &mut props.summary {
+            *summary = summary.trim().to_string();
         }
         props
     }
@@ -134,44 +134,44 @@ mod tests {
 
     #[test]
     fn test_task_properties_parser() {
-        let tp = from_string("a new task description");
+        let tp = from_string("a new task summary");
         assert_eq!(
             tp,
             TaskProperties {
-                description: Some("a new task description".to_owned()),
+                summary: Some("a new task summary".to_owned()),
                 tags_remove: None,
                 tags_add: None,
                 status: None
             }
         );
 
-        let tp = from_string("a new task descrip(tion status:completed");
+        let tp = from_string("a new task summ(ary status:completed");
         assert_eq!(
             tp,
             TaskProperties {
-                description: Some("a new task descrip(tion".to_owned()),
+                summary: Some("a new task summ(ar".to_owned()),
                 tags_remove: None,
                 tags_add: None,
                 status: Some(TaskStatus::Completed),
             }
         );
 
-        let tp = from_string("a new task descrip(\ttion status:  pending");
+        let tp = from_string("a new task summ(\tary status:  pending");
         assert_eq!(
             tp,
             TaskProperties {
-                description: Some("a new task descrip(\ttion".to_owned()),
+                summary: Some("a new task summ(\tary".to_owned()),
                 tags_remove: None,
                 tags_add: None,
                 status: Some(TaskStatus::Pending),
             }
         );
 
-        let tp = from_string("a new task -main description +foo");
+        let tp = from_string("a new task -main summary +foo");
         assert_eq!(
             tp,
             TaskProperties {
-                description: Some("a new task description".to_owned()),
+                summary: Some("a new task summary".to_owned()),
                 tags_remove: Some(vec!["main".to_owned()]),
                 tags_add: Some(vec!["foo".to_owned()]),
                 status: None,

@@ -40,7 +40,7 @@ fn test_task_data_deserialize() {
                     "uuid": "00000000-0000-0000-0000-000000000001",
                     "date_created": "2023-05-25T21:25:24.899710+02:00",
                     "status": "Completed",
-                    "description": "task1",
+                    "summary": "task1",
                     "sub": [],
                     "tags": []
                 },
@@ -48,7 +48,7 @@ fn test_task_data_deserialize() {
                     "uuid": "00000000-0000-0000-0000-000000000002",
                     "date_created": "2023-05-25T21:25:24.899710+02:00",
                     "status": "Completed",
-                    "description": "task3",
+                    "summary": "task3",
                     "sub": [],
                     "tags": []
                 },
@@ -56,7 +56,7 @@ fn test_task_data_deserialize() {
                     "uuid": "00000000-0000-0000-0000-000000000003",
                     "date_created": "2023-05-25T21:25:24.899710+02:00",
                     "status": "Completed",
-                    "description": "task3",
+                    "summary": "task3",
                     "sub": [],
                     "tags": []
                 }

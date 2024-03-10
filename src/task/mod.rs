@@ -51,7 +51,7 @@ impl fmt::Display for TaskStatus {
 // It only contains the fields that can be set by a User
 #[derive(Default, PartialEq, Debug)]
 pub struct TaskProperties {
-    description: Option<String>,
+    summary: Option<String>,
     tags_remove: Option<Vec<String>>,
     tags_add: Option<Vec<String>>,
     status: Option<TaskStatus>,
@@ -70,7 +70,7 @@ pub struct Task {
     id: Option<usize>,
     status: TaskStatus,
     uuid: Uuid,
-    description: String,
+    summary: String,
     tags: Vec<String>,
     date_created: DateTime<chrono::Local>,
     #[serde(default)]
@@ -83,12 +83,12 @@ impl Task {
         self.id
     }
 
-    pub fn get_description(&self) -> &str {
-        &self.description
+    pub fn get_summary(&self) -> &str {
+        &self.summary
     }
 
-    pub fn set_description(&mut self, value: &str) {
-        self.description = value.to_owned();
+    pub fn set_summary(&mut self, value: &str) {
+        self.summary = value.to_owned();
     }
 
     pub fn get_tags(&self) -> &Vec<String> {
@@ -104,8 +104,8 @@ impl Task {
     }
 
     pub fn apply(&mut self, props: &TaskProperties) {
-        if let Some(desc) = &props.description {
-            self.description = desc.clone();
+        if let Some(summary) = &props.summary {
+            self.summary = summary.clone();
         }
 
         if let Some(status) = &props.status {
@@ -221,9 +221,9 @@ impl TaskData {
             TaskStatus::Completed | TaskStatus::Deleted => Some(Local::now()),
         };
 
-        let description = match &props.description {
-            Some(desc) => desc.to_owned(),
-            None => return Err("A task must have a description".to_owned()),
+        let summary = match &props.summary {
+            Some(summary) => summary.to_owned(),
+            None => return Err("A task must have a summary".to_owned()),
         };
 
         let tags = match &props.tags_add {
@@ -232,7 +232,7 @@ impl TaskData {
         };
 
         let t = Task {
-            description,
+            summary,
             id: new_id,
             status,
             uuid: Uuid::new_v4(),

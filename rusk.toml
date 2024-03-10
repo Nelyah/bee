@@ -1,11 +1,11 @@
 [report.List]
-column_names = ["ID", "UUID", "Description", "Tags", "date"]
-columns = ["id", "uuid", "description", "tags", "date_created"]
+column_names = ["ID", "UUID", "Summary", "Tags", "date"]
+columns = ["id", "uuid", "summary", "tags", "date_created"]
 default = true
 filters = ['status:pending']
 
 [report.all]
-column_names = ["UUID", "Date Created", "Date Completed", "Description", "Tags"]
-columns = ["uuid", "date_created", "date_completed", "description", "tags"]
+column_names = ["UUID", "Date Created", "Date Completed", "Summary", "Tags"]
+columns = ["uuid", "date_created", "date_completed", "summary", "tags"]
 default = false
 filters = []

@@ -36,11 +36,11 @@ impl Default for ReportConfig {
         ReportConfig {
             default: true,
             filters: vec!["status:pending".to_string()],
-            columns: ["id", "uuid", "date_created", "description", "tags"]
+            columns: ["id", "uuid", "date_created", "summary", "tags"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
-            column_names: ["ID", "UUID", "Date Created", "Description", "Tags"]
+            column_names: ["ID", "UUID", "Date Created", "Summary", "Tags"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),

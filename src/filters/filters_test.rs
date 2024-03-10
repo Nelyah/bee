@@ -177,7 +177,7 @@ fn test_validate_task() {
     };
     assert_true!(f_xor.validate_task(&t));
 
-    t.set_description("hello task!");
+    t.set_summary("hello task!");
     assert_false!(f_xor.validate_task(&t));
 
     f_and = AndFilter {
@@ -209,7 +209,7 @@ fn test_validate_task() {
     };
     assert_true!(f_uuid.validate_task(&t));
 
-    t.set_description("this is a task");
+    t.set_summary("this is a task");
 
     let f_xor = XorFilter {
         children: vec![
@@ -230,7 +230,7 @@ fn test_validate_task() {
     };
     assert_true!(f_xor.validate_task(&t));
 
-    t.set_description("This is a task");
+    t.set_summary("This is a task");
     assert_true!(f_xor.validate_task(&t));
 
     t.delete();

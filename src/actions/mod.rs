@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::task::Task;
 use serde::{Deserialize, Serialize};
 
@@ -93,6 +95,7 @@ pub struct ActionRegisty {
     registered_type: Vec<ActionType>,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 enum ActionType {
     List,
     Add,
@@ -104,16 +107,47 @@ enum ActionType {
 }
 
 impl ActionType {
-    pub fn to_string_vec(&self) -> Vec<String> {
-        match self {
-            Self::List => vec!["list".to_string()],
-            Self::Add => vec!["add".to_string()],
-            Self::Export => vec!["export".to_string()],
-            Self::Undo => vec!["undo".to_string()],
-            Self::Done => vec!["done".to_string()],
-            Self::Delete => vec!["delete".to_string()],
-            Self::Modify => vec!["modify".to_string(), "mod".to_string()],
+    fn as_dict() -> HashMap<ActionType, Vec<String>> {
+        // Make sure all cases are handled, if we had a new variant then this function should
+        // fail to compile, hopefully we don't forget to add to the dictionary as well
+        let a = ActionType::List;
+        match a {
+            ActionType::Add => (),
+            ActionType::List => (),
+            ActionType::Export => (),
+            ActionType::Undo => (),
+            ActionType::Done => (),
+            ActionType::Delete => (),
+            ActionType::Modify => (),
         }
+        let mut map = HashMap::new();
+
+        map.insert(ActionType::List, vec!["list".to_string()]);
+        map.insert(ActionType::Add, vec!["add".to_string()]);
+        map.insert(ActionType::Export, vec!["export".to_string()]);
+        map.insert(ActionType::Undo, vec!["undo".to_string()]);
+        map.insert(ActionType::Done, vec!["done".to_string()]);
+        map.insert(ActionType::Delete, vec!["delete".to_string()]);
+        map.insert(
+            ActionType::Modify,
+            vec!["modify".to_string(), "mod".to_string()],
+        );
+
+        map
+    }
+
+    fn from(s: &str) -> ActionType {
+        let dict = ActionType::as_dict();
+        for (key, value) in dict {
+            if value.contains(&s.to_string()) {
+                return key;
+            }
+        }
+
+        unreachable!("Invalid string '{}' for ActionType", &s);
+    }
+    pub fn to_string_vec(&self) -> Vec<String> {
+        ActionType::as_dict().get(self).unwrap().to_vec()
     }
 
     pub fn use_arguments_as_filter(&self) -> bool {
@@ -161,29 +195,28 @@ impl ActionRegisty {
     }
 
     pub fn get_action_from_command_parser(&self, cp: &ParsedCommand) -> Box<dyn TaskAction> {
-        let mut action: Box<dyn TaskAction> = match cp.command.as_str() {
-            "list" => Box::new(action_list::ListTaskAction {
+        let mut action: Box<dyn TaskAction> = match ActionType::from(cp.command.as_str()) {
+            ActionType::List => Box::new(action_list::ListTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            "add" => Box::new(action_add::AddTaskAction {
+            ActionType::Add => Box::new(action_add::AddTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            "export" => Box::new(action_export::ExportTaskAction {
+            ActionType::Export => Box::new(action_export::ExportTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            "undo" => Box::new(action_undo::UndoTaskAction {
+            ActionType::Undo => Box::new(action_undo::UndoTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            "done" => Box::new(action_done::DoneTaskAction {
+            ActionType::Done => Box::new(action_done::DoneTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            "delete" => Box::new(action_delete::DeleteTaskAction {
+            ActionType::Delete => Box::new(action_delete::DeleteTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            "modify" | "mod" => Box::new(action_modify::ModifyTaskAction {
+            ActionType::Modify => Box::new(action_modify::ModifyTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            _ => panic!("Invalid command parsed, could not get an action from it!"),
         };
         action.set_arguments(cp.arguments.clone());
         action.set_report(cp.report_kind.clone());

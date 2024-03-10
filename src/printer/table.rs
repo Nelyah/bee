@@ -86,6 +86,10 @@ impl<W: Write> Table<W> {
         })
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
     pub fn add_row(&mut self, row: Vec<String>) -> Result<&mut Self, &'static str> {
         if row.len() != self.columns.len() {
             return Err("row length does not match column length");

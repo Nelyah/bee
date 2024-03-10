@@ -1,5 +1,5 @@
 mod parser;
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 use chrono::prelude::DateTime;
 use serde_json::Value;
@@ -31,7 +31,7 @@ impl TaskStatus {
             "pending" => Ok(TaskStatus::Pending),
             "completed" => Ok(TaskStatus::Completed),
             "deleted" => Ok(TaskStatus::Deleted),
-            _ => Err("Invalid task status".to_string()),
+            _ => Err("Invalid task status name".to_string()),
         }
     }
 }
@@ -54,6 +54,7 @@ pub struct TaskProperties {
     description: Option<String>,
     tags_remove: Option<Vec<String>>,
     tags_add: Option<Vec<String>>,
+    status: Option<TaskStatus>,
 }
 
 impl TaskProperties {
@@ -102,6 +103,27 @@ impl Task {
         &self.uuid
     }
 
+    pub fn apply(&mut self, props: &TaskProperties) {
+        if let Some(desc) = &props.description {
+            self.description = desc.clone();
+        }
+
+        if let Some(status) = &props.status {
+            self.status = status.to_owned();
+        }
+
+        if let Some(tags) = &props.tags_remove {
+            let s: HashSet<String> = tags.iter().cloned().collect();
+            self.tags.retain(|item| !s.contains(item));
+        }
+
+        if let Some(tags) = &props.tags_add {
+            let existing_tags: HashSet<String> = self.tags.drain(..).collect();
+            let new_tags: HashSet<String> = tags.iter().cloned().collect();
+            self.tags = existing_tags.union(&new_tags).cloned().collect();
+        }
+    }
+
     pub fn get_field(&self, field_name: &str) -> Value {
         let v = serde_json::to_value(self).unwrap();
         if let Some(value) = v.get(field_name) {
@@ -118,6 +140,7 @@ impl Task {
 
     pub fn done(&mut self) {
         self.status = TaskStatus::Completed;
+        self.date_completed = Some(Local::now());
         self.id = None;
     }
 }
@@ -135,6 +158,10 @@ impl TaskData {
 
     pub fn to_vec(&self) -> Vec<&Task> {
         self.tasks.values().collect()
+    }
+
+    pub fn apply(&mut self, task_uuid: &Uuid, props: &TaskProperties) {
+        self.tasks.get_mut(task_uuid).unwrap().apply(props);
     }
 
     pub fn set_task(&mut self, task: Task) {
@@ -171,10 +198,15 @@ impl TaskData {
 
     pub fn add_task(
         &mut self,
-        description: String,
-        tags: Vec<String>,
+        props: &TaskProperties,
         status: TaskStatus,
-    ) -> &Task {
+    ) -> Result<&Task, String>  {
+        // This allows the user to override the default status of the task being
+        // created (defined by the caller of this function, usually Pending)
+        let status = match &props.status {
+            Some(st) => st,
+            None => &status,
+        }.clone();
         let new_id: Option<usize> = match status {
             TaskStatus::Pending => {
                 self.max_id += 1;
@@ -186,6 +218,16 @@ impl TaskData {
         let date_completed: Option<DateTime<chrono::Local>> = match status {
             TaskStatus::Pending => None,
             TaskStatus::Completed | TaskStatus::Deleted => Some(Local::now()),
+        };
+
+        let description = match &props.description {
+            Some(desc) => desc.to_owned(),
+            None => {return Err("A task must have a description".to_owned())},
+        };
+
+        let tags = match &props.tags_add {
+            Some(tags) => tags.to_owned(),
+            None => Vec::default(),
         };
 
         let t = Task {
@@ -200,7 +242,7 @@ impl TaskData {
         };
         let owned_uuid = t.get_uuid().to_owned();
         self.tasks.insert(owned_uuid, t);
-        self.tasks.get(&owned_uuid).unwrap()
+        Ok(self.tasks.get(&owned_uuid).unwrap())
     }
 }
 

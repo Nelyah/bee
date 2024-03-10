@@ -7,8 +7,8 @@
 - [X] Action setters/getters macro
 - [X] Done action
 - [X] Delete action
-- [ ] Modify action
-- [ ] Parser for defining an action
+- [X] Modify action
+- [X] Parser for defining an action
 - [X] Filters have subtypes
 - [X] Customise fields in the table
 - [X] Better colours in the table (alternating rows)

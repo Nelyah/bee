@@ -1,5 +1,5 @@
 use super::*;
-use crate::task::{TaskData, TaskStatus};
+use crate::task::{TaskData, TaskProperties, TaskStatus};
 use all_asserts::{assert_false, assert_true};
 
 #[test]
@@ -64,7 +64,11 @@ fn test_clone() {
 fn test_task_matches_status_filter() {
     let mut task_data = TaskData::default();
     let task = task_data
-        .add_task("foo".to_owned(), vec![], TaskStatus::Completed)
+        .add_task(
+            &TaskProperties::from(&vec!["foo".to_owned()]),
+            TaskStatus::Completed,
+        )
+        .unwrap()
         .clone();
 
     let completed_filter = StatusFilter {
@@ -89,7 +93,11 @@ fn test_task_matches_status_filter() {
     assert_false!(other_filter.validate_task(&task));
 
     let task = task_data
-        .add_task("foo".to_owned(), vec![], TaskStatus::Pending)
+        .add_task(
+            &TaskProperties::from(&vec!["foo".to_owned()]),
+            TaskStatus::Pending,
+        )
+        .unwrap()
         .clone();
 
     assert_false!(completed_filter.validate_task(&task));
@@ -98,7 +106,11 @@ fn test_task_matches_status_filter() {
     assert_false!(other_filter.validate_task(&task));
 
     let task = task_data
-        .add_task("foo".to_owned(), vec![], TaskStatus::Deleted)
+        .add_task(
+            &TaskProperties::from(&vec!["foo".to_owned()]),
+            TaskStatus::Deleted,
+        )
+        .unwrap()
         .clone();
 
     assert_false!(completed_filter.validate_task(&task));
@@ -111,7 +123,11 @@ fn test_task_matches_status_filter() {
 fn test_validate_task() {
     let mut task_data = TaskData::default();
     let mut t = task_data
-        .add_task("this is a task".to_owned(), vec![], TaskStatus::Pending)
+        .add_task(
+            &TaskProperties::from(&vec!["this is a task".to_owned()]),
+            TaskStatus::Pending,
+        )
+        .unwrap()
         .clone();
 
     let f_or = OrFilter {

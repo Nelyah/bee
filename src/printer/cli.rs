@@ -2,6 +2,7 @@ use super::table::Table;
 use crate::config::ReportConfig;
 use crate::task::Task;
 use chrono::{DateTime, Local};
+use log::debug;
 use serde_json::Value;
 use std::io;
 
@@ -55,6 +56,8 @@ impl Printer for SimpleTaskTextPrinter {
                                 DateTime::parse_from_rfc3339(date_str).ok().unwrap(),
                             );
                             row.push(format_relative_time(local_date))
+                        } else {
+                            row.push("None".to_owned());
                         }
                     }
 
@@ -64,10 +67,15 @@ impl Printer for SimpleTaskTextPrinter {
                     }
                 }
             }
+            debug!("Row: {:?}", row);
             tbl.add_row(row).unwrap();
         }
 
-        tbl.print();
+        if tbl.is_empty() {
+            println!("No task to show.");
+        } else {
+            tbl.print();
+        }
     }
 
     fn show_information_message(&self, message: &str) {

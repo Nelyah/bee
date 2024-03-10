@@ -27,16 +27,15 @@ impl TaskAction for DoneTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_complete {
-            p.show_information_message(&format!(
-                "Completed task {}.",
-                &self
-                    .base
-                    .tasks
-                    .get_task_map()
-                    .get(&uuid)
-                    .unwrap()
-                    .get_uuid()
-            ));
+            let t = &self.base.tasks.get_task_map().get(&uuid).unwrap();
+            match t.get_id() {
+                Some(id) => {
+                    p.show_information_message(&format!("Completed Task {}.", id));
+                }
+                None => {
+                    p.show_information_message(&format!("Completed Task {}.", t.get_uuid()));
+                }
+            }
             self.base.tasks.task_done(&uuid);
         }
     }

@@ -99,6 +99,7 @@ enum ActionType {
     Undo,
     Done,
     Delete,
+    Modify,
 }
 
 impl ActionType {
@@ -109,6 +110,7 @@ impl ActionType {
             Self::Undo => vec!["undo".to_string()],
             Self::Done => vec!["done".to_string()],
             Self::Delete => vec!["delete".to_string()],
+            Self::Modify => vec!["modify".to_string(), "mod".to_string()],
         }
     }
 
@@ -119,6 +121,7 @@ impl ActionType {
             Self::Undo => false,
             Self::Done => false,
             Self::Delete => false,
+            Self::Modify => false,
         }
     }
 }
@@ -132,6 +135,7 @@ impl Default for ActionRegisty {
                 ActionType::Undo,
                 ActionType::Done,
                 ActionType::Delete,
+                ActionType::Modify,
             ],
         }
     }
@@ -169,6 +173,9 @@ impl ActionRegisty {
             "delete" => Box::new(action_delete::DeleteTaskAction {
                 base: BaseTaskAction::default(),
             }),
+            "modify" | "mod" => Box::new(action_modify::ModifyTaskAction {
+                base: BaseTaskAction::default(),
+            }),
             _ => panic!("Invalid command parsed, could not get an action from it!"),
         };
         action.set_arguments(cp.arguments.clone());
@@ -181,4 +188,5 @@ mod action_add;
 mod action_delete;
 mod action_done;
 mod action_list;
+mod action_modify;
 mod action_undo;

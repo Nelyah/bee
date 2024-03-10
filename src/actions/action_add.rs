@@ -1,6 +1,6 @@
 use super::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
 
-use crate::task::{Task, TaskStatus};
+use crate::task::{Task, TaskProperties, TaskStatus};
 use crate::Printer;
 
 use crate::task::TaskData;
@@ -14,21 +14,21 @@ impl TaskAction for AddTaskAction {
     impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, printer: &dyn Printer) {
-        let input_description = self.base.arguments.join(" ");
+        let props = TaskProperties::from(&self.base.arguments);
 
         // Clone here to avoid having multiple mutable borrows
         let new_task: Task = self
             .base
             .tasks
-            .add_task(input_description.to_owned(), vec![], TaskStatus::Pending)
+            .add_task(&props, TaskStatus::Pending).unwrap()
             .clone();
         if let Some(new_id) = new_task.get_id() {
             printer.show_information_message(&format!("Created task {}.", new_id));
-        } else if input_description.len() > 15 {
+        } else if new_task.get_description().len() > 15 {
             printer
-                .show_information_message(&format!("Logged task '{:.15}...'", &input_description));
+                .show_information_message(&format!("Logged task '{:.15}...'", new_task.get_description()));
         } else {
-            printer.show_information_message(&format!("Logged task '{:.15}'.", &input_description));
+            printer.show_information_message(&format!("Logged task '{:.15}'.", new_task.get_description()));
         }
 
         self.base.undos.push(ActionUndo {

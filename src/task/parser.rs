@@ -1,6 +1,8 @@
+use core::panic;
+
 use crate::lexer::{Lexer, Token, TokenType};
 
-use super::TaskProperties;
+use super::{TaskProperties, TaskStatus};
 
 pub struct Parser {
     lexer: Lexer,
@@ -52,6 +54,12 @@ impl Parser {
         self.peek_token = self.lexer.next_token().unwrap();
     }
 
+    fn skip_whitespace(&mut self) {
+        while self.current_token.token_type == TokenType::Blank {
+            self.next_token();
+        }
+    }
+
     pub fn parse_task_properties(&mut self) -> TaskProperties {
         let mut props = TaskProperties::default();
         if self.current_token.token_type == TokenType::Eof {
@@ -69,13 +77,33 @@ impl Parser {
                 | TokenType::OperatorAnd
                 | TokenType::OperatorXor
                 | TokenType::LeftParenthesis
-                | TokenType::RightParenthesis
-                | TokenType::FilterStatus => {
+                | TokenType::RightParenthesis => {
                     if let Some(desc) = props.description {
                         props.description = Some(desc + &self.current_token.literal);
                     } else {
                         props.description = Some(self.current_token.literal.to_owned());
                     }
+                    self.next_token();
+                }
+                TokenType::FilterStatus => {
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    if self.current_token.token_type != TokenType::WordString {
+                        panic!(
+                            "Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
+                            self.peek_token.token_type,
+                            self.peek_token.literal
+                        );
+                    }
+
+                    let status = match TaskStatus::from_string(&self.current_token.literal) {
+                        Ok(st) => st,
+                        Err(e) => {
+                            panic!("{}", e);
+                        }
+                    };
+                    props.status = Some(status);
                     self.next_token();
                 }
                 TokenType::TagPlusPrefix => {
@@ -112,7 +140,8 @@ mod tests {
             TaskProperties {
                 description: Some("a new task description".to_owned()),
                 tags_remove: None,
-                tags_add: None
+                tags_add: None,
+                status: None
             }
         );
 
@@ -120,19 +149,21 @@ mod tests {
         assert_eq!(
             tp,
             TaskProperties {
-                description: Some("a new task descrip(tion status:completed".to_owned()),
+                description: Some("a new task descrip(tion".to_owned()),
                 tags_remove: None,
-                tags_add: None
+                tags_add: None,
+                status: Some(TaskStatus::Completed),
             }
         );
 
-        let tp = from_string("a new task descrip(\ttion status:  completed");
+        let tp = from_string("a new task descrip(\ttion status:  pending");
         assert_eq!(
             tp,
             TaskProperties {
-                description: Some("a new task descrip(\ttion status:  completed".to_owned()),
+                description: Some("a new task descrip(\ttion".to_owned()),
                 tags_remove: None,
-                tags_add: None
+                tags_add: None,
+                status: Some(TaskStatus::Pending),
             }
         );
 
@@ -143,6 +174,7 @@ mod tests {
                 description: Some("a new task description".to_owned()),
                 tags_remove: Some(vec!["main".to_owned()]),
                 tags_add: Some(vec!["foo".to_owned()]),
+                status: None,
             }
         );
 

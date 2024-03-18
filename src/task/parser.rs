@@ -76,6 +76,8 @@ impl Parser {
                 | TokenType::WordString
                 | TokenType::OperatorAnd
                 | TokenType::OperatorXor
+                | TokenType::FilterTokDateEndBefore
+                | TokenType::FilterTokDateEndAfter
                 | TokenType::LeftParenthesis
                 | TokenType::RightParenthesis => {
                     if let Some(summary) = props.summary {

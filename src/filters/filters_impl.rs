@@ -1,3 +1,5 @@
+use chrono::{DateTime, Local};
+use log::debug;
 use std::{any::Any, fmt};
 use uuid::Uuid;
 
@@ -10,6 +12,7 @@ pub enum FilterKind {
     Or,
     Root,
     Status,
+    DateEnd,
     String,
     Tag,
     TaskId,
@@ -24,6 +27,7 @@ impl fmt::Display for FilterKind {
             FilterKind::Or => write!(f, "Or"),
             FilterKind::Root => write!(f, "Root"),
             FilterKind::Status => write!(f, "Status"),
+            FilterKind::DateEnd => write!(f, "DateEnd"),
             FilterKind::String => write!(f, "String"),
             FilterKind::Tag => write!(f, "Tag"),
             FilterKind::TaskId => write!(f, "TaskId"),
@@ -59,6 +63,7 @@ impl_display_and_debug!(
     OrFilter,
     RootFilter,
     StatusFilter,
+    DateEndFilter,
     StringFilter,
     TagFilter,
     TaskIdFilter,
@@ -363,6 +368,59 @@ impl CloneFilter for StringFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(StringFilter {
             value: self.value.to_owned(),
+        })
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct DateEndFilter {
+    pub time: DateTime<Local>,
+    pub before: bool,
+}
+
+impl Filter for DateEndFilter {
+    fn validate_task(&self, task: &Task) -> bool {
+        if let Some(d) = task.get_date_completed() {
+            if self.before {
+                debug!("Checking task has end before");
+                return d < &self.time;
+            }
+            return d >= &self.time;
+        }
+        false
+    }
+
+    fn add_children(&mut self, _: Box<dyn Filter>) {
+        unreachable!("Trying to add a child to a DateEndFilter");
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+        Box::new(std::iter::once(self as &dyn Filter))
+    }
+}
+
+impl FilterKindGetter for DateEndFilter {
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Status
+    }
+}
+
+impl DateEndFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let before = if self.before { "before" } else { "after" };
+        write!(f, "{}: {}: {}", self.get_kind(), before, &self.time)
+    }
+}
+
+impl CloneFilter for DateEndFilter {
+    fn clone_box(&self) -> Box<dyn Filter> {
+        Box::new(DateEndFilter {
+            time: self.time.to_owned(),
+            before: self.before.to_owned(),
         })
     }
 }

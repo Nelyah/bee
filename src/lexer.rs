@@ -2,6 +2,8 @@ use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub enum TokenType {
+    FilterTokDateEndBefore,
+    FilterTokDateEndAfter,
     String,
     WordString,
     TagPlusPrefix,
@@ -35,6 +37,8 @@ impl std::fmt::Display for TokenType {
             TokenType::OperatorOr => "OperatorOr",
             TokenType::OperatorXor => "OperatorXor",
             TokenType::Blank => "Blank",
+            TokenType::FilterTokDateEndBefore => "FilterTokDateEndBefore",
+            TokenType::FilterTokDateEndAfter => "FilterTokDateEndAfter",
         };
         write!(f, "{}", token_str)
     }
@@ -124,21 +128,21 @@ impl Lexer {
         }
     }
 
-    // Helper method to check if the current character is part of a word
+    // Helper method to check if the current character is part of a word (i.e. not a segmentation
+    // character and not a numeric character)
     fn is_word_character(&self) -> bool {
         matches!(self.ch, Some(ch) if !is_segment_character(&ch) && ch.is_ascii_alphabetic())
     }
 
-    // Method to match a specific keyword
+    // Method to match a specific keyword without consuming the input
     fn match_keyword(&self, word: &str) -> bool {
         self.input[self.position..].starts_with(word)
     }
 
-    // Method to read the next word
     fn read_next_word(&mut self) -> String {
         let starting_pos = self.position;
         while let Some(ch) = self.ch {
-            if is_segment_character(&ch) {
+            if is_segment_character(&ch) || ch == '-' || ch == '+' {
                 break;
             }
             self.read_char();
@@ -159,9 +163,7 @@ impl Lexer {
         self.input[start_pos..self.position].to_string()
     }
 
-    // Method to tokenize the next part of the input
     pub fn next_token(&mut self) -> Result<Token, String> {
-        // Skip whitespace
         let mut whitespaces = String::default();
         while matches!(self.ch, Some(ch) if ch.is_whitespace()) {
             whitespaces += &self.ch.unwrap().to_string();
@@ -174,7 +176,6 @@ impl Lexer {
             });
         }
 
-        // Define the token based on the current character
         let token = match self.ch {
             None => Token {
                 token_type: TokenType::Eof,
@@ -255,6 +256,14 @@ impl Lexer {
                     literal: self.read_word("status:"),
                     token_type: TokenType::FilterStatus,
                 },
+                _ if self.match_keyword("end.after:") => Token {
+                    literal: self.read_word("end.after:"),
+                    token_type: TokenType::FilterTokDateEndAfter,
+                },
+                _ if self.match_keyword("end.before:") => Token {
+                    literal: self.read_word("end.before:"),
+                    token_type: TokenType::FilterTokDateEndBefore,
+                },
                 _ if ch == ')' => {
                     self.read_char();
                     Token {
@@ -280,9 +289,6 @@ impl Lexer {
             },
         };
 
-        // Read the next character and return the token
         Ok(token)
     }
-
-    // Other helper methods...
 }

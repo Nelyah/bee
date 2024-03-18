@@ -1,3 +1,9 @@
+[report.all]
+column_names = ["UUID", "Date Created", "Date Completed", "Summary", "Tags"]
+columns = ["uuid", "date_created", "date_completed", "summary", "tags"]
+default = false
+filters = []
+
 [report.demo]
 column_names = ["ID", "Summary", "Tags", "date"]
 columns = ["id", "summary", "tags", "date_created"]
@@ -9,9 +15,3 @@ column_names = ["ID", "Summary", "Tags", "date"]
 columns = ["id", "summary", "tags", "date_created"]
 default = true
 filters = ['status:pending']
-
-[report.all]
-column_names = ["UUID", "Date Created", "Date Completed", "Summary", "Tags"]
-columns = ["uuid", "date_created", "date_completed", "summary", "tags"]
-default = false
-filters = []

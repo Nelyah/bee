@@ -22,7 +22,6 @@ fn test_lexer() {
     assert_eq!(tok.literal, "y");
     assert_eq!(tok.token_type, TokenType::WordString);
 
-
     let mut lexer = Lexer::new("y1y".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "y1y");
@@ -53,6 +52,16 @@ fn test_lexer() {
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "-");
     assert_eq!(tok.token_type, TokenType::TagMinusPrefix);
+
+    let mut lexer = Lexer::new("end.after:".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "end.after:");
+    assert_eq!(tok.token_type, TokenType::FilterTokDateEndAfter);
+
+    let mut lexer = Lexer::new("end.before:".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "end.before:");
+    assert_eq!(tok.token_type, TokenType::FilterTokDateEndBefore);
 
     let mut lexer = Lexer::new("status:pending".to_string());
     let tok = lexer.next_token().unwrap();

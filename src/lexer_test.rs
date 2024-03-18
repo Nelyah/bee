@@ -14,6 +14,20 @@ fn test_lexer() {
     assert_eq!(tok.literal, "");
     assert_eq!(tok.token_type, TokenType::Eof);
 
+    let mut lexer = Lexer::new("1y".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "1");
+    assert_eq!(tok.token_type, TokenType::Int);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "y");
+    assert_eq!(tok.token_type, TokenType::WordString);
+
+
+    let mut lexer = Lexer::new("y1y".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "y1y");
+    assert_eq!(tok.token_type, TokenType::WordString);
+
     let mut lexer = Lexer::new("00".to_string());
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "00");

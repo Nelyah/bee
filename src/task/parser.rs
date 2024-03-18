@@ -161,7 +161,7 @@ mod tests {
         assert_eq!(
             tp,
             TaskProperties {
-                summary: Some("a new task summ(ar".to_owned()),
+                summary: Some("a new task summ(ary".to_owned()),
                 tags_remove: None,
                 tags_add: None,
                 status: Some(TaskStatus::Completed),

@@ -64,7 +64,7 @@ impl Printer for SimpleTaskTextPrinter {
                         let mut out_str = t.get_summary().to_owned();
                         t.get_annotations().iter().for_each(|ann| {
                             out_str += &format!(
-                                "\n{}  {}",
+                                "\n  {}  {}",
                                 ann.get_time().format("%Y-%m-%d"),
                                 ann.get_value()
                             )

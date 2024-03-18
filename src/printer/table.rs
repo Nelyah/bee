@@ -202,15 +202,20 @@ fn split_most_whitespaces(input: &str) -> Vec<String> {
     let mut output = Vec::default();
 
     let mut buffer = String::default();
+    let mut is_after_newline = false;
     for c in input.chars() {
-        if c.is_whitespace() && c != '\n' && !buffer.is_empty() {
+        if c.is_whitespace() && c != '\n' && !is_after_newline && !buffer.is_empty() {
             output.push(buffer);
             buffer = String::default();
-        } else {
-            buffer += &c.to_string();
+            continue;
         }
+
+        is_after_newline = c.is_whitespace();
+        buffer += &c.to_string();
     }
-    output.push(buffer);
+    if !buffer.is_empty() {
+        output.push(buffer);
+    }
 
     output
 }

@@ -1,6 +1,12 @@
-[report.List]
-column_names = ["ID", "UUID", "Summary", "Tags", "date"]
-columns = ["id", "uuid", "summary", "tags", "date_created"]
+[report.demo]
+column_names = ["ID", "Summary", "Tags", "date"]
+columns = ["id", "summary", "tags", "date_created"]
+default = true
+filters = ['status:pending', '+family']
+
+[report.family]
+column_names = ["ID", "Summary", "Tags", "date"]
+columns = ["id", "summary", "tags", "date_created"]
 default = true
 filters = ['status:pending']
 

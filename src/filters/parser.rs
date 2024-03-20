@@ -11,7 +11,7 @@ use crate::filters::{
 use crate::lexer::{Lexer, Token, TokenType};
 use crate::task;
 
-pub struct ParserN {
+pub struct Parser {
     lexer: Lexer,
     current_token: Token,
     peek_token: Token,
@@ -82,9 +82,9 @@ fn get_day_duration_from_string(number: i64, value: &str) -> TimeDelta {
     Duration::try_days(number * value.parse::<i64>().unwrap().to_owned()).unwrap()
 }
 
-impl ParserN {
-    pub fn new(lexer: Lexer) -> ParserN {
-        let mut parser = ParserN {
+impl Parser {
+    pub fn new(lexer: Lexer) -> Parser {
+        let mut parser = Parser {
             lexer,
             current_token: Token::default(),
             peek_token: Token::default(),

@@ -9,7 +9,7 @@ fn init() {
 #[test]
 fn test_new_parser() {
     let lexer = Lexer::new("some input string".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     assert_eq!(
         p.current_token.literal, "some",
@@ -88,7 +88,7 @@ fn test_add_string_to_current_filter() {
 #[test]
 fn test_parse_filter() {
     let lexer = Lexer::new("some status: completed or status:pending".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
     let f = p.parse_filter();
 
     let expected_filter: Box<dyn Filter> = Box::new(OrFilter {
@@ -352,13 +352,13 @@ fn test_read_date_expr() {
         .unwrap();
 
     let lexer = Lexer::new("today".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     assert_eq!(res, today_start);
 
     let lexer = Lexer::new("tomorrow".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     assert_eq!(
@@ -367,7 +367,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("yesterday".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     assert_eq!(
@@ -376,7 +376,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("eod".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     assert_eq!(
@@ -385,14 +385,14 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("now".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
     assert_eq!(res.to_rfc2822(), now.to_rfc2822());
 
     let lexer = Lexer::new("today - 1h".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -402,7 +402,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("today - 1m".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -412,7 +412,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("today - 1s".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -422,7 +422,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("today-11d".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -432,7 +432,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("today - 1d".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -442,14 +442,14 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("today - 1d + 1d".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
     assert_eq!(res.to_rfc2822(), today_start.to_rfc2822());
 
     let lexer = Lexer::new("today - 2w".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -459,7 +459,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("today - 3 months".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -469,7 +469,7 @@ fn test_read_date_expr() {
     );
 
     let lexer = Lexer::new("in 3 days ago".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -481,7 +481,7 @@ fn test_read_date_expr() {
     assert_eq!(p.current_token.literal, "ago".to_owned());
 
     let lexer = Lexer::new("today - 3 year".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -492,7 +492,7 @@ fn test_read_date_expr() {
 
     // Ensure we stop after seeing 'ago'
     let lexer = Lexer::new("3 years ago today".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds
@@ -505,7 +505,7 @@ fn test_read_date_expr() {
     assert_eq!(p.current_token.literal, "today".to_owned());
 
     let lexer = Lexer::new("today -foo".to_string());
-    let mut p = ParserN::new(lexer);
+    let mut p = Parser::new(lexer);
 
     let res = p.read_date_expr();
     // This format doesn't print smaller units than seconds

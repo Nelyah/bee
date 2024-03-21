@@ -242,13 +242,14 @@ impl Parser {
                     time = Some(try_time.to_owned());
                     backtrace_tokens = 0;
                     self.next_token();
-                    self.skip_whitespace();
+                    backtrace_tokens += self.skip_whitespace();
 
                     if !in_keyword
                         && self.current_token.token_type == TokenType::WordString
                         && self.current_token.literal == "ago"
                     {
                         self.next_token();
+                        backtrace_tokens = 0;
                         break;
                     }
                 }
@@ -318,7 +319,8 @@ impl Parser {
                         "in" => {
                             expect_duration = true;
                             self.next_token();
-                            self.skip_whitespace();
+                            backtrace_tokens += 1;
+                            backtrace_tokens += self.skip_whitespace();
                             in_keyword = true;
                             continue;
                         }

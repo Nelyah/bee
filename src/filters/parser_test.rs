@@ -340,6 +340,38 @@ fn test_build_filter() {
 }
 
 #[test]
+fn test_build_filter_dates() {
+    let now = Local::now();
+    let today_start = Local
+        .from_local_datetime(
+            &now.date_naive()
+                .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+        )
+        .single()
+        .unwrap();
+
+    let actual: Box<dyn Filter> = filters::from(
+        &["end.before:today - 9days -main"]
+            .iter()
+            .map(|&s| s.to_string())
+            .collect::<Vec<String>>(),
+    );
+    let expected: Box<dyn Filter> = Box::new(AndFilter {
+        children: vec![
+            Box::new(DateEndFilter {
+                time: (today_start - Duration::try_days(9).unwrap()),
+                before: true,
+            }),
+            Box::new(TagFilter {
+                tag_name: "main".to_string(),
+                include: false,
+            }),
+        ],
+    });
+    assert_eq!(&expected, &actual);
+}
+
+#[test]
 fn test_read_date_expr() {
     init();
     let now = Local::now();
@@ -477,6 +509,8 @@ fn test_read_date_expr() {
         res.to_rfc2822(),
         (now - Duration::try_days(3).unwrap()).to_rfc2822()
     );
+    assert_eq!(p.current_token.token_type, TokenType::Blank);
+    p.next_token();
     assert_eq!(p.current_token.token_type, TokenType::WordString);
     assert_eq!(p.current_token.literal, "ago".to_owned());
 

@@ -404,7 +404,7 @@ impl Filter for DateCreatedFilter {
 
 impl FilterKindGetter for DateCreatedFilter {
     fn get_kind(&self) -> FilterKind {
-        FilterKind::Status
+        FilterKind::DateCreated
     }
 }
 
@@ -457,7 +457,7 @@ impl Filter for DateEndFilter {
 
 impl FilterKindGetter for DateEndFilter {
     fn get_kind(&self) -> FilterKind {
-        FilterKind::Status
+        FilterKind::DateEnd
     }
 }
 

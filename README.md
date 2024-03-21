@@ -12,13 +12,15 @@
 - [X] Filters have subtypes
 - [X] Customise fields in the table
 - [X] Better colours in the table (alternating rows)
-- [ ] Parse date
+- [X] Parse date
 - [ ] Customise colours
     - [ ] conditionally
 - [X] Implement Undo for actions
 - [X] Implement the 'undo' action
 - [X] Annotations
-- [ ] date filters
+- [X] date filters
+    - [X] Date completed
+    - [X] Date created
 - [ ] Projects and sub projects
 - [ ] Import from Taskwarrior
 - [ ] autocompletion

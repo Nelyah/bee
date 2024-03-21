@@ -76,6 +76,8 @@ impl Parser {
                 | TokenType::WordString
                 | TokenType::OperatorAnd
                 | TokenType::OperatorXor
+                | TokenType::FilterTokDateCreatedBefore
+                | TokenType::FilterTokDateCreatedAfter
                 | TokenType::FilterTokDateEndBefore
                 | TokenType::FilterTokDateEndAfter
                 | TokenType::LeftParenthesis

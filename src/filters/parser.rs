@@ -5,8 +5,8 @@ use uuid::Uuid;
 use super::filters_impl::FilterKind;
 
 use crate::filters::{
-    AndFilter, DateEndFilter, Filter, OrFilter, RootFilter, StatusFilter, StringFilter, TagFilter,
-    TaskIdFilter, UuidFilter, XorFilter,
+    AndFilter, DateCreatedFilter, DateEndFilter, Filter, OrFilter, RootFilter, StatusFilter,
+    StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
 };
 use crate::lexer::{Lexer, Token, TokenType};
 use crate::task;
@@ -97,6 +97,7 @@ impl Parser {
         parser
     }
 
+    /// advance one token
     fn next_token(&mut self) {
         // We have buffered tokens, just go forward
         if self.buffer_tokens.len() > 2 && self.buffer_index < self.buffer_tokens.len() - 2 {
@@ -109,7 +110,7 @@ impl Parser {
             self.buffer_index += 1;
             return;
         }
-        //
+
         // We're up to date with the lexer
         self.current_token = self.peek_token.to_owned();
         self.peek_token = self.lexer.next_token().unwrap();
@@ -117,6 +118,7 @@ impl Parser {
         self.buffer_index += 1;
     }
 
+    /// go back one token
     fn back_token(&mut self) {
         if self.buffer_index == 0 {
             panic!("Error: Trying to call 'back_token' too many times!");
@@ -567,9 +569,14 @@ impl Parser {
                     self.next_token();
                     self.next_token();
                 }
-                TokenType::FilterTokDateEndBefore | TokenType::FilterTokDateEndAfter => {
+                TokenType::FilterTokDateEndBefore
+                | TokenType::FilterTokDateEndAfter
+                | TokenType::FilterTokDateCreatedBefore
+                | TokenType::FilterTokDateCreatedAfter => {
                     *has_only_ids = false;
-                    let before = self.current_token.token_type == TokenType::FilterTokDateEndBefore;
+                    let before = self.current_token.token_type == TokenType::FilterTokDateEndBefore
+                        || self.current_token.token_type == TokenType::FilterTokDateCreatedBefore;
+                    let tok_type = self.current_token.token_type.clone();
 
                     self.next_token();
                     self.skip_whitespace();
@@ -585,11 +592,15 @@ impl Parser {
 
                     let time = self.read_date_expr();
 
-                    filter = add_to_current_filter(
-                        filter,
-                        Box::new(DateEndFilter { time, before }),
-                        &ScopeOperator::And,
-                    );
+                    let new_filter: Box<dyn Filter> = if tok_type
+                        == TokenType::FilterTokDateEndBefore
+                        || tok_type == TokenType::FilterTokDateEndAfter
+                    {
+                        Box::new(DateEndFilter { time, before })
+                    } else {
+                        Box::new(DateCreatedFilter { time, before })
+                    };
+                    filter = add_to_current_filter(filter, new_filter, &ScopeOperator::And);
 
                     self.next_token();
                 }

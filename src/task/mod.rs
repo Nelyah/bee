@@ -128,6 +128,10 @@ impl Task {
         &self.status
     }
 
+    pub fn get_date_created(&self) -> &DateTime<Local> {
+        &self.date_created
+    }
+
     pub fn get_date_completed(&self) -> &Option<DateTime<Local>> {
         &self.date_completed
     }

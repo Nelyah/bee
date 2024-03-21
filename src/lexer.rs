@@ -2,6 +2,8 @@ use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub enum TokenType {
+    FilterTokDateCreatedBefore,
+    FilterTokDateCreatedAfter,
     FilterTokDateEndBefore,
     FilterTokDateEndAfter,
     String,
@@ -39,6 +41,8 @@ impl std::fmt::Display for TokenType {
             TokenType::Blank => "Blank",
             TokenType::FilterTokDateEndBefore => "FilterTokDateEndBefore",
             TokenType::FilterTokDateEndAfter => "FilterTokDateEndAfter",
+            TokenType::FilterTokDateCreatedBefore => "FilterTokDateCreatedBefore",
+            TokenType::FilterTokDateCreatedAfter => "FilterTokDateCreatedAfter",
         };
         write!(f, "{}", token_str)
     }
@@ -255,6 +259,14 @@ impl Lexer {
                 _ if self.match_keyword("status:") => Token {
                     literal: self.read_word("status:"),
                     token_type: TokenType::FilterStatus,
+                },
+                _ if self.match_keyword("created.after:") => Token {
+                    literal: self.read_word("created.after:"),
+                    token_type: TokenType::FilterTokDateCreatedAfter,
+                },
+                _ if self.match_keyword("created.before:") => Token {
+                    literal: self.read_word("created.before:"),
+                    token_type: TokenType::FilterTokDateCreatedBefore,
                 },
                 _ if self.match_keyword("end.after:") => Token {
                     literal: self.read_word("end.after:"),

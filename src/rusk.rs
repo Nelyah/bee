@@ -21,7 +21,7 @@ fn main() {
     match config::load_config() {
         Ok(_) => {}
         Err(msg) => {
-            SimpleTaskTextPrinter.error(&format!("Error: {}", msg));
+            SimpleTaskTextPrinter.error(&msg);
             exit(1);
         }
     }
@@ -35,7 +35,7 @@ fn main() {
     let command = match arg_parser.parse_command_line_arguments(std::env::args().collect()) {
         Ok(res) => res,
         Err(msg) => {
-            SimpleTaskTextPrinter.error(&format!("Error: {}", msg));
+            SimpleTaskTextPrinter.error(&msg);
             exit(1);
         }
     };
@@ -49,7 +49,7 @@ fn main() {
     match action.do_action(&SimpleTaskTextPrinter) {
         Ok(_) => {}
         Err(msg) => {
-            SimpleTaskTextPrinter.error(&format!("Error: {}", msg));
+            SimpleTaskTextPrinter.error(&msg);
             exit(1);
         }
     }

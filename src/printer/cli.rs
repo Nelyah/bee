@@ -2,6 +2,7 @@ use super::table::Table;
 use crate::config::ReportConfig;
 use crate::task::Task;
 use chrono::{DateTime, Local};
+use colored::{ColoredString, Colorize};
 use log::debug;
 use serde_json::Value;
 use std::io;
@@ -95,7 +96,14 @@ impl Printer for SimpleTaskTextPrinter {
     }
 
     fn error(&self, message: &str) {
-        println!("{}", message);
+        println!(
+            "{}",
+            ColoredString::from("Error: ")
+                .bold()
+                .bright_red()
+                .to_string()
+                + message
+        );
     }
 }
 

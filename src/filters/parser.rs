@@ -180,6 +180,7 @@ impl Parser {
 
         loop {
             match self.current_token.token_type {
+                // duration
                 TokenType::Int => {
                     debug!("Read Int token '{}'", self.current_token.literal);
                     debug!("Read WordString token '{}'", self.peek_token.literal);
@@ -237,14 +238,14 @@ impl Parser {
                         }
                     }
 
-                    first = false;
                     expect_duration = false;
                     time = Some(try_time.to_owned());
                     backtrace_tokens = 0;
                     self.next_token();
                     backtrace_tokens += self.skip_whitespace();
 
-                    if !in_keyword
+                    if first
+                        && !in_keyword
                         && self.current_token.token_type == TokenType::WordString
                         && self.current_token.literal == "ago"
                     {
@@ -252,24 +253,9 @@ impl Parser {
                         backtrace_tokens = 0;
                         break;
                     }
+                    first = false;
                 }
-                TokenType::TagMinusPrefix => {
-                    if first {
-                        panic!("Error: invalid date expression");
-                    }
-                    if expect_duration {
-                        if time.is_some() {
-                            break;
-                        }
-                        panic!("Error: invalid date expression");
-                    }
-                    debug!("Read Minus token '{}'", self.current_token.literal);
-                    cur_scope = Scope::Minus;
-                    expect_duration = true;
-                    backtrace_tokens += 1;
-                    self.next_token();
-                }
-                TokenType::TagPlusPrefix => {
+                TokenType::TagPlusPrefix | TokenType::TagMinusPrefix => {
                     if first {
                         panic!("Error: invalid date expression");
                     }
@@ -280,11 +266,16 @@ impl Parser {
                         panic!("Error: invalid date expression");
                     }
                     debug!("Read plus token '{}'", self.current_token.literal);
-                    cur_scope = Scope::Plus;
+                    cur_scope = if self.current_token.token_type == TokenType::TagPlusPrefix {
+                        Scope::Plus
+                    } else {
+                        Scope::Minus
+                    };
                     expect_duration = true;
                     backtrace_tokens += 1;
                     self.next_token();
                 }
+                // This is a specific time
                 TokenType::WordString => {
                     if !first {
                         break;
@@ -319,8 +310,7 @@ impl Parser {
                         "in" => {
                             expect_duration = true;
                             self.next_token();
-                            backtrace_tokens += 1;
-                            backtrace_tokens += self.skip_whitespace();
+                            backtrace_tokens +=  1 + self.skip_whitespace();
                             in_keyword = true;
                             continue;
                         }

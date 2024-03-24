@@ -1,5 +1,3 @@
-use core::panic;
-
 use crate::lexer::{Lexer, Token, TokenType};
 
 use super::{TaskProperties, TaskStatus};
@@ -60,10 +58,10 @@ impl Parser {
         }
     }
 
-    pub fn parse_task_properties(&mut self) -> TaskProperties {
+    pub fn parse_task_properties(&mut self) -> Result<TaskProperties, String> {
         let mut props = TaskProperties::default();
         if self.current_token.token_type == TokenType::Eof {
-            return props;
+            return Ok(props);
         }
 
         while self.current_token.token_type != TokenType::Eof {
@@ -94,17 +92,17 @@ impl Parser {
                     self.skip_whitespace();
 
                     if self.current_token.token_type != TokenType::WordString {
-                        panic!(
+                        return Err(format!(
                             "Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
                             self.peek_token.token_type,
                             self.peek_token.literal
-                        );
+                        ));
                     }
 
                     let status = match TaskStatus::from_string(&self.current_token.literal) {
                         Ok(st) => st,
                         Err(e) => {
-                            panic!("{}", e);
+                            return Err(e);
                         }
                     };
                     props.status = Some(status);
@@ -122,7 +120,7 @@ impl Parser {
         if let Some(summary) = &mut props.summary {
             *summary = summary.trim().to_string();
         }
-        props
+        Ok(props)
     }
 }
 
@@ -133,7 +131,7 @@ mod tests {
     fn from_string(value: &str) -> TaskProperties {
         let lexer = Lexer::new(value.to_owned());
         let mut parser = Parser::new(lexer);
-        parser.parse_task_properties()
+        parser.parse_task_properties().unwrap()
     }
 
     #[test]

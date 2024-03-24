@@ -65,7 +65,7 @@ fn test_task_matches_status_filter() {
     let mut task_data = TaskData::default();
     let task = task_data
         .add_task(
-            &TaskProperties::from(&["foo".to_owned()]),
+            &TaskProperties::from(&["foo".to_owned()]).unwrap(),
             TaskStatus::Completed,
         )
         .unwrap()
@@ -94,7 +94,7 @@ fn test_task_matches_status_filter() {
 
     let task = task_data
         .add_task(
-            &TaskProperties::from(&["foo".to_owned()]),
+            &TaskProperties::from(&["foo".to_owned()]).unwrap(),
             TaskStatus::Pending,
         )
         .unwrap()
@@ -107,7 +107,7 @@ fn test_task_matches_status_filter() {
 
     let task = task_data
         .add_task(
-            &TaskProperties::from(&["foo".to_owned()]),
+            &TaskProperties::from(&["foo".to_owned()]).unwrap(),
             TaskStatus::Deleted,
         )
         .unwrap()
@@ -124,7 +124,7 @@ fn test_validate_task() {
     let mut task_data = TaskData::default();
     let mut t = task_data
         .add_task(
-            &TaskProperties::from(&["this is a task".to_owned()]),
+            &TaskProperties::from(&["this is a task".to_owned()]).unwrap(),
             TaskStatus::Pending,
         )
         .unwrap()

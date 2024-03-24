@@ -14,10 +14,10 @@ pub struct DoneTaskAction {
 impl TaskAction for DoneTaskAction {
     impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
-    fn do_action(&mut self, p: &dyn Printer) {
+    fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
         if self.base.tasks.get_task_map().is_empty() {
             p.show_information_message(" No task to complete.");
-            return;
+            return Ok(());
         }
         let uuids_to_complete: Vec<Uuid> = self
             .base
@@ -38,6 +38,7 @@ impl TaskAction for DoneTaskAction {
             }
             self.base.tasks.task_done(&uuid);
         }
+        Ok(())
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {

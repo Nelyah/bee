@@ -9,6 +9,7 @@ use std::io;
 pub trait Printer {
     fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig);
     fn show_information_message(&self, message: &str);
+    fn error(&self, message: &str);
 }
 
 fn format_relative_time(t: DateTime<Local>) -> String {
@@ -90,6 +91,10 @@ impl Printer for SimpleTaskTextPrinter {
     }
 
     fn show_information_message(&self, message: &str) {
+        println!("{}", message);
+    }
+
+    fn error(&self, message: &str) {
         println!("{}", message);
     }
 }

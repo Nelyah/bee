@@ -1,7 +1,7 @@
 use crate::filters;
 
+use crate::config::get_config;
 use crate::config::ReportConfig;
-use crate::config::CONFIG;
 use crate::filters::Filter;
 
 use std::collections::HashMap;
@@ -27,7 +27,7 @@ pub struct ParsedCommand {
 }
 
 impl Parser {
-    pub fn parse_command_line_arguments(&self, args: Vec<String>) -> ParsedCommand {
+    pub fn parse_command_line_arguments(&self, args: Vec<String>) -> Result<ParsedCommand, String> {
         // Build a map from command name to ParsedCommand
         let mut command_to_parser = HashMap::new();
         for parsed_command in &self.command_parsers {
@@ -43,7 +43,7 @@ impl Parser {
         for (idx, arg) in arguments.iter().enumerate() {
             if let Some(parsed_command) = command_to_parser.get_mut(arg) {
                 for remaining_arg in &arguments[idx + 1..] {
-                    if let Some(report) = CONFIG.get_report(remaining_arg) {
+                    if let Some(report) = get_config().get_report(remaining_arg) {
                         report_kind = report.clone();
                         continue;
                     }
@@ -54,14 +54,16 @@ impl Parser {
                 } else {
                     parsed_command.arguments = command_args;
                 }
-                parsed_command.filters =
-                    filters::and(filters::from(&filters), filters::from(&report_kind.filters));
+                parsed_command.filters = filters::and(
+                    filters::from(&filters)?,
+                    filters::from(&report_kind.filters)?,
+                );
                 parsed_command.report_kind = report_kind;
-                return parsed_command.clone();
+                return Ok(parsed_command.clone());
             }
 
             // Match report name or add to filters
-            if let Some(report) = CONFIG.get_report(arg) {
+            if let Some(report) = get_config().get_report(arg) {
                 report_kind = report.clone();
                 continue;
             }
@@ -69,11 +71,14 @@ impl Parser {
             filters.push(arg.clone());
         }
 
-        ParsedCommand {
-            filters: filters::and(filters::from(&filters), filters::from(&report_kind.filters)),
+        Ok(ParsedCommand {
+            filters: filters::and(
+                filters::from(&filters)?,
+                filters::from(&report_kind.filters)?,
+            ),
             command: "list".to_string(),
             report_kind,
             ..Default::default()
-        }
+        })
     }
 }

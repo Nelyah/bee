@@ -33,12 +33,12 @@ pub fn and(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
     })
 }
 
-pub fn from(values: &[String]) -> Box<dyn Filter> {
+pub fn from(values: &[String]) -> Result<Box<dyn Filter>, String> {
     let lexer = Lexer::new(values.join(" "));
     let mut parser = Parser::new(lexer);
-    let f = parser.parse_filter();
+    let f = parser.parse_filter()?;
     debug!("Parsed filter:\n{}", f);
-    f
+    Ok(f)
 }
 
 pub fn new_empty() -> Box<dyn Filter> {

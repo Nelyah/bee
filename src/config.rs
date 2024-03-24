@@ -48,25 +48,31 @@ impl Default for ReportConfig {
     }
 }
 
+pub fn get_config() -> &'static Config {
+    CONFIG.as_ref().unwrap()
+}
+
 // The code is used as soon as it is first acces, thanks to the Lazy library
 #[allow(dead_code)]
-pub static CONFIG: Lazy<Config> = Lazy::new(load_config);
+static CONFIG: Lazy<Result<Config, String>> = Lazy::new(|| match load_config() {
+    Ok(config) => Ok(config),
+    Err(e) => Err(e),
+});
 
 fn default_report_map() -> HashMap<String, ReportConfig> {
     HashMap::default()
 }
 
-fn load_config() -> Config {
+pub fn load_config() -> Result<Config, String> {
     let config_path: PathBuf = match find_config_file() {
         Some(file) => file,
         None => {
-            panic!(
-                "Could not find a config file. Searched in:\n\
+            return Err("Could not find a config file. Searched in:\n\
                     - $PWD/rusk.toml\n\
                     - $XDG_CONFIG_HOME/rusk/config.toml\n\
                     - $HOME/.config/rusk/config.toml\n\
                     - $HOME/.rusk.toml\n"
-            );
+                .to_string());
         }
     };
     let content = match fs::read_to_string(config_path) {
@@ -79,12 +85,11 @@ fn load_config() -> Config {
 
     load_config_from_string(&content)
 }
-fn load_config_from_string(content: &str) -> Config {
+fn load_config_from_string(content: &str) -> Result<Config, String> {
     let mut config: Config = match toml::from_str(content) {
         Ok(value) => value,
         Err(e) => {
-            eprintln!("{e}");
-            panic!("Error: Could not parse the configuration file.");
+            return Err(format!("could not parse the configuration file: {}", e));
         }
     };
 
@@ -93,7 +98,7 @@ fn load_config_from_string(content: &str) -> Config {
             config.default_report = name.clone();
         }
     }
-    config
+    Ok(config)
 }
 
 fn find_config_file() -> Option<PathBuf> {

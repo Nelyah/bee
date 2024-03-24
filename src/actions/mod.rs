@@ -57,7 +57,7 @@ impl BaseTaskAction {
 
 pub trait TaskAction {
     fn pre_action_hook(&self);
-    fn do_action(&mut self, printer: &dyn Printer);
+    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String>;
     fn post_action_hook(&self);
     fn get_command_description(&self) -> String;
     fn set_undos(&mut self, undos: Vec<ActionUndo>);

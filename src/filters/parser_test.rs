@@ -89,7 +89,7 @@ fn test_add_string_to_current_filter() {
 fn test_parse_filter() {
     let lexer = Lexer::new("some status: completed or status:pending".to_string());
     let mut p = Parser::new(lexer);
-    let f = p.parse_filter();
+    let f = p.parse_filter().unwrap();
 
     let expected_filter: Box<dyn Filter> = Box::new(OrFilter {
         children: vec![
@@ -115,7 +115,7 @@ fn test_parse_filter() {
 fn test_build_filter() {
     // Empty input
     let expected = filters::new_empty();
-    let actual = filters::from(&[]);
+    let actual = filters::from(&[]).unwrap();
     assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator AND and empty operator
@@ -134,14 +134,16 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_eq!(&actual, &expected);
     let actual = filters::from(
         &["one", "two"]
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_eq!(&expected, &actual);
 
     // Operator OR
@@ -160,7 +162,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator XOR
@@ -179,7 +182,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator OR and AND
@@ -204,7 +208,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_eq!(&expected, &actual, "they should be equal");
 
     // Operator OR and AND with parenthesis
@@ -214,7 +219,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_ne!(&expected, &actual, "they should not be equal");
 
     expected = Box::new(AndFilter {
@@ -244,7 +250,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_ne!(&expected, &actual, "they should not be equal");
 
     expected = Box::new(XorFilter {
@@ -272,7 +279,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     assert_ne!(&expected, &actual, "they should not be equal");
 
     expected = Box::new(XorFilter {
@@ -307,7 +315,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     expected = Box::new(OrFilter {
         children: vec![
             Box::new(TaskIdFilter { id: 1 }),
@@ -322,7 +331,8 @@ fn test_build_filter() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     expected = Box::new(AndFilter {
         children: vec![
             Box::new(AndFilter {
@@ -355,7 +365,8 @@ fn test_build_filter_dates() {
             .iter()
             .map(|&s| s.to_string())
             .collect::<Vec<String>>(),
-    );
+    )
+    .unwrap();
     let expected: Box<dyn Filter> = Box::new(AndFilter {
         children: vec![
             Box::new(DateEndFilter {
@@ -386,13 +397,13 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     assert_eq!(res, today_start);
 
     let lexer = Lexer::new("tomorrow".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     assert_eq!(
         res.to_rfc2822(),
         (today_start + Duration::try_days(1).unwrap()).to_rfc2822()
@@ -401,7 +412,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("yesterday".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     assert_eq!(
         res.to_rfc2822(),
         (today_start - Duration::try_days(1).unwrap()).to_rfc2822()
@@ -410,7 +421,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("eod".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     assert_eq!(
         res.to_rfc2822(),
         (today_start + Duration::try_hours(18).unwrap()).to_rfc2822()
@@ -419,14 +430,14 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("now".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(res.to_rfc2822(), now.to_rfc2822());
 
     let lexer = Lexer::new("today - 1h".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -436,7 +447,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today - 1m".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -446,7 +457,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today - 1s".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -456,7 +467,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today-11d".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -466,7 +477,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today - 1d".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -476,14 +487,14 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today - 1d + 1d".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(res.to_rfc2822(), today_start.to_rfc2822());
 
     let lexer = Lexer::new("today - 2w".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -493,7 +504,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today - 3 months".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -503,7 +514,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("in 3 days ago".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -517,7 +528,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today - 3 year".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -528,7 +539,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("3 years ago today".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(
         res.to_rfc2822(),
@@ -541,7 +552,7 @@ fn test_read_date_expr() {
     let lexer = Lexer::new("today -foo".to_string());
     let mut p = Parser::new(lexer);
 
-    let res = p.read_date_expr();
+    let res = p.read_date_expr().unwrap();
     // This format doesn't print smaller units than seconds
     assert_eq!(res.to_rfc2822(), today_start.to_rfc2822());
     assert_eq!(p.current_token.token_type, TokenType::Blank);

@@ -136,9 +136,9 @@ impl Parser {
             .to_owned();
     }
 
-    pub fn parse_filter(&mut self) -> Box<dyn Filter> {
+    pub fn parse_filter(&mut self) -> Result<Box<dyn Filter>, String> {
         let mut has_only_ids = true;
-        let filter = self.parse_filter_impl(&0, ScopeOperator::None, &mut has_only_ids);
+        let filter = self.parse_filter_impl(&0, ScopeOperator::None, &mut has_only_ids)?;
 
         if has_only_ids {
             let values: Vec<Box<dyn Filter>> = filter
@@ -148,11 +148,11 @@ impl Parser {
                 .collect();
 
             if !values.is_empty() {
-                return Box::new(OrFilter { children: values });
+                return Ok(Box::new(OrFilter { children: values }));
             }
         }
 
-        filter
+        Ok(filter)
     }
 
     fn back_n_tokens(&mut self, n: usize) {
@@ -161,7 +161,7 @@ impl Parser {
         }
     }
 
-    fn read_date_expr(&mut self) -> DateTime<Local> {
+    fn read_date_expr(&mut self) -> Result<DateTime<Local>, String> {
         let mut time = None;
         let mut try_time = Local::now();
         let mut first = true;
@@ -257,13 +257,19 @@ impl Parser {
                 }
                 TokenType::TagPlusPrefix | TokenType::TagMinusPrefix => {
                     if first {
-                        panic!("Error: invalid date expression");
+                        return Err(format!(
+                            "unexpected token '{}' found in invalid date expression",
+                            self.current_token.literal
+                        ));
                     }
                     if expect_duration {
                         if time.is_some() {
                             break;
                         }
-                        panic!("Error: invalid date expression");
+                        return Err(format!(
+                            "unexpected token '{}' found in invalid date expression",
+                            self.current_token.literal
+                        ));
                     }
                     debug!("Read plus token '{}'", self.current_token.literal);
                     cur_scope = if self.current_token.token_type == TokenType::TagPlusPrefix {
@@ -310,12 +316,17 @@ impl Parser {
                         "in" => {
                             expect_duration = true;
                             self.next_token();
-                            backtrace_tokens +=  1 + self.skip_whitespace();
+                            backtrace_tokens += 1 + self.skip_whitespace();
                             in_keyword = true;
                             continue;
                         }
                         // last week
-                        _ => {}
+                        _ => {
+                            return Err(format!(
+                                "unexpected token '{}' found in invalid date expression",
+                                self.current_token.literal
+                            ));
+                        }
                     }
 
                     time = Some(try_time.to_owned());
@@ -334,9 +345,9 @@ impl Parser {
         }
         self.back_n_tokens(backtrace_tokens);
         if time.is_none() {
-            panic!("Error: Invalid date format");
+            return Err("invalid date expression".to_string());
         }
-        time.unwrap()
+        Ok(time.unwrap())
     }
 
     fn skip_whitespace(&mut self) -> usize {
@@ -353,11 +364,12 @@ impl Parser {
         parenthesis_scope: &usize,
         scope_operator: ScopeOperator,
         has_only_ids: &mut bool,
-    ) -> Box<dyn Filter> {
+    ) -> Result<Box<dyn Filter>, String> {
         let mut filter: Box<dyn Filter> = Box::new(RootFilter { child: None });
+        let err_msg_prefix: String = "could not parse the filter expression. ".to_string();
 
         if self.current_token.token_type == TokenType::Eof {
-            return filter;
+            return Ok(filter);
         }
 
         while self.current_token.token_type != TokenType::Eof {
@@ -370,12 +382,12 @@ impl Parser {
                     *has_only_ids = false;
                     match self.peek_token.token_type {
                         TokenType::OperatorOr | TokenType::OperatorAnd | TokenType::OperatorXor => {
-                            panic!("Error: encountered two operators one after the other");
+                            return Err(err_msg_prefix + "Found two operators one after the other");
                         }
                         _ => {}
                     }
                     if scope_operator == ScopeOperator::And {
-                        return filter;
+                        return Ok(filter);
                     }
                     self.next_token();
                     filter = Box::new(OrFilter {
@@ -385,7 +397,7 @@ impl Parser {
                                 parenthesis_scope,
                                 ScopeOperator::Or,
                                 has_only_ids,
-                            ),
+                            )?,
                         ],
                     });
                 }
@@ -393,7 +405,7 @@ impl Parser {
                     *has_only_ids = false;
                     match self.peek_token.token_type {
                         TokenType::OperatorOr | TokenType::OperatorAnd | TokenType::OperatorXor => {
-                            panic!("Error: encountered two operators one after the other");
+                            return Err(err_msg_prefix + "Found two operators one after the other");
                         }
                         _ => {}
                     }
@@ -405,7 +417,7 @@ impl Parser {
                                 parenthesis_scope,
                                 ScopeOperator::And,
                                 has_only_ids,
-                            ),
+                            )?,
                         ],
                     });
                 }
@@ -413,13 +425,13 @@ impl Parser {
                     *has_only_ids = false;
                     match self.peek_token.token_type {
                         TokenType::OperatorOr | TokenType::OperatorAnd | TokenType::OperatorXor => {
-                            panic!("Error: encountered two operators one after the other");
+                            return Err(err_msg_prefix + "Found two operators one after the other");
                         }
                         _ => {}
                     }
                     match scope_operator {
                         ScopeOperator::Or | ScopeOperator::And => {
-                            return filter;
+                            return Ok(filter);
                         }
                         _ => {}
                     }
@@ -431,15 +443,15 @@ impl Parser {
                                 parenthesis_scope,
                                 ScopeOperator::Xor,
                                 has_only_ids,
-                            ),
+                            )?,
                         ],
                     });
                 }
                 TokenType::RightParenthesis => {
                     if *parenthesis_scope == 0 {
-                        panic!("Error: encountered ')' before encountering a '('");
+                        return Err(err_msg_prefix + "Encountered ')' before encountering a '('");
                     }
-                    return filter;
+                    return Ok(filter);
                 }
                 TokenType::LeftParenthesis => {
                     self.next_token();
@@ -448,7 +460,7 @@ impl Parser {
                             &(parenthesis_scope + 1),
                             ScopeOperator::None,
                             has_only_ids,
-                        );
+                        )?;
                     } else {
                         filter = Box::new(AndFilter {
                             children: vec![
@@ -457,15 +469,16 @@ impl Parser {
                                     &(parenthesis_scope + 1),
                                     ScopeOperator::None,
                                     has_only_ids,
-                                ),
+                                )?,
                             ],
                         });
                     }
                     if self.current_token.token_type != TokenType::RightParenthesis {
-                        panic!(
-                            "Error parsing command line. Expected right parenthesis, found '{}'",
-                            self.current_token.literal
-                        );
+                        return Err(err_msg_prefix
+                            + &format!(
+                                "Expected right parenthesis, found '{}'",
+                                self.current_token.literal
+                            ));
                     }
                     self.next_token();
                 }
@@ -474,16 +487,18 @@ impl Parser {
                     self.next_token();
                     self.skip_whitespace();
                     if self.current_token.token_type != TokenType::WordString {
-                        panic!(
+                        return Err(err_msg_prefix
+                            + &format!(
                             "Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
                             self.peek_token.token_type,
                             self.peek_token.literal
-                        );
+                            ));
                     }
                     // Assuming string_is_valid_task_status is a function to validate task status
+
                     let status_filter = Box::new(StatusFilter {
                         status: task::TaskStatus::from_string(&self.current_token.literal)
-                            .unwrap_or_else(|err| panic!("{}", err)),
+                            .map_err(|err| err_msg_prefix.to_string() + &err)?,
                     });
                     filter = add_to_current_filter(filter, status_filter, &ScopeOperator::And);
 
@@ -529,11 +544,12 @@ impl Parser {
                 TokenType::TagMinusPrefix => {
                     *has_only_ids = false;
                     if self.peek_token.token_type != TokenType::WordString {
-                        panic!(
+                        return Err(err_msg_prefix
+                            + &format!(
                             "Expected a token of type String following a TokenType::TagMinusPrefix, found '{}' (value: '{}')",
                             self.peek_token.token_type,
                             self.peek_token.literal
-                        );
+                            ));
                     }
 
                     let tag_filter = Box::new(TagFilter {
@@ -547,11 +563,12 @@ impl Parser {
                 TokenType::TagPlusPrefix => {
                     *has_only_ids = false;
                     if self.peek_token.token_type != TokenType::WordString {
-                        panic!(
-                            "Expected a token of type String following a TokenType::TagPlusPrefix, found '{}' (value: '{}')",
+                        return Err(err_msg_prefix
+                            + &format!(
+                            "Expected a token of type String following a TokenType::TagMinusPrefix, found '{}' (value: '{}')",
                             self.peek_token.token_type,
                             self.peek_token.literal
-                        );
+                            ));
                     }
                     let tag_filter = Box::new(TagFilter {
                         include: true,
@@ -575,14 +592,15 @@ impl Parser {
                     if self.current_token.token_type != TokenType::WordString
                         && self.current_token.token_type != TokenType::Int
                     {
-                        panic!(
+                        return Err(err_msg_prefix
+                            + &format!(
                             "Expected a token of type String or Int following a TokenTypeFilterDateEnd, found '{}' (value: '{}')",
                             self.peek_token.token_type,
                             self.peek_token.literal
-                        );
+                            ));
                     }
 
-                    let time = self.read_date_expr();
+                    let time = self.read_date_expr()?;
 
                     let new_filter: Box<dyn Filter> = if tok_type
                         == TokenType::FilterTokDateEndBefore
@@ -599,7 +617,7 @@ impl Parser {
             }
         }
 
-        filter
+        Ok(filter)
     }
 }
 

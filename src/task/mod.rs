@@ -65,7 +65,7 @@ impl TaskProperties {
         self.annotation = Some(value);
     }
 
-    pub fn from(values: &[String]) -> TaskProperties {
+    pub fn from(values: &[String]) -> Result<TaskProperties, String> {
         let lexer = Lexer::new(values.join(" "));
         let mut parser = parser::Parser::new(lexer);
         parser.parse_task_properties()

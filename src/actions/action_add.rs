@@ -13,8 +13,8 @@ pub struct AddTaskAction {
 impl TaskAction for AddTaskAction {
     impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
-    fn do_action(&mut self, printer: &dyn Printer) {
-        let props = TaskProperties::from(&self.base.arguments);
+    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+        let props = TaskProperties::from(&self.base.arguments)?;
 
         // Clone here to avoid having multiple mutable borrows
         let new_task: Task = self
@@ -41,6 +41,7 @@ impl TaskAction for AddTaskAction {
             action_type: ActionUndoType::Add,
             tasks: vec![new_task.to_owned()],
         });
+        Ok(())
     }
     fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {

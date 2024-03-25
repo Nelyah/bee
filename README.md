@@ -24,23 +24,24 @@
     - [X] Date completed
     - [X] Date created
 - [X] Projects and sub projects
-- [ ] Import from Taskwarrior
 - [ ] autocompletion
 - [ ] Task history
+- [ ] Import from Taskwarrior
 
 ### Next steps
 
+- [ ] Views (show potentially multiple reports in a single view)
 - [ ] due
 - [ ] Recurring tasks
 - [X] 'export' action
 - [ ] Contexts
 - [ ] Descriptions
 - [ ] Priority
-- [ ] Interactive search
 - [ ] Dependency
 
 ### Nice to have
 
+- [ ] Interactive search
 - [ ] Customise data location
 - [ ] Customise config location (through ENV var)
 - [ ] Support for hooks

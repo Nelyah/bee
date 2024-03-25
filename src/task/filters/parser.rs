@@ -4,12 +4,12 @@ use uuid::Uuid;
 
 use super::filters_impl::FilterKind;
 
-use crate::lexer::{Lexer, Token, TokenType};
 use crate::task;
 use crate::task::filters::{
     AndFilter, DateCreatedFilter, DateEndFilter, Filter, OrFilter, ProjectFilter, RootFilter,
     StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
 };
+use crate::task::lexer::{Lexer, Token, TokenType};
 
 pub struct Parser {
     lexer: Lexer,

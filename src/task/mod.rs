@@ -1,6 +1,8 @@
 pub mod filters;
 
+mod lexer;
 mod parser;
+
 use std::{collections::HashSet, fmt};
 
 use chrono::prelude::DateTime;
@@ -11,7 +13,7 @@ use chrono::Local;
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
-use crate::lexer::Lexer;
+use lexer::Lexer;
 
 use filters::Filter;
 

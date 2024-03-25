@@ -1,7 +1,7 @@
 mod filters_impl;
 mod parser;
 
-use crate::lexer::Lexer;
+use crate::task::lexer::Lexer;
 use crate::task::Task;
 use parser::Parser;
 

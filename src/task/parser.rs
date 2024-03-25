@@ -1,4 +1,4 @@
-use crate::lexer::{Lexer, Token, TokenType};
+use crate::task::lexer::{Lexer, Token, TokenType};
 
 use super::{Project, TaskProperties, TaskStatus};
 

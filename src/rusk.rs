@@ -1,7 +1,6 @@
 mod actions;
 mod command_parser;
 mod config;
-mod lexer;
 mod printer;
 mod storage;
 mod task;

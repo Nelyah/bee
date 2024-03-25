@@ -2,6 +2,17 @@ use all_asserts::{assert_false, assert_true};
 
 use super::*;
 
+fn new_task(summary: &str, status: TaskStatus) -> Task {
+    Task {
+        summary: summary.to_string(),
+        id: None,
+        status,
+        uuid: Uuid::new_v4(),
+        date_created: Local::now(),
+        ..Default::default()
+    }
+}
+
 #[test]
 fn test_task_status_from_str() {
     assert_eq!(TaskStatus::from_string("pending"), Ok(TaskStatus::Pending));
@@ -143,4 +154,72 @@ fn test_apply_no_change() {
     task.apply(&props);
     assert_eq!(task.summary, "Initial summary");
     assert_eq!(task.tags, vec!["initial_tag1", "initial_tag2"]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_upkeep_sorts_tasks_and_updates_ids() {
+        let mut task_data = TaskData {
+            tasks: HashMap::new(),
+            max_id: 0,
+        };
+
+        let t1 = new_task("Task 1", TaskStatus::Pending);
+        let t2 = new_task("Task 2", TaskStatus::Pending);
+        let t3 = new_task("Task 3", TaskStatus::Pending);
+
+        task_data.tasks.insert(t3.uuid, t3.clone());
+
+        task_data.tasks.insert(t2.uuid, t2.clone());
+
+        task_data.tasks.insert(t1.uuid, t1.clone());
+
+        // Run upkeep
+        task_data.upkeep();
+
+        // Verify the tasks are sorted and ids are updated correctly
+        let task1 = task_data.tasks.get(&t1.uuid).unwrap();
+        let task2 = task_data.tasks.get(&t2.uuid).unwrap();
+        let task3 = task_data.tasks.get(&t3.uuid).unwrap();
+
+        assert_eq!(task1.id, Some(1));
+        assert_eq!(task2.id, Some(2));
+        assert_eq!(task3.id, Some(3));
+    }
+
+    #[test]
+    fn test_upkeep_handles_deleted_and_completed_tasks() {
+        let mut task_data = TaskData {
+            tasks: HashMap::new(),
+            max_id: 0,
+        };
+
+        let t1 = new_task("Task 1", TaskStatus::Pending);
+        let t2 = new_task("Task 2", TaskStatus::Completed);
+        let t4 = new_task("Task 4", TaskStatus::Pending);
+        let t3 = new_task("Task 3", TaskStatus::Deleted);
+
+        task_data.tasks.insert(t1.uuid, t1.clone());
+        task_data.tasks.insert(t2.uuid, t2.clone());
+        task_data.tasks.insert(t3.uuid, t3.clone());
+        task_data.tasks.insert(t4.uuid, t4.clone());
+
+        // Run upkeep
+        task_data.upkeep();
+
+        // Verify the tasks are sorted and ids are updated correctly
+        let task1 = task_data.tasks.get(&t1.uuid).unwrap();
+        let task2 = task_data.tasks.get(&t2.uuid).unwrap();
+        let task3 = task_data.tasks.get(&t3.uuid).unwrap();
+        let task4 = task_data.tasks.get(&t4.uuid).unwrap();
+
+        assert_eq!(task1.id, Some(1));
+        assert_eq!(task2.id, None);
+        assert_eq!(task3.id, None);
+        assert_eq!(task4.id, Some(2));
+    }
 }

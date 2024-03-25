@@ -4,8 +4,8 @@
 
 ### Required for me using it
 
-- [ ] Manage task IDs correctly
-- [ ] Make user error accessible to all modules
+- [X] Manage task IDs correctly
+- [X] Make user error accessible to all modules
 - [X] Action setters/getters macro
 - [X] Done action
 - [X] Delete action

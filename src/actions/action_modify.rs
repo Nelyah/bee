@@ -43,6 +43,7 @@ impl TaskAction for ModifyTaskAction {
             action_type: super::ActionUndoType::Modify,
             tasks: undos,
         });
+        self.base.tasks.upkeep();
         Ok(())
     }
     fn post_action_hook(&self) {}

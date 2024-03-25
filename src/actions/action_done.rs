@@ -38,6 +38,7 @@ impl TaskAction for DoneTaskAction {
             }
             self.base.tasks.task_done(&uuid);
         }
+        self.base.tasks.upkeep();
         Ok(())
     }
     fn post_action_hook(&self) {}

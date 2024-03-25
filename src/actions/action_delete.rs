@@ -44,6 +44,7 @@ impl TaskAction for DeleteTaskAction {
             action_type: super::ActionUndoType::Modify,
             tasks: undos,
         });
+        self.base.tasks.upkeep();
         Ok(())
     }
     fn post_action_hook(&self) {}

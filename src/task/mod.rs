@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use crate::lexer::Lexer;
 
-use super::filters::Filter;
+use crate::filters::Filter;
 
 #[path = "task_test.rs"]
 #[cfg(test)]
@@ -222,6 +222,26 @@ impl TaskData {
 
     pub fn task_delete(&mut self, uuid: &Uuid) {
         self.tasks.get_mut(uuid).unwrap().delete();
+    }
+
+    pub fn upkeep(&mut self) {
+        let mut vec: Vec<_> = self.tasks.values().by_ref().collect();
+
+        vec.sort_by(|lhs, rhs| lhs.date_created.cmp(&rhs.date_created));
+        let uuids: Vec<Uuid> = vec.iter().map(|t| t.uuid).collect();
+        let mut i = 1;
+        for cur_uuid in uuids {
+            let t: &mut Task = self.tasks.get_mut(&cur_uuid).unwrap();
+            match t.status {
+                TaskStatus::Pending => {
+                    self.tasks.get_mut(&cur_uuid).unwrap().id = Some(i);
+                    i += 1;
+                }
+                TaskStatus::Deleted | TaskStatus::Completed => {
+                    self.tasks.get_mut(&cur_uuid).unwrap().id = None;
+                }
+            }
+        }
     }
 
     #[allow(clippy::borrowed_box)]

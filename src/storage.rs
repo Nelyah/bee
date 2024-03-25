@@ -39,6 +39,9 @@ impl Store for JsonStore {
             }
             Err(_) => TaskData::default(),
         };
+
+        data.upkeep();
+
         if filter.is_some() {
             data = data.filter(filter.unwrap());
         }

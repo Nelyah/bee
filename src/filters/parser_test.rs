@@ -1,4 +1,9 @@
-use crate::{filters, task::TaskStatus};
+use all_asserts::assert_true;
+
+use crate::{
+    filters,
+    task::{Project, TaskStatus},
+};
 
 use super::*; // Import necessary structs, enums, and functions from the parent module
 
@@ -109,6 +114,37 @@ fn test_parse_filter() {
         ],
     });
     assert_eq!(&f, &expected_filter);
+}
+
+#[test]
+fn test_parse_project_filter() {
+    let lexer = Lexer::new("project:ABC".to_string());
+    let mut p = Parser::new(lexer);
+    let f = p.parse_filter().unwrap();
+
+    let expected_filter: Box<dyn Filter> = Box::new(ProjectFilter {
+        name: Project::from("ABC".to_owned()),
+    });
+    assert_eq!(&f, &expected_filter);
+
+    let lexer = Lexer::new("project:A.B.C".to_string());
+    let mut p = Parser::new(lexer);
+    let f = p.parse_filter().unwrap();
+
+    let expected_filter: Box<dyn Filter> = Box::new(ProjectFilter {
+        name: Project::from("A.B.C".to_owned()),
+    });
+    assert_eq!(&f, &expected_filter);
+
+    let lexer = Lexer::new("project:A.B.C.".to_string());
+    let mut p = Parser::new(lexer);
+    let f = p.parse_filter();
+    assert_true!(f.is_err());
+
+    let lexer = Lexer::new("project:".to_string());
+    let mut p = Parser::new(lexer);
+    let f = p.parse_filter();
+    assert_true!(f.is_err());
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use super::*;
-use crate::task::{TaskData, TaskProperties, TaskStatus};
+use crate::task::{Project, TaskData, TaskProperties, TaskStatus};
 use all_asserts::{assert_false, assert_true};
 
 #[test]
@@ -58,6 +58,38 @@ fn test_clone() {
         uuid: uuid::Uuid::new_v4(),
     });
     assert_eq!(&f, &f.clone());
+}
+
+#[test]
+fn test_project_filter() {
+    let mut task_data = TaskData::default();
+    let task = task_data
+        .add_task(
+            &TaskProperties::from(&["foo proj:hey.a.b.c".to_owned()]).unwrap(),
+            TaskStatus::Pending,
+        )
+        .unwrap()
+        .clone();
+
+    assert_true!(ProjectFilter {
+        name: Project::from("hey.a.b.c".to_owned())
+    }
+    .validate_task(&task));
+
+    assert_true!(ProjectFilter {
+        name: Project::from("hey.a".to_owned())
+    }
+    .validate_task(&task));
+
+    assert_true!(ProjectFilter {
+        name: Project::from("hey".to_owned())
+    }
+    .validate_task(&task));
+
+    assert_false!(ProjectFilter {
+        name: Project::from("hey.b".to_owned())
+    }
+    .validate_task(&task));
 }
 
 #[test]

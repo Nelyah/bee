@@ -13,7 +13,8 @@ use std::{
 
 use filters_impl::{
     AndFilter, DateCreatedFilter, DateEndFilter, FilterKind, FilterKindGetter, OrFilter,
-    RootFilter, StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
+    ProjectFilter, RootFilter, StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter,
+    XorFilter,
 };
 
 #[allow(private_bounds)]
@@ -102,6 +103,7 @@ impl PartialEq for Box<dyn Filter> {
             FilterKind::Xor => downcast_and_compare::<XorFilter>(self, other),
             FilterKind::String => downcast_and_compare::<StringFilter>(self, other),
             FilterKind::Status => downcast_and_compare::<StatusFilter>(self, other),
+            FilterKind::Project => downcast_and_compare::<ProjectFilter>(self, other),
             FilterKind::Tag => downcast_and_compare::<TagFilter>(self, other),
             FilterKind::Uuid => downcast_and_compare::<UuidFilter>(self, other),
             FilterKind::TaskId => downcast_and_compare::<TaskIdFilter>(self, other),

@@ -1,6 +1,6 @@
 use crate::lexer::{Lexer, Token, TokenType};
 
-use super::{TaskProperties, TaskStatus};
+use super::{Project, TaskProperties, TaskStatus};
 
 pub struct Parser {
     lexer: Lexer,
@@ -93,7 +93,7 @@ impl Parser {
 
                     if self.current_token.token_type != TokenType::WordString {
                         return Err(format!(
-                            "Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
+                            "Expected a token of type WordString following a TokenTypeFilterStatus, found '{}' (value: '{}')",
                             self.peek_token.token_type,
                             self.peek_token.literal
                         ));
@@ -106,6 +106,21 @@ impl Parser {
                         }
                     };
                     props.status = Some(status);
+                    self.next_token();
+                }
+                TokenType::ProjectPrefix => {
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    if self.current_token.token_type != TokenType::WordString {
+                        return Err(format!(
+                            "Expected a token of type WordString following a TokenTypeProjectPrefix, found '{}' (value: '{}')",
+                            self.peek_token.token_type,
+                            self.peek_token.literal
+                        ));
+                    }
+
+                    props.project = Some(Project::from(self.current_token.literal.clone()));
                     self.next_token();
                 }
                 TokenType::TagPlusPrefix => {
@@ -145,6 +160,7 @@ mod tests {
                 tags_add: None,
                 status: None,
                 annotation: None,
+                project: None,
             }
         );
         tp.set_annotate("foo".to_owned());
@@ -156,6 +172,7 @@ mod tests {
                 tags_add: None,
                 status: None,
                 annotation: Some("foo".to_owned()),
+                project: None,
             }
         );
 
@@ -168,10 +185,11 @@ mod tests {
                 tags_add: None,
                 status: Some(TaskStatus::Completed),
                 annotation: None,
+                project: None,
             }
         );
 
-        let tp = from_string("a new task summ(\tary status:  pending");
+        let tp = from_string("a new task summ(\tary status:  pending project: p.a.b.c");
         assert_eq!(
             tp,
             TaskProperties {
@@ -180,10 +198,13 @@ mod tests {
                 tags_add: None,
                 status: Some(TaskStatus::Pending),
                 annotation: None,
+                project: Some(Project {
+                    name: "p.a.b.c".to_string()
+                }),
             }
         );
 
-        let tp = from_string("a new task -main summary +foo");
+        let tp = from_string("a new task -main summary +foo proj: proj.a.b.c");
         assert_eq!(
             tp,
             TaskProperties {
@@ -192,6 +213,9 @@ mod tests {
                 tags_add: Some(vec!["foo".to_owned()]),
                 status: None,
                 annotation: None,
+                project: Some(Project {
+                    name: "proj.a.b.c".to_string()
+                }),
             }
         );
 

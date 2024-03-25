@@ -23,7 +23,7 @@
 - [X] date filters
     - [X] Date completed
     - [X] Date created
-- [ ] Projects and sub projects
+- [X] Projects and sub projects
 - [ ] Import from Taskwarrior
 - [ ] autocompletion
 - [ ] Task history

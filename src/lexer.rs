@@ -17,6 +17,7 @@ pub enum TokenType {
     Eof,
     LeftParenthesis,
     RightParenthesis,
+    ProjectPrefix,
     OperatorAnd,
     OperatorOr,
     OperatorXor,
@@ -26,6 +27,7 @@ impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let token_str = match self {
             TokenType::String => "String",
+            TokenType::ProjectPrefix => "ProjectPrefix",
             TokenType::WordString => "WordString",
             TokenType::TagPlusPrefix => "TagPlusPrefix",
             TokenType::TagMinusPrefix => "TagMinusPrefix",
@@ -275,6 +277,14 @@ impl Lexer {
                 _ if self.match_keyword("end.before:") => Token {
                     literal: self.read_word("end.before:"),
                     token_type: TokenType::FilterTokDateEndBefore,
+                },
+                _ if self.match_keyword("project:") => Token {
+                    literal: self.read_word("project:"),
+                    token_type: TokenType::ProjectPrefix,
+                },
+                _ if self.match_keyword("proj:") => Token {
+                    literal: self.read_word("proj:"),
+                    token_type: TokenType::ProjectPrefix,
                 },
                 _ if ch == ')' => {
                     self.read_char();

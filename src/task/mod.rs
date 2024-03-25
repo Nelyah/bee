@@ -56,6 +56,7 @@ pub struct TaskProperties {
     tags_add: Option<Vec<String>>,
     status: Option<TaskStatus>,
     annotation: Option<String>,
+    project: Option<Project>,
 }
 
 // We implement a specific function for annotate because we cannot know how to differenciate
@@ -101,6 +102,7 @@ pub struct Task {
     #[serde(default)]
     date_completed: Option<DateTime<chrono::Local>>,
     sub: Vec<Uuid>,
+    project: Option<Project>,
 }
 
 impl Task {
@@ -122,6 +124,10 @@ impl Task {
 
     pub fn get_tags(&self) -> &Vec<String> {
         &self.tags
+    }
+
+    pub fn get_project(&self) -> &Option<Project> {
+        &self.project
     }
 
     pub fn get_status(&self) -> &TaskStatus {
@@ -186,6 +192,27 @@ impl Task {
         self.status = TaskStatus::Completed;
         self.date_completed = Some(Local::now());
         self.id = None;
+    }
+}
+
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug)]
+pub struct Project {
+    name: String,
+}
+
+impl Project {
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn from(value: String) -> Project {
+        Project { name: value }
+    }
+}
+
+impl fmt::Display for Project {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
 
@@ -285,6 +312,8 @@ impl TaskData {
             TaskStatus::Completed | TaskStatus::Deleted => Some(Local::now()),
         };
 
+        let project = props.project.to_owned();
+
         let summary = match &props.summary {
             Some(summary) => summary.to_owned(),
             None => return Err("A task must have a summary".to_owned()),
@@ -305,6 +334,7 @@ impl TaskData {
             date_completed,
             annotations: Vec::default(),
             sub: Vec::default(),
+            project,
         };
         let owned_uuid = t.get_uuid().to_owned();
         self.tasks.insert(owned_uuid, t);

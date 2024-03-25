@@ -4,6 +4,7 @@ use std::{any::Any, fmt};
 use uuid::Uuid;
 
 use super::{CloneFilter, Filter};
+use crate::task;
 use crate::task::{Task, TaskStatus};
 
 #[derive(PartialEq, Debug)]
@@ -12,6 +13,7 @@ pub enum FilterKind {
     Or,
     Root,
     Status,
+    Project,
     DateEnd,
     DateCreated,
     String,
@@ -28,6 +30,7 @@ impl fmt::Display for FilterKind {
             FilterKind::Or => write!(f, "Or"),
             FilterKind::Root => write!(f, "Root"),
             FilterKind::Status => write!(f, "Status"),
+            FilterKind::Project => write!(f, "Project"),
             FilterKind::DateEnd => write!(f, "DateEnd"),
             FilterKind::DateCreated => write!(f, "DateCreated"),
             FilterKind::String => write!(f, "String"),
@@ -64,6 +67,7 @@ impl_display_and_debug!(
     AndFilter,
     OrFilter,
     RootFilter,
+    ProjectFilter,
     StatusFilter,
     DateEndFilter,
     DateCreatedFilter,
@@ -473,6 +477,52 @@ impl CloneFilter for DateEndFilter {
         Box::new(DateEndFilter {
             time: self.time.to_owned(),
             before: self.before.to_owned(),
+        })
+    }
+}
+
+#[derive(PartialEq)]
+pub struct ProjectFilter {
+    pub name: task::Project,
+}
+
+impl Filter for ProjectFilter {
+    fn validate_task(&self, task: &Task) -> bool {
+        if let Some(p) = task.get_project() {
+            return p.get_name().starts_with(self.name.get_name().as_str());
+        }
+        false
+    }
+
+    fn add_children(&mut self, _: Box<dyn Filter>) {
+        unreachable!("Trying to add a child to a ProjectFilter");
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+        Box::new(std::iter::once(self as &dyn Filter))
+    }
+}
+
+impl FilterKindGetter for ProjectFilter {
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::Project
+    }
+}
+
+impl ProjectFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.get_kind(), &self.name)
+    }
+}
+
+impl CloneFilter for ProjectFilter {
+    fn clone_box(&self) -> Box<dyn Filter> {
+        Box::new(ProjectFilter {
+            name: self.name.to_owned(),
         })
     }
 }

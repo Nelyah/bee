@@ -5,8 +5,8 @@ use uuid::Uuid;
 use super::filters_impl::FilterKind;
 
 use crate::filters::{
-    AndFilter, DateCreatedFilter, DateEndFilter, Filter, OrFilter, RootFilter, StatusFilter,
-    StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
+    AndFilter, DateCreatedFilter, DateEndFilter, Filter, OrFilter, ProjectFilter, RootFilter,
+    StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
 };
 use crate::lexer::{Lexer, Token, TokenType};
 use crate::task;
@@ -490,17 +490,44 @@ impl Parser {
                         return Err(err_msg_prefix
                             + &format!(
                             "Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
-                            self.peek_token.token_type,
-                            self.peek_token.literal
+                            self.current_token.token_type,
+                            self.current_token.literal
                             ));
                     }
-                    // Assuming string_is_valid_task_status is a function to validate task status
 
                     let status_filter = Box::new(StatusFilter {
                         status: task::TaskStatus::from_string(&self.current_token.literal)
                             .map_err(|err| err_msg_prefix.to_string() + &err)?,
                     });
                     filter = add_to_current_filter(filter, status_filter, &ScopeOperator::And);
+
+                    self.next_token();
+                }
+                TokenType::ProjectPrefix => {
+                    *has_only_ids = false;
+                    self.next_token();
+                    self.skip_whitespace();
+                    if self.current_token.token_type != TokenType::WordString {
+                        return Err(err_msg_prefix
+                            + &format!(
+                            "Expected a token of type String following a TokenTypeProjectPrefix, found '{}' (value: '{}')",
+                            self.current_token.token_type,
+                            self.current_token.literal
+                            ));
+                    }
+
+                    if self.current_token.literal.ends_with('.') {
+                        return Err(err_msg_prefix
+                            + &format!(
+                                "A project name cannot end with a '.' (name: '{}')",
+                                self.current_token.literal
+                            ));
+                    }
+
+                    let project_filter = Box::new(ProjectFilter {
+                        name: task::Project::from(self.current_token.literal.to_owned()),
+                    });
+                    filter = add_to_current_filter(filter, project_filter, &ScopeOperator::And);
 
                     self.next_token();
                 }

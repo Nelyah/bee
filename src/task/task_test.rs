@@ -45,6 +45,7 @@ fn setup_task() -> Task {
         date_completed: None,
         annotations: Vec::default(),
         sub: vec![],
+        project: None,
     }
 }
 
@@ -57,6 +58,7 @@ fn test_apply_summary() {
         tags_add: None,
         status: None,
         annotation: None,
+        project: None,
     };
 
     task.apply(&props);
@@ -72,6 +74,7 @@ fn test_apply_status() {
         tags_add: None,
         status: Some(TaskStatus::Completed),
         annotation: None,
+        project: None,
     };
 
     assert_eq!(task.status, TaskStatus::Pending);
@@ -88,6 +91,7 @@ fn test_apply_tags_add() {
         tags_add: Some(vec!["new_tag".to_string()]),
         status: None,
         annotation: None,
+        project: None,
     };
 
     task.apply(&props);
@@ -104,6 +108,7 @@ fn test_apply_tags_remove() {
         tags_add: None,
         status: None,
         annotation: None,
+        project: None,
     };
 
     task.apply(&props);
@@ -119,6 +124,7 @@ fn test_apply_annotation() {
         tags_add: None,
         status: None,
         annotation: Some("hello there".to_owned()),
+        project: None,
     };
 
     assert_true!(task.annotations.is_empty());
@@ -139,6 +145,7 @@ fn test_apply_combined() {
         tags_add: Some(vec!["additional_tag".to_string()]),
         status: None,
         annotation: None,
+        project: None,
     };
 
     task.apply(&props);

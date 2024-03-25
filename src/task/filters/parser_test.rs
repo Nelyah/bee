@@ -1,11 +1,9 @@
+use crate::task::filters;
 use all_asserts::assert_true;
 
-use crate::{
-    filters,
-    task::{Project, TaskStatus},
-};
+use crate::task::{Project, TaskStatus};
 
-use super::*; // Import necessary structs, enums, and functions from the parent module
+use super::*;
 
 fn init() {
     let _ = env_logger::builder().is_test(true).try_init();

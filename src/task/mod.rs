@@ -1,3 +1,5 @@
+pub mod filters;
+
 mod parser;
 use std::{collections::HashSet, fmt};
 
@@ -11,7 +13,7 @@ use std::collections::HashMap;
 
 use crate::lexer::Lexer;
 
-use crate::filters::Filter;
+use filters::Filter;
 
 #[path = "task_test.rs"]
 #[cfg(test)]

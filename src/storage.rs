@@ -1,8 +1,8 @@
 use log::debug;
 
 use crate::actions::ActionUndo;
-use crate::filters;
-use crate::filters::Filter;
+use crate::task::filters;
+use crate::task::filters::Filter;
 use crate::task::TaskData;
 
 use std::env;

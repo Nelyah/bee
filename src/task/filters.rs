@@ -114,5 +114,4 @@ impl PartialEq for Box<dyn Filter> {
 }
 
 #[cfg(test)]
-#[path = "filters_test.rs"]
 mod filters_test;

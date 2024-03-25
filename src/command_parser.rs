@@ -1,8 +1,8 @@
-use crate::filters;
+use crate::task::filters;
 
 use crate::config::get_config;
 use crate::config::ReportConfig;
-use crate::filters::Filter;
+use crate::task::filters::Filter;
 
 use std::collections::HashMap;
 

@@ -98,6 +98,7 @@ pub struct ActionRegisty {
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum ActionType {
     Annotate,
+    Command,
     List,
     Add,
     Undo,
@@ -115,6 +116,7 @@ impl ActionType {
         match a {
             ActionType::Add => (),
             ActionType::Annotate => (),
+            ActionType::Command => (),
             ActionType::List => (),
             ActionType::Export => (),
             ActionType::Undo => (),
@@ -126,6 +128,7 @@ impl ActionType {
 
         map.insert(ActionType::List, vec!["list".to_string()]);
         map.insert(ActionType::Add, vec!["add".to_string()]);
+        map.insert(ActionType::Command, vec!["_cmd".to_string()]);
         map.insert(ActionType::Annotate, vec!["annotate".to_string()]);
         map.insert(ActionType::Export, vec!["export".to_string()]);
         map.insert(ActionType::Undo, vec!["undo".to_string()]);
@@ -157,6 +160,7 @@ impl ActionType {
         match self {
             Self::List => true,
             Self::Add => false,
+            Self::Command => false,
             Self::Annotate => false,
             Self::Export => true,
             Self::Undo => false,
@@ -173,6 +177,7 @@ impl Default for ActionRegisty {
             registered_type: vec![
                 ActionType::List,
                 ActionType::Add,
+                ActionType::Command,
                 ActionType::Annotate,
                 ActionType::Export,
                 ActionType::Undo,
@@ -207,6 +212,9 @@ impl ActionRegisty {
             ActionType::Add => Box::new(action_add::AddTaskAction {
                 base: BaseTaskAction::default(),
             }),
+            ActionType::Command => Box::new(action_cmd::CmdTaskAction {
+                base: BaseTaskAction::default(),
+            }),
             ActionType::Export => Box::new(action_export::ExportTaskAction {
                 base: BaseTaskAction::default(),
             }),
@@ -234,6 +242,7 @@ impl ActionRegisty {
 
 mod action_add;
 mod action_annotate;
+mod action_cmd;
 mod action_delete;
 mod action_done;
 mod action_export;

@@ -11,6 +11,10 @@ pub trait Printer {
     fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig);
     fn show_information_message(&self, message: &str);
     fn error(&self, message: &str);
+
+    /// This function is for developer purposes only. It might be used so the program outputs
+    /// information to stdout or console.log, depending on the implementation
+    fn print_raw(&self, message: &str);
 }
 
 fn format_relative_time(t: DateTime<Local>) -> String {
@@ -104,6 +108,10 @@ impl Printer for SimpleTaskTextPrinter {
                 .to_string()
                 + message
         );
+    }
+
+    fn print_raw(&self, message: &str) {
+        println!("{}", message);
     }
 }
 

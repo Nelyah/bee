@@ -25,6 +25,7 @@
     - [X] Date created
 - [X] Projects and sub projects
 - [ ] autocompletion
+    - [X] CMD action to get stuff
 - [ ] Task history
 - [ ] Import from Taskwarrior
 

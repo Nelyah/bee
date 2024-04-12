@@ -29,6 +29,23 @@ fn get_projects_as_string(tasks: &TaskData) -> String {
         .join("\n")
 }
 
+fn get_tags_as_string(tasks: &TaskData) -> String {
+    let mut s = HashSet::<&String>::default();
+    for p in tasks
+        .get_task_map()
+        .values()
+        .map(|t| t.get_tags())
+        .flatten()
+        .collect::<Vec<&String>>()
+    {
+        s.insert(p);
+    }
+    s.iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 impl TaskAction for CmdTaskAction {
     impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
@@ -46,6 +63,9 @@ impl TaskAction for CmdTaskAction {
             Some(a) => match a.as_str() {
                 "projects" => {
                     printer.print_raw(get_projects_as_string(&self.base.tasks).as_str());
+                }
+                "tags" => {
+                    printer.print_raw(get_tags_as_string(&self.base.tasks).as_str());
                 }
                 _ => {
                     return Err("TaskAction::Cmd: Not a valid field to request".to_string());

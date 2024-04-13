@@ -1,12 +1,16 @@
 use log::debug;
 use once_cell::sync::Lazy;
+use serde::de;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
+use std::fmt;
 use std::fs;
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
+use serde::Deserializer;
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct Config {
@@ -15,11 +19,123 @@ pub struct Config {
     #[serde(default = "default_report_map")]
     #[serde(rename = "report")]
     report_map: HashMap<String, ReportConfig>,
+    #[serde(default = "default_colour_field")]
+    #[serde(rename = "colours")]
+    pub colour_fields: Vec<ColourField>,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct ColourField {
+    pub field: String,
+    #[serde(default = "default_colour_value_value")]
+    pub value: String,
+    #[serde(default = "default_colour_tuple_value")]
+    #[serde(deserialize_with = "deserialize_color")]
+    pub fg: Option<(u8, u8, u8)>,
+    #[serde(default = "default_colour_tuple_value")]
+    #[serde(deserialize_with = "deserialize_color")]
+    pub bg: Option<(u8, u8, u8)>,
+}
+
+fn default_colour_tuple_value() -> Option<(u8, u8, u8)> {
+    None
+}
+
+fn default_colour_value_value() -> String {
+    "".to_string()
+}
+
+fn default_colour_field() -> Vec<ColourField> {
+    Vec::default()
+}
+
+#[derive(Debug)]
+enum HexColorError {
+    Parse(ParseIntError),
+    InvalidLength(String),
+}
+
+impl fmt::Display for HexColorError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            HexColorError::Parse(ref e) => write!(f, "Parse error: {}", e),
+            HexColorError::InvalidLength(ref s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl From<ParseIntError> for HexColorError {
+    fn from(err: ParseIntError) -> HexColorError {
+        HexColorError::Parse(err)
+    }
+}
+
+fn hex_to_rgb(hex_color: &str) -> Result<(u8, u8, u8), HexColorError> {
+    if hex_color.len() != 6 {
+        return Err(HexColorError::InvalidLength(
+            "Invalid Hex colour length".to_string(),
+        ));
+    }
+    let r = u8::from_str_radix(&hex_color[0..2], 16)?;
+    let g = u8::from_str_radix(&hex_color[2..4], 16)?;
+    let b = u8::from_str_radix(&hex_color[4..6], 16)?;
+
+    Ok((r, g, b))
+}
+
+fn deserialize_color<'de, D>(deserializer: D) -> Result<Option<(u8, u8, u8)>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: Option<String> = Option::deserialize(deserializer)?;
+    match s {
+        Some(s) if s.starts_with('#') => match hex_to_rgb(&s[1..]) {
+            Ok(colour) => Ok(Some(colour)),
+            Err(e) => Err(de::Error::custom(e.to_string())),
+        },
+        _ => Err(de::Error::custom("Error parsing colour value".to_string())),
+    }
 }
 
 impl Config {
     pub fn get_report(&self, name: &str) -> Option<&ReportConfig> {
         self.report_map.get(name)
+    }
+
+    pub fn get_primary_colour_fg(&self) -> (u8, u8, u8) {
+        for c in &self.colour_fields {
+            if c.field == "primary_colour" && c.fg.is_some() {
+                return c.fg.unwrap();
+            }
+        }
+        (220, 220, 220)
+    }
+
+    pub fn get_primary_colour_bg(&self) -> (u8, u8, u8) {
+        for c in &self.colour_fields {
+            if c.field == "primary_colour" && c.bg.is_some() {
+                return c.bg.unwrap();
+            }
+        }
+        (89, 89, 89)
+    }
+
+    pub fn get_secondary_colour_fg(&self) -> (u8, u8, u8) {
+        for c in &self.colour_fields {
+            if c.field == "secondary_colour" && c.fg.is_some() {
+                return c.fg.unwrap();
+            }
+        }
+        (220, 220, 220)
+    }
+
+    pub fn get_secondary_colour_bg(&self) -> (u8, u8, u8) {
+        for c in &self.colour_fields {
+            if c.field == "secondary_colour" && c.bg.is_some() {
+                return c.bg.unwrap();
+            }
+        }
+        (38, 38, 38)
     }
 }
 
@@ -36,11 +152,11 @@ impl Default for ReportConfig {
         ReportConfig {
             default: true,
             filters: vec!["status:pending".to_string()],
-            columns: ["id", "uuid", "date_created", "summary", "tags"]
+            columns: ["id", "date_created", "summary", "tags"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
-            column_names: ["ID", "UUID", "Date Created", "Summary", "Tags"]
+            column_names: ["ID", "Date Created", "Summary", "Tags"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
@@ -133,6 +249,7 @@ fn find_config_file() -> Option<PathBuf> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use all_asserts::assert_true;
 
     // Test that this doesn't panic
     #[test]
@@ -152,26 +269,28 @@ mod test {
             travis = ["view3"]
         "#;
 
-        // Expected Config struct instance
-        // let expected_config = Config {
-        //     debug: true,
-        //     server: "localhost".to_owned(),
-        //     default_view: "pending".to_owned(),
-        //     views: {
-        //         let mut map = HashMap::new();
-        //         map.insert(
-        //             "github".to_owned(),
-        //             vec!["view1".to_owned(), "view2".to_owned()],
-        //         );
-        //         map.insert("travis".to_owned(), vec!["view3".to_owned()]);
-        //         map
-        //     },
-        // };
-
-        // Call the function under test
         let _result = load_config_from_string(content);
+        assert_true!(_result.is_ok());
+    }
 
-        // Assert that the result matches the expected Config struct
-        // assert_eq!(result, expected_config);
+    #[test]
+    fn test_parse_colours() {
+        let content = r###"
+            field = "tag"
+            value = "bar"
+            fg = "#0000ff"
+            bg = "#123456"
+        "###;
+        let result = toml::from_str::<ColourField>(content);
+        assert!(result.is_ok(), "Failed to parse: {:?}", result.unwrap_err());
+
+        let content = r###"
+            field = "tag"
+            fg = "#0000ff"
+            bg = "#123456"
+        "###;
+
+        let result = toml::from_str::<ColourField>(content);
+        assert!(result.is_ok(), "Failed to parse: {:?}", result.unwrap_err());
     }
 }

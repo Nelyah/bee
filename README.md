@@ -15,8 +15,8 @@
 - [X] Customise fields in the table
 - [X] Better colours in the table (alternating rows)
 - [X] Parse date
-- [ ] Customise colours
-    - [ ] conditionally
+- [X] Customise colours
+    - [X] conditionally
 - [X] Implement Undo for actions
 - [X] Implement the 'undo' action
 - [X] Annotations

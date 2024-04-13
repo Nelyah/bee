@@ -1,6 +1,7 @@
 use super::table::Table;
-use crate::config::ReportConfig;
+use crate::config::get_config;
 use crate::task::Task;
+use crate::{config::ReportConfig, printer::table::StyledText};
 use chrono::{DateTime, Local};
 use colored::{ColoredString, Colorize};
 use log::debug;
@@ -8,7 +9,11 @@ use serde_json::Value;
 use std::io;
 
 pub trait Printer {
-    fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig);
+    fn print_list_of_tasks(
+        &self,
+        tasks: Vec<&Task>,
+        report_kind: &ReportConfig,
+    ) -> Result<(), String>;
     fn show_information_message(&self, message: &str);
     fn error(&self, message: &str);
 
@@ -48,8 +53,39 @@ fn format_relative_time(t: DateTime<Local>) -> String {
 
 pub struct SimpleTaskTextPrinter;
 
+fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
+    let conf = get_config();
+
+    for colour_conf in &conf.colour_fields {
+        match colour_conf.field.as_str() {
+            "tag" => {
+                if task
+                    .get_tags()
+                    .iter()
+                    .filter(|&tag| tag == &colour_conf.value)
+                    .count()
+                    > 0
+                {
+                    return Ok(Some(StyledText {
+                        styles: vec![],
+                        background_color: colour_conf.bg,
+                        foreground_color: colour_conf.fg,
+                    }));
+                }
+            }
+            "primary_colour" | "secondary_colour" => {}
+            _ => return Err(format!("Unable to colour the output based on the unknown field '{}'. Please check your configuration.", colour_conf.field)),
+        }
+    }
+    Ok(None)
+}
+
 impl Printer for SimpleTaskTextPrinter {
-    fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig) {
+    fn print_list_of_tasks(
+        &self,
+        tasks: Vec<&Task>,
+        report_kind: &ReportConfig,
+    ) -> Result<(), String> {
         let mut tbl = Table::new(&report_kind.column_names, io::stdout()).unwrap();
 
         for t in tasks {
@@ -85,7 +121,7 @@ impl Printer for SimpleTaskTextPrinter {
                 }
             }
             debug!("Row: {:?}", row);
-            tbl.add_row(row).unwrap();
+            tbl.add_row(row, get_style_for_task(t)?).unwrap();
         }
 
         if tbl.is_empty() {
@@ -93,6 +129,7 @@ impl Printer for SimpleTaskTextPrinter {
         } else {
             tbl.print();
         }
+        Ok(())
     }
 
     fn show_information_message(&self, message: &str) {

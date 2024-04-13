@@ -34,8 +34,7 @@ fn get_tags_as_string(tasks: &TaskData) -> String {
     for p in tasks
         .get_task_map()
         .values()
-        .map(|t| t.get_tags())
-        .flatten()
+        .flat_map(|t| t.get_tags())
         .collect::<Vec<&String>>()
     {
         s.insert(p);

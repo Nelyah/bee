@@ -43,7 +43,9 @@ fn test_table() {
     let mut t = Table::new(&headers, BufWriter::new(mock_writer)).unwrap();
 
     t.max_width = 30;
-    let _ = t.add_row(vec!["again".to_string(), cell_text]).unwrap();
+    let _ = t
+        .add_row(vec!["again".to_string(), cell_text], None)
+        .unwrap();
 
     t.print();
     let content = String::from_utf8(t.writer.into_parts().1.unwrap()).unwrap();

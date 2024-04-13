@@ -2,11 +2,13 @@ use colored::{ColoredString, Colorize, Styles};
 use log::debug;
 use std::io::{BufWriter, Write};
 
+use crate::config::get_config;
+
 #[derive(Clone)]
 pub struct StyledText {
-    styles: Vec<Styles>,
-    background_color: Option<(u8, u8, u8)>, // RGB
-    foreground_color: Option<(u8, u8, u8)>, // RGB
+    pub styles: Vec<Styles>,
+    pub background_color: Option<(u8, u8, u8)>, // RGB
+    pub foreground_color: Option<(u8, u8, u8)>, // RGB
 }
 
 impl StyledText {
@@ -43,6 +45,7 @@ impl StyledText {
 pub struct Table<W: Write> {
     column_padding: usize,
     columns: Vec<String>,
+    row_styles: Vec<Option<StyledText>>,
     rows: Vec<Vec<String>>,
     column_widths: Vec<usize>,
     writer: BufWriter<W>,
@@ -53,6 +56,18 @@ pub struct Table<W: Write> {
     header_style: StyledText,
 }
 
+fn overwrite_style(mut first: StyledText, second: &StyledText) -> StyledText {
+    if first.background_color.is_none() {
+        first.background_color = second.background_color.to_owned();
+    }
+
+    if first.foreground_color.is_none() {
+        first.foreground_color = second.foreground_color.to_owned();
+    }
+
+    first
+}
+
 impl<W: Write> Table<W> {
     pub fn new(column_headers: &Vec<String>, writer: W) -> Result<Table<W>, &'static str> {
         if column_headers.is_empty() {
@@ -61,9 +76,12 @@ impl<W: Write> Table<W> {
 
         let column_widths = column_headers.iter().map(|header| header.len()).collect();
 
+        let conf = get_config();
+
         Ok(Table {
             column_padding: 2,
             columns: column_headers.to_owned(),
+            row_styles: Vec::new(),
             rows: Vec::new(),
             column_widths,
             writer: BufWriter::new(writer),
@@ -71,13 +89,13 @@ impl<W: Write> Table<W> {
             alternating_colours: true,
             primary_style: StyledText {
                 styles: vec![],
-                background_color: Some((89, 89, 89)),
-                foreground_color: Some((220, 220, 220)),
+                background_color: Some(conf.get_primary_colour_bg()),
+                foreground_color: Some(conf.get_primary_colour_fg()),
             },
             secondary_style: StyledText {
                 styles: vec![],
-                background_color: Some((38, 38, 38)),
-                foreground_color: Some((220, 220, 220)),
+                background_color: Some(conf.get_secondary_colour_bg()),
+                foreground_color: Some(conf.get_secondary_colour_fg()),
             },
             header_style: StyledText {
                 styles: vec![Styles::Underline, Styles::Bold],
@@ -91,7 +109,11 @@ impl<W: Write> Table<W> {
         self.rows.is_empty()
     }
 
-    pub fn add_row(&mut self, row: Vec<String>) -> Result<&mut Self, &'static str> {
+    pub fn add_row(
+        &mut self,
+        row: Vec<String>,
+        style: Option<StyledText>,
+    ) -> Result<&mut Self, &'static str> {
         if row.len() != self.columns.len() {
             return Err("row length does not match column length");
         }
@@ -103,6 +125,7 @@ impl<W: Write> Table<W> {
         }
 
         self.rows.push(row);
+        self.row_styles.push(style);
         Ok(self)
     }
 
@@ -122,10 +145,22 @@ impl<W: Write> Table<W> {
         let secondary_style = self.secondary_style.clone();
 
         for i in 0..self.rows.len() {
-            if self.alternating_colours && i % 2 == 1 {
-                self.print_row(i, &primary_style.clone());
-            } else {
-                self.print_row(i, &secondary_style.clone());
+            let style = self.row_styles[i].to_owned();
+            match style {
+                Some(style) => {
+                    if self.alternating_colours && i % 2 == 1 {
+                        self.print_row(i, &overwrite_style(style.to_owned(), &primary_style));
+                    } else {
+                        self.print_row(i, &overwrite_style(style.to_owned(), &secondary_style));
+                    }
+                }
+                None => {
+                    if self.alternating_colours && i % 2 == 1 {
+                        self.print_row(i, &primary_style.clone());
+                    } else {
+                        self.print_row(i, &secondary_style.clone());
+                    }
+                }
             }
         }
     }

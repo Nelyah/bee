@@ -1,3 +1,17 @@
+[[colours]]
+bg = "#282c34"
+field = "primary_colour"
+
+[[colours]]
+fg = "#ffd966"
+field = "tag"
+value = "main"
+
+[[colours]]
+fg = "#12FF25"
+field = "tag"
+value = "hello"
+
 [report.all]
 column_names = ["UUID", "Date Created", "Date Completed", "Summary", "Tags"]
 columns = ["uuid", "date_created", "date_completed", "summary", "tags"]

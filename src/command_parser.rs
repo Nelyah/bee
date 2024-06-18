@@ -19,7 +19,9 @@ impl Parser {
 
 #[derive(Debug, Clone, Default)]
 pub struct ParsedCommand {
+    // The command name
     pub command: String,
+    /// The filters to apply to the tasks
     pub filters: Box<dyn Filter>,
     pub arguments: Vec<String>,
     pub arguments_as_filters: bool,

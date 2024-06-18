@@ -4,7 +4,6 @@ zstyle ':completion:*:*:rusk:*' verbose yes
 zstyle ':completion:*:*:rusk:*:descriptions' format '%U%B%d%b%u'
 zstyle ':completion:*:*:rusk:*' group-name ''
 
-
 _rusk_filters() {
     local -a reply
     local word=$'[^\0]#\0'

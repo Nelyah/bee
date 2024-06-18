@@ -5,6 +5,7 @@ mod printer;
 mod storage;
 mod task;
 
+use log::{debug, trace};
 use std::process::exit;
 
 use printer::cli::SimpleTaskTextPrinter;
@@ -39,7 +40,18 @@ fn main() {
     };
 
     let undos = JsonStore::load_undos(undo_count);
-    let tasks = JsonStore::load_tasks(Some(&command.filters));
+    let undos_uuid: Vec<uuid::Uuid> = undos
+        .iter()
+        .flat_map(|x| x.tasks.iter().map(|y| *y.get_uuid()))
+        .collect();
+
+    debug!("Loaded {} undos", undos.len());
+    trace!("Undos: {:?}", undos);
+    trace!("Undo uuids: {:?}", undos_uuid);
+    let tasks = JsonStore::load_tasks(Some(&task::filters::or_uuids(
+        command.filters.clone(),
+        &undos_uuid,
+    )));
 
     let mut action = registry.get_action_from_command_parser(&command);
     action.set_tasks(tasks);

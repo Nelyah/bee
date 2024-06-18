@@ -13,7 +13,7 @@ pub enum ActionUndoType {
     Modify,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ActionUndo {
     pub action_type: ActionUndoType,
     pub tasks: Vec<Task>,

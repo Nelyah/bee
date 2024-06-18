@@ -93,7 +93,7 @@ impl TaskAnnotation {
     }
 }
 
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct Task {
     id: Option<usize>,
     status: TaskStatus,

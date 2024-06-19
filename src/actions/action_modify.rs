@@ -51,3 +51,84 @@ impl TaskAction for ModifyTaskAction {
         "Modify a task".to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use all_asserts::*;
+
+    use super::*;
+    use crate::config::ReportConfig;
+    use crate::task::{Task, TaskData, TaskProperties, TaskStatus};
+    use crate::Printer;
+
+    struct MockPrinter;
+
+    impl Printer for MockPrinter {
+        fn print_raw(&self, _: &str) {}
+        fn show_information_message(&self, _message: &str) {}
+        fn error(&self, _: &str) {}
+
+        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> Result<(), String> {
+            Err("Not implemented".to_string())
+        }
+    }
+
+    #[test]
+    fn test_do_action_no_tasks() {
+        let mut action = ModifyTaskAction::default();
+        let printer = MockPrinter;
+
+        let result = action.do_action(&printer);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_do_action_with_tasks() {
+        let mut action = ModifyTaskAction::default();
+        assert_true!(action.base.undos.is_empty());
+        let printer = MockPrinter;
+        action.base.arguments = vec!["new description".to_string()];
+
+        // Add a task to the action
+        let mut tasks = TaskData::default();
+        let task1 = tasks
+            .add_task(
+                &TaskProperties::from(&["this is a task1".to_owned()]).unwrap(),
+                TaskStatus::Pending,
+            )
+            .unwrap()
+            .clone();
+
+        tasks
+            .add_task(
+                &TaskProperties::from(&["this is a task2".to_owned()]).unwrap(),
+                TaskStatus::Pending,
+            )
+            .unwrap();
+
+        action.base.tasks = tasks;
+
+        let result = action.do_action(&printer);
+        assert!(result.is_ok());
+
+        assert_eq!(
+            action
+                .base
+                .tasks
+                .get_task_map()
+                .get(task1.get_uuid())
+                .unwrap()
+                .get_summary(),
+            "new description"
+        );
+
+        assert_eq!(action.base.undos.len(), 1);
+        assert_eq!(action.base.undos.first().unwrap().tasks.len(), 2);
+    }
+
+    #[test]
+    fn test_get_command_description() {
+        let action = ModifyTaskAction::default();
+        assert_false!(action.get_command_description().is_empty());
+    }
+}

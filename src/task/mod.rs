@@ -72,7 +72,7 @@ impl TaskProperties {
 
     pub fn from(values: &[String]) -> Result<TaskProperties, String> {
         let lexer = Lexer::new(values.join(" "));
-        let mut parser = parser::Parser::new(lexer);
+        let mut parser = parser::TaskPropertyParser::new(lexer);
         parser.parse_task_properties()
     }
 }

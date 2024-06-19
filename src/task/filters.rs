@@ -1,9 +1,10 @@
 mod filters_impl;
+
 mod parser;
 
 use crate::task::lexer::Lexer;
 use crate::task::Task;
-use parser::Parser;
+use parser::FilterParser;
 
 use log::{debug, error};
 use std::{
@@ -36,7 +37,7 @@ pub fn and(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
 
 pub fn from(values: &[String]) -> Result<Box<dyn Filter>, String> {
     let lexer = Lexer::new(values.join(" "));
-    let mut parser = Parser::new(lexer);
+    let mut parser = FilterParser::new(lexer);
     let f = parser.parse_filter()?;
     debug!("Parsed filter:\n{}", f);
     Ok(f)

@@ -63,6 +63,7 @@ fn is_segment_character(ch: &char) -> bool {
     ch.is_whitespace() || *ch == '(' || *ch == ')' || *ch == '\0'
 }
 
+#[derive(Debug, Default)]
 pub struct Lexer {
     input: String,
     position: usize,

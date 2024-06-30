@@ -48,10 +48,12 @@ fn main() {
     debug!("Loaded {} undos", undos.len());
     trace!("Undos: {:?}", undos);
     trace!("Undo uuids: {:?}", undos_uuid);
-    let tasks = JsonStore::load_tasks(Some(&task::filters::or_uuids(
-        command.filters.clone(),
-        &undos_uuid,
-    )));
+    // FIXME: this makes the undo task something that is loaded and affected by modifications
+    let mut tasks = JsonStore::load_tasks(Some(command.filters.clone()).as_ref());
+
+    for undo_action in &undos {
+        tasks.set_undos(&undo_action.tasks);
+    }
 
     let mut action = registry.get_action_from_command_parser(&command);
     action.set_tasks(tasks);

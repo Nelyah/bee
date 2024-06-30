@@ -350,6 +350,7 @@ impl Parser {
         Ok(time.unwrap())
     }
 
+    /// skip whitespace and return the number of whitespace characters skipped
     fn skip_whitespace(&mut self) -> usize {
         let mut blank_count = 0;
         while self.current_token.token_type == TokenType::Blank {

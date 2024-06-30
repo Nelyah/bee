@@ -223,6 +223,7 @@ impl fmt::Display for Project {
 #[derive(Default)]
 pub struct TaskData {
     tasks: HashMap<Uuid, Task>,
+    undos: HashMap<Uuid, Task>,
     max_id: usize,
 }
 
@@ -243,8 +244,15 @@ impl TaskData {
         self.tasks.insert(*task.get_uuid(), task.clone());
     }
 
-    pub fn has_uuid(&self, uuid: &Uuid) -> bool {
-        self.tasks.contains_key(uuid)
+    pub fn set_undos(&mut self, tasks: &Vec<Task>) {
+        for t in tasks {
+            let uuid = *t.get_uuid();
+            self.undos.insert(uuid, t.clone());
+        }
+    }
+
+    pub fn get_undos(&self) -> &HashMap<Uuid, Task> {
+        &self.undos
     }
 
     pub fn task_done(&mut self, uuid: &Uuid) {
@@ -279,6 +287,7 @@ impl TaskData {
     pub fn filter(&self, filter: &Box<dyn Filter>) -> Self {
         let mut new_data = TaskData {
             tasks: HashMap::new(),
+            undos: HashMap::new(),
             max_id: self.max_id,
         };
 
@@ -376,6 +385,7 @@ impl<'de> Deserialize<'de> for TaskData {
 
         Ok(TaskData {
             tasks: task_map,
+            undos: HashMap::new(),
             max_id,
         })
     }

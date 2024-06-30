@@ -34,17 +34,6 @@ pub fn and(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
     })
 }
 
-pub fn or_uuids(filter: Box<dyn Filter>, uuids: &[uuid::Uuid]) -> Box<dyn Filter> {
-    let mut children: Vec<Box<dyn Filter>> = vec![filter];
-    children.extend(
-        uuids
-            .iter()
-            .map(|uuid| Box::new(UuidFilter { uuid: *uuid }) as Box<dyn Filter>),
-    );
-
-    Box::new(OrFilter { children })
-}
-
 pub fn from(values: &[String]) -> Result<Box<dyn Filter>, String> {
     let lexer = Lexer::new(values.join(" "));
     let mut parser = Parser::new(lexer);

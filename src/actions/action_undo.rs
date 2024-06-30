@@ -16,7 +16,7 @@ impl TaskAction for UndoTaskAction {
         let undos = &self.base.undos;
         for current_undo in undos.iter().rev() {
             for t in &current_undo.tasks {
-                if !self.get_tasks().has_uuid(t.get_uuid()) {
+                if !self.get_tasks().get_undos().contains_key(t.get_uuid()) {
                     return Err(format!("Could not find task to undo: {}", t.get_uuid()));
                 }
 

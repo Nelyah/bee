@@ -172,6 +172,7 @@ mod tests {
     fn test_upkeep_sorts_tasks_and_updates_ids() {
         let mut task_data = TaskData {
             tasks: HashMap::new(),
+            undos: HashMap::new(),
             max_id: 0,
         };
 
@@ -202,6 +203,7 @@ mod tests {
     fn test_upkeep_handles_deleted_and_completed_tasks() {
         let mut task_data = TaskData {
             tasks: HashMap::new(),
+            undos: HashMap::new(),
             max_id: 0,
         };
 

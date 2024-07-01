@@ -2,6 +2,8 @@ pub mod filters;
 
 mod lexer;
 mod parser;
+mod task_prop_parser;
+use task_prop_parser::TaskPropertyParser;
 
 use std::{collections::HashSet, fmt};
 
@@ -72,7 +74,7 @@ impl TaskProperties {
 
     pub fn from(values: &[String]) -> Result<TaskProperties, String> {
         let lexer = Lexer::new(values.join(" "));
-        let mut parser = parser::TaskPropertyParser::new(lexer);
+        let mut parser = TaskPropertyParser::new(lexer);
         parser.parse_task_properties()
     }
 }

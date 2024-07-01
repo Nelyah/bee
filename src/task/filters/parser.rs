@@ -52,37 +52,37 @@ fn add_to_current_filter(
 }
 
 impl BaseParser for FilterParser {
-        fn get_buffer_index(&self) -> usize {
-            self.buffer_index
-        }
-        fn set_buffer_index(&mut self, value: usize) {
-            self.buffer_index = value;
-        }
+    fn get_buffer_index(&self) -> usize {
+        self.buffer_index
+    }
+    fn set_buffer_index(&mut self, value: usize) {
+        self.buffer_index = value;
+    }
 
-        fn get_current_token(&self) -> &Token {
-            &self.current_token
-        }
-        fn set_current_token(&mut self, tok: Token) {
-            self.current_token = tok;
-        }
+    fn get_current_token(&self) -> &Token {
+        &self.current_token
+    }
+    fn set_current_token(&mut self, tok: Token) {
+        self.current_token = tok;
+    }
 
-        fn get_buffer_tokens(&self) -> &Vec<Token> {
-            &self.buffer_tokens
-        }
-        fn get_mut_buffer_tokens(&mut self) -> &mut Vec<Token> {
-            &mut self.buffer_tokens
-        }
+    fn get_buffer_tokens(&self) -> &Vec<Token> {
+        &self.buffer_tokens
+    }
+    fn get_mut_buffer_tokens(&mut self) -> &mut Vec<Token> {
+        &mut self.buffer_tokens
+    }
 
-        fn get_peek_token(&self) -> &Token {
-            &self.peek_token
-        }
-        fn set_peek_token(&mut self, tok: Token) {
-            self.peek_token = tok;
-        }
+    fn get_peek_token(&self) -> &Token {
+        &self.peek_token
+    }
+    fn set_peek_token(&mut self, tok: Token) {
+        self.peek_token = tok;
+    }
 
-        fn get_mut_lexer(&mut self) -> &mut Lexer {
-            &mut self.lexer
-        }
+    fn get_mut_lexer(&mut self) -> &mut Lexer {
+        &mut self.lexer
+    }
 }
 
 impl FilterParser {
@@ -99,7 +99,6 @@ impl FilterParser {
         parser.buffer_index = 0;
         parser
     }
-
 
     pub fn parse_filter(&mut self) -> Result<Box<dyn Filter>, String> {
         let mut has_only_ids = true;
@@ -119,7 +118,6 @@ impl FilterParser {
 
         Ok(filter)
     }
-
 
     fn parse_filter_impl(
         &mut self,

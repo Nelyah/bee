@@ -78,6 +78,21 @@ fn test_lexer() {
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "(");
     assert_eq!(tok.token_type, TokenType::LeftParenthesis);
+
+    let mut lexer = Lexer::new("due:".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "due:");
+    assert_eq!(tok.token_type, TokenType::FilterTokDateDue);
+
+    let mut lexer = Lexer::new("due.after:".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "due.after:");
+    assert_eq!(tok.token_type, TokenType::FilterTokDateDueAfter);
+
+    let mut lexer = Lexer::new("due.before:".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "due.before:");
+    assert_eq!(tok.token_type, TokenType::FilterTokDateDueBefore);
 }
 
 #[test]

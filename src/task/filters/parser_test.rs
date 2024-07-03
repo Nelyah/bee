@@ -411,4 +411,43 @@ fn test_build_filter_dates() {
         ],
     });
     assert_eq!(&expected, &actual);
+
+    let actual: Box<dyn Filter> = filters::from(
+        &["due:today"]
+            .iter()
+            .map(|&s| s.to_string())
+            .collect::<Vec<String>>(),
+    )
+    .unwrap();
+    let expected: Box<dyn Filter> = Box::new(DateDueFilter {
+        time: today_start,
+        type_when: DateDueFilterType::Day,
+    });
+    assert_eq!(&expected, &actual);
+
+    let actual: Box<dyn Filter> = filters::from(
+        &["due.after:today"]
+            .iter()
+            .map(|&s| s.to_string())
+            .collect::<Vec<String>>(),
+    )
+    .unwrap();
+    let expected: Box<dyn Filter> = Box::new(DateDueFilter {
+        time: today_start,
+        type_when: DateDueFilterType::After,
+    });
+    assert_eq!(&expected, &actual);
+
+    let actual: Box<dyn Filter> = filters::from(
+        &["due.before:today"]
+            .iter()
+            .map(|&s| s.to_string())
+            .collect::<Vec<String>>(),
+    )
+    .unwrap();
+    let expected: Box<dyn Filter> = Box::new(DateDueFilter {
+        time: today_start,
+        type_when: DateDueFilterType::Before,
+    });
+    assert_eq!(&expected, &actual);
 }

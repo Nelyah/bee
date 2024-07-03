@@ -1,11 +1,11 @@
 use uuid::Uuid;
 
-use super::filters_impl::FilterKind;
+use super::filters_impl::{DateDueFilterType, FilterKind};
 
 use crate::task;
 use crate::task::filters::{
-    AndFilter, DateCreatedFilter, DateEndFilter, Filter, OrFilter, ProjectFilter, RootFilter,
-    StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
+    AndFilter, DateCreatedFilter, DateDueFilter, DateEndFilter, Filter, OrFilter, ProjectFilter,
+    RootFilter, StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
 };
 use crate::task::lexer::{Lexer, Token, TokenType};
 
@@ -368,7 +368,10 @@ impl FilterParser {
                 TokenType::FilterTokDateEndBefore
                 | TokenType::FilterTokDateEndAfter
                 | TokenType::FilterTokDateCreatedBefore
-                | TokenType::FilterTokDateCreatedAfter => {
+                | TokenType::FilterTokDateCreatedAfter
+                | TokenType::FilterTokDateDue
+                | TokenType::FilterTokDateDueAfter
+                | TokenType::FilterTokDateDueBefore => {
                     *has_only_ids = false;
                     let before = self.current_token.token_type == TokenType::FilterTokDateEndBefore
                         || self.current_token.token_type == TokenType::FilterTokDateCreatedBefore;
@@ -388,15 +391,29 @@ impl FilterParser {
                     }
 
                     let time = self.read_date_expr()?;
-
-                    let new_filter: Box<dyn Filter> = if tok_type
-                        == TokenType::FilterTokDateEndBefore
-                        || tok_type == TokenType::FilterTokDateEndAfter
-                    {
-                        Box::new(DateEndFilter { time, before })
-                    } else {
-                        Box::new(DateCreatedFilter { time, before })
+                    let new_filter: Box<dyn Filter> = match tok_type {
+                        TokenType::FilterTokDateEndBefore | TokenType::FilterTokDateEndAfter => {
+                            Box::new(DateEndFilter { time, before })
+                        }
+                        TokenType::FilterTokDateCreatedBefore
+                        | TokenType::FilterTokDateCreatedAfter => {
+                            Box::new(DateCreatedFilter { time, before })
+                        }
+                        TokenType::FilterTokDateDue => Box::new(DateDueFilter {
+                            time,
+                            type_when: DateDueFilterType::Day,
+                        }),
+                        TokenType::FilterTokDateDueBefore => Box::new(DateDueFilter {
+                            time,
+                            type_when: DateDueFilterType::Before,
+                        }),
+                        TokenType::FilterTokDateDueAfter => Box::new(DateDueFilter {
+                            time,
+                            type_when: DateDueFilterType::After,
+                        }),
+                        _ => unreachable!(),
                     };
+
                     filter = add_to_current_filter(filter, new_filter, &ScopeOperator::And);
 
                     self.next_token();

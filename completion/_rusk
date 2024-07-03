@@ -47,6 +47,9 @@ _rusk_filters() {
         'created.before:Starts before:$task_dates'
         'end.before:Completed before:$task_dates'
         'end.after:Completed after:$task_dates'
+        'due:Due this day:$task_dates'
+        'due.before:Due before:$task_dates'
+        'due.after:due after:$task_dates'
     )
     _regex_words -t ':' default 'Filters' "${_task_filter[@]}"
     local task_filter=( "$reply[@]" )

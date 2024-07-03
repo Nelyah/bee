@@ -55,7 +55,7 @@ impl fmt::Display for TaskStatus {
 // This structure contains information regarding setting fields for a Task
 // that can be parsed from a user query, i.e. from the command line
 // It only contains the fields that can be set by a User
-#[derive(Default, PartialEq, Debug)]
+#[derive(Default, PartialEq, Debug, serde::Deserialize)]
 pub struct TaskProperties {
     summary: Option<String>,
     tags_remove: Option<Vec<String>>,
@@ -63,6 +63,8 @@ pub struct TaskProperties {
     status: Option<TaskStatus>,
     annotation: Option<String>,
     project: Option<Project>,
+    #[serde(default)]
+    date_due: Option<DateTime<chrono::Local>>,
 }
 
 // We implement a specific function for annotate because we cannot know how to differenciate
@@ -109,6 +111,8 @@ pub struct Task {
     date_completed: Option<DateTime<chrono::Local>>,
     sub: Vec<Uuid>,
     project: Option<Project>,
+    #[serde(default)]
+    date_due: Option<DateTime<chrono::Local>>,
 }
 
 impl Task {
@@ -148,6 +152,10 @@ impl Task {
         &self.date_completed
     }
 
+    pub fn get_date_due(&self) -> &Option<DateTime<Local>> {
+        &self.date_due
+    }
+
     pub fn get_uuid(&self) -> &Uuid {
         &self.uuid
     }
@@ -155,6 +163,10 @@ impl Task {
     pub fn apply(&mut self, props: &TaskProperties) {
         if let Some(summary) = &props.summary {
             self.summary = summary.clone();
+        }
+
+        if let Some(date_due) = &props.date_due {
+            self.date_due = Some(date_due.to_owned());
         }
 
         if let Some(status) = &props.status {
@@ -327,6 +339,8 @@ impl TaskData {
             TaskStatus::Completed | TaskStatus::Deleted => Some(Local::now()),
         };
 
+        let date_due = props.date_due.as_ref().map(|date| date.to_owned());
+
         let project = props.project.to_owned();
 
         let summary = match &props.summary {
@@ -349,6 +363,7 @@ impl TaskData {
             date_completed,
             annotations: Vec::default(),
             sub: Vec::default(),
+            date_due,
             project,
         };
         let owned_uuid = t.get_uuid().to_owned();

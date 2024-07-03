@@ -116,6 +116,7 @@ pub trait BaseParser: Debug {
     }
 
     fn read_date_expr(&mut self) -> Result<DateTime<Local>, String> {
+        debug!("Reading date expression");
         let mut time = None;
         let mut try_time = Local::now();
         let mut first = true;
@@ -137,7 +138,6 @@ pub trait BaseParser: Debug {
                 // duration
                 TokenType::Int => {
                     debug!("Read Int token '{}'", self.get_current_token().literal);
-                    debug!("Read WordString token '{}'", self.get_peek_token().literal);
                     let number_token = self.get_current_token().to_owned();
                     backtrace_tokens += 1;
                     self.next_token();
@@ -304,6 +304,7 @@ pub trait BaseParser: Debug {
         if time.is_none() {
             return Err("invalid date expression".to_string());
         }
+        debug!("Parsed date expression. Time: {:?}", time);
         Ok(time.unwrap())
     }
 }

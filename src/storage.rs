@@ -29,7 +29,7 @@ impl Store for JsonStore {
     #[allow(clippy::borrowed_box)]
     fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData {
         debug!(
-            "Loading tasks using filter:{}",
+            "Loading tasks using filter:\n{}",
             &filter.unwrap_or(&filters::new_empty()).to_string()
         );
         let mut data = match find_data_file() {

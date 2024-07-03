@@ -1,5 +1,5 @@
 use chrono::{DateTime, Local};
-use log::debug;
+use log::{debug, trace};
 use std::{any::Any, fmt};
 use uuid::Uuid;
 
@@ -16,6 +16,7 @@ pub enum FilterKind {
     Project,
     DateEnd,
     DateCreated,
+    DateDue,
     String,
     Tag,
     TaskId,
@@ -33,6 +34,7 @@ impl fmt::Display for FilterKind {
             FilterKind::Project => write!(f, "Project"),
             FilterKind::DateEnd => write!(f, "DateEnd"),
             FilterKind::DateCreated => write!(f, "DateCreated"),
+            FilterKind::DateDue => write!(f, "DateDue"),
             FilterKind::String => write!(f, "String"),
             FilterKind::Tag => write!(f, "Tag"),
             FilterKind::TaskId => write!(f, "TaskId"),
@@ -71,6 +73,7 @@ impl_display_and_debug!(
     StatusFilter,
     DateEndFilter,
     DateCreatedFilter,
+    DateDueFilter,
     StringFilter,
     TagFilter,
     TaskIdFilter,
@@ -424,6 +427,77 @@ impl CloneFilter for DateCreatedFilter {
         Box::new(DateCreatedFilter {
             time: self.time.to_owned(),
             before: self.before.to_owned(),
+        })
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct DateDueFilter {
+    pub time: DateTime<Local>,
+    pub type_when: DateDueFilterType,
+}
+
+#[derive(PartialEq, Eq, Clone)]
+pub enum DateDueFilterType {
+    /// Check if the task is due any time during the day
+    Day,
+    Before,
+    After,
+}
+
+impl Filter for DateDueFilter {
+    fn validate_task(&self, task: &Task) -> bool {
+        trace!("Validating task: {:?}", task);
+        if task.get_date_due().is_none() {
+            return false;
+        }
+
+        match self.type_when {
+            DateDueFilterType::Day => {
+                let task_date = task.get_date_due().unwrap().date_naive();
+                let filter_date = self.time.date_naive();
+                task_date == filter_date
+            }
+            DateDueFilterType::Before => task.get_date_due().unwrap() < self.time,
+            DateDueFilterType::After => task.get_date_due().unwrap() >= self.time,
+        }
+    }
+
+    fn add_children(&mut self, _: Box<dyn Filter>) {
+        unreachable!("Trying to add a child to a DateDueFilter");
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+        Box::new(std::iter::once(self as &dyn Filter))
+    }
+}
+
+impl FilterKindGetter for DateDueFilter {
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::DateDue
+    }
+}
+
+impl DateDueFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let due_type = match self.type_when {
+            DateDueFilterType::Day => "day",
+            DateDueFilterType::Before => "before",
+            DateDueFilterType::After => "after",
+        };
+        write!(f, "{}: {}: {}", self.get_kind(), due_type, &self.time)
+    }
+}
+
+impl CloneFilter for DateDueFilter {
+    fn clone_box(&self) -> Box<dyn Filter> {
+        Box::new(DateDueFilter {
+            time: self.time.to_owned(),
+            type_when: self.type_when.to_owned(),
         })
     }
 }

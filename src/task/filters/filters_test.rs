@@ -1,6 +1,12 @@
 use super::*;
 use crate::task::{Project, TaskData, TaskProperties, TaskStatus};
 use all_asserts::{assert_false, assert_true};
+use chrono::{Duration, Local, NaiveTime, TimeZone};
+use filters_test::filters_impl::DateDueFilterType;
+
+fn init() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
 
 #[test]
 fn test_clone() {
@@ -88,6 +94,58 @@ fn test_project_filter() {
 
     assert_false!(ProjectFilter {
         name: Project::from("hey.b".to_owned())
+    }
+    .validate_task(&task));
+}
+
+#[test]
+fn test_due_filter() {
+    init();
+    let now = Local::now();
+    let today_start = Local
+        .from_local_datetime(
+            &now.date_naive()
+                .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+        )
+        .single()
+        .unwrap();
+
+    let mut task_data = TaskData::default();
+    let task = task_data
+        .add_task(
+            &TaskProperties::from(&["summary due: today".to_owned()]).unwrap(),
+            TaskStatus::Pending,
+        )
+        .unwrap()
+        .clone();
+
+    assert_true!(DateDueFilter {
+        time: today_start,
+        type_when: DateDueFilterType::Day,
+    }
+    .validate_task(&task));
+
+    let task = task_data
+        .add_task(
+            &TaskProperties::from(&["summary due: today+10h".to_owned()]).unwrap(),
+            TaskStatus::Pending,
+        )
+        .unwrap()
+        .clone();
+
+    assert_true!(DateDueFilter {
+        time: today_start + Duration::try_hours(20).unwrap(),
+        type_when: DateDueFilterType::Day,
+    }
+    .validate_task(&task));
+    assert_true!(DateDueFilter {
+        time: today_start + Duration::try_hours(20).unwrap(),
+        type_when: DateDueFilterType::Before,
+    }
+    .validate_task(&task));
+    assert_false!(DateDueFilter {
+        time: today_start + Duration::try_hours(20).unwrap(),
+        type_when: DateDueFilterType::After,
     }
     .validate_task(&task));
 }

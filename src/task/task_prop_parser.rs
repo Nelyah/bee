@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use log::debug;
+
 use super::parser::BaseParser;
 use crate::task::lexer::{Lexer, Token, TokenType};
 
@@ -91,6 +93,7 @@ impl TaskPropertyParser {
     }
 
     pub fn parse_task_properties(&mut self) -> Result<TaskProperties, String> {
+        let err_msg_prefix: String = "could not parse the task property expression. ".to_string();
         let mut props = TaskProperties::default();
         if self.current_token.token_type == TokenType::Eof {
             return Ok(props);
@@ -106,6 +109,8 @@ impl TaskPropertyParser {
                 | TokenType::WordString
                 | TokenType::OperatorAnd
                 | TokenType::OperatorXor
+                | TokenType::FilterTokDateDueBefore
+                | TokenType::FilterTokDateDueAfter
                 | TokenType::FilterTokDateCreatedBefore
                 | TokenType::FilterTokDateCreatedAfter
                 | TokenType::FilterTokDateEndBefore
@@ -161,12 +166,32 @@ impl TaskPropertyParser {
                 TokenType::TagMinusPrefix => {
                     process_tag_prefix!(self, props, tags_remove);
                 }
+                TokenType::FilterTokDateDue => {
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    if self.current_token.token_type != TokenType::WordString
+                        && self.current_token.token_type != TokenType::Int
+                    {
+                        return Err(err_msg_prefix
+                            + &format!(
+                            "Expected a token of type String or Int following a TokenTypeFilterDateEnd, found '{}' (value: '{}')",
+                            self.peek_token.token_type,
+                            self.peek_token.literal
+                            ));
+                    }
+
+                    let time = self.read_date_expr()?;
+                    props.date_due = Some(time);
+                    self.next_token();
+                }
                 TokenType::Eof => unreachable!("We should not be trying to read EOF"),
             }
         }
         if let Some(summary) = &mut props.summary {
             *summary = summary.trim().to_string();
         }
+        debug!("Parsed task properties: {:?}", props);
         Ok(props)
     }
 }

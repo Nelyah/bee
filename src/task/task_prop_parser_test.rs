@@ -1,3 +1,5 @@
+use chrono::{Local, NaiveTime, TimeZone};
+
 use super::*;
 
 fn from_string(value: &str) -> TaskProperties {
@@ -18,6 +20,7 @@ fn test_task_properties_parser() {
             status: None,
             annotation: None,
             project: None,
+            date_due: None,
         }
     );
     tp.set_annotate("foo".to_owned());
@@ -30,6 +33,7 @@ fn test_task_properties_parser() {
             status: None,
             annotation: Some("foo".to_owned()),
             project: None,
+            date_due: None,
         }
     );
 
@@ -43,6 +47,7 @@ fn test_task_properties_parser() {
             status: Some(TaskStatus::Completed),
             annotation: None,
             project: None,
+            date_due: None,
         }
     );
 
@@ -58,6 +63,7 @@ fn test_task_properties_parser() {
             project: Some(Project {
                 name: "p.a.b.c".to_string()
             }),
+            date_due: None,
         }
     );
 
@@ -73,6 +79,34 @@ fn test_task_properties_parser() {
             project: Some(Project {
                 name: "proj.a.b.c".to_string()
             }),
+            date_due: None,
+        }
+    );
+
+    let tp = from_string("");
+    assert_eq!(tp, TaskProperties::default(),);
+
+    let tp = from_string("a new task -main summary +foo proj: proj.a.b.c due: today");
+    let now = Local::now();
+    let today_start = Local
+        .from_local_datetime(
+            &now.date_naive()
+                .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+        )
+        .single()
+        .unwrap();
+    assert_eq!(
+        tp,
+        TaskProperties {
+            summary: Some("a new task summary".to_owned()),
+            tags_remove: Some(vec!["main".to_owned()]),
+            tags_add: Some(vec!["foo".to_owned()]),
+            status: None,
+            annotation: None,
+            project: Some(Project {
+                name: "proj.a.b.c".to_string()
+            }),
+            date_due: Some(today_start),
         }
     );
 

@@ -46,20 +46,27 @@ fn setup_task() -> Task {
         annotations: Vec::default(),
         sub: vec![],
         project: None,
+        date_due: None,
+    }
+}
+
+fn setup_task_property() -> TaskProperties {
+    TaskProperties {
+        summary: None,
+        tags_remove: None,
+        tags_add: None,
+        status: None,
+        annotation: None,
+        project: None,
+        date_due: None,
     }
 }
 
 #[test]
 fn test_apply_summary() {
     let mut task = setup_task();
-    let props = TaskProperties {
-        summary: Some("New summary".to_string()),
-        tags_remove: None,
-        tags_add: None,
-        status: None,
-        annotation: None,
-        project: None,
-    };
+    let mut props = setup_task_property();
+    props.summary = Some("New summary".to_string());
 
     task.apply(&props);
     assert_eq!(task.summary, "New summary");
@@ -68,14 +75,8 @@ fn test_apply_summary() {
 #[test]
 fn test_apply_status() {
     let mut task = setup_task();
-    let props = TaskProperties {
-        summary: None,
-        tags_remove: None,
-        tags_add: None,
-        status: Some(TaskStatus::Completed),
-        annotation: None,
-        project: None,
-    };
+    let mut props = setup_task_property();
+    props.status = Some(TaskStatus::Completed);
 
     assert_eq!(task.status, TaskStatus::Pending);
     task.apply(&props);
@@ -85,14 +86,8 @@ fn test_apply_status() {
 #[test]
 fn test_apply_tags_add() {
     let mut task = setup_task();
-    let props = TaskProperties {
-        summary: None,
-        tags_remove: None,
-        tags_add: Some(vec!["new_tag".to_string()]),
-        status: None,
-        annotation: None,
-        project: None,
-    };
+    let mut props = setup_task_property();
+    props.tags_add = Some(vec!["new_tag".to_string()]);
 
     task.apply(&props);
     task.tags.sort();
@@ -102,14 +97,8 @@ fn test_apply_tags_add() {
 #[test]
 fn test_apply_tags_remove() {
     let mut task = setup_task();
-    let props = TaskProperties {
-        summary: None,
-        tags_remove: Some(vec!["initial_tag2".to_string()]),
-        tags_add: None,
-        status: None,
-        annotation: None,
-        project: None,
-    };
+    let mut props = setup_task_property();
+    props.tags_remove = Some(vec!["initial_tag2".to_string()]);
 
     task.apply(&props);
     assert_eq!(task.tags, vec!["initial_tag1"]);
@@ -118,14 +107,8 @@ fn test_apply_tags_remove() {
 #[test]
 fn test_apply_annotation() {
     let mut task = setup_task();
-    let props = TaskProperties {
-        summary: None,
-        tags_remove: None,
-        tags_add: None,
-        status: None,
-        annotation: Some("hello there".to_owned()),
-        project: None,
-    };
+    let mut props = setup_task_property();
+    props.annotation = Some("hello there".to_owned());
 
     assert_true!(task.annotations.is_empty());
     task.apply(&props);
@@ -139,14 +122,10 @@ fn test_apply_annotation() {
 #[test]
 fn test_apply_combined() {
     let mut task = setup_task();
-    let props = TaskProperties {
-        summary: Some("Updated summary".to_string()),
-        tags_remove: Some(vec!["initial_tag1".to_string()]),
-        tags_add: Some(vec!["additional_tag".to_string()]),
-        status: None,
-        annotation: None,
-        project: None,
-    };
+    let mut props = setup_task_property();
+    props.summary = Some("Updated summary".to_string());
+    props.tags_remove = Some(vec!["initial_tag1".to_string()]);
+    props.tags_add = Some(vec!["additional_tag".to_string()]);
 
     task.apply(&props);
     assert_eq!(task.summary, "Updated summary");

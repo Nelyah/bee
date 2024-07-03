@@ -28,19 +28,20 @@
     - [X] CMD action to get stuff
     - [X] Complete projects
     - [X] Complete tags
+- [ ] Urgency
+- [ ] Dependency
 - [ ] Task history
 - [ ] Import from Taskwarrior
 
 ### Next steps
 
 - [ ] Views (show potentially multiple reports in a single view)
-- [ ] due
+- [X] due
 - [ ] Recurring tasks
 - [X] 'export' action
 - [ ] Contexts
 - [ ] Descriptions
 - [ ] Priority
-- [ ] Dependency
 
 ### Nice to have
 

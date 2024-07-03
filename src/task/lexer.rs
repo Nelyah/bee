@@ -2,6 +2,9 @@ use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub enum TokenType {
+    FilterTokDateDue,
+    FilterTokDateDueBefore,
+    FilterTokDateDueAfter,
     FilterTokDateCreatedBefore,
     FilterTokDateCreatedAfter,
     FilterTokDateEndBefore,
@@ -26,6 +29,9 @@ pub enum TokenType {
 impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let token_str = match self {
+            TokenType::FilterTokDateDue => "FilterTokDateDue",
+            TokenType::FilterTokDateDueBefore => "FilterTokDateDueBefore",
+            TokenType::FilterTokDateDueAfter => "FilterTokDateDueAfter",
             TokenType::String => "String",
             TokenType::ProjectPrefix => "ProjectPrefix",
             TokenType::WordString => "WordString",
@@ -282,6 +288,18 @@ impl Lexer {
                 _ if self.match_keyword("project:") => Token {
                     literal: self.read_word("project:"),
                     token_type: TokenType::ProjectPrefix,
+                },
+                _ if self.match_keyword("due:") => Token {
+                    literal: self.read_word("due:"),
+                    token_type: TokenType::FilterTokDateDue,
+                },
+                _ if self.match_keyword("due.before:") => Token {
+                    literal: self.read_word("due.before:"),
+                    token_type: TokenType::FilterTokDateDueBefore,
+                },
+                _ if self.match_keyword("due.after:") => Token {
+                    literal: self.read_word("due.after:"),
+                    token_type: TokenType::FilterTokDateDueAfter,
                 },
                 _ if self.match_keyword("proj:") => Token {
                     literal: self.read_word("proj:"),

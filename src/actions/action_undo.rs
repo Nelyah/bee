@@ -26,7 +26,6 @@ impl TaskAction for UndoTaskAction {
                 }
             }
         }
-        self.base.tasks.upkeep();
         self.base.undos.clear();
         Ok(())
     }

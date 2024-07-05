@@ -11,21 +11,21 @@ fn test_task_data_serialize() {
         uuid: Uuid::new_v4(),
         status: TaskStatus::Pending,
         date_created: Local::now() - Duration::try_seconds(2).unwrap(),
-        ..Default::default()
+        ..Task::default()
     };
     let task2 = Task {
         uuid: Uuid::new_v4(),
         status: TaskStatus::Completed,
         date_created: Local::now(),
-        ..Default::default()
+        ..Task::default()
     };
     tasks.insert(task1.uuid, task1.clone());
     tasks.insert(task2.uuid, task2.clone());
 
     let task_data = TaskData {
         tasks,
-        undos: HashMap::new(),
         max_id: 0,
+        ..TaskData::default()
     };
 
     let serialized = serde_json::to_string(&task_data).unwrap();
@@ -78,4 +78,66 @@ fn test_task_data_deserialize() {
     assert_true!(task_data
         .tasks
         .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap()));
+}
+
+#[test]
+fn test_update_task_property_depends_on_none() {
+    let data = TaskData::default();
+    let props = TaskProperties::default();
+
+    let result = data.update_task_property_depends_on(&props).unwrap();
+
+    assert_eq!(result.depends_on, None);
+}
+
+#[test]
+fn test_update_task_property_depends_on_uuid() {
+    let mut data = TaskData::default();
+    let uuid = Uuid::new_v4();
+    data.insert_id_to_uuid(1, uuid);
+
+    let props = TaskProperties {
+        depends_on: Some(vec![DependsOnIdentifier::Uuid(uuid)]),
+        ..TaskProperties::default()
+    };
+
+    let result = data.update_task_property_depends_on(&props).unwrap();
+
+    assert_eq!(
+        result.depends_on,
+        Some(vec![DependsOnIdentifier::Uuid(uuid)])
+    );
+}
+
+#[test]
+fn test_update_task_property_depends_on_usize() {
+    let mut data = TaskData::default();
+    let uuid = Uuid::new_v4();
+    data.insert_id_to_uuid(1, uuid);
+
+    let props = TaskProperties {
+        depends_on: Some(vec![DependsOnIdentifier::Usize(1)]),
+        ..TaskProperties::default()
+    };
+
+    let result = data.update_task_property_depends_on(&props).unwrap();
+
+    assert_eq!(
+        result.depends_on,
+        Some(vec![DependsOnIdentifier::Uuid(uuid)])
+    );
+}
+
+#[test]
+fn test_update_task_property_depends_on_usize_not_found() {
+    let data = TaskData::default();
+    let props = TaskProperties {
+        depends_on: Some(vec![DependsOnIdentifier::Usize(1)]),
+        ..TaskProperties::default()
+    };
+
+    let result = data.update_task_property_depends_on(&props);
+
+    assert!(result.is_err());
+    assert_true!(result.is_err());
 }

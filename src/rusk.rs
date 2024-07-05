@@ -48,7 +48,7 @@ fn main() {
     debug!("Loaded {} undos", undos.len());
     trace!("Undos: {:?}", undos);
     trace!("Undo uuids: {:?}", undos_uuid);
-    // FIXME: this makes the undo task something that is loaded and affected by modifications
+
     let mut tasks = JsonStore::load_tasks(Some(command.filters.clone()).as_ref());
 
     for undo_action in &undos {
@@ -66,6 +66,19 @@ fn main() {
         }
     }
 
-    JsonStore::log_undo(undo_count, action.get_undos().to_owned());
-    JsonStore::write_tasks(action.get_tasks());
+    // Order is important because we do upkeep in write_tasks and that potentially
+    // adds some undo
+    // FIXME: I do not want to have to return the entire TaskData here
+    // A solution could be to have a JsonStore::Upkeep that would do the
+    // upkeep instead of doing it in write_tasks and load_tasks
+    tasks = JsonStore::write_tasks(action.get_tasks());
+    let mut action_undos = action.get_undos().to_owned();
+    if !action_undos.is_empty() {
+        action_undos.last_mut().unwrap().tasks = [
+            action_undos.last_mut().unwrap().tasks.clone(),
+            tasks.get_undos_from_upkeep().to_vec(),
+        ]
+        .concat();
+    }
+    JsonStore::log_undo(undo_count, action_undos);
 }

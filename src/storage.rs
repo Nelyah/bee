@@ -1,10 +1,12 @@
 use log::debug;
+use uuid::Uuid;
 
 use crate::actions::ActionUndo;
 use crate::task::filters;
 use crate::task::filters::Filter;
 use crate::task::TaskData;
 
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io;
@@ -17,7 +19,8 @@ mod storage_test;
 pub trait Store {
     #[allow(clippy::borrowed_box)]
     fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData;
-    fn write_tasks(data: &TaskData);
+    /// Will write the task and return the TaskData written
+    fn write_tasks(data: &TaskData) -> TaskData;
     fn load_undos(last_count: usize) -> Vec<ActionUndo>;
     fn log_undo(count: usize, updated_undos: Vec<ActionUndo>);
 }
@@ -42,17 +45,31 @@ impl Store for JsonStore {
 
         data.upkeep();
 
+        // We need to keep some knowledge of how the ids map to the uuids
+        let mut id_to_uuid = HashMap::<usize, Uuid>::default();
+        for task in data
+            .get_task_map()
+            .values()
+            .filter(|t| t.get_id().is_some())
+        {
+            id_to_uuid.insert(task.get_id().unwrap(), *task.get_uuid());
+        }
+        for (id, uuid) in id_to_uuid.iter() {
+            data.insert_id_to_uuid(*id, *uuid);
+        }
+
         if filter.is_some() {
             data = data.filter(filter.unwrap());
         }
         data
     }
 
-    fn write_tasks(data: &TaskData) {
+    fn write_tasks(data: &TaskData) -> TaskData {
         let mut stored_tasks = Self::load_tasks(None);
         for t in data.get_task_map().values() {
             stored_tasks.set_task(t.clone());
         }
+        stored_tasks.upkeep();
 
         let tasks_as_json =
             serde_json::to_string_pretty(&stored_tasks).expect("Failed to serialize tasks to JSON");
@@ -65,6 +82,8 @@ impl Store for JsonStore {
         let data_file = find_data_file().expect("Failed to find data file");
 
         fs::write(data_file, tasks_as_json).expect("Could not write data file");
+
+        stored_tasks
     }
 
     fn load_undos(last_count: usize) -> Vec<ActionUndo> {

@@ -7,13 +7,14 @@ use crate::command_parser::ParsedCommand;
 use crate::config::ReportConfig;
 use crate::Printer;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub enum ActionUndoType {
     Add,
+    #[default]
     Modify,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct ActionUndo {
     pub action_type: ActionUndoType,
     pub tasks: Vec<Task>,

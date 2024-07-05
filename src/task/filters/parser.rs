@@ -365,6 +365,16 @@ impl FilterParser {
                     self.next_token();
                     self.next_token();
                 }
+                TokenType::DependsOn => {
+                    // TODO: the issue is that the depends filter should take both ID and UUID
+                    // However the validate_task is applied to individual tasks that only keep
+                    // the UUID of the task they depend onto and don't have knowledge of the
+                    // associated ID. This could potentially be solved by having tasks have both
+                    // the UUID and an Option(ID) that would be updated during the upkeep phase.
+                    // But I don't like adding more complexity to that upkeep function
+                    return Err(err_msg_prefix
+                            + "'depends:' is not a supported filter. It might be implemented in the future.");
+                }
                 TokenType::FilterTokDateEndBefore
                 | TokenType::FilterTokDateEndAfter
                 | TokenType::FilterTokDateCreatedBefore

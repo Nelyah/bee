@@ -29,8 +29,17 @@ impl TaskAction for DoneTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_complete {
-            let t = &self.base.tasks.get_task_map().get(&uuid).unwrap();
-            undos.push((*t).clone());
+            let task_before = self.base.tasks.get_task_map().get(&uuid).unwrap().clone();
+            self.base.tasks.task_done(&uuid);
+            let t = self
+                .base
+                .tasks
+                .get_task_map()
+                .get(&uuid)
+                .ok_or("Invalid UUID to modify".to_owned())?;
+            if task_before != *t {
+                undos.push(t.clone());
+            }
             match t.get_id() {
                 Some(id) => {
                     p.show_information_message(&format!("Completed Task {}.", id));
@@ -39,14 +48,14 @@ impl TaskAction for DoneTaskAction {
                     p.show_information_message(&format!("Completed Task {}.", t.get_uuid()));
                 }
             }
-            self.base.tasks.task_done(&uuid);
         }
 
-        self.base.undos.push(ActionUndo {
-            action_type: ActionUndoType::Modify,
-            tasks: undos,
-        });
-        self.base.tasks.upkeep();
+        if !undos.is_empty() {
+            self.base.undos.push(ActionUndo {
+                action_type: ActionUndoType::Modify,
+                tasks: undos,
+            });
+        }
         Ok(())
     }
     fn post_action_hook(&self) {}
@@ -66,6 +75,10 @@ mod tests {
 
     struct MockPrinter;
 
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
     impl Printer for MockPrinter {
         fn print_raw(&self, _: &str) {}
         fn show_information_message(&self, _message: &str) {}
@@ -78,6 +91,7 @@ mod tests {
 
     #[test]
     fn test_do_action_no_tasks() {
+        init();
         let mut action = DoneTaskAction::default();
         let printer = MockPrinter;
 
@@ -87,6 +101,7 @@ mod tests {
 
     #[test]
     fn test_do_action_with_tasks() {
+        init();
         let mut action = DoneTaskAction::default();
         assert_true!(action.base.undos.is_empty());
         let printer = MockPrinter;

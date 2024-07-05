@@ -93,6 +93,11 @@ fn test_lexer() {
     let tok = lexer.next_token().unwrap();
     assert_eq!(tok.literal, "due.before:");
     assert_eq!(tok.token_type, TokenType::FilterTokDateDueBefore);
+
+    let mut lexer = Lexer::new("depends:".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "depends:");
+    assert_eq!(tok.token_type, TokenType::DependsOn);
 }
 
 #[test]

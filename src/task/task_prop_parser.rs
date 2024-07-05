@@ -1,11 +1,12 @@
 use std::fmt::Debug;
 
 use log::debug;
+use uuid::Uuid;
 
 use super::parser::BaseParser;
 use crate::task::lexer::{Lexer, Token, TokenType};
 
-use super::{Project, TaskProperties, TaskStatus};
+use super::{DependsOnIdentifier, Project, TaskProperties, TaskStatus};
 
 #[derive(Debug, Default)]
 pub struct TaskPropertyParser {
@@ -165,6 +166,32 @@ impl TaskPropertyParser {
                 }
                 TokenType::TagMinusPrefix => {
                     process_tag_prefix!(self, props, tags_remove);
+                }
+                TokenType::DependsOn => {
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    match self.current_token.token_type {
+                        TokenType::Uuid => {
+                            props.depends_on = Some(vec![DependsOnIdentifier::Uuid(
+                                Uuid::parse_str(&self.current_token.literal).unwrap(),
+                            )]);
+                        }
+                        TokenType::Int => {
+                            props.depends_on = Some(vec![DependsOnIdentifier::Usize(
+                                self.current_token.literal.parse::<usize>().unwrap(),
+                            )]);
+                        }
+                        _ => {
+                            return Err(err_msg_prefix
+                            + &format!(
+                            "Expected a token of type Uuid or Int following a TokenTypeDependsOn, found '{}' (value: '{}')",
+                            self.current_token.token_type,
+                            self.current_token.literal
+                            ));
+                        }
+                    }
+                    self.next_token();
                 }
                 TokenType::FilterTokDateDue => {
                     self.next_token();

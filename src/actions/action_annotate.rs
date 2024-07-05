@@ -29,7 +29,13 @@ impl TaskAction for AnnotateTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_annotate {
-            let t = self.base.tasks.get_task_map().get(&uuid).unwrap();
+            self.base.tasks.apply(&uuid, &props)?;
+            let t = self
+                .base
+                .tasks
+                .get_task_map()
+                .get(&uuid)
+                .ok_or("Invalid UUID to annotate".to_owned())?;
             undos.push(t.to_owned());
             match t.get_id() {
                 Some(id) => {
@@ -39,7 +45,6 @@ impl TaskAction for AnnotateTaskAction {
                     p.show_information_message(&format!("Annotated task {}.", t.get_uuid()));
                 }
             }
-            self.base.tasks.apply(&uuid, &props);
         }
         self.base.undos.push(ActionUndo {
             action_type: super::ActionUndoType::Modify,

@@ -28,8 +28,12 @@ impl TaskAction for DeleteTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_deleted {
+            let task_before = self.base.tasks.get_task_map().get(&uuid).unwrap().clone();
+            self.base.tasks.task_delete(&uuid);
             let t = self.base.tasks.get_task_map().get(&uuid).unwrap();
-            undos.push(t.to_owned());
+            if task_before != *t {
+                undos.push(t.to_owned());
+            }
             match t.get_id() {
                 Some(id) => {
                     p.show_information_message(&format!("Deleted Task {}.", id));
@@ -38,13 +42,13 @@ impl TaskAction for DeleteTaskAction {
                     p.show_information_message(&format!("Deleted Task {}.", t.get_uuid()));
                 }
             }
-            self.base.tasks.task_delete(&uuid);
         }
-        self.base.undos.push(ActionUndo {
-            action_type: super::ActionUndoType::Modify,
-            tasks: undos,
-        });
-        self.base.tasks.upkeep();
+        if !undos.is_empty() {
+            self.base.undos.push(ActionUndo {
+                action_type: super::ActionUndoType::Modify,
+                tasks: undos,
+            });
+        }
         Ok(())
     }
     fn post_action_hook(&self) {}

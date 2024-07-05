@@ -3,6 +3,7 @@ pub mod filters;
 mod lexer;
 mod parser;
 mod task_prop_parser;
+use log::debug;
 use task_prop_parser::TaskPropertyParser;
 
 use std::{collections::HashSet, fmt};
@@ -23,7 +24,9 @@ use filters::Filter;
 #[cfg(test)]
 mod task_test;
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize, Default)]
+#[derive(
+    Clone, Debug, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize, Default, Eq,
+)]
 pub enum TaskStatus {
     #[default]
     Pending,
@@ -52,10 +55,16 @@ impl fmt::Display for TaskStatus {
     }
 }
 
+#[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
+pub enum DependsOnIdentifier {
+    Usize(usize),
+    Uuid(Uuid),
+}
+
 // This structure contains information regarding setting fields for a Task
 // that can be parsed from a user query, i.e. from the command line
 // It only contains the fields that can be set by a User
-#[derive(Default, PartialEq, Debug, serde::Deserialize)]
+#[derive(Clone, Default, PartialEq, Debug, serde::Deserialize)]
 pub struct TaskProperties {
     summary: Option<String>,
     tags_remove: Option<Vec<String>>,
@@ -65,6 +74,7 @@ pub struct TaskProperties {
     project: Option<Project>,
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
+    depends_on: Option<Vec<DependsOnIdentifier>>,
 }
 
 // We implement a specific function for annotate because we cannot know how to differenciate
@@ -97,7 +107,7 @@ impl TaskAnnotation {
     }
 }
 
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq)]
 pub struct Task {
     id: Option<usize>,
     status: TaskStatus,
@@ -110,6 +120,8 @@ pub struct Task {
     #[serde(default)]
     date_completed: Option<DateTime<chrono::Local>>,
     sub: Vec<Uuid>,
+    #[serde(default)]
+    depends_on: Vec<Uuid>,
     project: Option<Project>,
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
@@ -190,6 +202,32 @@ impl Task {
                 time: Local::now(),
             });
         }
+
+        if let Some(depends_on) = &props.depends_on {
+            let mut deps_set = HashSet::<Uuid>::new();
+            self.depends_on.iter().for_each(|uuid| {
+                deps_set.insert(uuid.to_owned());
+            });
+            for dep in depends_on {
+                match dep {
+                    DependsOnIdentifier::Usize(_) => {
+                        unreachable!(
+                            "We should not have a usize here. \
+                            We should have converted it to a UUID before applying \
+                            the properties to the task."
+                        );
+                    }
+                    DependsOnIdentifier::Uuid(uuid) => {
+                        if deps_set.contains(uuid) {
+                            continue;
+                        }
+                        self.depends_on.push(uuid.to_owned());
+                        deps_set.insert(uuid.to_owned());
+                    }
+                }
+            }
+            self.depends_on = deps_set.into_iter().collect();
+        }
     }
 
     pub fn get_field(&self, field_name: &str) -> Value {
@@ -213,7 +251,7 @@ impl Task {
     }
 }
 
-#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug, Eq)]
 pub struct Project {
     name: String,
 }
@@ -234,11 +272,19 @@ impl fmt::Display for Project {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct TaskData {
+    /// All the loaded tasks in this manager
     tasks: HashMap<Uuid, Task>,
+    /// Those are all the loaded undo. This is needed to be able to restore their state
     undos: HashMap<Uuid, Task>,
+    id_to_uuid: HashMap<usize, Uuid>,
     max_id: usize,
+
+    /// Those are the tasks that are modified from the upkeep function
+    /// They are stored here because the TaskData doesn't have access to the ActionUndo directly
+    /// This field should be read and added to the current ActionUndo
+    undos_from_upkeep: Vec<Task>,
 }
 
 impl TaskData {
@@ -246,12 +292,23 @@ impl TaskData {
         &self.tasks
     }
 
+    pub fn insert_id_to_uuid(&mut self, id: usize, uuid: Uuid) {
+        self.id_to_uuid.insert(id, uuid);
+    }
+
     pub fn to_vec(&self) -> Vec<&Task> {
         self.tasks.values().collect()
     }
 
-    pub fn apply(&mut self, task_uuid: &Uuid, props: &TaskProperties) {
-        self.tasks.get_mut(task_uuid).unwrap().apply(props);
+    pub fn apply(&mut self, task_uuid: &Uuid, props: &TaskProperties) -> Result<(), String> {
+        if props.depends_on.is_none() {
+            self.tasks.get_mut(task_uuid).unwrap().apply(props);
+            return Ok(());
+        }
+
+        let my_props = self.update_task_property_depends_on(props)?;
+        self.tasks.get_mut(task_uuid).unwrap().apply(&my_props);
+        Ok(())
     }
 
     pub fn set_task(&mut self, task: Task) {
@@ -263,6 +320,10 @@ impl TaskData {
             let uuid = *t.get_uuid();
             self.undos.insert(uuid, t.clone());
         }
+    }
+
+    pub fn get_undos_from_upkeep(&self) -> &Vec<Task> {
+        &self.undos_from_upkeep
     }
 
     pub fn get_undos(&self) -> &HashMap<Uuid, Task> {
@@ -277,9 +338,48 @@ impl TaskData {
         self.tasks.get_mut(uuid).unwrap().delete();
     }
 
+    /// Turns the ID to UUIDs in the depends_on vector of TaskProperties
+    /// This also copies the TaskProperties to a owned object
+    fn update_task_property_depends_on(
+        &self,
+        props: &TaskProperties,
+    ) -> Result<TaskProperties, String> {
+        if props.depends_on.is_none() {
+            return Ok(props.clone());
+        }
+
+        // Update the depends_on vector from the ID to use UUID instead
+        let mut my_props: TaskProperties = props.clone();
+        let mut new_depends_on = Vec::<DependsOnIdentifier>::new();
+
+        if let Some(deps) = &my_props.depends_on {
+            for dep in deps {
+                match dep {
+                    DependsOnIdentifier::Uuid(uuid) => {
+                        new_depends_on.push(DependsOnIdentifier::Uuid(uuid.to_owned()))
+                    }
+                    DependsOnIdentifier::Usize(id) => {
+                        new_depends_on.push(DependsOnIdentifier::Uuid(
+                            self.id_to_uuid
+                                .get(id)
+                                .ok_or(format!(
+                                    "The given id {} doesn't correspond to any known task.",
+                                    &id
+                                ))?
+                                .to_owned(),
+                        ));
+                    }
+                }
+            }
+        }
+        my_props.depends_on = Some(new_depends_on);
+        Ok(my_props)
+    }
+
     pub fn upkeep(&mut self) {
         let mut vec: Vec<_> = self.tasks.values().by_ref().collect();
 
+        // Set the ID of the tasks by sorting them by date_created
         vec.sort_by(|lhs, rhs| lhs.date_created.cmp(&rhs.date_created));
         let uuids: Vec<Uuid> = vec.iter().map(|t| t.uuid).collect();
         let mut i = 1;
@@ -295,14 +395,40 @@ impl TaskData {
                 }
             }
         }
+
+        // Update dependency status
+        let mut dependencies_to_update = HashSet::<Uuid>::default();
+        for task in self.tasks.values() {
+            let deps_set: HashSet<Uuid> = task.depends_on.iter().cloned().collect();
+            for dep_uuid in &deps_set {
+                match self.tasks.get(dep_uuid).unwrap().status {
+                    TaskStatus::Pending => {}
+                    TaskStatus::Completed | TaskStatus::Deleted => {
+                        dependencies_to_update.insert(*dep_uuid);
+                    }
+                }
+            }
+        }
+
+        for task in self.tasks.values_mut() {
+            let deps_set_before: HashSet<Uuid> = task.depends_on.iter().cloned().collect();
+            let deps_set_after: HashSet<Uuid> = deps_set_before
+                .difference(&dependencies_to_update)
+                .cloned()
+                .collect();
+            if deps_set_before != deps_set_after {
+                debug!("Adding to undos from upkeep {:?}", task);
+                self.undos_from_upkeep.push(task.clone());
+                task.depends_on = deps_set_after.into_iter().collect();
+            }
+        }
     }
 
     #[allow(clippy::borrowed_box)]
     pub fn filter(&self, filter: &Box<dyn Filter>) -> Self {
         let mut new_data = TaskData {
-            tasks: HashMap::new(),
-            undos: HashMap::new(),
-            max_id: self.max_id,
+            tasks: HashMap::default(),
+            ..TaskData::clone(self)
         };
 
         for (key, task) in &self.tasks {
@@ -353,18 +479,39 @@ impl TaskData {
             None => Vec::default(),
         };
 
+        let depends_on = match &props.depends_on {
+            Some(_) => {
+                let my_props = self.update_task_property_depends_on(props)?;
+                let mut deps_uuid: Vec<Uuid> = Vec::new();
+                for item in my_props.depends_on.unwrap() {
+                    match item {
+                        DependsOnIdentifier::Usize(_) => {
+                            unreachable!(
+                                "We should not have a usize here. \
+                            We should have converted it to a UUID before applying \
+                            the properties to the task."
+                            );
+                        }
+                        DependsOnIdentifier::Uuid(item_uuid) => deps_uuid.push(item_uuid),
+                    }
+                }
+                deps_uuid
+            }
+            None => Vec::default(),
+        };
+
         let t = Task {
             summary,
             id: new_id,
             status,
-            uuid: Uuid::new_v4(),
             tags,
+            uuid: Uuid::new_v4(),
             date_created: Local::now(),
             date_completed,
-            annotations: Vec::default(),
-            sub: Vec::default(),
             date_due,
             project,
+            depends_on,
+            ..Task::default()
         };
         let owned_uuid = t.get_uuid().to_owned();
         self.tasks.insert(owned_uuid, t);
@@ -402,8 +549,8 @@ impl<'de> Deserialize<'de> for TaskData {
 
         Ok(TaskData {
             tasks: task_map,
-            undos: HashMap::new(),
             max_id,
+            ..TaskData::default()
         })
     }
 }

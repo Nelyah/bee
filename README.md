@@ -30,6 +30,9 @@
     - [X] Complete tags
 - [ ] Urgency
 - [ ] Dependency
+    - [X] Modifying a task
+    - [ ] Filter on dependencies
+    - [ ] Update the blocking task
 - [ ] Task history
 - [ ] Import from Taskwarrior
 

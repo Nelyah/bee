@@ -42,24 +42,12 @@ fn setup_task() -> Task {
         summary: "Initial summary".to_string(),
         tags: vec!["initial_tag1".to_string(), "initial_tag2".to_string()],
         date_created: chrono::Local::now(),
-        date_completed: None,
-        annotations: Vec::default(),
-        sub: vec![],
-        project: None,
-        date_due: None,
+        ..Task::default()
     }
 }
 
 fn setup_task_property() -> TaskProperties {
-    TaskProperties {
-        summary: None,
-        tags_remove: None,
-        tags_add: None,
-        status: None,
-        annotation: None,
-        project: None,
-        date_due: None,
-    }
+    TaskProperties::default()
 }
 
 #[test]
@@ -142,72 +130,99 @@ fn test_apply_no_change() {
     assert_eq!(task.tags, vec!["initial_tag1", "initial_tag2"]);
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::HashMap;
+#[test]
+fn test_apply_depends_on() {
+    let mut task = setup_task();
+    let mut props = TaskProperties::default();
+    let uuid_1 = Uuid::new_v4();
+    let uuid_2 = Uuid::new_v4();
+    props.depends_on = Some(vec![DependsOnIdentifier::Uuid(uuid_1)]);
 
-    #[test]
-    fn test_upkeep_sorts_tasks_and_updates_ids() {
-        let mut task_data = TaskData {
-            tasks: HashMap::new(),
-            undos: HashMap::new(),
-            max_id: 0,
-        };
+    assert_true!(task.depends_on.is_empty());
+    task.apply(&props);
+    assert_eq!(task.depends_on.len(), 1);
+    // Evene if we apply if a second time we still have a single value because it's the same uuid
+    task.apply(&props);
+    assert_eq!(task.depends_on.len(), 1);
+    assert_eq!(task.depends_on.first().unwrap(), &uuid_1);
 
-        let t1 = new_task("Task 1", TaskStatus::Pending);
-        let t2 = new_task("Task 2", TaskStatus::Pending);
-        let t3 = new_task("Task 3", TaskStatus::Pending);
+    props.depends_on = Some(vec![
+        DependsOnIdentifier::Uuid(uuid_1),
+        DependsOnIdentifier::Uuid(uuid_2),
+    ]);
+    assert_eq!(task.depends_on.len(), 1);
+    task.apply(&props);
+    assert_eq!(task.depends_on.len(), 2);
+    assert_true!(
+        task.depends_on.first().unwrap() == &uuid_1 || task.depends_on.first().unwrap() == &uuid_2
+    );
+    assert_true!(
+        task.depends_on.last().unwrap() == &uuid_1 || task.depends_on.last().unwrap() == &uuid_2
+    );
+    assert_ne!(
+        task.depends_on.first().unwrap(),
+        task.depends_on.last().unwrap()
+    )
+}
 
-        task_data.tasks.insert(t3.uuid, t3.clone());
+#[test]
+fn test_upkeep_sorts_tasks_and_updates_ids() {
+    let mut task_data = TaskData {
+        max_id: 0,
+        ..TaskData::default()
+    };
 
-        task_data.tasks.insert(t2.uuid, t2.clone());
+    let t1 = new_task("Task 1", TaskStatus::Pending);
+    let t2 = new_task("Task 2", TaskStatus::Pending);
+    let t3 = new_task("Task 3", TaskStatus::Pending);
 
-        task_data.tasks.insert(t1.uuid, t1.clone());
+    task_data.tasks.insert(t3.uuid, t3.clone());
 
-        // Run upkeep
-        task_data.upkeep();
+    task_data.tasks.insert(t2.uuid, t2.clone());
 
-        // Verify the tasks are sorted and ids are updated correctly
-        let task1 = task_data.tasks.get(&t1.uuid).unwrap();
-        let task2 = task_data.tasks.get(&t2.uuid).unwrap();
-        let task3 = task_data.tasks.get(&t3.uuid).unwrap();
+    task_data.tasks.insert(t1.uuid, t1.clone());
 
-        assert_eq!(task1.id, Some(1));
-        assert_eq!(task2.id, Some(2));
-        assert_eq!(task3.id, Some(3));
-    }
+    // Run upkeep
+    task_data.upkeep();
 
-    #[test]
-    fn test_upkeep_handles_deleted_and_completed_tasks() {
-        let mut task_data = TaskData {
-            tasks: HashMap::new(),
-            undos: HashMap::new(),
-            max_id: 0,
-        };
+    // Verify the tasks are sorted and ids are updated correctly
+    let task1 = task_data.tasks.get(&t1.uuid).unwrap();
+    let task2 = task_data.tasks.get(&t2.uuid).unwrap();
+    let task3 = task_data.tasks.get(&t3.uuid).unwrap();
 
-        let t1 = new_task("Task 1", TaskStatus::Pending);
-        let t2 = new_task("Task 2", TaskStatus::Completed);
-        let t4 = new_task("Task 4", TaskStatus::Pending);
-        let t3 = new_task("Task 3", TaskStatus::Deleted);
+    assert_eq!(task1.id, Some(1));
+    assert_eq!(task2.id, Some(2));
+    assert_eq!(task3.id, Some(3));
+}
 
-        task_data.tasks.insert(t1.uuid, t1.clone());
-        task_data.tasks.insert(t2.uuid, t2.clone());
-        task_data.tasks.insert(t3.uuid, t3.clone());
-        task_data.tasks.insert(t4.uuid, t4.clone());
+#[test]
+fn test_upkeep_handles_deleted_and_completed_tasks() {
+    let mut task_data = TaskData {
+        max_id: 0,
+        ..TaskData::default()
+    };
 
-        // Run upkeep
-        task_data.upkeep();
+    let t1 = new_task("Task 1", TaskStatus::Pending);
+    let t2 = new_task("Task 2", TaskStatus::Completed);
+    let t4 = new_task("Task 4", TaskStatus::Pending);
+    let t3 = new_task("Task 3", TaskStatus::Deleted);
 
-        // Verify the tasks are sorted and ids are updated correctly
-        let task1 = task_data.tasks.get(&t1.uuid).unwrap();
-        let task2 = task_data.tasks.get(&t2.uuid).unwrap();
-        let task3 = task_data.tasks.get(&t3.uuid).unwrap();
-        let task4 = task_data.tasks.get(&t4.uuid).unwrap();
+    task_data.tasks.insert(t1.uuid, t1.clone());
+    task_data.tasks.insert(t2.uuid, t2.clone());
+    task_data.tasks.insert(t3.uuid, t3.clone());
+    task_data.tasks.insert(t4.uuid, t4.clone());
 
-        assert_eq!(task1.id, Some(1));
-        assert_eq!(task2.id, None);
-        assert_eq!(task3.id, None);
-        assert_eq!(task4.id, Some(2));
-    }
+    // Run upkeep
+    task_data.upkeep();
+
+    // Verify the tasks are sorted and ids are updated correctly
+    let task1 = task_data.tasks.get(&t1.uuid).unwrap();
+    let task2 = task_data.tasks.get(&t2.uuid).unwrap();
+    let task3 = task_data.tasks.get(&t3.uuid).unwrap();
+    let task4 = task_data.tasks.get(&t4.uuid).unwrap();
+
+    assert_eq!(task1.id, Some(1));
+    assert_eq!(task2.id, None);
+    assert_eq!(task3.id, None);
+    assert_eq!(task4.id, Some(2));
 }

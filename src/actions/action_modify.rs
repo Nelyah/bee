@@ -27,8 +27,18 @@ impl TaskAction for ModifyTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_modify {
-            let t = self.base.tasks.get_task_map().get(&uuid).unwrap();
-            undos.push(t.to_owned());
+            let task_before = self.base.tasks.get_task_map().get(&uuid).unwrap().clone();
+            self.base.tasks.apply(&uuid, &props)?;
+
+            let t = self
+                .base
+                .tasks
+                .get_task_map()
+                .get(&uuid)
+                .ok_or("Invalid UUID to modify".to_owned())?;
+            if task_before != *t {
+                undos.push(t.to_owned());
+            }
             match t.get_id() {
                 Some(id) => {
                     p.show_information_message(&format!("Modified Task {}.", id));
@@ -37,13 +47,13 @@ impl TaskAction for ModifyTaskAction {
                     p.show_information_message(&format!("Modified Task {}.", t.get_uuid()));
                 }
             }
-            self.base.tasks.apply(&uuid, &props);
         }
-        self.base.undos.push(ActionUndo {
-            action_type: super::ActionUndoType::Modify,
-            tasks: undos,
-        });
-        self.base.tasks.upkeep();
+        if !undos.is_empty() {
+            self.base.undos.push(ActionUndo {
+                action_type: super::ActionUndoType::Modify,
+                tasks: undos,
+            });
+        }
         Ok(())
     }
     fn post_action_hook(&self) {}

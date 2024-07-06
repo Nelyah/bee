@@ -4,6 +4,7 @@ use super::{ActionUndo, BaseTaskAction, TaskAction};
 
 use crate::task::{Task, TaskProperties};
 use crate::Printer;
+use std::collections::HashMap;
 
 use crate::task::TaskData;
 
@@ -17,7 +18,7 @@ impl TaskAction for ModifyTaskAction {
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
         let props = TaskProperties::from(&self.base.arguments)?;
-        let mut undos: Vec<Task> = Vec::default();
+        let mut undos: HashMap<Uuid, Task> = HashMap::default();
 
         let uuids_to_modify: Vec<Uuid> = self
             .base
@@ -37,7 +38,7 @@ impl TaskAction for ModifyTaskAction {
                 .get(&uuid)
                 .ok_or("Invalid UUID to modify".to_owned())?;
             if task_before != *t {
-                undos.push(t.to_owned());
+                undos.insert(t.get_uuid().to_owned(), task_before.to_owned());
             }
             match t.get_id() {
                 Some(id) => {
@@ -49,9 +50,20 @@ impl TaskAction for ModifyTaskAction {
             }
         }
         if !undos.is_empty() {
+            let mut extra_uuids: Vec<_> = undos.values().flat_map(|t| t.get_extra_uuid()).collect();
+            extra_uuids.sort_unstable();
+            extra_uuids.dedup();
+            for uuid in extra_uuids {
+                if let Some(task) = self.base.tasks.get_extra_tasks().get(&uuid) {
+                    // Do not overwrite the tasks if they're already in the undos
+                    if undos.get(&uuid).is_none() {
+                        undos.insert(uuid.to_owned(), task.to_owned());
+                    }
+                }
+            }
             self.base.undos.push(ActionUndo {
                 action_type: super::ActionUndoType::Modify,
-                tasks: undos,
+                tasks: undos.into_values().collect(),
             });
         }
         Ok(())

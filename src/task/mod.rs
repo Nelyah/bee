@@ -25,7 +25,7 @@ use filters::Filter;
 mod task_test;
 
 #[derive(
-    Clone, Debug, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize, Default, Eq,
+    Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, Default, Eq, PartialOrd, Ord,
 )]
 pub enum TaskStatus {
     #[default]
@@ -91,7 +91,7 @@ impl TaskProperties {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TaskAnnotation {
     value: String,
     time: DateTime<chrono::Local>,
@@ -107,7 +107,9 @@ impl TaskAnnotation {
     }
 }
 
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq)]
+#[derive(
+    Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct Task {
     id: Option<usize>,
     status: TaskStatus,
@@ -172,6 +174,14 @@ impl Task {
 
     pub fn get_uuid(&self) -> &Uuid {
         &self.uuid
+    }
+
+    /// Send back a list of the UUID that this task knows about or refers to
+    pub fn get_extra_uuid(&self) -> Vec<Uuid> {
+        let mut uuids = [self.depends_on.to_owned(), self.blocking.to_owned()].concat();
+        uuids.sort_unstable();
+        uuids.dedup();
+        uuids
     }
 
     pub fn apply(&mut self, props: &TaskProperties) {
@@ -253,7 +263,7 @@ impl Task {
     }
 }
 
-#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug, Eq)]
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug, Eq, PartialOrd, Ord)]
 pub struct Project {
     name: String,
 }
@@ -286,11 +296,6 @@ pub struct TaskData {
     /// Those are the tasks not required by the filters, but that might be needed
     /// when processing the action because they are linked to the filters
     extra_tasks: HashMap<Uuid, Task>,
-
-    /// Those are the tasks that are modified from the upkeep function
-    /// They are stored here because the TaskData doesn't have access to the ActionUndo directly
-    /// This field should be read and added to the current ActionUndo
-    undos_from_upkeep: Vec<Task>,
 }
 
 impl TaskData {
@@ -300,6 +305,14 @@ impl TaskData {
 
     pub fn insert_id_to_uuid(&mut self, id: usize, uuid: Uuid) {
         self.id_to_uuid.insert(id, uuid);
+    }
+
+    pub fn insert_extra_task(&mut self, task: Task) {
+        self.extra_tasks.insert(task.uuid.to_owned(), task);
+    }
+
+    pub fn get_extra_tasks(&self) -> &HashMap<Uuid, Task> {
+        &self.extra_tasks
     }
 
     pub fn to_vec(&self) -> Vec<&Task> {
@@ -330,10 +343,6 @@ impl TaskData {
             let uuid = *t.get_uuid();
             self.undos.insert(uuid, t.clone());
         }
-    }
-
-    pub fn get_undos_from_upkeep(&self) -> &Vec<Task> {
-        &self.undos_from_upkeep
     }
 
     pub fn get_undos(&self) -> &HashMap<Uuid, Task> {
@@ -406,20 +415,34 @@ impl TaskData {
             }
         }
 
-        // Update dependency status if a depended class is done / delted
+        // Update dependency status if a depended class is done / deleted
         let mut dependencies_to_update = HashSet::<Uuid>::default();
         for task in self.tasks.values() {
             let deps_set: HashSet<Uuid> = task.depends_on.iter().cloned().collect();
             for dep_uuid in &deps_set {
-                match self.tasks.get(dep_uuid).unwrap().status {
-                    TaskStatus::Pending => {}
-                    TaskStatus::Completed | TaskStatus::Deleted => {
-                        dependencies_to_update.insert(*dep_uuid);
+                if let Some(t) = self.tasks.get(dep_uuid) {
+                    match t.status {
+                        TaskStatus::Pending => {}
+                        TaskStatus::Completed | TaskStatus::Deleted => {
+                            dependencies_to_update.insert(*dep_uuid);
+                        }
                     }
+                } else if let Some(t) = self.extra_tasks.get(dep_uuid) {
+                    match t.status {
+                        TaskStatus::Pending => {}
+                        TaskStatus::Completed | TaskStatus::Deleted => {
+                            dependencies_to_update.insert(*dep_uuid);
+                        }
+                    }
+                } else {
+                    debug!("We have {} task", self.tasks.len());
+                    debug!("tasks are: {:?}", self.tasks);
+                    unreachable!("We were unable to find the task associated with uuid {:?} during upkeep phase", dep_uuid);
                 }
             }
         }
 
+        // Add the blocking UUID when being referred by depends_on
         let mut blockers_uuid = HashMap::new();
         for task in self.tasks.values() {
             for blocking_uuid in &task.depends_on {
@@ -433,19 +456,31 @@ impl TaskData {
             t.blocking.dedup();
         }
 
-        // Add custom undos that are generated in the upkeep phase
-        // FIXME: Should be removed
-        for task in self.tasks.values_mut() {
-            let deps_set_before: HashSet<Uuid> = task.depends_on.iter().cloned().collect();
-            let deps_set_after: HashSet<Uuid> = deps_set_before
-                .difference(&dependencies_to_update)
-                .cloned()
-                .collect();
-            if deps_set_before != deps_set_after {
-                debug!("Adding to undos from upkeep {:?}", task);
-                self.undos_from_upkeep.push(task.clone());
-                task.depends_on = deps_set_after.into_iter().collect();
+        // Update blocking status for tasks
+        // This checks for the tasks it is blocking for whether they are still in a blocking
+        // relationship
+        let blockers_uuid: Vec<_> = self
+            .tasks
+            .values()
+            .filter(|t| !t.blocking.is_empty())
+            .map(|t| t.uuid)
+            .collect();
+        for blocker_uuid in blockers_uuid {
+            let mut blocker_task = self.tasks.get_mut (&blocker_uuid).unwrap().to_owned();
+            let mut new_blocking_uuids = Vec::new();
+            for blocked_uuid in &blocker_task.blocking {
+                if self
+                    .tasks
+                    .get(blocked_uuid)
+                    .unwrap()
+                    .depends_on
+                    .contains(&blocker_uuid)
+                {
+                    new_blocking_uuids.push(*blocked_uuid);
+                }
             }
+            blocker_task.blocking = new_blocking_uuids;
+            self.tasks.insert(blocker_task.uuid.to_owned(), blocker_task);
         }
     }
 

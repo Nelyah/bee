@@ -58,10 +58,24 @@ impl Store for JsonStore {
             data.insert_id_to_uuid(*id, *uuid);
         }
 
-        if filter.is_some() {
-            data = data.filter(filter.unwrap());
+        // Load extra UUIDs
+        let mut new_data = if let Some(filter) = filter {
+            data.filter(filter)
+        } else {
+            data.to_owned()
+        };
+
+        let extra_uuids: Vec<_> = new_data
+            .get_task_map()
+            .values()
+            .flat_map(|task| task.get_extra_uuid())
+            .collect();
+
+        for uuid in extra_uuids {
+            new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
         }
-        data
+
+        new_data
     }
 
     fn write_tasks(data: &TaskData) -> TaskData {

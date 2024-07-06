@@ -1,10 +1,11 @@
 use uuid::Uuid;
 
-use super::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
+use super::{ActionUndo, BaseTaskAction, TaskAction};
 
 use crate::Printer;
 
 use crate::task::{Task, TaskData};
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct DoneTaskAction {
@@ -20,7 +21,7 @@ impl TaskAction for DoneTaskAction {
             return Ok(());
         }
 
-        let mut undos: Vec<Task> = Vec::default();
+        let mut undos: HashMap<Uuid, Task> = HashMap::default();
         let uuids_to_complete: Vec<Uuid> = self
             .base
             .tasks
@@ -38,7 +39,7 @@ impl TaskAction for DoneTaskAction {
                 .get(&uuid)
                 .ok_or("Invalid UUID to modify".to_owned())?;
             if task_before != *t {
-                undos.push(t.clone());
+                undos.insert(t.get_uuid().to_owned(), task_before.to_owned());
             }
             match t.get_id() {
                 Some(id) => {
@@ -51,9 +52,20 @@ impl TaskAction for DoneTaskAction {
         }
 
         if !undos.is_empty() {
+            let mut extra_uuids: Vec<_> = undos.values().flat_map(|t| t.get_extra_uuid()).collect();
+            extra_uuids.sort_unstable();
+            extra_uuids.dedup();
+            for uuid in extra_uuids {
+                if let Some(task) = self.base.tasks.get_extra_tasks().get(&uuid) {
+                    // Do not overwrite the tasks if they're already in the undos
+                    if undos.get(&uuid).is_none() {
+                        undos.insert(uuid.to_owned(), task.to_owned());
+                    }
+                }
+            }
             self.base.undos.push(ActionUndo {
-                action_type: ActionUndoType::Modify,
-                tasks: undos,
+                action_type: super::ActionUndoType::Modify,
+                tasks: undos.into_values().collect(),
             });
         }
         Ok(())

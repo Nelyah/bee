@@ -122,6 +122,8 @@ pub struct Task {
     sub: Vec<Uuid>,
     #[serde(default)]
     depends_on: Vec<Uuid>,
+    #[serde(default)]
+    blocking: Vec<Uuid>,
     project: Option<Project>,
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
@@ -281,6 +283,10 @@ pub struct TaskData {
     id_to_uuid: HashMap<usize, Uuid>,
     max_id: usize,
 
+    /// Those are the tasks not required by the filters, but that might be needed
+    /// when processing the action because they are linked to the filters
+    extra_tasks: HashMap<Uuid, Task>,
+
     /// Those are the tasks that are modified from the upkeep function
     /// They are stored here because the TaskData doesn't have access to the ActionUndo directly
     /// This field should be read and added to the current ActionUndo
@@ -309,6 +315,10 @@ impl TaskData {
         let my_props = self.update_task_property_depends_on(props)?;
         self.tasks.get_mut(task_uuid).unwrap().apply(&my_props);
         Ok(())
+    }
+
+    pub fn get_owned(&self, uuid: &Uuid) -> Option<Task> {
+        self.tasks.get(uuid).cloned()
     }
 
     pub fn set_task(&mut self, task: Task) {
@@ -396,7 +406,7 @@ impl TaskData {
             }
         }
 
-        // Update dependency status
+        // Update dependency status if a depended class is done / delted
         let mut dependencies_to_update = HashSet::<Uuid>::default();
         for task in self.tasks.values() {
             let deps_set: HashSet<Uuid> = task.depends_on.iter().cloned().collect();
@@ -410,6 +420,21 @@ impl TaskData {
             }
         }
 
+        let mut blockers_uuid = HashMap::new();
+        for task in self.tasks.values() {
+            for blocking_uuid in &task.depends_on {
+                blockers_uuid.insert(blocking_uuid.to_owned(), task.uuid.to_owned());
+            }
+        }
+        for (blocker_uuid, blocked_uuid) in blockers_uuid {
+            let t = self.tasks.get_mut(&blocker_uuid).unwrap();
+            t.blocking.push(blocked_uuid);
+            t.blocking.sort_unstable();
+            t.blocking.dedup();
+        }
+
+        // Add custom undos that are generated in the upkeep phase
+        // FIXME: Should be removed
         for task in self.tasks.values_mut() {
             let deps_set_before: HashSet<Uuid> = task.depends_on.iter().cloned().collect();
             let deps_set_after: HashSet<Uuid> = deps_set_before
@@ -431,10 +456,19 @@ impl TaskData {
             ..TaskData::clone(self)
         };
 
+        let mut extra_tasks = Vec::new();
         for (key, task) in &self.tasks {
             if filter.validate_task(task) {
                 new_data.tasks.insert(key.to_owned(), task.to_owned());
+                // TODO: Also add for blocking once that is implemented
+                for uuid_dep in &task.depends_on {
+                    extra_tasks.push(self.tasks.get(uuid_dep).unwrap());
+                }
             }
+        }
+
+        for task in extra_tasks {
+            new_data.extra_tasks.insert(task.uuid, task.to_owned());
         }
 
         new_data

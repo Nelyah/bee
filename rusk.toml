@@ -18,14 +18,8 @@ columns = ["uuid", "date_created", "date_completed", "summary", "tags"]
 default = false
 filters = []
 
-[report.demo]
-column_names = ["ID", "Summary", "Tags", "date"]
-columns = ["id", "summary", "tags", "date_created"]
-default = true
-filters = ['status:pending', '+family']
-
-[report.family]
-column_names = ["ID", "Summary", "Tags", "date"]
-columns = ["id", "summary", "tags", "date_created"]
+[report.default]
+column_names = ["ID", "Summary", "Tags", "Date", "Urgency"]
+columns = ["id", "summary", "tags", "date_created", "urgency"]
 default = true
 filters = ['status:pending']

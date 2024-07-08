@@ -1,4 +1,5 @@
 use all_asserts::{assert_false, assert_true};
+use chrono::{Local, NaiveTime, TimeZone};
 
 use super::*;
 
@@ -225,4 +226,91 @@ fn test_upkeep_handles_deleted_and_completed_tasks() {
     assert_eq!(task2.id, None);
     assert_eq!(task3.id, None);
     assert_eq!(task4.id, Some(2));
+}
+
+#[test]
+fn test_sort_tasks() {
+    let now = Local::now();
+    let today_start = Local
+        .from_local_datetime(
+            &now.date_naive()
+                .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+        )
+        .single()
+        .unwrap();
+    let mut tasks = vec![
+        Task {
+            id: Some(2),
+            urgency: Some(2),
+            date_created: now,
+            ..Task::default()
+        },
+        Task {
+            id: Some(1),
+            urgency: Some(1),
+            date_created: today_start,
+            ..Task::default()
+        },
+    ];
+    tasks.sort();
+
+    assert_eq!(tasks[0].id, Some(1));
+    assert_eq!(tasks[1].id, Some(2));
+
+    let mut tasks = vec![
+        Task {
+            id: Some(2),
+            urgency: Some(2),
+            date_created: now,
+            ..Task::default()
+        },
+        Task {
+            id: Some(1),
+            urgency: Some(2),
+            date_created: today_start,
+            ..Task::default()
+        },
+    ];
+    tasks.sort();
+
+    assert_eq!(tasks[0].id, Some(1));
+    assert_eq!(tasks[1].id, Some(2));
+
+    let mut tasks = vec![
+        Task {
+            id: Some(2),
+            urgency: None,
+            date_created: now,
+            ..Task::default()
+        },
+        Task {
+            id: Some(1),
+            urgency: Some(2),
+            date_created: today_start,
+            ..Task::default()
+        },
+    ];
+    tasks.sort();
+
+    assert_eq!(tasks[0].id, Some(1));
+    assert_eq!(tasks[1].id, Some(2));
+
+    let mut tasks = vec![
+        Task {
+            id: Some(2),
+            urgency: None,
+            date_created: now,
+            ..Task::default()
+        },
+        Task {
+            id: Some(1),
+            urgency: None,
+            date_created: today_start,
+            ..Task::default()
+        },
+    ];
+    tasks.sort();
+
+    assert_eq!(tasks[0].id, Some(1));
+    assert_eq!(tasks[1].id, Some(2));
 }

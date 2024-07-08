@@ -6,7 +6,7 @@ mod task_prop_parser;
 use log::trace;
 use task_prop_parser::TaskPropertyParser;
 
-use std::{collections::HashSet, fmt};
+use std::{cmp::Ordering, collections::HashSet, fmt};
 
 use chrono::prelude::DateTime;
 use serde_json::Value;
@@ -25,7 +25,16 @@ use filters::Filter;
 mod task_test;
 
 #[derive(
-    Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, Default, Eq, PartialOrd, Ord,
+    Clone,
+    Debug,
+    PartialEq,
+    serde::Serialize,
+    serde::Deserialize,
+    Default,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
 )]
 pub enum TaskStatus {
     #[default]
@@ -98,7 +107,9 @@ impl TaskProperties {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub struct TaskAnnotation {
     value: String,
     time: DateTime<chrono::Local>,
@@ -114,9 +125,7 @@ impl TaskAnnotation {
     }
 }
 
-#[derive(
-    Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct Task {
     id: Option<usize>,
     status: TaskStatus,
@@ -136,11 +145,60 @@ pub struct Task {
     project: Option<Project>,
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
+
+    /// Urgency score that will be computed depending on the other fields of the task
+    #[serde(default)]
+    urgency: Option<i64>,
+}
+
+impl PartialOrd for Task {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Task {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.urgency, other.urgency) {
+            (Some(lhs), Some(rhs)) => match lhs.cmp(&rhs) {
+                Ordering::Equal => self.date_created.cmp(&other.date_created),
+                other => other,
+            },
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => self.date_created.cmp(&other.date_created),
+        }
+    }
 }
 
 impl Task {
     pub fn get_id(&self) -> Option<usize> {
         self.id
+    }
+
+    pub fn get_urgency(&mut self) -> i64 {
+        if let Some(urgency) = self.urgency {
+            return urgency;
+        }
+
+        self.compute_urgency()
+    }
+
+    fn compute_urgency(&mut self) -> i64 {
+        let mut urgency: i64 = 0;
+
+        urgency += self.blocking.len() as i64;
+        urgency -= self.depends_on.len() as i64;
+
+        // Compute number of days remaining until the due date
+        if let Some(date_due) = self.date_due {
+            let now = Local::now();
+            let days = date_due.signed_duration_since(now).num_days();
+            urgency += days;
+        }
+
+        self.urgency = Some(urgency);
+        self.urgency.unwrap()
     }
 
     pub fn get_annotations(&self) -> &Vec<TaskAnnotation> {
@@ -151,6 +209,7 @@ impl Task {
         &self.summary
     }
 
+    // TODO: To remove, only used in tests
     pub fn set_summary(&mut self, value: &str) {
         self.summary = value.to_owned();
     }
@@ -247,6 +306,7 @@ impl Task {
             }
             self.depends_on = deps_set.into_iter().collect();
         }
+        self.compute_urgency();
     }
 
     pub fn get_field(&self, field_name: &str) -> Value {
@@ -261,16 +321,18 @@ impl Task {
     pub fn delete(&mut self) {
         self.status = TaskStatus::Deleted;
         self.id = None;
+        self.urgency = None;
     }
 
     pub fn done(&mut self) {
         self.status = TaskStatus::Completed;
         self.date_completed = Some(Local::now());
         self.id = None;
+        self.urgency = None;
     }
 }
 
-#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug, Eq, PartialOrd, Ord)]
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug, Eq, PartialOrd, Ord, Hash)]
 pub struct Project {
     name: String,
 }
@@ -421,6 +483,10 @@ impl TaskData {
                 }
             }
         }
+
+        self.tasks.values_mut().for_each(|t| {
+            t.compute_urgency();
+        });
 
         // Update dependency status if a depended class is done / deleted
 

@@ -86,7 +86,7 @@ impl Store for JsonStore {
                                 "Adding extra task with id {} and uuid {} from TaskProperties",
                                 id, uuid
                             );
-                            new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
+                            new_data.insert_extra_task(data.get_owned(uuid).unwrap())
                         } else {
                             unreachable!("Could not find task with id {}", id);
                         }
@@ -99,7 +99,8 @@ impl Store for JsonStore {
             let task = data.get_owned(&uuid).unwrap();
             debug!(
                 "Adding extra task with id {:?} and uuid {} as extra task",
-                task.get_id(), uuid
+                task.get_id(),
+                uuid
             );
             new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
         }

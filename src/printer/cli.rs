@@ -4,8 +4,9 @@ use crate::task::Task;
 use crate::{config::ReportConfig, printer::table::StyledText};
 use chrono::{DateTime, Local};
 use colored::{ColoredString, Colorize};
-use log::debug;
+use log::trace;
 use serde_json::Value;
+use std::cmp::Ordering;
 use std::io;
 
 pub trait Printer {
@@ -80,6 +81,27 @@ fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
     Ok(None)
 }
 
+#[derive(Eq, PartialEq)]
+struct RowTask {
+    task: Task,
+    row: Vec<String>,
+}
+
+impl PartialOrd for RowTask {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RowTask {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.task.cmp(&other.task) {
+            Ordering::Equal => unreachable!("Two rows have the same task"),
+            other => other,
+        }
+    }
+}
+
 impl Printer for SimpleTaskTextPrinter {
     fn print_list_of_tasks(
         &self,
@@ -88,11 +110,12 @@ impl Printer for SimpleTaskTextPrinter {
     ) -> Result<(), String> {
         let mut tbl = Table::new(&report_kind.column_names, io::stdout()).unwrap();
 
+        let mut task_to_row: Vec<RowTask> = Vec::default();
         for t in tasks {
             let mut row: Vec<String> = Vec::default();
             for field in &report_kind.columns {
                 match field.as_str() {
-                    "date_created" | "date_completed" => {
+                    "date_created" | "date_completed" | "date_due" => {
                         if let Some(date_str) = t.get_field(field).as_str() {
                             let local_date: DateTime<Local> = DateTime::from(
                                 DateTime::parse_from_rfc3339(date_str).ok().unwrap(),
@@ -120,8 +143,18 @@ impl Printer for SimpleTaskTextPrinter {
                     }
                 }
             }
-            debug!("Row: {:?}", row);
-            tbl.add_row(row, get_style_for_task(t)?).unwrap();
+            trace!("Row: {:?}", row);
+            task_to_row.push(RowTask {
+                task: t.to_owned(),
+                row,
+            });
+        }
+
+        task_to_row.sort();
+        task_to_row.reverse();
+        for row_task in task_to_row {
+            tbl.add_row(row_task.row, get_style_for_task(&row_task.task)?)
+                .unwrap();
         }
 
         if tbl.is_empty() {

@@ -28,11 +28,13 @@
     - [X] CMD action to get stuff
     - [X] Complete projects
     - [X] Complete tags
-- [ ] Urgency
+- [X] Urgency
 - [ ] Dependency
     - [X] Modifying a task
+    - [X] Update the blocking task
+    - [ ] Update the blocking task during the action and log it in undo (extra task)
     - [ ] Filter on dependencies
-    - [ ] Update the blocking task
+- [ ] Task Info
 - [ ] Task history
 - [ ] Import from Taskwarrior
 

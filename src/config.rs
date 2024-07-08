@@ -102,6 +102,10 @@ impl Config {
         self.report_map.get(name)
     }
 
+    pub fn get_default_report(&self) -> &ReportConfig {
+        self.get_report(&self.default_report).unwrap()
+    }
+
     pub fn get_primary_colour_fg(&self) -> (u8, u8, u8) {
         for c in &self.colour_fields {
             if c.field == "primary_colour" && c.fg.is_some() {

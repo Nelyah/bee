@@ -1,3 +1,5 @@
+use log::debug;
+
 use crate::task::filters;
 
 use crate::config::get_config;
@@ -38,7 +40,7 @@ impl Parser {
 
         let arguments = if args.len() > 1 { &args[1..] } else { &[] };
 
-        let mut report_kind = ReportConfig::default();
+        let mut report_kind = get_config().get_default_report().clone();
         let mut filters = Vec::new();
         let mut command_args = Vec::new();
 
@@ -46,6 +48,7 @@ impl Parser {
             if let Some(parsed_command) = command_to_parser.get_mut(arg) {
                 for remaining_arg in &arguments[idx + 1..] {
                     if let Some(report) = get_config().get_report(remaining_arg) {
+                        debug!("Matched report '{}'", remaining_arg);
                         report_kind = report.clone();
                         continue;
                     }
@@ -66,6 +69,7 @@ impl Parser {
 
             // Match report name or add to filters
             if let Some(report) = get_config().get_report(arg) {
+                debug!("Matched report '{}'", arg);
                 report_kind = report.clone();
                 continue;
             }

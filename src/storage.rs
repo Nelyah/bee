@@ -5,6 +5,7 @@ use crate::actions::ActionUndo;
 use crate::task::filters;
 use crate::task::filters::Filter;
 use crate::task::TaskData;
+use crate::task::TaskProperties;
 
 use std::collections::HashMap;
 use std::env;
@@ -18,7 +19,7 @@ mod storage_test;
 
 pub trait Store {
     #[allow(clippy::borrowed_box)]
-    fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData;
+    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> TaskData;
     /// Will write the task and return the TaskData written
     fn write_tasks(data: &TaskData) -> TaskData;
     fn load_undos(last_count: usize) -> Vec<ActionUndo>;
@@ -30,7 +31,7 @@ pub struct JsonStore {}
 
 impl Store for JsonStore {
     #[allow(clippy::borrowed_box)]
-    fn load_tasks(filter: Option<&Box<dyn Filter>>) -> TaskData {
+    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> TaskData {
         debug!(
             "Loading tasks using filter:\n{}",
             &filter.unwrap_or(&filters::new_empty()).to_string()
@@ -58,7 +59,7 @@ impl Store for JsonStore {
             data.insert_id_to_uuid(*id, *uuid);
         }
 
-        // Load extra UUIDs
+        // Load extra UUIDs from loaded tasks
         let mut new_data = if let Some(filter) = filter {
             data.filter(filter)
         } else {
@@ -71,7 +72,35 @@ impl Store for JsonStore {
             .flat_map(|task| task.get_extra_uuid())
             .collect();
 
+        // Load extra uuids from the TaskProperties
+        if let Some(props) = props {
+            for task_identifier in props.get_referenced_tasks() {
+                match task_identifier {
+                    crate::task::DependsOnIdentifier::Uuid(uuid) => {
+                        debug!("Adding extra task with uuid {} from TaskProperties", uuid);
+                        new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
+                    }
+                    crate::task::DependsOnIdentifier::Usize(id) => {
+                        if let Some(uuid) = id_to_uuid.get(&id) {
+                            debug!(
+                                "Adding extra task with id {} and uuid {} from TaskProperties",
+                                id, uuid
+                            );
+                            new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
+                        } else {
+                            unreachable!("Could not find task with id {}", id);
+                        }
+                    }
+                }
+            }
+        }
+
         for uuid in extra_uuids {
+            let task = data.get_owned(&uuid).unwrap();
+            debug!(
+                "Adding extra task with id {:?} and uuid {} as extra task",
+                task.get_id(), uuid
+            );
             new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
         }
 
@@ -79,7 +108,7 @@ impl Store for JsonStore {
     }
 
     fn write_tasks(data: &TaskData) -> TaskData {
-        let mut stored_tasks = Self::load_tasks(None);
+        let mut stored_tasks = Self::load_tasks(None, None);
         for t in data.get_task_map().values() {
             stored_tasks.set_task(t.clone());
         }

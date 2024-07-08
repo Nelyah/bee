@@ -11,7 +11,7 @@ use std::process::exit;
 use printer::cli::SimpleTaskTextPrinter;
 use storage::{JsonStore, Store};
 
-use crate::{actions::ActionRegisty, printer::cli::Printer};
+use crate::{actions::ActionRegisty, printer::cli::Printer, task::TaskProperties};
 
 fn main() {
     env_logger::init();
@@ -49,7 +49,21 @@ fn main() {
     trace!("Undos: {:?}", undos);
     trace!("Undo uuids: {:?}", undos_uuid);
 
-    let mut tasks = JsonStore::load_tasks(Some(command.filters.clone()).as_ref());
+    let mut props: Option<TaskProperties> = None;
+
+    if !command.arguments_as_filters {
+        match TaskProperties::from(&command.arguments) {
+            Ok(props_from_args) => {
+                props = Some(props_from_args);
+            }
+            Err(msg) => {
+                SimpleTaskTextPrinter.error(&msg);
+                exit(1);
+            }
+        }
+    }
+
+    let mut tasks = JsonStore::load_tasks(Some(command.filters.clone()).as_ref(), props);
 
     for undo_action in &undos {
         tasks.set_undos(&undo_action.tasks);

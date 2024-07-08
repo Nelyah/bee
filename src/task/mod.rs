@@ -89,6 +89,13 @@ impl TaskProperties {
         let mut parser = TaskPropertyParser::new(lexer);
         parser.parse_task_properties()
     }
+
+    pub fn get_referenced_tasks(&self) -> Vec<DependsOnIdentifier> {
+        match &self.depends_on {
+            Some(deps) => deps.to_owned(),
+            None => Vec::default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]

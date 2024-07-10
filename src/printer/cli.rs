@@ -4,7 +4,7 @@ use crate::task::Task;
 use crate::{config::ReportConfig, printer::table::StyledText};
 use chrono::{DateTime, Local};
 use colored::{ColoredString, Colorize};
-use log::trace;
+use log::{debug, trace};
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::io;
@@ -118,8 +118,6 @@ impl Printer for SimpleTaskTextPrinter {
         tasks: Vec<&Task>,
         report_kind: &ReportConfig,
     ) -> Result<(), String> {
-        let mut tbl = Table::new(&report_kind.column_names, io::stdout()).unwrap();
-
         let mut task_to_row: Vec<RowTask> = Vec::default();
         for t in tasks {
             let mut row: Vec<String> = Vec::default();
@@ -132,7 +130,7 @@ impl Printer for SimpleTaskTextPrinter {
                             );
                             row.push(format_relative_time(local_date))
                         } else {
-                            row.push("None".to_owned());
+                            row.push("".to_owned());
                         }
                     }
                     "summary" => {
@@ -158,6 +156,45 @@ impl Printer for SimpleTaskTextPrinter {
                 task: t.to_owned(),
                 row,
             });
+        }
+
+        // Remove unused columns
+        let mut column_used: Vec<bool> = Vec::default();
+        for _ in &report_kind.column_names {
+            column_used.push(false);
+        }
+        for row_task in &task_to_row {
+            let mut i = 0;
+            for col in &row_task.row {
+                if !col.is_empty() {
+                    column_used[i] = true;
+                }
+                i += 1;
+            }
+        }
+        let mut used_columns: Vec<usize> = Vec::default();
+        for i in 0..column_used.len() {
+            if column_used[i] {
+                used_columns.push(i);
+            }
+        }
+        let mut header_names = Vec::default();
+        for idx in &used_columns {
+            header_names.push(report_kind.column_names[*idx].to_owned());
+        }
+        for i in 0..report_kind.column_names.len() {
+            if !used_columns.contains(&i) {
+                debug!("Dropping column '{}' (index: {}) because none of the tasks have that field", &report_kind.column_names[i], i);
+            }
+        }
+        let mut tbl = Table::new(&header_names, io::stdout()).unwrap();
+
+        for row_task in task_to_row.iter_mut() {
+            let mut new_row = Vec::default();
+            for idx in &used_columns {
+                new_row.push(row_task.row[*idx].to_owned());
+            }
+            row_task.row = new_row;
         }
 
         task_to_row.sort();

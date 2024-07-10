@@ -8,11 +8,6 @@ fg = "#ffd966"
 field = "tag"
 value = "main"
 
-[[colours]]
-fg = "#12FF25"
-field = "tag"
-value = "hello"
-
 [[colours]] 
 fg = "#ff99d1"
 field = "depends"
@@ -30,7 +25,7 @@ default = false
 filters = []
 
 [report.default]
-column_names = ["ID", "Date", "Project", "Summary", "Tags", "Urgency"]
-columns = ["id", "date_created", "project", "summary", "tags", "urgency"]
+column_names = ["ID", "Date", "Project", "Summary", "Due", "Tags", "Urgency"]
+columns = ["id", "date_created", "project", "summary", "date_due", "tags", "urgency"]
 default = true
 filters = ['status:pending']

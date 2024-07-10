@@ -63,9 +63,19 @@ fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
                 if task
                     .get_tags()
                     .iter()
-                    .filter(|&tag| tag == &colour_conf.value)
+                    .filter(|&tag| colour_conf.value.as_ref() == Some(tag))
                     .count()
                     > 0
+                {
+                    return Ok(Some(StyledText {
+                        styles: vec![],
+                        background_color: colour_conf.bg,
+                        foreground_color: colour_conf.fg,
+                    }));
+                }
+            }
+            "depends" => {
+                if !task.get_depends().is_empty()
                 {
                     return Ok(Some(StyledText {
                         styles: vec![],

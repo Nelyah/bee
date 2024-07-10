@@ -205,6 +205,10 @@ impl Task {
         &self.annotations
     }
 
+    pub fn get_depends(&self) -> &Vec<Uuid> {
+        &self.depends_on
+    }
+
     pub fn get_summary(&self) -> &str {
         &self.summary
     }

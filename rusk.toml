@@ -3,6 +3,7 @@ bg = "#282c34"
 field = "primary_colour"
 
 [[colours]]
+bg = "#1a1a1a"
 fg = "#ffd966"
 field = "tag"
 value = "main"
@@ -10,6 +11,11 @@ value = "main"
 [[colours]]
 fg = "#12FF25"
 field = "tag"
+value = "hello"
+
+[[colours]]
+fg = "#ff99d1"
+field = "depends"
 value = "hello"
 
 [report.all]

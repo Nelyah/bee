@@ -28,7 +28,7 @@ pub struct Config {
 pub struct ColourField {
     pub field: String,
     #[serde(default = "default_colour_value_value")]
-    pub value: String,
+    pub value: Option<String>,
     #[serde(default = "default_colour_tuple_value")]
     #[serde(deserialize_with = "deserialize_color")]
     pub fg: Option<(u8, u8, u8)>,
@@ -41,8 +41,8 @@ fn default_colour_tuple_value() -> Option<(u8, u8, u8)> {
     None
 }
 
-fn default_colour_value_value() -> String {
-    "".to_string()
+fn default_colour_value_value() -> Option<String> {
+    None
 }
 
 fn default_colour_field() -> Vec<ColourField> {

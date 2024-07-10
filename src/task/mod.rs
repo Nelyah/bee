@@ -187,6 +187,22 @@ impl Task {
     fn compute_urgency(&mut self) -> i64 {
         let mut urgency: i64 = 0;
 
+        let conf = crate::config::get_config();
+        for coef_field in conf.coefficients.iter() {
+            match coef_field.field.as_str() {
+                "tag" => {
+                    if let Some(tag_value) = &coef_field.value {
+                        if self.tags.contains(tag_value) {
+                            urgency += coef_field.coefficient;
+                        }
+                    } else {
+                        urgency += coef_field.coefficient;
+                    }
+                }
+                _ => {}
+            }
+        }
+
         urgency += self.blocking.len() as i64;
         urgency -= self.depends_on.len() as i64;
 

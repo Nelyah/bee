@@ -22,6 +22,16 @@ pub struct Config {
     #[serde(default = "default_colour_field")]
     #[serde(rename = "colours")]
     pub colour_fields: Vec<ColourField>,
+    #[serde(default)]
+    #[serde(rename = "coefficients")]
+    pub coefficients: Vec<CoeffientField>,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct CoeffientField {
+    pub field: String,
+    pub value: Option<String>,
+    pub coefficient: i64,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]

@@ -13,10 +13,15 @@ fg = "#12FF25"
 field = "tag"
 value = "hello"
 
-[[colours]]
+[[colours]] 
 fg = "#ff99d1"
 field = "depends"
 value = "hello"
+
+[[coefficients]]
+field = "tag"
+value = "main"
+coefficient = -10
 
 [report.all]
 column_names = ["UUID", "Date Created", "Date Completed", "Summary", "Tags"]
@@ -25,7 +30,7 @@ default = false
 filters = []
 
 [report.default]
-column_names = ["ID", "Summary", "Tags", "Date", "Urgency"]
-columns = ["id", "summary", "tags", "date_created", "urgency"]
+column_names = ["ID", "Date", "Project", "Summary", "Tags", "Urgency"]
+columns = ["id", "date_created", "project", "summary", "tags", "urgency"]
 default = true
 filters = ['status:pending']

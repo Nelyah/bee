@@ -57,7 +57,7 @@ fn test_apply_summary() {
     let mut props = setup_task_property();
     props.summary = Some("New summary".to_string());
 
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.summary, "New summary");
 }
 
@@ -68,7 +68,7 @@ fn test_apply_status() {
     props.status = Some(TaskStatus::Completed);
 
     assert_eq!(task.status, TaskStatus::Pending);
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.status, TaskStatus::Completed);
 }
 
@@ -78,7 +78,7 @@ fn test_apply_tags_add() {
     let mut props = setup_task_property();
     props.tags_add = Some(vec!["new_tag".to_string()]);
 
-    task.apply(&props);
+    let _ = task.apply(&props);
     task.tags.sort();
     assert_eq!(task.tags, vec!["initial_tag1", "initial_tag2", "new_tag"]);
 }
@@ -89,7 +89,7 @@ fn test_apply_tags_remove() {
     let mut props = setup_task_property();
     props.tags_remove = Some(vec!["initial_tag2".to_string()]);
 
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.tags, vec!["initial_tag1"]);
 }
 
@@ -100,7 +100,7 @@ fn test_apply_annotation() {
     props.annotation = Some("hello there".to_owned());
 
     assert_true!(task.annotations.is_empty());
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_false!(task.annotations.is_empty());
     assert_eq!(
         task.annotations.first().unwrap().get_value(),
@@ -116,7 +116,7 @@ fn test_apply_combined() {
     props.tags_remove = Some(vec!["initial_tag1".to_string()]);
     props.tags_add = Some(vec!["additional_tag".to_string()]);
 
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.summary, "Updated summary");
     assert_eq!(task.tags, vec!["initial_tag2", "additional_tag"]);
 }
@@ -126,7 +126,7 @@ fn test_apply_no_change() {
     let mut task = setup_task();
     let props = TaskProperties::default(); // Assumes no change
 
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.summary, "Initial summary");
     assert_eq!(task.tags, vec!["initial_tag1", "initial_tag2"]);
 }
@@ -140,10 +140,10 @@ fn test_apply_depends_on() {
     props.depends_on = Some(vec![DependsOnIdentifier::Uuid(uuid_1)]);
 
     assert_true!(task.depends_on.is_empty());
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.depends_on.len(), 1);
     // Evene if we apply if a second time we still have a single value because it's the same uuid
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.depends_on.len(), 1);
     assert_eq!(task.depends_on.first().unwrap(), &uuid_1);
 
@@ -152,7 +152,7 @@ fn test_apply_depends_on() {
         DependsOnIdentifier::Uuid(uuid_2),
     ]);
     assert_eq!(task.depends_on.len(), 1);
-    task.apply(&props);
+    let _ = task.apply(&props);
     assert_eq!(task.depends_on.len(), 2);
     assert_true!(
         task.depends_on.first().unwrap() == &uuid_1 || task.depends_on.first().unwrap() == &uuid_2
@@ -184,7 +184,7 @@ fn test_upkeep_sorts_tasks_and_updates_ids() {
     task_data.tasks.insert(t1.uuid, t1.clone());
 
     // Run upkeep
-    task_data.upkeep();
+    let _ = task_data.upkeep();
 
     // Verify the tasks are sorted and ids are updated correctly
     let task1 = task_data.tasks.get(&t1.uuid).unwrap();
@@ -214,7 +214,7 @@ fn test_upkeep_handles_deleted_and_completed_tasks() {
     task_data.tasks.insert(t4.uuid, t4.clone());
 
     // Run upkeep
-    task_data.upkeep();
+    let _ = task_data.upkeep();
 
     // Verify the tasks are sorted and ids are updated correctly
     let task1 = task_data.tasks.get(&t1.uuid).unwrap();

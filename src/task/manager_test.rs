@@ -208,7 +208,7 @@ fn test_upkeep() {
     // Check that we are updating the blocking status
     assert_true!(data.tasks.get(&task2_uuid).unwrap().blocking.is_empty());
 
-    data.upkeep();
+    let _ = data.upkeep();
 
     assert_eq!(data.tasks.get(&task1_uuid).unwrap().id, Some(1));
     assert_eq!(data.tasks.get(&task2_uuid).unwrap().id, Some(2));
@@ -221,13 +221,13 @@ fn test_upkeep() {
     let tmp_task2 = data.tasks.get_mut(&task2_uuid).unwrap().clone();
     data.tasks.get_mut(&task2_uuid).unwrap().done();
 
-    data.upkeep();
+    let _ = data.upkeep();
     assert_true!(data.tasks.get(&task1_uuid).unwrap().depends_on.is_empty());
 
     data.tasks.insert(tmp_task2.uuid, tmp_task2);
-    data.upkeep();
+    let _ = data.upkeep();
     data.tasks.get_mut(&task1_uuid).unwrap().depends_on = vec![task2_uuid];
     data.tasks.get_mut(&task2_uuid).unwrap().delete();
-    data.upkeep();
+    let _ = data.upkeep();
     assert_true!(data.tasks.get(&task1_uuid).unwrap().depends_on.is_empty());
 }

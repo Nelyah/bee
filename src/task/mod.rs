@@ -176,16 +176,18 @@ impl Task {
         self.id
     }
 
-    pub fn get_urgency(&mut self) -> i64 {
+    pub fn get_urgency(&mut self) -> Result<i64, String> {
         if let Some(urgency) = self.urgency {
-            return urgency;
+            return Ok(urgency);
         }
 
         self.compute_urgency()
     }
 
-    fn compute_urgency(&mut self) -> i64 {
+    fn compute_urgency(&mut self) -> Result<i64, String> {
         let mut urgency: i64 = 0;
+        let mut blocking_coef = 1;
+        let mut depends_coef = -1;
 
         let conf = crate::config::get_config();
         for coef_field in conf.coefficients.iter() {
@@ -199,12 +201,24 @@ impl Task {
                         urgency += coef_field.coefficient;
                     }
                 }
-                _ => {}
+                "depends" => {
+                    depends_coef = coef_field.coefficient;
+                }
+                "blocking" => {
+                    blocking_coef = coef_field.coefficient;
+                }
+                _ => {
+                    return Err(format!(
+                        "Error parsing the coefficient field in the configuration file. \
+                            '{}' is not a valid 'field' name. Valid field names are: 'tag', 'depends', 'blocking'",
+                        coef_field.field
+                    ));
+                }
             }
         }
 
-        urgency += self.blocking.len() as i64;
-        urgency -= self.depends_on.len() as i64;
+        urgency += self.blocking.len() as i64 * blocking_coef;
+        urgency += self.depends_on.len() as i64 * depends_coef;
 
         // Compute number of days remaining until the due date
         if let Some(date_due) = self.date_due {
@@ -214,7 +228,7 @@ impl Task {
         }
 
         self.urgency = Some(urgency);
-        self.urgency.unwrap()
+        Ok(self.urgency.unwrap())
     }
 
     pub fn get_annotations(&self) -> &Vec<TaskAnnotation> {
@@ -270,7 +284,7 @@ impl Task {
         uuids
     }
 
-    pub fn apply(&mut self, props: &TaskProperties) {
+    pub fn apply(&mut self, props: &TaskProperties) -> Result<(), String> {
         if let Some(summary) = &props.summary {
             self.summary = summary.clone();
         }
@@ -326,7 +340,8 @@ impl Task {
             }
             self.depends_on = deps_set.into_iter().collect();
         }
-        self.compute_urgency();
+        self.compute_urgency()?;
+        Ok(())
     }
 
     pub fn get_field(&self, field_name: &str) -> Value {
@@ -410,13 +425,11 @@ impl TaskData {
 
     pub fn apply(&mut self, task_uuid: &Uuid, props: &TaskProperties) -> Result<(), String> {
         if props.depends_on.is_none() {
-            self.tasks.get_mut(task_uuid).unwrap().apply(props);
-            return Ok(());
+            return self.tasks.get_mut(task_uuid).unwrap().apply(props);
         }
 
         let my_props = self.update_task_property_depends_on(props)?;
-        self.tasks.get_mut(task_uuid).unwrap().apply(&my_props);
-        Ok(())
+        return self.tasks.get_mut(task_uuid).unwrap().apply(&my_props);
     }
 
     pub fn get_owned(&self, uuid: &Uuid) -> Option<Task> {
@@ -484,7 +497,7 @@ impl TaskData {
         Ok(my_props)
     }
 
-    pub fn upkeep(&mut self) {
+    pub fn upkeep(&mut self) -> Result<(), String> {
         let mut vec: Vec<_> = self.tasks.values().by_ref().collect();
 
         // Set the ID of the tasks by sorting them by date_created
@@ -504,9 +517,9 @@ impl TaskData {
             }
         }
 
-        self.tasks.values_mut().for_each(|t| {
-            t.compute_urgency();
-        });
+        for t in self.tasks.values_mut() {
+            t.compute_urgency()?;
+        }
 
         // Update dependency status if a depended class is done / deleted
 
@@ -590,6 +603,8 @@ impl TaskData {
             self.tasks
                 .insert(blocker_task.uuid.to_owned(), blocker_task);
         }
+
+        Ok(())
     }
 
     #[allow(clippy::borrowed_box)]

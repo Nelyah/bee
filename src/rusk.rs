@@ -63,7 +63,13 @@ fn main() {
         }
     }
 
-    let mut tasks = JsonStore::load_tasks(Some(command.filters.clone()).as_ref(), props);
+    let mut tasks = match JsonStore::load_tasks(Some(command.filters.clone()).as_ref(), props) {
+        Ok(t) => t,
+        Err(msg) => {
+            SimpleTaskTextPrinter.error(&msg);
+            exit(1);
+        }
+    };
 
     for undo_action in &undos {
         tasks.set_undos(&undo_action.tasks);
@@ -80,6 +86,12 @@ fn main() {
         }
     }
 
-    JsonStore::write_tasks(action.get_tasks());
+    match JsonStore::write_tasks(action.get_tasks()) {
+        Ok(_) => (),
+        Err(msg) => {
+            SimpleTaskTextPrinter.error(&msg);
+            exit(1);
+        }
+    };
     JsonStore::log_undo(undo_count, action.get_undos().to_owned());
 }

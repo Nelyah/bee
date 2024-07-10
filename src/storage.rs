@@ -19,9 +19,9 @@ mod storage_test;
 
 pub trait Store {
     #[allow(clippy::borrowed_box)]
-    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> TaskData;
+    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> Result<TaskData, String>;
     /// Will write the task and return the TaskData written
-    fn write_tasks(data: &TaskData) -> TaskData;
+    fn write_tasks(data: &TaskData) -> Result<TaskData, String>;
     fn load_undos(last_count: usize) -> Vec<ActionUndo>;
     fn log_undo(count: usize, updated_undos: Vec<ActionUndo>);
 }
@@ -31,7 +31,7 @@ pub struct JsonStore {}
 
 impl Store for JsonStore {
     #[allow(clippy::borrowed_box)]
-    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> TaskData {
+    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> Result<TaskData, String> {
         debug!(
             "Loading tasks using filter:\n{}",
             &filter.unwrap_or(&filters::new_empty()).to_string()
@@ -44,7 +44,7 @@ impl Store for JsonStore {
             Err(_) => TaskData::default(),
         };
 
-        data.upkeep();
+        data.upkeep()?;
 
         // We need to keep some knowledge of how the ids map to the uuids
         let mut id_to_uuid = HashMap::<usize, Uuid>::default();
@@ -105,15 +105,15 @@ impl Store for JsonStore {
             new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
         }
 
-        new_data
+        Ok(new_data)
     }
 
-    fn write_tasks(data: &TaskData) -> TaskData {
-        let mut stored_tasks = Self::load_tasks(None, None);
+    fn write_tasks(data: &TaskData) -> Result<TaskData, String> {
+        let mut stored_tasks = Self::load_tasks(None, None)?;
         for t in data.get_task_map().values() {
             stored_tasks.set_task(t.clone());
         }
-        stored_tasks.upkeep();
+        stored_tasks.upkeep()?;
 
         let tasks_as_json =
             serde_json::to_string_pretty(&stored_tasks).expect("Failed to serialize tasks to JSON");
@@ -127,7 +127,7 @@ impl Store for JsonStore {
 
         fs::write(data_file, tasks_as_json).expect("Could not write data file");
 
-        stored_tasks
+        Ok(stored_tasks)
     }
 
     fn load_undos(last_count: usize) -> Vec<ActionUndo> {

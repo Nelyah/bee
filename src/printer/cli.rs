@@ -1,6 +1,6 @@
 use super::table::Table;
 use crate::config::get_config;
-use crate::task::Task;
+use crate::task::{Task, TaskStatus};
 use crate::{config::ReportConfig, printer::table::StyledText};
 use chrono::{DateTime, Local};
 use colored::{ColoredString, Colorize};
@@ -15,6 +15,7 @@ pub trait Printer {
         tasks: Vec<&Task>,
         report_kind: &ReportConfig,
     ) -> Result<(), String>;
+    fn print_task_info(&self, task: &Task) -> Result<(), String>;
     fn show_information_message(&self, message: &str);
     fn error(&self, message: &str);
 
@@ -113,6 +114,111 @@ impl Ord for RowTask {
 }
 
 impl Printer for SimpleTaskTextPrinter {
+    fn print_task_info(&self, task: &Task) -> Result<(), String> {
+        let status = match task.get_status() {
+            TaskStatus::Pending => task.get_status().to_string().to_uppercase().blue(),
+            TaskStatus::Completed => task.get_status().to_string().to_uppercase().green(),
+            TaskStatus::Deleted => task.get_status().to_string().to_uppercase().bright_red(),
+        };
+        let mut output_str = String::default();
+        output_str += format!("\n{} - {}", status, task.get_summary()).as_str();
+
+        output_str += format!(
+            "\n\nIDs:\t\t{}{}",
+            match task.get_id() {
+                Some(id) => id.to_string() + ", ",
+                None => "".to_string(),
+            },
+            task.get_uuid().to_string().bold()
+        )
+        .as_str();
+
+        if let Some(proj) = task.get_project() {
+            output_str += format!("\nProject:\t{}", proj.get_name().bold()).as_str();
+        }
+
+        if !task.get_tags().is_empty() {
+            output_str += format!("\nTags:\t\t{}", task.get_tags().join(" ").bold()).as_str();
+        }
+
+        output_str += "\n";
+
+        output_str += format!(
+            "\nCreated:\t{}",
+            task.get_date_created()
+                .format("%Y-%m-%d %H:%M")
+                .to_string()
+                .bold()
+        )
+        .as_str();
+
+        if let Some(end_date) = task.get_date_completed() {
+            output_str += format!(
+                "\nCompleted:\t{}",
+                end_date.format("%Y-%m-%d %H:%M").to_string().bold()
+            )
+            .as_str();
+        }
+
+        if let Some(due_date) = task.get_date_due() {
+            output_str += format!(
+                "\nDue:\t\t{}",
+                due_date
+                    .format("%Y-%m-%d %H:%M")
+                    .to_string()
+                    .bold()
+                    .yellow()
+            )
+            .as_str();
+        }
+
+        if !task.get_annotations().is_empty() {
+            output_str += "\n\nAnnotations:";
+        }
+        for ann in task.get_annotations() {
+            output_str += format!(
+                "\n    {} - {}",
+                ann.get_time().format("%Y-%m-%d %H:%M").to_string().bold(),
+                ann.get_value()
+            )
+            .as_str();
+        }
+
+        if !task.get_depends().is_empty() || !task.get_depends().is_empty() {
+            output_str += "\n";
+        }
+
+        if !task.get_depends().is_empty() {
+            output_str += format!(
+                "\nDepends:\t{}",
+                task.get_depends()
+                    .iter()
+                    .map(|uuid| uuid.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+                    .bold()
+            )
+            .as_str();
+        }
+
+        if !task.get_blocking().is_empty() {
+            output_str += format!(
+                "\nBlocking:\t{}",
+                task.get_blocking()
+                    .iter()
+                    .map(|uuid| uuid.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+                    .bold()
+            )
+            .as_str();
+        }
+
+        println!("{}", output_str);
+
+        Ok(())
+    }
+
     fn print_list_of_tasks(
         &self,
         tasks: Vec<&Task>,
@@ -190,7 +296,10 @@ impl Printer for SimpleTaskTextPrinter {
         }
         for i in 0..report_kind.column_names.len() {
             if !used_columns.contains(&i) {
-                debug!("Dropping column '{}' (index: {}) because none of the tasks have that field", &report_kind.column_names[i], i);
+                debug!(
+                    "Dropping column '{}' (index: {}) because none of the tasks have that field",
+                    &report_kind.column_names[i], i
+                );
             }
         }
         let mut tbl = Table::new(&header_names, io::stdout())?;

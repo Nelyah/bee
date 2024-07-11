@@ -244,6 +244,10 @@ impl Task {
         &self.annotations
     }
 
+    pub fn get_blocking(&self) -> &Vec<Uuid> {
+        &self.blocking
+    }
+
     pub fn get_depends(&self) -> &Vec<Uuid> {
         &self.depends_on
     }

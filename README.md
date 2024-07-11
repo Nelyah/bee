@@ -32,18 +32,19 @@
 - [ ] Dependency
     - [X] Modifying a task
     - [X] Update the blocking task
-    - [ ] Update the blocking task during the action and log it in undo (extra task)
+    - [X] Update the blocking task during the action and log it in undo (extra task)
     - [ ] Filter on dependencies
-- [ ] Task Info
+- [X] Task Info
 - [ ] Task history
 - [ ] Import from Taskwarrior
 
 ### Next steps
 
-- [ ] Views (show potentially multiple reports in a single view)
 - [X] due
-- [ ] Recurring tasks
 - [X] 'export' action
+- [ ] Improve Task Info with printing to a table instead of regular print
+- [ ] Views (show potentially multiple reports in a single view)
+- [ ] Recurring tasks
 - [ ] Contexts
 - [ ] Descriptions
 - [ ] Priority

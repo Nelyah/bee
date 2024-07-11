@@ -101,6 +101,7 @@ enum ActionType {
     Annotate,
     Command,
     List,
+    Info,
     Add,
     Undo,
     Export,
@@ -119,6 +120,7 @@ impl ActionType {
             ActionType::Annotate => (),
             ActionType::Command => (),
             ActionType::List => (),
+            ActionType::Info => (),
             ActionType::Export => (),
             ActionType::Undo => (),
             ActionType::Done => (),
@@ -128,6 +130,7 @@ impl ActionType {
         let mut map = HashMap::new();
 
         map.insert(ActionType::List, vec!["list".to_string()]);
+        map.insert(ActionType::Info, vec!["info".to_string()]);
         map.insert(ActionType::Add, vec!["add".to_string()]);
         map.insert(ActionType::Command, vec!["_cmd".to_string()]);
         map.insert(ActionType::Annotate, vec!["annotate".to_string()]);
@@ -160,6 +163,7 @@ impl ActionType {
     pub fn use_arguments_as_filter(&self) -> bool {
         match self {
             Self::List => true,
+            Self::Info => true,
             Self::Add => false,
             Self::Command => false,
             Self::Annotate => false,
@@ -180,6 +184,7 @@ impl Default for ActionRegisty {
                 ActionType::Add,
                 ActionType::Command,
                 ActionType::Annotate,
+                ActionType::Info,
                 ActionType::Export,
                 ActionType::Undo,
                 ActionType::Done,
@@ -208,6 +213,9 @@ impl ActionRegisty {
     pub fn get_action_from_command_parser(&self, cp: &ParsedCommand) -> Box<dyn TaskAction> {
         let mut action: Box<dyn TaskAction> = match ActionType::from(cp.command.as_str()) {
             ActionType::List => Box::new(action_list::ListTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Info => Box::new(action_info::InfoTaskAction {
                 base: BaseTaskAction::default(),
             }),
             ActionType::Add => Box::new(action_add::AddTaskAction {
@@ -247,6 +255,7 @@ mod action_cmd;
 mod action_delete;
 mod action_done;
 mod action_export;
+mod action_info;
 mod action_list;
 mod action_modify;
 mod action_undo;

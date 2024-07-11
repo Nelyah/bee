@@ -104,7 +104,9 @@ mod tests {
     }
 
     impl Printer for MockPrinter {
-        fn print_task_info(&self, _task: &Task) -> Result<(), String> {Ok(())}
+        fn print_task_info(&self, _task: &Task) -> Result<(), String> {
+            Ok(())
+        }
         fn print_raw(&self, _: &str) {}
         fn show_information_message(&self, _message: &str) {}
         fn error(&self, _: &str) {}

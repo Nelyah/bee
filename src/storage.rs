@@ -19,7 +19,10 @@ mod storage_test;
 
 pub trait Store {
     #[allow(clippy::borrowed_box)]
-    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> Result<TaskData, String>;
+    fn load_tasks(
+        filter: Option<&Box<dyn Filter>>,
+        props: Option<TaskProperties>,
+    ) -> Result<TaskData, String>;
     /// Will write the task and return the TaskData written
     fn write_tasks(data: &TaskData) -> Result<TaskData, String>;
     fn load_undos(last_count: usize) -> Vec<ActionUndo>;
@@ -31,7 +34,10 @@ pub struct JsonStore {}
 
 impl Store for JsonStore {
     #[allow(clippy::borrowed_box)]
-    fn load_tasks(filter: Option<&Box<dyn Filter>>, props: Option<TaskProperties>) -> Result<TaskData, String> {
+    fn load_tasks(
+        filter: Option<&Box<dyn Filter>>,
+        props: Option<TaskProperties>,
+    ) -> Result<TaskData, String> {
         debug!(
             "Loading tasks using filter:\n{}",
             &filter.unwrap_or(&filters::new_empty()).to_string()
@@ -65,7 +71,11 @@ impl Store for JsonStore {
         } else {
             data.to_owned()
         };
-        debug!("Loaded {} tasks (out of {} total tasks).", new_data.get_task_map().len(), data.get_task_map().len());
+        debug!(
+            "Loaded {} tasks (out of {} total tasks).",
+            new_data.get_task_map().len(),
+            data.get_task_map().len()
+        );
 
         let extra_uuids: Vec<_> = new_data
             .get_task_map()

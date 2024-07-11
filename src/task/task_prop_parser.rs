@@ -183,7 +183,7 @@ impl TaskPropertyParser {
                             )]);
                         }
                         _ if self.current_token.token_type == TokenType::WordString
-                            && self.current_token.literal == "none".to_string() =>
+                            && self.current_token.literal == *"none" =>
                         {
                             props.depends_on = Some(Vec::new());
                         }

@@ -272,21 +272,18 @@ impl Printer for SimpleTaskTextPrinter {
 
         // Remove unused columns
         let mut column_used: Vec<bool> = Vec::default();
-        for _ in &report_kind.column_names {
-            column_used.push(false);
-        }
+        column_used.resize(report_kind.column_names.len(), false);
+
         for row_task in &task_to_row {
-            let mut i = 0;
-            for col in &row_task.row {
+            for (i, col) in row_task.row.iter().enumerate() {
                 if !col.is_empty() {
                     column_used[i] = true;
                 }
-                i += 1;
             }
         }
         let mut used_columns: Vec<usize> = Vec::default();
-        for i in 0..column_used.len() {
-            if column_used[i] {
+        for (i, col_used) in column_used.iter().enumerate() {
+            if *col_used {
                 used_columns.push(i);
             }
         }

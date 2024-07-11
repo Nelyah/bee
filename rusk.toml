@@ -1,3 +1,12 @@
+[[coefficients]]
+coefficient = -10
+field = "tag"
+value = "main"
+
+[[coefficients]]
+coefficient = -1
+field = "depends"
+
 [[colours]]
 bg = "#282c34"
 field = "primary_colour"
@@ -8,19 +17,10 @@ fg = "#ffd966"
 field = "tag"
 value = "main"
 
-[[colours]] 
+[[colours]]
 fg = "#ff99d1"
 field = "depends"
 value = "hello"
-
-[[coefficients]]
-field = "tag"
-value = "main"
-coefficient = -10
-
-[[coefficients]]
-field = "depends"
-coefficient = -1
 
 [report.all]
 column_names = ["Status", "UUID", "Date Created", "Date Completed", "Summary", "Tags"]

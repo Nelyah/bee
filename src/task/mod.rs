@@ -317,9 +317,15 @@ impl Task {
 
         if let Some(depends_on) = &props.depends_on {
             let mut deps_set = HashSet::<Uuid>::new();
-            self.depends_on.iter().for_each(|uuid| {
-                deps_set.insert(uuid.to_owned());
-            });
+
+            // If the vector is empty, it's because we want to cancel all dependencies
+            // for the task. In which case just don't add any. This will update the
+            // task to not have any dependencies
+            if !depends_on.is_empty() {
+                self.depends_on.iter().for_each(|uuid| {
+                    deps_set.insert(uuid.to_owned());
+                });
+            }
             for dep in depends_on {
                 match dep {
                     DependsOnIdentifier::Usize(_) => {

@@ -182,6 +182,11 @@ impl TaskPropertyParser {
                                 self.current_token.literal.parse::<usize>().unwrap(),
                             )]);
                         }
+                        _ if self.current_token.token_type == TokenType::WordString
+                            && self.current_token.literal == "none".to_string() =>
+                        {
+                            props.depends_on = Some(Vec::new());
+                        }
                         _ => {
                             return Err(err_msg_prefix
                             + &format!(

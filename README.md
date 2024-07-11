@@ -47,6 +47,7 @@
 - [ ] Contexts
 - [ ] Descriptions
 - [ ] Priority
+- [ ] Warn about circular dependencies
 
 ### Nice to have
 

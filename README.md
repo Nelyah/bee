@@ -37,6 +37,7 @@
 - [X] Task Info
 - [ ] Task history
 - [ ] Import from Taskwarrior
+- [ ] Improve autocompletion
 
 ### Next steps
 

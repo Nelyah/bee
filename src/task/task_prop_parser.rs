@@ -171,16 +171,20 @@ impl TaskPropertyParser {
                     self.next_token();
                     self.skip_whitespace();
 
+                    let mut new_depends_on = match &props.depends_on {
+                        None => Vec::default(),
+                        Some(values) => values.to_owned(),
+                    };
                     match self.current_token.token_type {
                         TokenType::Uuid => {
-                            props.depends_on = Some(vec![DependsOnIdentifier::Uuid(
+                            new_depends_on.push(DependsOnIdentifier::Uuid(
                                 Uuid::parse_str(&self.current_token.literal).unwrap(),
-                            )]);
+                            ));
                         }
                         TokenType::Int => {
-                            props.depends_on = Some(vec![DependsOnIdentifier::Usize(
+                            new_depends_on.push(DependsOnIdentifier::Usize(
                                 self.current_token.literal.parse::<usize>().unwrap(),
-                            )]);
+                            ));
                         }
                         _ if self.current_token.token_type == TokenType::WordString
                             && self.current_token.literal == *"none" =>
@@ -195,6 +199,9 @@ impl TaskPropertyParser {
                             self.current_token.literal
                             ));
                         }
+                    }
+                    if !new_depends_on.is_empty() {
+                        props.depends_on = Some(new_depends_on);
                     }
                     self.next_token();
                 }
@@ -222,6 +229,9 @@ impl TaskPropertyParser {
         }
         if let Some(summary) = &mut props.summary {
             *summary = summary.trim().to_string();
+            if summary.is_empty() {
+                props.summary = None;
+            }
         }
         debug!("Parsed task properties: {:?}", props);
         Ok(props)

@@ -81,4 +81,39 @@ fn test_task_properties_parser() {
 
     let tp = from_string("");
     assert_eq!(tp, TaskProperties::default(),);
+
+    let tp = from_string("depends:6");
+    let props = TaskProperties {
+        depends_on: Some(vec![DependsOnIdentifier::Usize(6)]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let tp = from_string("depends:6 depends:7");
+    let props = TaskProperties {
+        depends_on: Some(vec![
+            DependsOnIdentifier::Usize(6),
+            DependsOnIdentifier::Usize(7),
+        ]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let tp = from_string("depends:none");
+    let props = TaskProperties {
+        depends_on: Some(vec![]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let uuid1 = Uuid::new_v4();
+    let tp = from_string(format!("depends:6 depends:{}", uuid1).as_str());
+    let props = TaskProperties {
+        depends_on: Some(vec![
+            DependsOnIdentifier::Usize(6),
+            DependsOnIdentifier::Uuid(uuid1),
+        ]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
 }

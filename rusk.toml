@@ -23,8 +23,8 @@ field = "depends"
 coefficient = -1
 
 [report.all]
-column_names = ["UUID", "Date Created", "Date Completed", "Summary", "Tags"]
-columns = ["uuid", "date_created", "date_completed", "summary", "tags"]
+column_names = ["Status", "UUID", "Date Created", "Date Completed", "Summary", "Tags"]
+columns = ["status", "uuid", "date_created", "date_completed", "summary", "tags"]
 default = false
 filters = []
 

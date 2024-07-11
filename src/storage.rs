@@ -65,6 +65,7 @@ impl Store for JsonStore {
         } else {
             data.to_owned()
         };
+        debug!("Loaded {} tasks (out of {} total tasks).", new_data.get_task_map().len(), data.get_task_map().len());
 
         let extra_uuids: Vec<_> = new_data
             .get_task_map()

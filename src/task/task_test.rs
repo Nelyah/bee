@@ -52,6 +52,19 @@ fn setup_task_property() -> TaskProperties {
 }
 
 #[test]
+fn test_apply_project() {
+    let mut task = setup_task();
+    let mut props = setup_task_property();
+    let new_proj = Project {
+        name: "a.b.c".to_string(),
+    };
+    props.project = Some(new_proj.clone());
+
+    let _ = task.apply(&props);
+    assert_eq!(task.project, Some(new_proj));
+}
+
+#[test]
 fn test_apply_summary() {
     let mut task = setup_task();
     let mut props = setup_task_property();

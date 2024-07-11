@@ -131,18 +131,27 @@ pub struct Task {
     status: TaskStatus,
     uuid: Uuid,
     summary: String,
+
     #[serde(default)]
     annotations: Vec<TaskAnnotation>,
+
     tags: Vec<String>,
+
     date_created: DateTime<chrono::Local>,
+
     #[serde(default)]
     date_completed: Option<DateTime<chrono::Local>>,
+
     sub: Vec<Uuid>,
+
     #[serde(default)]
     depends_on: Vec<Uuid>,
+
     #[serde(default)]
     blocking: Vec<Uuid>,
+
     project: Option<Project>,
+
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
 
@@ -295,6 +304,10 @@ impl Task {
 
         if let Some(status) = &props.status {
             self.status = status.to_owned();
+        }
+
+        if let Some(proj) = &props.project {
+            self.project = Some(proj.to_owned());
         }
 
         if let Some(tags) = &props.tags_remove {

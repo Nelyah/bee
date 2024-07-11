@@ -133,6 +133,12 @@ impl Printer for SimpleTaskTextPrinter {
                             row.push("".to_owned());
                         }
                     }
+                    "project" => {
+                        match t.get_project() {
+                            Some(proj) => row.push(proj.get_name().to_owned()),
+                            None => row.push("".to_string()),
+                        };
+                    }
                     "summary" => {
                         let mut out_str = t.get_summary().to_owned();
                         t.get_annotations().iter().for_each(|ann| {
@@ -187,7 +193,7 @@ impl Printer for SimpleTaskTextPrinter {
                 debug!("Dropping column '{}' (index: {}) because none of the tasks have that field", &report_kind.column_names[i], i);
             }
         }
-        let mut tbl = Table::new(&header_names, io::stdout()).unwrap();
+        let mut tbl = Table::new(&header_names, io::stdout())?;
 
         for row_task in task_to_row.iter_mut() {
             let mut new_row = Vec::default();

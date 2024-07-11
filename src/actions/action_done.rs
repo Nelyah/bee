@@ -52,7 +52,19 @@ impl TaskAction for DoneTaskAction {
         }
 
         if !undos.is_empty() {
-            let mut extra_uuids: Vec<_> = undos.values().flat_map(|t| t.get_extra_uuid()).collect();
+            let mut extra_uuids: Vec<Uuid> = [
+                undos
+                    .values()
+                    .flat_map(|t| t.get_extra_uuid())
+                    .collect::<Vec<_>>(),
+                self.base
+                    .tasks
+                    .get_extra_tasks()
+                    .keys()
+                    .map(|uuid| uuid.to_owned())
+                    .collect::<Vec<_>>(),
+            ]
+            .concat();
             extra_uuids.sort_unstable();
             extra_uuids.dedup();
             for uuid in extra_uuids {

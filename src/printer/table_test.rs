@@ -1,4 +1,5 @@
-use std::io::{self, Write};
+#[allow(unused_imports)]
+use std::io::{self, BufWriter, Write};
 
 #[cfg(test)]
 use super::*;

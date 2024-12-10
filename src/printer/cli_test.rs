@@ -2,6 +2,8 @@
 use super::*;
 
 #[allow(unused_imports)]
+use super::io::Cursor;
+#[allow(unused_imports)]
 use chrono::Duration;
 
 #[test]
@@ -41,4 +43,16 @@ fn test_format_relative_time() {
         let got = format_relative_time(input);
         assert_eq!(expected, got, "Failed test for {}", name);
     }
+}
+
+#[test]
+fn test_print_table_no_task() {
+    let mut buffer = Cursor::new(Vec::new());
+    SimpleTaskTextPrinter
+        .print_list_of_tasks_impl(Vec::new(), &ReportConfig::default(), &mut buffer)
+        .unwrap();
+    assert_eq!(
+        String::from_utf8(buffer.into_inner()).unwrap(),
+        "No task to show.\n"
+    )
 }

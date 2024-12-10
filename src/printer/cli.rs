@@ -7,7 +7,7 @@ use colored::{ColoredString, Colorize};
 use log::{debug, trace};
 use serde_json::Value;
 use std::cmp::Ordering;
-use std::io;
+use std::io::{self, Write};
 
 pub trait Printer {
     fn print_list_of_tasks(
@@ -224,6 +224,37 @@ impl Printer for SimpleTaskTextPrinter {
         tasks: Vec<&Task>,
         report_kind: &ReportConfig,
     ) -> Result<(), String> {
+        let mut writer = io::stdout();
+        self.print_list_of_tasks_impl(tasks, report_kind, &mut writer)
+    }
+
+    fn show_information_message(&self, message: &str) {
+        println!("{}", message);
+    }
+
+    fn error(&self, message: &str) {
+        println!(
+            "{}",
+            ColoredString::from("Error: ")
+                .bold()
+                .bright_red()
+                .to_string()
+                + message
+        );
+    }
+
+    fn print_raw(&self, message: &str) {
+        println!("{}", message);
+    }
+}
+
+impl SimpleTaskTextPrinter {
+    fn print_list_of_tasks_impl<W: Write>(
+        &self,
+        tasks: Vec<&Task>,
+        report_kind: &ReportConfig,
+        writer: &mut W,
+    ) -> Result<(), String> {
         let mut task_to_row: Vec<RowTask> = Vec::default();
         for t in tasks {
             let mut row: Vec<String> = Vec::default();
@@ -270,6 +301,10 @@ impl Printer for SimpleTaskTextPrinter {
             });
         }
 
+        if task_to_row.is_empty() {
+            return writeln!(writer, "No task to show.").map_err(|e| e.to_string());
+        }
+
         // Remove unused columns
         let mut column_used: Vec<bool> = Vec::default();
         column_used.resize(report_kind.column_names.len(), false);
@@ -281,6 +316,7 @@ impl Printer for SimpleTaskTextPrinter {
                 }
             }
         }
+
         let mut used_columns: Vec<usize> = Vec::default();
         for (i, col_used) in column_used.iter().enumerate() {
             if *col_used {
@@ -299,7 +335,7 @@ impl Printer for SimpleTaskTextPrinter {
                 );
             }
         }
-        let mut tbl = Table::new(&header_names, io::stdout())?;
+        let mut tbl = Table::new(&header_names, writer)?;
 
         for row_task in task_to_row.iter_mut() {
             let mut new_row = Vec::default();
@@ -316,31 +352,8 @@ impl Printer for SimpleTaskTextPrinter {
                 .unwrap();
         }
 
-        if tbl.is_empty() {
-            println!("No task to show.");
-        } else {
-            tbl.print();
-        }
+        tbl.print();
         Ok(())
-    }
-
-    fn show_information_message(&self, message: &str) {
-        println!("{}", message);
-    }
-
-    fn error(&self, message: &str) {
-        println!(
-            "{}",
-            ColoredString::from("Error: ")
-                .bold()
-                .bright_red()
-                .to_string()
-                + message
-        );
-    }
-
-    fn print_raw(&self, message: &str) {
-        println!("{}", message);
     }
 }
 

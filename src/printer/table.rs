@@ -1,6 +1,6 @@
 use colored::{ColoredString, Colorize, Styles};
 use log::debug;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
 use crate::config::get_config;
 
@@ -48,7 +48,7 @@ pub struct Table<W: Write> {
     row_styles: Vec<Option<StyledText>>,
     rows: Vec<Vec<String>>,
     column_widths: Vec<usize>,
-    writer: BufWriter<W>,
+    writer: W,
     max_width: usize,
     alternating_colours: bool,
     primary_style: StyledText,
@@ -84,7 +84,7 @@ impl<W: Write> Table<W> {
             row_styles: Vec::new(),
             rows: Vec::new(),
             column_widths,
-            writer: BufWriter::new(writer),
+            writer,
             max_width: get_terminal_width(),
             alternating_colours: true,
             primary_style: StyledText {

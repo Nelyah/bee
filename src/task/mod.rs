@@ -462,7 +462,7 @@ impl TaskData {
         }
 
         let my_props = self.update_task_property_depends_on(props)?;
-        return self.tasks.get_mut(task_uuid).unwrap().apply(&my_props);
+        self.tasks.get_mut(task_uuid).unwrap().apply(&my_props)
     }
 
     pub fn get_owned(&self, uuid: &Uuid) -> Option<Task> {

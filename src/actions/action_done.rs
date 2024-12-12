@@ -70,7 +70,7 @@ impl TaskAction for DoneTaskAction {
             for uuid in extra_uuids {
                 if let Some(task) = self.base.tasks.get_extra_tasks().get(&uuid) {
                     // Do not overwrite the tasks if they're already in the undos
-                    if undos.get(&uuid).is_none() {
+                    if undos.contains_key(&uuid) {
                         undos.insert(uuid.to_owned(), task.to_owned());
                     }
                 }

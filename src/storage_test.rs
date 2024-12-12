@@ -8,10 +8,12 @@ use std::io;
 use std::collections::{HashMap, HashSet};
 
 // Mocking file system and environment
+#[allow(dead_code)]
 struct MockFileSystem {
     files: HashSet<String>, // A set of file paths that exist
 }
 
+#[allow(dead_code)]
 struct MockEnv {
     vars: HashMap<String, String>,
 }

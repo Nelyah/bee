@@ -49,7 +49,7 @@ impl TaskAction for CmdTaskAction {
     impl_taskaction_from_base!();
     fn pre_action_hook(&self) {}
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
-        if self.base.arguments.first().is_none() {
+        if self.base.arguments.is_empty() {
             return Err("No argument found for TaskAction Cmd".to_string());
         }
         let do_get = self.base.arguments.first().unwrap().as_str() == "get";

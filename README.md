@@ -36,6 +36,9 @@
     - [ ] Filter on dependencies
 - [X] Task Info
 - [ ] Task history
+    - This is either implemented as having the entire previous state of the task
+        - Probably not worth it because that info is already contained somewhere in the undos
+    - Or just having a single line mentioning what happened
 - [ ] Import from Taskwarrior
 - [ ] Improve autocompletion
 

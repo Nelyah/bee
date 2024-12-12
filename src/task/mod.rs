@@ -70,9 +70,9 @@ pub enum DependsOnIdentifier {
     Uuid(Uuid),
 }
 
-// This structure contains information regarding setting fields for a Task
-// that can be parsed from a user query, i.e. from the command line
-// It only contains the fields that can be set by a User
+/// This structure contains information regarding setting fields for a Task
+/// that can be parsed from a user query, i.e. from the command line
+/// It only contains the fields that can be set by a User
 #[derive(Clone, Default, PartialEq, Debug, serde::Deserialize)]
 pub struct TaskProperties {
     summary: Option<String>,

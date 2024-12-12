@@ -77,6 +77,11 @@ impl Store for JsonStore {
             data.get_task_map().len()
         );
 
+        // TODO: I need to get all the tasks that can be possibly reached from the
+        // filtered tasks. Currently I am only reaching the classes that are first
+        // degree neighbour of my filtered tasks.
+        // Allowing all tasks will allow to update their field accordingly when we're
+        // going dependency update and such.
         let extra_uuids: Vec<_> = new_data
             .get_task_map()
             .values()

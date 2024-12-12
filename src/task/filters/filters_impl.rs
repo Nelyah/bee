@@ -1,10 +1,11 @@
 use chrono::{DateTime, Local};
-use log::{debug, trace};
+use log::{debug, trace, warn};
+use std::collections::HashMap;
 use std::{any::Any, fmt};
 use uuid::Uuid;
 
 use super::{CloneFilter, Filter};
-use crate::task;
+use crate::task::{self};
 use crate::task::{Task, TaskStatus};
 
 #[derive(PartialEq, Debug)]
@@ -20,6 +21,7 @@ pub enum FilterKind {
     String,
     Tag,
     TaskId,
+    DependsOn,
     Uuid,
     Xor,
 }
@@ -38,6 +40,7 @@ impl fmt::Display for FilterKind {
             FilterKind::String => write!(f, "String"),
             FilterKind::Tag => write!(f, "Tag"),
             FilterKind::TaskId => write!(f, "TaskId"),
+            FilterKind::DependsOn => write!(f, "DependsOn"),
             FilterKind::Uuid => write!(f, "Uuid"),
             FilterKind::Xor => write!(f, "Xor"),
         }
@@ -77,6 +80,7 @@ impl_display_and_debug!(
     StringFilter,
     TagFilter,
     TaskIdFilter,
+    DependsOnFilter,
     UuidFilter,
     XorFilter
 );
@@ -120,6 +124,12 @@ impl Filter for RootFilter {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>) {
+        if let Some(child) = &mut self.child {
+            child.convert_id_to_uuid(id_to_uuid);
+        }
     }
 
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
@@ -174,6 +184,12 @@ impl Filter for AndFilter {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>) {
+        for child in &mut self.children {
+            child.convert_id_to_uuid(id_to_uuid);
+        }
     }
 
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
@@ -240,6 +256,12 @@ impl Filter for XorFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>) {
+        for child in &mut self.children {
+            child.convert_id_to_uuid(id_to_uuid);
+        }
+    }
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(
             std::iter::once(self as &dyn Filter)
@@ -300,6 +322,12 @@ impl Filter for OrFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>) {
+        for child in &mut self.children {
+            child.convert_id_to_uuid(id_to_uuid);
+        }
+    }
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(
             std::iter::once(self as &dyn Filter)
@@ -357,6 +385,8 @@ impl Filter for StringFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
@@ -403,6 +433,8 @@ impl Filter for DateCreatedFilter {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
 
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
@@ -471,6 +503,8 @@ impl Filter for DateDueFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
@@ -528,6 +562,8 @@ impl Filter for DateEndFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
@@ -576,6 +612,8 @@ impl Filter for ProjectFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
@@ -618,6 +656,8 @@ impl Filter for StatusFilter {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
 
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
@@ -665,6 +705,8 @@ impl Filter for TagFilter {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
 
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
@@ -716,6 +758,8 @@ impl Filter for UuidFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
@@ -762,6 +806,8 @@ impl Filter for TaskIdFilter {
         self
     }
 
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
+
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
         Box::new(std::iter::once(self as &dyn Filter))
     }
@@ -783,6 +829,90 @@ impl CloneFilter for TaskIdFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
         Box::new(TaskIdFilter {
             id: self.id.to_owned(),
+        })
+    }
+}
+
+#[derive(PartialEq)]
+pub struct DependsOnFilter {
+    pub id: Option<usize>,
+    pub uuid: Option<Uuid>,
+}
+
+impl Filter for DependsOnFilter {
+    fn validate_task(&self, task: &Task) -> bool {
+        if let Some(uuid) = &self.uuid {
+            return task.get_depends().contains(uuid);
+        }
+
+        unreachable!("Trying to validate a DependsOn filter without a UUID");
+    }
+
+    fn add_children(&mut self, _: Box<dyn Filter>) {
+        unreachable!("Trying to add a child to a DependsOnFilter");
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>) {
+        if self.uuid.is_some() {
+            debug!("DependsOnFilter already has a UUID, no need to update it.");
+            return;
+        }
+
+        if let Some(id) = &self.id {
+            if let Some(uuid) = id_to_uuid.get(id) {
+                self.uuid = Some(uuid.to_owned());
+            } else {
+                warn!(
+                    "Trying to map id {} in DependsOnFilter but couldn't find a matching UUID",
+                    id
+                );
+            }
+        }
+    }
+
+    fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
+        Box::new(std::iter::once(self as &dyn Filter))
+    }
+}
+
+impl FilterKindGetter for DependsOnFilter {
+    fn get_kind(&self) -> FilterKind {
+        FilterKind::DependsOn
+    }
+}
+
+impl DependsOnFilter {
+    fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let uuid_string = if let Some(uuid) = &self.uuid {
+            uuid.to_string()
+        } else {
+            "None".to_string()
+        };
+
+        let id_string = if let Some(id) = &self.id {
+            id.to_string()
+        } else {
+            "None".to_string()
+        };
+        write!(
+            f,
+            "{}: id({}), uuid({})",
+            self.get_kind(),
+            id_string,
+            uuid_string
+        )
+    }
+}
+
+impl CloneFilter for DependsOnFilter {
+    fn clone_box(&self) -> Box<dyn Filter> {
+        Box::new(DependsOnFilter {
+            id: self.id.to_owned(),
+            uuid: self.uuid.to_owned(),
         })
     }
 }

@@ -144,6 +144,7 @@ pub struct Task {
 
     sub: Vec<Uuid>,
 
+    /// List of the UUIDs this task depends on
     #[serde(default)]
     depends_on: Vec<Uuid>,
 
@@ -413,11 +414,16 @@ impl fmt::Display for Project {
 
 #[derive(Default, Clone)]
 pub struct TaskData {
-    /// All the loaded tasks in this manager
+    /// All the active tasks in this manager. This refers as tasks that should directly be
+    /// modified.
     tasks: HashMap<Uuid, Task>,
+
     /// Those are all the loaded undo. This is needed to be able to restore their state
     undos: HashMap<Uuid, Task>,
+
+    /// Dictionary of ID to UUID of ALL the tasks. Not just the ones that are loaded
     id_to_uuid: HashMap<usize, Uuid>,
+
     max_id: usize,
 
     /// Those are the tasks not required by the filters, but that might be needed
@@ -428,6 +434,10 @@ pub struct TaskData {
 impl TaskData {
     pub fn get_task_map(&self) -> &HashMap<Uuid, Task> {
         &self.tasks
+    }
+
+    pub fn get_id_to_uuid(&self) -> &HashMap<usize, Uuid> {
+        &self.id_to_uuid
     }
 
     pub fn insert_id_to_uuid(&mut self, id: usize, uuid: Uuid) {

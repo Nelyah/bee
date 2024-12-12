@@ -67,7 +67,9 @@ impl Store for JsonStore {
 
         // Load extra UUIDs from loaded tasks
         let mut new_data = if let Some(filter) = filter {
-            data.filter(filter)
+            let mut filter_mut = filter.clone();
+            filter_mut.convert_id_to_uuid(&id_to_uuid);
+            data.filter(&filter_mut)
         } else {
             data.to_owned()
         };

@@ -29,11 +29,11 @@
     - [X] Complete projects
     - [X] Complete tags
 - [X] Urgency
-- [ ] Dependency
+- [X] Dependency
     - [X] Modifying a task
     - [X] Update the blocking task
     - [X] Update the blocking task during the action and log it in undo (extra task)
-    - [ ] Filter on dependencies
+    - [X] Filter on dependencies
 - [X] Task Info
 - [ ] Task history
     - This is either implemented as having the entire previous state of the task

@@ -31,7 +31,7 @@ fn main() {
         arg_parser.register_command_parser(cmd);
     }
 
-    let command = match arg_parser.parse_command_line_arguments(std::env::args().collect()) {
+    let mut command = match arg_parser.parse_command_line_arguments(std::env::args().collect()) {
         Ok(res) => res,
         Err(msg) => {
             SimpleTaskTextPrinter.error(&msg);
@@ -63,13 +63,14 @@ fn main() {
         }
     }
 
-    let mut tasks = match JsonStore::load_tasks(Some(command.filters.clone()).as_ref(), props) {
+    let mut tasks = match JsonStore::load_tasks(Some(&command.filters), props) {
         Ok(t) => t,
         Err(msg) => {
             SimpleTaskTextPrinter.error(&msg);
             exit(1);
         }
     };
+    command.filters.convert_id_to_uuid(tasks.get_id_to_uuid());
 
     for undo_action in &undos {
         tasks.set_undos(&undo_action.tasks);

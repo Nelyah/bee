@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use super::filters_impl::{DateDueFilterType, FilterKind};
+use super::filters_impl::{DateDueFilterType, DependsOnFilter, FilterKind};
 
 use crate::task;
 use crate::task::filters::{
@@ -366,14 +366,42 @@ impl FilterParser {
                     self.next_token();
                 }
                 TokenType::DependsOn => {
-                    // TODO: the issue is that the depends filter should take both ID and UUID
-                    // However the validate_task is applied to individual tasks that only keep
-                    // the UUID of the task they depend onto and don't have knowledge of the
-                    // associated ID. This could potentially be solved by having tasks have both
-                    // the UUID and an Option(ID) that would be updated during the upkeep phase.
-                    // But I don't like adding more complexity to that upkeep function
-                    return Err(err_msg_prefix
-                            + "'depends:' is not a supported filter. It might be implemented in the future.");
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    let depends_on_filter = match self.current_token.token_type {
+                        TokenType::Int => Box::new(DependsOnFilter {
+                            id: Some(
+                                self.current_token
+                                    .literal
+                                    .parse::<usize>()
+                                    .unwrap()
+                                    .to_owned(),
+                            ),
+                            uuid: None,
+                        }),
+                        TokenType::Uuid => Box::new(DependsOnFilter {
+                            uuid: Some(
+                                self.current_token
+                                    .literal
+                                    .parse::<Uuid>()
+                                    .unwrap()
+                                    .to_owned(),
+                            ),
+                            id: None,
+                        }),
+                        _ => {
+                            return Err(err_msg_prefix
+                            + &format!(
+                            "Expected a token of type Int or UUID following a TokenType::DependsOn, found '{}' (value: '{}')",
+                            self.current_token.token_type,
+                            self.current_token.literal
+                            ));
+                        }
+                    };
+                    filter = add_to_current_filter(filter, depends_on_filter, &ScopeOperator::And);
+
+                    self.next_token();
                 }
                 TokenType::FilterTokDateEndBefore
                 | TokenType::FilterTokDateEndAfter

@@ -9,13 +9,15 @@ use parser::FilterParser;
 use log::{debug, error};
 use std::{
     any::Any,
+    collections::HashMap,
     fmt::{Debug, Display},
 };
+use uuid::Uuid;
 
 use filters_impl::{
-    AndFilter, DateCreatedFilter, DateDueFilter, DateEndFilter, FilterKind, FilterKindGetter,
-    OrFilter, ProjectFilter, RootFilter, StatusFilter, StringFilter, TagFilter, TaskIdFilter,
-    UuidFilter, XorFilter,
+    AndFilter, DateCreatedFilter, DateDueFilter, DateEndFilter, DependsOnFilter, FilterKind,
+    FilterKindGetter, OrFilter, ProjectFilter, RootFilter, StatusFilter, StringFilter, TagFilter,
+    TaskIdFilter, UuidFilter, XorFilter,
 };
 
 #[allow(private_bounds)]
@@ -24,6 +26,7 @@ pub trait Filter: CloneFilter + Any + Debug + Display + FilterKindGetter {
     fn add_children(&mut self, child: Box<dyn Filter>);
     fn as_any(&self) -> &dyn Any;
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_>;
+    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>);
 }
 
 // Consume @lhs and @rhs to return a new Box<dyn Filter>
@@ -108,6 +111,7 @@ impl PartialEq for Box<dyn Filter> {
             FilterKind::Tag => downcast_and_compare::<TagFilter>(self, other),
             FilterKind::Uuid => downcast_and_compare::<UuidFilter>(self, other),
             FilterKind::TaskId => downcast_and_compare::<TaskIdFilter>(self, other),
+            FilterKind::DependsOn => downcast_and_compare::<DependsOnFilter>(self, other),
             FilterKind::DateEnd => downcast_and_compare::<DateEndFilter>(self, other),
             FilterKind::DateCreated => downcast_and_compare::<DateCreatedFilter>(self, other),
             FilterKind::DateDue => downcast_and_compare::<DateDueFilter>(self, other),

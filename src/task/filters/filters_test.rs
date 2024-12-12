@@ -210,6 +210,89 @@ fn test_task_matches_status_filter() {
 }
 
 #[test]
+fn test_filter_depends_on() {
+    let depends_uuid = Uuid::new_v4();
+    let task = Task {
+        id: Some(1),
+        uuid: Uuid::new_v4(),
+        depends_on: vec![depends_uuid],
+        ..Default::default()
+    };
+
+    let filter = DependsOnFilter {
+        uuid: Some(depends_uuid),
+        id: None,
+    };
+    assert_true!(filter.validate_task(&task));
+
+    let filter = DependsOnFilter {
+        uuid: Some(depends_uuid),
+        id: task.id,
+    };
+    assert_true!(filter.validate_task(&task));
+
+    let filter = DependsOnFilter {
+        uuid: Some(depends_uuid),
+        id: Some(1234), // not a real ID
+    };
+    assert_true!(filter.validate_task(&task));
+
+    let filter = DependsOnFilter {
+        uuid: Some(Uuid::new_v4()),
+        id: None,
+    };
+    assert_false!(filter.validate_task(&task));
+}
+
+#[test]
+fn test_depends_on_convert_id_to_uuid_already_has_uuid() {
+    let uuid = Uuid::new_v4();
+    let mut filter = DependsOnFilter {
+        id: Some(1),
+        uuid: Some(uuid),
+    };
+
+    let mut id_to_uuid = HashMap::new();
+    id_to_uuid.insert(1, Uuid::new_v4());
+
+    filter.convert_id_to_uuid(&id_to_uuid);
+
+    assert_eq!(filter.uuid, Some(uuid));
+}
+
+#[test]
+fn test_depends_on_convert_id_to_uuid_success() {
+    let id = 1;
+    let uuid = Uuid::new_v4();
+    let mut filter = DependsOnFilter {
+        id: Some(id),
+        uuid: None,
+    };
+
+    let mut id_to_uuid = HashMap::new();
+    id_to_uuid.insert(id, uuid);
+
+    filter.convert_id_to_uuid(&id_to_uuid);
+
+    assert_eq!(filter.uuid, Some(uuid));
+}
+
+#[test]
+fn test_depends_on_convert_id_to_uuid_id_not_found() {
+    let id = 1;
+    let mut filter = DependsOnFilter {
+        id: Some(id),
+        uuid: None,
+    };
+
+    let id_to_uuid = HashMap::new();
+
+    filter.convert_id_to_uuid(&id_to_uuid);
+
+    assert_eq!(filter.uuid, None);
+}
+
+#[test]
 fn test_validate_task() {
     let mut task_data = TaskData::default();
     let mut t = task_data

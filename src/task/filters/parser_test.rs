@@ -112,6 +112,48 @@ fn test_parse_filter() {
 }
 
 #[test]
+fn test_parse_depends_on_filter() {
+    // Test parsing a filter with a numeric ID
+    let lexer = Lexer::new("depends:1".to_string());
+    let mut p = FilterParser::new(lexer);
+    let f = p.parse_filter().unwrap();
+
+    let expected_filter: Box<dyn Filter> = Box::new(DependsOnFilter {
+        id: Some(1),
+        uuid: None,
+    });
+    assert_eq!(&f, &expected_filter);
+
+    // Test parsing a filter with a numeric ID and extra spaces
+    let lexer = Lexer::new("depends:  1".to_string());
+    let mut p = FilterParser::new(lexer);
+    let f = p.parse_filter().unwrap();
+
+    let expected_filter: Box<dyn Filter> = Box::new(DependsOnFilter {
+        id: Some(1),
+        uuid: None,
+    });
+    assert_eq!(&f, &expected_filter);
+
+    // Test parsing a filter with a UUID
+    let new_uuid = Uuid::new_v4();
+    let lexer = Lexer::new(format!("depends:  {}", new_uuid));
+    let mut p = FilterParser::new(lexer);
+    let f = p.parse_filter().unwrap();
+
+    let expected_filter: Box<dyn Filter> = Box::new(DependsOnFilter {
+        id: None,
+        uuid: Some(new_uuid),
+    });
+    assert_eq!(&f, &expected_filter);
+
+    // Test parsing a filter with an invalid value
+    let lexer = Lexer::new("depends:  abc".to_string());
+    let mut p = FilterParser::new(lexer);
+    assert_true!(p.parse_filter().is_err())
+}
+
+#[test]
 fn test_parse_project_filter() {
     let lexer = Lexer::new("project:ABC".to_string());
     let mut p = FilterParser::new(lexer);

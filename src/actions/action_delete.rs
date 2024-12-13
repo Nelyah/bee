@@ -14,7 +14,6 @@ pub struct DeleteTaskAction {
 
 impl TaskAction for DeleteTaskAction {
     impl_taskaction_from_base!();
-    fn pre_action_hook(&self) {}
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
         if self.base.tasks.get_task_map().is_empty() {
@@ -75,7 +74,6 @@ impl TaskAction for DeleteTaskAction {
         }
         Ok(())
     }
-    fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
         "Delete a task".to_string()
     }

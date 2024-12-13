@@ -11,7 +11,6 @@ pub struct UndoTaskAction {
 
 impl TaskAction for UndoTaskAction {
     impl_taskaction_from_base!();
-    fn pre_action_hook(&self) {}
     fn do_action(&mut self, _: &dyn Printer) -> Result<(), String> {
         let undos = &self.base.undos;
         for current_undo in undos.iter().rev() {
@@ -29,7 +28,6 @@ impl TaskAction for UndoTaskAction {
         self.base.undos.clear();
         Ok(())
     }
-    fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
         "Undo the last operation".to_string()
     }

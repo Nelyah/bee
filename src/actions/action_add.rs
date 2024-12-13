@@ -12,7 +12,6 @@ pub struct AddTaskAction {
 
 impl TaskAction for AddTaskAction {
     impl_taskaction_from_base!();
-    fn pre_action_hook(&self) {}
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
         let props = TaskProperties::from(&self.base.arguments)?;
 
@@ -43,7 +42,6 @@ impl TaskAction for AddTaskAction {
         });
         Ok(())
     }
-    fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
         "Add a new task".to_string()
     }

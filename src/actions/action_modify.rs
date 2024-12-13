@@ -16,7 +16,6 @@ pub struct ModifyTaskAction {
 
 impl TaskAction for ModifyTaskAction {
     impl_taskaction_from_base!();
-    fn pre_action_hook(&self) {}
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
         let props = TaskProperties::from(&self.base.arguments)?;
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
@@ -83,7 +82,6 @@ impl TaskAction for ModifyTaskAction {
         }
         Ok(())
     }
-    fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
         "Modify a task".to_string()
     }

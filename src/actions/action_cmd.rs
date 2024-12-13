@@ -47,7 +47,6 @@ fn get_tags_as_string(tasks: &TaskData) -> String {
 
 impl TaskAction for CmdTaskAction {
     impl_taskaction_from_base!();
-    fn pre_action_hook(&self) {}
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
         if self.base.arguments.is_empty() {
             return Err("No argument found for TaskAction Cmd".to_string());
@@ -77,7 +76,6 @@ impl TaskAction for CmdTaskAction {
 
         Ok(())
     }
-    fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
         "Add a new task".to_string()
     }

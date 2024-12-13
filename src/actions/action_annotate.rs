@@ -14,7 +14,6 @@ pub struct AnnotateTaskAction {
 
 impl TaskAction for AnnotateTaskAction {
     impl_taskaction_from_base!();
-    fn pre_action_hook(&self) {}
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
         let mut props = TaskProperties::default();
         props.set_annotate(self.base.arguments.join(" ").to_owned());
@@ -52,7 +51,6 @@ impl TaskAction for AnnotateTaskAction {
         });
         Ok(())
     }
-    fn post_action_hook(&self) {}
     fn get_command_description(&self) -> String {
         "Annotate a task".to_string()
     }

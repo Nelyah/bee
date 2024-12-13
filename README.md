@@ -35,10 +35,7 @@
     - [X] Update the blocking task during the action and log it in undo (extra task)
     - [X] Filter on dependencies
 - [X] Task Info
-- [ ] Task history
-    - This is either implemented as having the entire previous state of the task
-        - Probably not worth it because that info is already contained somewhere in the undos
-    - Or just having a single line mentioning what happened
+- [X] Task history
 - [ ] Import from Taskwarrior
 - [ ] Improve autocompletion
 
@@ -49,6 +46,12 @@
 - [ ] Improve Task Info with printing to a table instead of regular print
 - [ ] Views (show potentially multiple reports in a single view)
 - [ ] Recurring tasks
+    - A task can recur:
+        - time OR duration, on a set schedule
+            - every <duration>
+            - on list(day of month), on list(day of week), on list(day of year)
+        - time OR duration after an event
+            - 1 day after X is done, Monday after X is done
 - [ ] Contexts
 - [ ] Descriptions
 - [ ] Priority

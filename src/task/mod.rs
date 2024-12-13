@@ -125,6 +125,16 @@ impl TaskAnnotation {
     }
 }
 
+/// This struct contains a description of what happened to a task,
+/// and when that event happened as well.
+#[derive(
+    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+pub struct TaskHistory {
+    pub value: String,
+    pub time: DateTime<chrono::Local>,
+}
+
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct Task {
     id: Option<usize>,
@@ -159,6 +169,10 @@ pub struct Task {
     /// Urgency score that will be computed depending on the other fields of the task
     #[serde(default)]
     urgency: Option<i64>,
+
+    /// All the events that have happened to a task after its creation
+    #[serde(default)]
+    history: Vec<TaskHistory>,
 }
 
 impl PartialOrd for Task {
@@ -241,6 +255,10 @@ impl Task {
         Ok(self.urgency.unwrap())
     }
 
+    pub fn get_history(&self) -> &Vec<TaskHistory> {
+        &self.history
+    }
+
     pub fn get_annotations(&self) -> &Vec<TaskAnnotation> {
         &self.annotations
     }
@@ -300,33 +318,86 @@ impl Task {
 
     pub fn apply(&mut self, props: &TaskProperties) -> Result<(), String> {
         if let Some(summary) = &props.summary {
+            self.history.push(TaskHistory {
+                time: Local::now(),
+                value: format!("Summary changed from '{}' to '{}'.", self.summary, summary),
+            });
             self.summary = summary.clone();
         }
 
         if let Some(date_due) = &props.date_due {
+            self.history.push(TaskHistory {
+                time: Local::now(),
+                value: format!("Due date set to {}", date_due),
+            });
             self.date_due = Some(date_due.to_owned());
         }
 
         if let Some(status) = &props.status {
+            if &self.status != status {
+                self.history.push(TaskHistory {
+                    time: Local::now(),
+                    value: format!("Status changed from '{}' to '{}'", self.status, status),
+                });
+            }
             self.status = status.to_owned();
         }
 
         if let Some(proj) = &props.project {
+            self.history.push(TaskHistory {
+                time: Local::now(),
+                value: format!("Project set to '{}'", proj),
+            });
             self.project = Some(proj.to_owned());
         }
 
         if let Some(tags) = &props.tags_remove {
             let s: HashSet<String> = tags.iter().cloned().collect();
-            self.tags.retain(|item| !s.contains(item));
+            let mut removed_tags: Vec<String> = Vec::new();
+            self.tags.retain(|item| {
+                if s.contains(item) {
+                    removed_tags.push(item.clone());
+                    false
+                } else {
+                    true
+                }
+            });
+
+            if !removed_tags.is_empty() {
+                self.history.push(TaskHistory {
+                    time: Local::now(),
+                    value: format!("Removed tag(s) '{}'", removed_tags.join(", ")),
+                });
+            }
         }
 
         if let Some(tags) = &props.tags_add {
             let existing_tags: HashSet<String> = self.tags.drain(..).collect();
             let new_tags: HashSet<String> = tags.iter().cloned().collect();
             self.tags = existing_tags.union(&new_tags).cloned().collect();
+
+            let tags_added: HashSet<String> =
+                new_tags.difference(&existing_tags).cloned().collect();
+            if !tags_added.is_empty() {
+                self.history.push(TaskHistory {
+                    time: Local::now(),
+                    value: format!(
+                        "Added tag(s) '{}'",
+                        tags_added
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<String>>()
+                            .join(", ")
+                    ),
+                });
+            }
         }
 
         if let Some(ann) = &props.annotation {
+            self.history.push(TaskHistory {
+                time: Local::now(),
+                value: format!("Added an annotation '{}'", ann),
+            });
             self.annotations.push(TaskAnnotation {
                 value: ann.to_string(),
                 time: Local::now(),
@@ -357,6 +428,10 @@ impl Task {
                         if deps_set.contains(uuid) {
                             continue;
                         }
+                        self.history.push(TaskHistory {
+                            time: Local::now(),
+                            value: format!("Added a UUID to depend on: '{}'", uuid),
+                        });
                         self.depends_on.push(uuid.to_owned());
                         deps_set.insert(uuid.to_owned());
                     }
@@ -378,14 +453,23 @@ impl Task {
     }
 
     pub fn delete(&mut self) {
+        self.history.push(TaskHistory {
+            time: Local::now(),
+            value: "Deleted task.".to_string(),
+        });
         self.status = TaskStatus::Deleted;
         self.id = None;
         self.urgency = None;
     }
 
     pub fn done(&mut self) {
+        let current_time = Local::now();
+        self.history.push(TaskHistory {
+            time: current_time,
+            value: "Marked task as done".to_string(),
+        });
         self.status = TaskStatus::Completed;
-        self.date_completed = Some(Local::now());
+        self.date_completed = Some(current_time);
         self.id = None;
         self.urgency = None;
     }

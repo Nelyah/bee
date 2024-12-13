@@ -60,8 +60,10 @@ fn test_apply_project() {
     };
     props.project = Some(new_proj.clone());
 
+    assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
     assert_eq!(task.project, Some(new_proj));
+    assert_false!(task.get_history().is_empty());
 }
 
 #[test]
@@ -70,8 +72,10 @@ fn test_apply_summary() {
     let mut props = setup_task_property();
     props.summary = Some("New summary".to_string());
 
+    assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
     assert_eq!(task.summary, "New summary");
+    assert_false!(task.get_history().is_empty());
 }
 
 #[test]
@@ -80,9 +84,11 @@ fn test_apply_status() {
     let mut props = setup_task_property();
     props.status = Some(TaskStatus::Completed);
 
+    assert_true!(task.get_history().is_empty());
     assert_eq!(task.status, TaskStatus::Pending);
     let _ = task.apply(&props);
     assert_eq!(task.status, TaskStatus::Completed);
+    assert_false!(task.get_history().is_empty());
 }
 
 #[test]
@@ -91,9 +97,38 @@ fn test_apply_tags_add() {
     let mut props = setup_task_property();
     props.tags_add = Some(vec!["new_tag".to_string()]);
 
+    // Test adding a new tag
+    assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
     task.tags.sort();
     assert_eq!(task.tags, vec!["initial_tag1", "initial_tag2", "new_tag"]);
+    assert_false!(task.get_history().is_empty());
+
+    let mut task = setup_task();
+    let mut props = setup_task_property();
+    props.tags_add = Some(vec!["initial_tag1".to_string()]);
+
+    // Test adding an existing tag
+    assert_true!(task.get_history().is_empty());
+    let _ = task.apply(&props);
+    task.tags.sort();
+    assert_true!(task.get_history().is_empty());
+
+    let mut task = setup_task();
+    let mut props = setup_task_property();
+    props.tags_add = Some(vec!["initial_tag1".to_string(), "new_tag".to_string()]);
+
+    // Test adding a mix of existing and new tags
+    assert_true!(task.get_history().is_empty());
+    let _ = task.apply(&props);
+    task.tags.sort();
+    assert_false!(task.get_history().is_empty());
+    assert_true!(task
+        .get_history()
+        .first()
+        .unwrap()
+        .value
+        .contains("new_tag"));
 }
 
 #[test]
@@ -102,8 +137,26 @@ fn test_apply_tags_remove() {
     let mut props = setup_task_property();
     props.tags_remove = Some(vec!["initial_tag2".to_string()]);
 
+    // Test removing an existing tag
+    assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
     assert_eq!(task.tags, vec!["initial_tag1"]);
+    assert_false!(task.get_history().is_empty());
+    assert_true!(task
+        .get_history()
+        .first()
+        .unwrap()
+        .value
+        .contains("initial_tag2"));
+
+    let mut task = setup_task();
+    let mut props = setup_task_property();
+    props.tags_remove = Some(vec!["not_a_tag".to_string()]);
+
+    // Test removing a non-existing tag
+    assert_true!(task.get_history().is_empty());
+    let _ = task.apply(&props);
+    assert_true!(task.get_history().is_empty());
 }
 
 #[test]
@@ -112,9 +165,11 @@ fn test_apply_annotation() {
     let mut props = setup_task_property();
     props.annotation = Some("hello there".to_owned());
 
+    assert_true!(task.get_history().is_empty());
     assert_true!(task.annotations.is_empty());
     let _ = task.apply(&props);
     assert_false!(task.annotations.is_empty());
+    assert_false!(task.get_history().is_empty());
     assert_eq!(
         task.annotations.first().unwrap().get_value(),
         &"hello there".to_owned()
@@ -129,7 +184,9 @@ fn test_apply_combined() {
     props.tags_remove = Some(vec!["initial_tag1".to_string()]);
     props.tags_add = Some(vec!["additional_tag".to_string()]);
 
+    assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
+    assert_false!(task.get_history().is_empty());
     assert_eq!(task.summary, "Updated summary");
     assert_eq!(task.tags, vec!["initial_tag2", "additional_tag"]);
 }
@@ -139,7 +196,9 @@ fn test_apply_no_change() {
     let mut task = setup_task();
     let props = TaskProperties::default(); // Assumes no change
 
+    assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
+    assert_true!(task.get_history().is_empty());
     assert_eq!(task.summary, "Initial summary");
     assert_eq!(task.tags, vec!["initial_tag1", "initial_tag2"]);
 }
@@ -153,10 +212,14 @@ fn test_apply_depends_on() {
     props.depends_on = Some(vec![DependsOnIdentifier::Uuid(uuid_1)]);
 
     assert_true!(task.depends_on.is_empty());
+    assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
+    assert_false!(task.get_history().is_empty());
     assert_eq!(task.depends_on.len(), 1);
     // Evene if we apply if a second time we still have a single value because it's the same uuid
+    assert_eq!(task.get_history().len(), 1);
     let _ = task.apply(&props);
+    assert_eq!(task.get_history().len(), 1);
     assert_eq!(task.depends_on.len(), 1);
     assert_eq!(task.depends_on.first().unwrap(), &uuid_1);
 

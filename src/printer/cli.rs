@@ -214,6 +214,18 @@ impl Printer for SimpleTaskTextPrinter {
             .as_str();
         }
 
+        if !task.get_history().is_empty() {
+            output_str += format!("{}", "\n\nTASK HISTORY:".bold().underline()).as_str();
+            for event in task.get_history() {
+                output_str += format!(
+                    "\n- {} | {}",
+                    event.time.format("%Y-%m-%d %H:%M").to_string().bold(),
+                    &event.value
+                )
+                .as_str();
+            }
+        }
+
         println!("{}", output_str);
 
         Ok(())

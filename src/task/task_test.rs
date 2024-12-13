@@ -1,5 +1,5 @@
 use all_asserts::{assert_false, assert_true};
-use chrono::{Local, NaiveTime, TimeZone};
+use chrono::{Duration, Local, NaiveTime, TimeZone};
 
 use super::*;
 
@@ -186,9 +186,12 @@ fn test_upkeep_sorts_tasks_and_updates_ids() {
         ..TaskData::default()
     };
 
-    let t1 = new_task("Task 1", TaskStatus::Pending);
-    let t2 = new_task("Task 2", TaskStatus::Pending);
-    let t3 = new_task("Task 3", TaskStatus::Pending);
+    let mut t1 = new_task("Task 1", TaskStatus::Pending);
+    t1.date_created = Local::now();
+    let mut t2 = new_task("Task 2", TaskStatus::Pending);
+    t2.date_created = Local::now() + Duration::try_seconds(1).unwrap();
+    let mut t3 = new_task("Task 3", TaskStatus::Pending);
+    t3.date_created = Local::now() + Duration::try_seconds(2).unwrap();
 
     task_data.tasks.insert(t3.uuid, t3.clone());
 
@@ -204,6 +207,7 @@ fn test_upkeep_sorts_tasks_and_updates_ids() {
     let task2 = task_data.tasks.get(&t2.uuid).unwrap();
     let task3 = task_data.tasks.get(&t3.uuid).unwrap();
 
+    assert_eq!(task_data.tasks.len(), 3);
     assert_eq!(task1.id, Some(1));
     assert_eq!(task2.id, Some(2));
     assert_eq!(task3.id, Some(3));

@@ -33,7 +33,9 @@ rusk <filter> <action_name> <arguments>
   The default action is 'list' (which lists all the tasks matching the filter).
 - <arguments> can be treated differently depending on the action. Refer to each action's
   help description for more information. (TODO)
-"#.to_string());
+"#
+            .to_string(),
+        );
         printer.show_help(&self.command_descriptions)?;
         Ok(())
     }
@@ -41,6 +43,9 @@ rusk <filter> <action_name> <arguments>
 
 impl HelpTaskAction {
     pub fn get_command_description() -> String {
-        "Show help".to_string()
+        r#"Show this help message.
+Both the <filter> and the <arguments> are ignored.
+"#
+        .to_string()
     }
 }

@@ -80,6 +80,10 @@ impl TaskAction for CmdTaskAction {
 
 impl CmdTaskAction {
     pub fn get_command_description() -> String {
-        "Add a new task".to_string()
+        r#"Execute a specific command. This is used internally to populate autocompletion options.
+<filters> are ignored.
+<arguments> supported are as follow: get <projects|tags>
+"#
+        .to_string()
     }
 }

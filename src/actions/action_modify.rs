@@ -86,7 +86,11 @@ impl TaskAction for ModifyTaskAction {
 
 impl ModifyTaskAction {
     pub fn get_command_description() -> String {
-        "Modify a task".to_string()
+        r#"Modify a task
+<arguments> are used to define the fields that will be modified for this task.
+By default, it will be its summary.
+"#
+        .to_string()
     }
 }
 

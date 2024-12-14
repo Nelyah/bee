@@ -17,6 +17,9 @@ impl TaskAction for ListTaskAction {
 
 impl ListTaskAction {
     pub fn get_command_description() -> String {
-        "Show a list of tasks".to_string()
+        r#"Show a list of tasks matched by <filter>
+<arguments> are treated as filters.
+"#
+        .to_string()
     }
 }

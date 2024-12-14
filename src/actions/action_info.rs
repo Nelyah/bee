@@ -19,6 +19,10 @@ impl TaskAction for InfoTaskAction {
 
 impl InfoTaskAction {
     pub fn get_command_description() -> String {
-        "Show a list of tasks".to_string()
+        r#"Show information about tasks matched by <filters>.
+This includes their modification history, their dependencies, due dates, etc.
+<arguments> are treated as <filters> for this action.
+"#
+        .to_string()
     }
 }

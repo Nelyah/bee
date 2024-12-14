@@ -55,6 +55,9 @@ impl TaskAction for AnnotateTaskAction {
 
 impl AnnotateTaskAction {
     pub fn get_command_description() -> String {
-        "Annotate a task".to_string()
+        r#"Annotate a task
+<arguments> is used as the string being annotated to the task
+"#
+        .to_string()
     }
 }

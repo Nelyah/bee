@@ -46,6 +46,9 @@ impl TaskAction for AddTaskAction {
 
 impl AddTaskAction {
     pub fn get_command_description() -> String {
-        "Add a new task".to_string()
+        r#"Add a new task
+<arguments> will define the task's summary, and potentially its properties as well
+"#
+        .to_string()
     }
 }

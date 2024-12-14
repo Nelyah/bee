@@ -83,10 +83,12 @@ impl TaskAction for DoneTaskAction {
     }
 }
 
-
 impl DoneTaskAction {
     pub fn get_command_description() -> String {
-        "Complete a task".to_string()
+        r#"Complete a task
+<arguments> are ignored for this action
+"#
+        .to_string()
     }
 }
 

@@ -32,6 +32,9 @@ impl TaskAction for UndoTaskAction {
 
 impl UndoTaskAction {
     pub fn get_command_description() -> String {
-        "Undo the last operation".to_string()
+        r#"Undo the last operation
+Both <filter> and <arguments> will be ignored.
+"#
+        .to_string()
     }
 }

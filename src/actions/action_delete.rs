@@ -78,6 +78,9 @@ impl TaskAction for DeleteTaskAction {
 
 impl DeleteTaskAction {
     pub fn get_command_description() -> String {
-        "Delete a task".to_string()
+        r#"Delete a task
+<arguments> are ignored for this action
+"#
+        .to_string()
     }
 }

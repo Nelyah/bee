@@ -58,12 +58,27 @@ impl BaseTaskAction {
 }
 
 pub trait TaskAction {
+    /// This is the main execution of the action. This is where it will affect
+    /// the tasks it targets or call the printer
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String>;
+
+    /// Setter for the ActionUndo vector
     fn set_undos(&mut self, undos: Vec<ActionUndo>);
+
+    /// Getter for the ActionUndo vector
     fn get_undos(&self) -> &Vec<ActionUndo>;
+
+    /// Setter for the TaskData this action will operate upon
     fn set_tasks(&mut self, tasks: TaskData);
+
+    /// Get a reference to the task data contained in this action
     fn get_tasks(&self) -> &TaskData;
+
+    /// Set the raw arguments from the command line
     fn set_arguments(&mut self, arguments: Vec<String>);
+
+    /// Set the report this action should use. This is important
+    /// to decide how the printer should behave in some cases
     fn set_report(&mut self, report: ReportConfig);
 }
 

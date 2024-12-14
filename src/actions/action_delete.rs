@@ -17,7 +17,7 @@ impl TaskAction for DeleteTaskAction {
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
         if self.base.tasks.get_task_map().is_empty() {
-            p.show_information_message(" No task to complete.");
+            p.show_information_message("No task to complete.");
             return Ok(());
         }
         let uuids_to_deleted: Vec<Uuid> = self
@@ -82,5 +82,100 @@ impl DeleteTaskAction {
 <arguments> are ignored for this action
 "#
         .to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use all_asserts::*;
+
+    use super::*;
+    use crate::config::ReportConfig;
+    use crate::task::{Task, TaskData, TaskProperties, TaskStatus};
+    use crate::Printer;
+
+    struct MockPrinter;
+
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    impl Printer for MockPrinter {
+        fn show_help(
+            &self,
+            _help_section_description: &HashMap<String, String>,
+        ) -> Result<(), String> {
+            Ok(())
+        }
+        fn print_task_info(&self, _task: &Task) -> Result<(), String> {
+            Ok(())
+        }
+        fn print_raw(&self, _: &str) {}
+        fn show_information_message(&self, _message: &str) {}
+        fn error(&self, _: &str) {}
+
+        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> Result<(), String> {
+            Err("Not implemented".to_string())
+        }
+    }
+
+    #[test]
+    fn test_do_action_no_tasks() {
+        init();
+        let mut action = DeleteTaskAction::default();
+        let printer = MockPrinter;
+
+        let result = action.do_action(&printer);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_do_action_with_tasks() {
+        init();
+        let mut action = DeleteTaskAction::default();
+        assert_true!(action.base.undos.is_empty());
+        let printer = MockPrinter;
+
+        // Add a task to the action
+        let mut tasks = TaskData::default();
+        let task1 = tasks
+            .add_task(
+                &TaskProperties::from(&["this is a task1".to_owned()]).unwrap(),
+                TaskStatus::Pending,
+            )
+            .unwrap()
+            .clone();
+
+        tasks
+            .add_task(
+                &TaskProperties::from(&["this is a task2".to_owned()]).unwrap(),
+                TaskStatus::Pending,
+            )
+            .unwrap();
+
+        action.base.tasks = tasks;
+
+        let result = action.do_action(&printer);
+        assert!(result.is_ok());
+
+        // Check that the task was marked as Deleted
+        assert_eq!(
+            action
+                .base
+                .tasks
+                .get_task_map()
+                .get(task1.get_uuid())
+                .unwrap()
+                .get_status(),
+            &TaskStatus::Deleted
+        );
+
+        assert_eq!(action.base.undos.len(), 1);
+        assert_eq!(action.base.undos.first().unwrap().tasks.len(), 2);
+    }
+
+    #[test]
+    fn test_get_command_description() {
+        assert_false!(DeleteTaskAction::get_command_description().is_empty());
     }
 }

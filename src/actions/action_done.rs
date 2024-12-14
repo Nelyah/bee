@@ -81,7 +81,11 @@ impl TaskAction for DoneTaskAction {
         }
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+
+impl DoneTaskAction {
+    pub fn get_command_description() -> String {
         "Complete a task".to_string()
     }
 }
@@ -102,6 +106,12 @@ mod tests {
     }
 
     impl Printer for MockPrinter {
+        fn show_help(
+            &self,
+            _help_section_description: &HashMap<String, String>,
+        ) -> Result<(), String> {
+            Ok(())
+        }
         fn print_task_info(&self, _task: &Task) -> Result<(), String> {
             Ok(())
         }
@@ -171,7 +181,6 @@ mod tests {
 
     #[test]
     fn test_get_command_description() {
-        let action = DoneTaskAction::default();
-        assert_false!(action.get_command_description().is_empty());
+        assert_false!(DoneTaskAction::get_command_description().is_empty());
     }
 }

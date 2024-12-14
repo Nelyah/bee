@@ -7,6 +7,7 @@ use colored::{ColoredString, Colorize};
 use log::{debug, trace};
 use serde_json::Value;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::io::{self, Write};
 
 pub trait Printer {
@@ -16,6 +17,13 @@ pub trait Printer {
         report_kind: &ReportConfig,
     ) -> Result<(), String>;
     fn print_task_info(&self, task: &Task) -> Result<(), String>;
+
+    /// Print the help for all the possible actions. This can also have a couple more named sections.
+    ///
+    /// @help_section_description: This is a map containing a mapping of Action name to
+    /// action description, as it is implemented by them. It may also contain a section
+    /// name to its content.
+    fn show_help(&self, help_section_description: &HashMap<String, String>) -> Result<(), String>;
     fn show_information_message(&self, message: &str);
     fn error(&self, message: &str);
 
@@ -114,6 +122,24 @@ impl Ord for RowTask {
 }
 
 impl Printer for SimpleTaskTextPrinter {
+    fn show_help(&self, help_section_description: &HashMap<String, String>) -> Result<(), String> {
+        let mut tbl = Table::new(
+            &vec!["Action name".to_string(), "Description".to_string()],
+            io::stdout(),
+        )?;
+        for (section, content) in help_section_description.iter() {
+            if section == "header" {
+                continue;
+            }
+            tbl.add_row(vec![section.to_string(), content.to_string()], None)?;
+        }
+        if let Some(header_description) = help_section_description.get("header") {
+            println!("{}\n", header_description)
+        }
+        tbl.print();
+        Ok(())
+    }
+
     fn print_task_info(&self, task: &Task) -> Result<(), String> {
         let status = match task.get_status() {
             TaskStatus::Pending => task.get_status().to_string().to_uppercase().blue(),

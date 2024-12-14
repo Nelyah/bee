@@ -42,7 +42,10 @@ impl TaskAction for AddTaskAction {
         });
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl AddTaskAction {
+    pub fn get_command_description() -> String {
         "Add a new task".to_string()
     }
 }

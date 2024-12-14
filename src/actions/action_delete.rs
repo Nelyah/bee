@@ -74,7 +74,10 @@ impl TaskAction for DeleteTaskAction {
         }
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl DeleteTaskAction {
+    pub fn get_command_description() -> String {
         "Delete a task".to_string()
     }
 }

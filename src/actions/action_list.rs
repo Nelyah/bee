@@ -13,7 +13,10 @@ impl TaskAction for ListTaskAction {
         printer.print_list_of_tasks(self.base.get_tasks().to_vec(), &self.base.report)?;
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl ListTaskAction {
+    pub fn get_command_description() -> String {
         "Show a list of tasks".to_string()
     }
 }

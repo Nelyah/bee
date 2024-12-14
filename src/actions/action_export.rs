@@ -15,7 +15,10 @@ impl TaskAction for ExportTaskAction {
         );
         Ok(())
     }
-    fn get_command_description(&self) -> String {
-        "Print the tasks as JSON format".to_string()
+}
+
+impl ExportTaskAction {
+    pub fn get_command_description() -> String {
+        "Print the tasks as JSON format.\nThis is useful for scripting access to Rusk.".to_string()
     }
 }

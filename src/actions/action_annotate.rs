@@ -51,7 +51,10 @@ impl TaskAction for AnnotateTaskAction {
         });
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl AnnotateTaskAction {
+    pub fn get_command_description() -> String {
         "Annotate a task".to_string()
     }
 }

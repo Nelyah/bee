@@ -28,7 +28,10 @@ impl TaskAction for UndoTaskAction {
         self.base.undos.clear();
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl UndoTaskAction {
+    pub fn get_command_description() -> String {
         "Undo the last operation".to_string()
     }
 }

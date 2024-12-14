@@ -1,4 +1,15 @@
-# Rusk TODO app
+# Rusk: A task management software
+
+This is under active development as a pet project, and I discourage anyone to start using it seriously.
+
+If you want to get started and playing with it, run the following:
+
+```
+git clone git@github.com:Nelyah/rusk
+cd rusk
+cargo run help
+```
+
 
 ## TODOs:
 
@@ -41,6 +52,8 @@
 
 ### Next steps
 
+- [X] Help
+- [ ] Refactor DependsOn to just be a link type in between two tasks.
 - [X] due
 - [X] 'export' action
 - [ ] Improve Task Info with printing to a table instead of regular print

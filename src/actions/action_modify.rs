@@ -82,7 +82,10 @@ impl TaskAction for ModifyTaskAction {
         }
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl ModifyTaskAction {
+    pub fn get_command_description() -> String {
         "Modify a task".to_string()
     }
 }
@@ -99,6 +102,12 @@ mod tests {
     struct MockPrinter;
 
     impl Printer for MockPrinter {
+        fn show_help(
+            &self,
+            _help_section_description: &HashMap<String, String>,
+        ) -> Result<(), String> {
+            Ok(())
+        }
         fn print_task_info(&self, _task: &Task) -> Result<(), String> {
             Ok(())
         }
@@ -166,7 +175,6 @@ mod tests {
 
     #[test]
     fn test_get_command_description() {
-        let action = ModifyTaskAction::default();
-        assert_false!(action.get_command_description().is_empty());
+        assert_false!(ModifyTaskAction::get_command_description().is_empty());
     }
 }

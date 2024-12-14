@@ -76,7 +76,10 @@ impl TaskAction for CmdTaskAction {
 
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl CmdTaskAction {
+    pub fn get_command_description() -> String {
         "Add a new task".to_string()
     }
 }

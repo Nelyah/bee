@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 use crate::task::Task;
 use serde::{Deserialize, Serialize};
@@ -58,8 +59,6 @@ impl BaseTaskAction {
 
 pub trait TaskAction {
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String>;
-    #[allow(dead_code)]
-    fn get_command_description(&self) -> String;
     fn set_undos(&mut self, undos: Vec<ActionUndo>);
     fn get_undos(&self) -> &Vec<ActionUndo>;
     fn set_tasks(&mut self, tasks: TaskData);
@@ -100,6 +99,7 @@ enum ActionType {
     Annotate,
     Command,
     List,
+    Help,
     Info,
     Add,
     Undo,
@@ -107,6 +107,27 @@ enum ActionType {
     Done,
     Delete,
     Modify,
+}
+
+/// This traits implement the name of the action type. This can potentially
+/// differ from the string that the action matches
+impl fmt::Display for ActionType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ActionType::Annotate => "Annotate",
+            ActionType::Command => "Command",
+            ActionType::List => "List",
+            ActionType::Help => "Help",
+            ActionType::Info => "Info",
+            ActionType::Add => "Add",
+            ActionType::Undo => "Undo",
+            ActionType::Export => "Export",
+            ActionType::Done => "Done",
+            ActionType::Delete => "Delete",
+            ActionType::Modify => "Modify",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 impl ActionType {
@@ -119,6 +140,7 @@ impl ActionType {
             ActionType::Annotate => (),
             ActionType::Command => (),
             ActionType::List => (),
+            ActionType::Help => (),
             ActionType::Info => (),
             ActionType::Export => (),
             ActionType::Undo => (),
@@ -129,6 +151,7 @@ impl ActionType {
         let mut map = HashMap::new();
 
         map.insert(ActionType::List, vec!["list".to_string()]);
+        map.insert(ActionType::Help, vec!["help".to_string()]);
         map.insert(ActionType::Info, vec!["info".to_string()]);
         map.insert(ActionType::Add, vec!["add".to_string()]);
         map.insert(ActionType::Command, vec!["_cmd".to_string()]);
@@ -162,6 +185,7 @@ impl ActionType {
     pub fn use_arguments_as_filter(&self) -> bool {
         match self {
             Self::List => true,
+            Self::Help => false,
             Self::Info => true,
             Self::Add => false,
             Self::Command => false,
@@ -180,6 +204,7 @@ impl Default for ActionRegisty {
         ActionRegisty {
             registered_type: vec![
                 ActionType::List,
+                ActionType::Help,
                 ActionType::Add,
                 ActionType::Command,
                 ActionType::Annotate,
@@ -209,10 +234,40 @@ impl ActionRegisty {
         v
     }
 
-    pub fn get_action_from_command_parser(&self, cp: &ParsedCommand) -> Box<dyn TaskAction> {
-        let mut action: Box<dyn TaskAction> = match ActionType::from(cp.command.as_str()) {
+    fn get_command_descriptions(&self) -> HashMap<String, String> {
+        let action_type_dict = ActionType::as_dict();
+        let mut action_descriptions: HashMap<String, String> = HashMap::new();
+
+        for action_type in action_type_dict.keys() {
+            let description = match action_type {
+                ActionType::List => action_list::ListTaskAction::get_command_description(),
+                ActionType::Help => action_help::HelpTaskAction::get_command_description(),
+                ActionType::Info => action_info::InfoTaskAction::get_command_description(),
+                ActionType::Add => action_add::AddTaskAction::get_command_description(),
+                ActionType::Command => action_cmd::CmdTaskAction::get_command_description(),
+                ActionType::Export => action_export::ExportTaskAction::get_command_description(),
+                ActionType::Undo => action_undo::UndoTaskAction::get_command_description(),
+                ActionType::Done => action_done::DoneTaskAction::get_command_description(),
+                ActionType::Delete => action_delete::DeleteTaskAction::get_command_description(),
+                ActionType::Annotate => {
+                    action_annotate::AnnotateTaskAction::get_command_description()
+                }
+                ActionType::Modify => action_modify::ModifyTaskAction::get_command_description(),
+            };
+            action_descriptions.insert(action_type.to_string(), description);
+        }
+
+        action_descriptions
+    }
+
+    fn get_action_from_name(&self, name: &str) -> Box<dyn TaskAction> {
+        match ActionType::from(name) {
             ActionType::List => Box::new(action_list::ListTaskAction {
                 base: BaseTaskAction::default(),
+            }),
+            ActionType::Help => Box::new(action_help::HelpTaskAction {
+                base: BaseTaskAction::default(),
+                command_descriptions: self.get_command_descriptions(),
             }),
             ActionType::Info => Box::new(action_info::InfoTaskAction {
                 base: BaseTaskAction::default(),
@@ -241,7 +296,11 @@ impl ActionRegisty {
             ActionType::Modify => Box::new(action_modify::ModifyTaskAction {
                 base: BaseTaskAction::default(),
             }),
-        };
+        }
+    }
+
+    pub fn get_action_from_command_parser(&self, cp: &ParsedCommand) -> Box<dyn TaskAction> {
+        let mut action: Box<dyn TaskAction> = self.get_action_from_name(cp.command.as_str());
         action.set_arguments(cp.arguments.clone());
         action.set_report(cp.report_kind.clone());
         action
@@ -254,6 +313,7 @@ mod action_cmd;
 mod action_delete;
 mod action_done;
 mod action_export;
+mod action_help;
 mod action_info;
 mod action_list;
 mod action_modify;

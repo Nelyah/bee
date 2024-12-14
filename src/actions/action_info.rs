@@ -15,7 +15,10 @@ impl TaskAction for InfoTaskAction {
         }
         Ok(())
     }
-    fn get_command_description(&self) -> String {
+}
+
+impl InfoTaskAction {
+    pub fn get_command_description() -> String {
         "Show a list of tasks".to_string()
     }
 }

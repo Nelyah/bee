@@ -1,5 +1,17 @@
 #compdef rusk
 
+# Completion script. For the ZSH documentation, see 
+# https://zsh.sourceforge.io/Doc/Release/Completion-System.html
+#
+# To run / develop this:
+# fpath=($PWD/completion $fpath)
+# export PATH="$PWD/target/release:$PATH"
+# autoload -Uz _rusk
+# compdef _rusk rusk
+#
+# Then to reload this script afterwards (from the same terminal session):
+# unfunction _rusk && autoload -Uz _rusk && compdef _rusk rusk
+
 zstyle ':completion:*:*:rusk:*' verbose yes
 zstyle ':completion:*:*:rusk:*:descriptions' format '%U%B%d%b%u'
 zstyle ':completion:*:*:rusk:*' group-name ''
@@ -8,7 +20,7 @@ _rusk_filters() {
     local -a reply
     local word=$'[^\0]#\0'
 
-    _regex_words default 'Dates' \
+    _regex_words filter_group 'Dates' \
     'now:Now' \
     'eod:End of day' \
     'tod*ay:Today' \
@@ -19,17 +31,17 @@ _rusk_filters() {
 
     local -a _task_projects
     _task_projects+=($(rusk _cmd get projects)) 
-    _regex_words default 'Project names' "${_task_projects[@]}"
+    _regex_words filter_group 'Project names' "${_task_projects[@]}"
     local task_projects=( "$reply[@]" )
 
     local -a _task_statuses
     _task_statuses+=(pending completed deleted) 
-    _regex_words default 'Task statuses' "${_task_statuses[@]}"
+    _regex_words filter_group 'Task statuses' "${_task_statuses[@]}"
     local task_status=( "$reply[@]" )
 
     local -a _task_tags_name
     _task_tags_name+=($(rusk _cmd get tags))
-    _regex_words default 'Task tags' "${_task_tags_name[@]}"
+    _regex_words filter_group 'Task tags' "${_task_tags_name[@]}"
     local task_tags_name=( "$reply[@]" )
 
     local -a _task_tags
@@ -37,8 +49,6 @@ _rusk_filters() {
         '+:Include tag:$task_tags_name'
         '-:Exclude tag:$task_tags_name'
     ) 
-    _regex_words -t '' default 'Tag operator' "${_task_tags[@]}"
-    local task_tags=( "$reply[@]" )
 
     local _task_filter=(
         'proj*ect:Project:$task_projects'
@@ -49,15 +59,101 @@ _rusk_filters() {
         'end.after:Completed after:$task_dates'
         'due:Due this day:$task_dates'
         'due.before:Due before:$task_dates'
-        'due.after:due after:$task_dates'
+        'due.after:Due after:$task_dates'
+        'depends:Task depends on...:'
     )
-    _regex_words -t ':' default 'Filters' "${_task_filter[@]}"
-    local task_filter=( "$reply[@]" )
 
-    _regex_arguments _rusk /$'[^\0]##\0'/ \( \
-        "${task_filter[@]}" \| "${task_tags[@]}" \
-    \)
-    _rusk "$@"
+    _regex_words -t ':' filter_group 'Filters' "${_task_tags[@]}"
+    task_filter_tags=("${reply[@]}")
+
+    _regex_words -t ':' filter_group 'Filters' "${_task_filter[@]}"
+    task_filter=( "${reply[@]}" )
 }
 
-_rusk_filters "$@"
+_rusk_modifiers() {
+    local -a reply
+    local word=$'[^\0]#\0'
+
+    _regex_words filter_group 'Dates' \
+    'now:Now' \
+    'eod:End of day' \
+    'tod*ay:Today' \
+    'yes*terday:Yesterday' \
+    'tom*orrow:Tomorrow'
+    local task_dates=("$reply[@]")
+
+
+    local -a _task_projects
+    _task_projects+=($(rusk _cmd get projects)) 
+    _regex_words filter_group 'Project names' "${_task_projects[@]}"
+    local task_projects=( "$reply[@]" )
+
+    local -a _task_statuses
+    _task_statuses+=(pending completed deleted) 
+    _regex_words filter_group 'Task statuses' "${_task_statuses[@]}"
+    local task_status=( "$reply[@]" )
+
+    local -a _task_tags_name
+    _task_tags_name+=($(rusk _cmd get tags))
+    _regex_words filter_group 'Task tags' "${_task_tags_name[@]}"
+    local task_tags_name=( "$reply[@]" )
+
+    local -a _task_tags
+    _task_tags+=(
+        '+:Add tag:$task_tags_name'
+        '-:Remove tag:$task_tags_name'
+    ) 
+
+    local _task_filter=(
+        'proj*ect:Project:$task_projects'
+        'st*atus:Task status:$task_status'
+        'due:Due this day:$task_dates'
+        'depends:Task depends on...:'
+    )
+
+    _regex_words -t ':' filter_group 'Filters' "${_task_tags[@]}"
+    task_modifier_tags=("$reply[@]")
+
+    _regex_words -t ':' filter_group 'Filters' "${_task_filter[@]}"
+    task_modifiers=( "${reply[@]}" )
+}
+
+_rusk_commands() {
+    local _task_commands_args_as_filter=(
+        'export:Export tasks as JSON:'
+        'info:Show detailed information about tasks:'
+        'help:Show the help message:'
+        'list:Show tasks:'
+        'undo:Undo last changes:'
+    )
+    _regex_words command_group 'Commands' "${_task_commands_args_as_filter[@]}"
+    task_commands_args_as_filter=( "$reply[@]" )
+
+    local _task_commands=(
+        'add:Add a new task:'
+        'ann*otate:Annotate tasks:'
+        '_cmd:Run a command (developer):'
+        'del*ete:Delete tasks:'
+        'done:Complete tasks:'
+        'mod*ify:Modify tasks:'
+    )
+    _regex_words command_group 'Commands' "${_task_commands[@]}"
+    task_commands=( "$reply[@]" )
+}
+
+_rusk_filters
+_rusk_commands
+_rusk_modifiers
+
+# This is the 'regex' that actually checks the command line
+# It checks it by looking at a series of 'spec' (the arrays here)
+# the quoted '#' means "any number of that spec"
+_regex_arguments _rusk /$'[^\0]##\0'/ \
+    \( "${task_filter[@]}" \| "${task_filter_tags[@]}" \) '#' \
+    \( \
+        \( "${task_commands[@]}" \( "${task_modifiers[@]}" \| "${task_modifier_tags[@]}" \) '#' \) \
+        \| \( "${task_commands_args_as_filter[@]}" \( "${task_filter[@]}" \| "${task_filter_tags[@]}" \) '#' \) \
+    \)
+
+
+_rusk "$@"

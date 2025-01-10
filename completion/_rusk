@@ -157,3 +157,5 @@ _regex_arguments _rusk /$'[^\0]##\0'/ \
 
 
 _rusk "$@"
+
+# vim:ft=zsh

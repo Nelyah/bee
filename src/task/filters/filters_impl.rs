@@ -1,5 +1,6 @@
 use chrono::{DateTime, Local};
 use log::{debug, trace, warn};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{any::Any, fmt};
 use uuid::Uuid;
@@ -94,7 +95,7 @@ fn indent_string(input: &str, indent: usize) -> String {
         .join("\n")
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct RootFilter {
     pub child: Option<Box<dyn Filter>>,
 }
@@ -107,6 +108,7 @@ impl CloneFilter for RootFilter {
     }
 }
 
+#[typetag::serde]
 impl Filter for RootFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if let Some(child) = &self.child {
@@ -163,11 +165,12 @@ impl RootFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct AndFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
 
+#[typetag::serde(name = "AndFilter")]
 impl Filter for AndFilter {
     fn validate_task(&self, task: &Task) -> bool {
         for child in &self.children {
@@ -229,11 +232,12 @@ impl CloneFilter for AndFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct XorFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
 
+#[typetag::serde]
 impl Filter for XorFilter {
     fn validate_task(&self, task: &Task) -> bool {
         let mut valid_count = 0;
@@ -299,11 +303,12 @@ impl CloneFilter for XorFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct OrFilter {
     pub children: Vec<Box<dyn Filter>>,
 }
 
+#[typetag::serde]
 impl Filter for OrFilter {
     fn validate_task(&self, task: &Task) -> bool {
         for child in &self.children {
@@ -365,11 +370,12 @@ impl CloneFilter for OrFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct StringFilter {
     pub value: String,
 }
 
+#[typetag::serde]
 impl Filter for StringFilter {
     fn validate_task(&self, task: &Task) -> bool {
         task.get_summary()
@@ -412,12 +418,13 @@ impl CloneFilter for StringFilter {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Deserialize, Serialize)]
 pub struct DateCreatedFilter {
     pub time: DateTime<Local>,
     pub before: bool,
 }
 
+#[typetag::serde]
 impl Filter for DateCreatedFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if self.before {
@@ -463,13 +470,13 @@ impl CloneFilter for DateCreatedFilter {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Deserialize, Serialize)]
 pub struct DateDueFilter {
     pub time: DateTime<Local>,
     pub type_when: DateDueFilterType,
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub enum DateDueFilterType {
     /// Check if the task is due any time during the day
     Day,
@@ -477,6 +484,7 @@ pub enum DateDueFilterType {
     After,
 }
 
+#[typetag::serde]
 impl Filter for DateDueFilter {
     fn validate_task(&self, task: &Task) -> bool {
         trace!("Validating task: {:?}", task);
@@ -536,12 +544,13 @@ impl CloneFilter for DateDueFilter {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Deserialize, Serialize)]
 pub struct DateEndFilter {
     pub time: DateTime<Local>,
     pub before: bool,
 }
 
+#[typetag::serde]
 impl Filter for DateEndFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if let Some(d) = task.get_date_completed() {
@@ -591,11 +600,12 @@ impl CloneFilter for DateEndFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct ProjectFilter {
     pub name: task::Project,
 }
 
+#[typetag::serde]
 impl Filter for ProjectFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if let Some(p) = task.get_project() {
@@ -639,11 +649,12 @@ impl CloneFilter for ProjectFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct StatusFilter {
     pub status: TaskStatus,
 }
 
+#[typetag::serde]
 impl Filter for StatusFilter {
     fn validate_task(&self, task: &Task) -> bool {
         &self.status == task.get_status()
@@ -684,12 +695,13 @@ impl CloneFilter for StatusFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct TagFilter {
     pub include: bool,
     pub tag_name: String,
 }
 
+#[typetag::serde]
 impl Filter for TagFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if self.include {
@@ -740,11 +752,12 @@ impl CloneFilter for TagFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct UuidFilter {
     pub uuid: Uuid,
 }
 
+#[typetag::serde]
 impl Filter for UuidFilter {
     fn validate_task(&self, task: &Task) -> bool {
         &self.uuid == task.get_uuid()
@@ -785,11 +798,12 @@ impl CloneFilter for UuidFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct TaskIdFilter {
     pub id: usize,
 }
 
+#[typetag::serde]
 impl Filter for TaskIdFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if let Some(task_id) = task.get_id() {
@@ -833,12 +847,13 @@ impl CloneFilter for TaskIdFilter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub struct DependsOnFilter {
     pub id: Option<usize>,
     pub uuid: Option<Uuid>,
 }
 
+#[typetag::serde]
 impl Filter for DependsOnFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if let Some(uuid) = &self.uuid {

@@ -21,6 +21,7 @@ use filters_impl::{
 };
 
 #[allow(private_bounds)]
+#[typetag::serde(tag = "type", content = "value")]
 pub trait Filter: CloneFilter + Any + Debug + Display + FilterKindGetter {
     fn validate_task(&self, task: &Task) -> bool;
     fn add_children(&mut self, child: Box<dyn Filter>);

@@ -9,6 +9,48 @@ fn init() {
 }
 
 #[test]
+fn test_serialize() {
+    let filter = ProjectFilter {
+        name: Project::from("hey".to_owned()),
+    };
+    assert_eq!(
+        serde_json::to_string(&filter).unwrap(),
+        "{\"name\":{\"name\":\"hey\"}}"
+    );
+    let filter = Box::new(RootFilter { child: None });
+    assert_eq!(serde_json::to_string(&filter).unwrap(), "{\"child\":null}");
+
+    let filter: Box<dyn Filter> =
+        serde_json::from_str("{\"type\":\"RootFilter\",\"value\":{\"child\":null}}").unwrap();
+    assert_eq!(filter.get_kind(), FilterKind::Root);
+
+    // Without the type annotation of being the trait type, we just serialise it like we do any
+    // other struct.
+    let and_filter = Box::new(AndFilter { children: vec![] });
+    assert_eq!(
+        serde_json::to_string(&and_filter).unwrap(),
+        "{\"children\":[]}"
+    );
+
+    // When dealing with the dyn trait, typetag adds the relevent information to distiguing the
+    // types
+    let and_filter: Box<dyn Filter> = Box::new(AndFilter { children: vec![] });
+    assert_eq!(
+        serde_json::to_string(&and_filter).unwrap(),
+        "{\"type\":\"AndFilter\",\"value\":{\"children\":[]}}"
+    );
+    let or_filter: Box<dyn Filter> = Box::new(OrFilter { children: vec![] });
+    assert_eq!(
+        serde_json::to_string(&or_filter).unwrap(),
+        "{\"type\":\"OrFilter\",\"value\":{\"children\":[]}}"
+    );
+    assert_ne!(
+        serde_json::to_string(&and_filter).unwrap(),
+        serde_json::to_string(&or_filter).unwrap()
+    );
+}
+
+#[test]
 fn test_clone() {
     let mut f: Box<dyn Filter> = Box::new(AndFilter {
         children: vec![Box::new(StringFilter {

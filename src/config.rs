@@ -27,6 +27,12 @@ pub struct Config {
     pub coefficients: Vec<CoeffientField>,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        load_config_from_string("").expect("Unable to load config from an empty string")
+    }
+}
+
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct CoeffientField {
     pub field: String,
@@ -113,7 +119,12 @@ impl Config {
     }
 
     pub fn get_default_report(&self) -> &ReportConfig {
-        self.get_report(&self.default_report).unwrap()
+        if let Some(report) = self.get_report(&self.default_report) {
+            report
+        } else {
+            self.get_report("default")
+                .expect("'default' report not found.")
+        }
     }
 
     pub fn get_primary_colour_fg(&self) -> (u8, u8, u8) {
@@ -170,7 +181,7 @@ impl Default for ReportConfig {
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
-            column_names: ["ID", "Date Created", "Summary", "Tags", "Urgency"]
+            column_names: ["ID", "Date reated", "Summary", "Tags", "Urgency"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
@@ -190,7 +201,7 @@ static CONFIG: Lazy<Result<Config, String>> = Lazy::new(|| match load_config() {
 });
 
 fn default_report_map() -> HashMap<String, ReportConfig> {
-    HashMap::default()
+    HashMap::from([("default".to_string(), ReportConfig::default())])
 }
 
 pub fn load_config() -> Result<Config, String> {
@@ -227,6 +238,12 @@ fn load_config_from_string(content: &str) -> Result<Config, String> {
         if report.default {
             config.default_report = name.clone();
         }
+    }
+    if config.get_report(&config.default_report).is_none() {
+        config.default_report = "default".to_string();
+        config
+            .report_map
+            .insert("default".to_string(), ReportConfig::default());
     }
     Ok(config)
 }
@@ -306,5 +323,14 @@ mod test {
 
         let result = toml::from_str::<ColourField>(content);
         assert!(result.is_ok(), "Failed to parse: {:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_get_default_report_exists() {
+        let config = Config::default();
+        let report_config = ReportConfig::default();
+
+        let result = config.get_default_report();
+        assert_eq!(result, &report_config);
     }
 }

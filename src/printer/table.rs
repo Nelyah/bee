@@ -79,7 +79,7 @@ impl<W: Write> Table<W> {
         let conf = get_config();
 
         Ok(Table {
-            column_padding: 2,
+            column_padding: 1,
             columns: column_headers.to_owned(),
             row_styles: Vec::new(),
             rows: Vec::new(),
@@ -98,9 +98,9 @@ impl<W: Write> Table<W> {
                 foreground_color: Some(conf.get_secondary_colour_fg()),
             },
             header_style: StyledText {
-                styles: vec![Styles::Underline, Styles::Bold],
+                styles: vec![Styles::Underline],
                 background_color: None,
-                foreground_color: Some((255, 255, 255)),
+                foreground_color: Some((199, 199, 199)),
             },
         })
     }

@@ -115,8 +115,9 @@ impl<W: Write> Table<W> {
         }
 
         for (i, cell) in row.iter().enumerate() {
-            if cell.len() > self.column_widths[i] {
-                self.column_widths[i] = cell.len();
+            let max_line_length = get_max_width_of_cell(cell);
+            if max_line_length > self.column_widths[i] {
+                self.column_widths[i] = max_line_length;
             }
         }
 
@@ -219,13 +220,20 @@ impl<W: Write> Table<W> {
     fn update_column_width(&mut self) {
         for row in &self.rows {
             for (i, cell) in row.iter().enumerate() {
-                let cell_length = cell.chars().count();
-                if cell_length > self.column_widths[i] {
-                    self.column_widths[i] = cell_length;
+                let cell_width = get_max_width_of_cell(cell);
+                if cell_width > self.column_widths[i] {
+                    self.column_widths[i] = cell_width;
                 }
             }
         }
     }
+}
+
+/// Return the size of longest line in parameter cell.
+///
+/// Lines are separated by the '\n' character.
+fn get_max_width_of_cell(cell: &str) -> usize {
+    cell.split('\n').map(|line| line.len()).max().unwrap_or(0)
 }
 
 // This does the same as `split_whitespace` but ignores '\n' chars
@@ -256,7 +264,7 @@ fn get_terminal_width() -> usize {
 }
 
 fn wrap_text(text: &str, width: usize) -> String {
-    if text.len() <= width {
+    if get_max_width_of_cell(text) <= width {
         return text.to_string();
     }
 

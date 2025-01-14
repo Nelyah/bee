@@ -145,14 +145,16 @@ _rusk_filters
 _rusk_commands
 _rusk_modifiers
 
+local word=$'[^\0]#\0'
+
 # This is the 'regex' that actually checks the command line
 # It checks it by looking at a series of 'spec' (the arrays here)
 # the quoted '#' means "any number of that spec"
 _regex_arguments _rusk /$'[^\0]##\0'/ \
-    \( "${task_filter[@]}" \| "${task_filter_tags[@]}" \) '#' \
+    \( "${task_filter[@]}" \| "${task_filter_tags[@]}" \| /"$word"/ \) '#' \
     \( \
-        \( "${task_commands[@]}" \( "${task_modifiers[@]}" \| "${task_modifier_tags[@]}" \) '#' \) \
-        \| \( "${task_commands_args_as_filter[@]}" \( "${task_filter[@]}" \| "${task_filter_tags[@]}" \) '#' \) \
+        \( "${task_commands[@]}" \( "${task_modifiers[@]}" \| "${task_modifier_tags[@]}" \| /"$word"/ \) '#' \) \
+        \| \( "${task_commands_args_as_filter[@]}" \( "${task_filter[@]}" \| "${task_filter_tags[@]}" \| /"$word"/ \) '#' \) \
     \)
 
 

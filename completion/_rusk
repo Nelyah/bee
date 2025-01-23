@@ -63,7 +63,7 @@ _rusk_filters() {
         'depends:Task depends on...:'
     )
 
-    _regex_words -t ':' filter_group 'Filters' "${_task_tags[@]}"
+    _regex_words -t '' filter_group 'Filters' "${_task_tags[@]}"
     task_filter_tags=("${reply[@]}")
 
     _regex_words -t ':' filter_group 'Filters' "${_task_filter[@]}"
@@ -111,7 +111,7 @@ _rusk_modifiers() {
         'depends:Task depends on...:'
     )
 
-    _regex_words -t ':' filter_group 'Filters' "${_task_tags[@]}"
+    _regex_words -t '' filter_group 'Filters' "${_task_tags[@]}"
     task_modifier_tags=("$reply[@]")
 
     _regex_words -t ':' filter_group 'Filters' "${_task_filter[@]}"

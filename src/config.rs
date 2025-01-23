@@ -176,7 +176,7 @@ impl Default for ReportConfig {
     fn default() -> Self {
         ReportConfig {
             default: true,
-            filters: vec!["status:pending".to_string()],
+            filters: vec!["status:pending or status:active".to_string()],
             columns: ["id", "date_created", "summary", "tags", "urgency"]
                 .iter()
                 .map(|&s| s.to_string())

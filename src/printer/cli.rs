@@ -68,6 +68,15 @@ fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
 
     for colour_conf in &conf.colour_fields {
         match colour_conf.field.as_str() {
+            "active" => {
+                if task.get_status() == &TaskStatus::Active {
+                    return Ok(Some(StyledText {
+                        styles: vec![],
+                        background_color: colour_conf.bg,
+                        foreground_color: colour_conf.fg,
+                    }));
+                }
+            }
             "tag" => {
                 if task
                     .get_tags()
@@ -142,6 +151,7 @@ impl Printer for SimpleTaskTextPrinter {
 
     fn print_task_info(&self, task: &Task) -> Result<(), String> {
         let status = match task.get_status() {
+            TaskStatus::Active => task.get_status().to_string().to_uppercase().green(),
             TaskStatus::Pending => task.get_status().to_string().to_uppercase().blue(),
             TaskStatus::Completed => task.get_status().to_string().to_uppercase().green(),
             TaskStatus::Deleted => task.get_status().to_string().to_uppercase().bright_red(),

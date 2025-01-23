@@ -130,6 +130,8 @@ _rusk_commands() {
     task_commands_args_as_filter=( "$reply[@]" )
 
     local _task_commands=(
+        'start:Set a task status as "active":'
+        'stop:Stop an active task:'
         'add:Add a new task:'
         'ann*otate:Annotate tasks:'
         '_cmd:Run a command (developer):'

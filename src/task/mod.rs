@@ -39,6 +39,7 @@ mod task_test;
 pub enum TaskStatus {
     #[default]
     Pending,
+    Active,
     Completed,
     Deleted,
 }
@@ -46,6 +47,7 @@ pub enum TaskStatus {
 impl TaskStatus {
     pub fn from_string(input: &str) -> Result<TaskStatus, String> {
         match input.to_lowercase().as_str() {
+            "active" => Ok(TaskStatus::Active),
             "pending" => Ok(TaskStatus::Pending),
             "completed" => Ok(TaskStatus::Completed),
             "deleted" => Ok(TaskStatus::Deleted),
@@ -57,6 +59,7 @@ impl TaskStatus {
 impl fmt::Display for TaskStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            TaskStatus::Active => write!(f, "active"),
             TaskStatus::Pending => write!(f, "pending"),
             TaskStatus::Completed => write!(f, "completed"),
             TaskStatus::Deleted => write!(f, "deleted"),
@@ -80,6 +83,7 @@ pub struct TaskProperties {
     tags_add: Option<Vec<String>>,
     status: Option<TaskStatus>,
     annotation: Option<String>,
+    active_status: Option<bool>,
     project: Option<Project>,
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
@@ -91,6 +95,13 @@ pub struct TaskProperties {
 impl TaskProperties {
     pub fn set_annotate(&mut self, value: String) {
         self.annotation = Some(value);
+    }
+
+    /// When applied, task status will be set to active
+    ///
+    /// This will ONLY impact tasks that are PENDING
+    pub fn set_active_status(&mut self, status: bool) {
+        self.active_status = Some(status);
     }
 
     pub fn from(values: &[String]) -> Result<TaskProperties, String> {
@@ -212,6 +223,7 @@ impl Task {
         let mut urgency: i64 = 0;
         let mut blocking_coef = 1;
         let mut depends_coef = -1;
+        let mut active_status_coef = 10;
 
         let conf = crate::config::get_config();
         for coef_field in conf.coefficients.iter() {
@@ -231,6 +243,9 @@ impl Task {
                 "blocking" => {
                     blocking_coef = coef_field.coefficient;
                 }
+                "active_status" => {
+                    active_status_coef = coef_field.coefficient;
+                }
                 _ => {
                     return Err(format!(
                         "Error parsing the coefficient field in the configuration file. \
@@ -243,6 +258,10 @@ impl Task {
 
         urgency += self.blocking.len() as i64 * blocking_coef;
         urgency += self.depends_on.len() as i64 * depends_coef;
+
+        if self.status == TaskStatus::Active {
+            urgency += active_status_coef;
+        }
 
         // Compute number of days remaining until the due date
         if let Some(date_due) = self.date_due {
@@ -331,6 +350,31 @@ impl Task {
                 value: format!("Due date set to {}", date_due),
             });
             self.date_due = Some(date_due.to_owned());
+        }
+
+        if let Some(active) = &props.active_status {
+            if *active {
+                if self.status != TaskStatus::Pending {
+                    return Err(format!("Task '{}' status cannot be set to 'ACTIVE' because its status is already 'ACTIVE'", self.summary));
+                }
+                self.status = TaskStatus::Active;
+                self.history.push(TaskHistory {
+                    time: Local::now(),
+                    value: "Status changed from 'PENDING' to 'ACTIVE'".to_string(),
+                });
+            } else {
+                if self.status != TaskStatus::Active {
+                    return Err(format!(
+                        "Task '{}' status cannot be 'stopped' because its status is not 'ACTIVE'",
+                        self.summary
+                    ));
+                }
+                self.status = TaskStatus::Pending;
+                self.history.push(TaskHistory {
+                    time: Local::now(),
+                    value: "Status changed from 'ACTIVE' to 'PENDING'".to_string(),
+                });
+            }
         }
 
         if let Some(status) = &props.status {
@@ -624,7 +668,7 @@ impl TaskData {
         for cur_uuid in uuids {
             let t: &mut Task = self.tasks.get_mut(&cur_uuid).unwrap();
             match t.status {
-                TaskStatus::Pending => {
+                TaskStatus::Pending | TaskStatus::Active => {
                     self.tasks.get_mut(&cur_uuid).unwrap().id = Some(i);
                     i += 1;
                 }
@@ -647,14 +691,14 @@ impl TaskData {
             for dep_uuid in &deps_set_before {
                 if let Some(t) = self.tasks.get(dep_uuid) {
                     match t.status {
-                        TaskStatus::Pending => {}
+                        TaskStatus::Pending | TaskStatus::Active => {}
                         TaskStatus::Completed | TaskStatus::Deleted => {
                             dependencies_to_update.insert(*dep_uuid);
                         }
                     }
                 } else if let Some(t) = self.extra_tasks.get(dep_uuid) {
                     match t.status {
-                        TaskStatus::Pending => {}
+                        TaskStatus::Pending | TaskStatus::Active => {}
                         TaskStatus::Completed | TaskStatus::Deleted => {
                             dependencies_to_update.insert(*dep_uuid);
                         }
@@ -764,7 +808,7 @@ impl TaskData {
         }
         .clone();
         let new_id: Option<usize> = match status {
-            TaskStatus::Pending => {
+            TaskStatus::Pending | TaskStatus::Active => {
                 self.max_id += 1;
                 Some(self.max_id)
             }
@@ -772,7 +816,7 @@ impl TaskData {
         };
 
         let date_completed: Option<DateTime<chrono::Local>> = match status {
-            TaskStatus::Pending => None,
+            TaskStatus::Pending | TaskStatus::Active => None,
             TaskStatus::Completed | TaskStatus::Deleted => Some(Local::now()),
         };
 

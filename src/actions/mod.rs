@@ -114,6 +114,8 @@ enum ActionType {
     Annotate,
     Command,
     List,
+    Start,
+    Stop,
     Help,
     Info,
     Add,
@@ -131,6 +133,8 @@ impl fmt::Display for ActionType {
         let s = match self {
             ActionType::Annotate => "Annotate",
             ActionType::Command => "Command",
+            ActionType::Start => "Start",
+            ActionType::Stop => "Stop",
             ActionType::List => "List",
             ActionType::Help => "Help",
             ActionType::Info => "Info",
@@ -155,6 +159,8 @@ impl ActionType {
             ActionType::Annotate => (),
             ActionType::Command => (),
             ActionType::List => (),
+            ActionType::Start => (),
+            ActionType::Stop => (),
             ActionType::Help => (),
             ActionType::Info => (),
             ActionType::Export => (),
@@ -166,6 +172,8 @@ impl ActionType {
         let mut map = HashMap::new();
 
         map.insert(ActionType::List, vec!["list".to_string()]);
+        map.insert(ActionType::Start, vec!["start".to_string()]);
+        map.insert(ActionType::Stop, vec!["stop".to_string()]);
         map.insert(ActionType::Help, vec!["help".to_string()]);
         map.insert(ActionType::Info, vec!["info".to_string()]);
         map.insert(ActionType::Add, vec!["add".to_string()]);
@@ -200,6 +208,8 @@ impl ActionType {
     pub fn use_arguments_as_filter(&self) -> bool {
         match self {
             Self::List => true,
+            Self::Start => true,
+            Self::Stop => true,
             Self::Help => false,
             Self::Info => true,
             Self::Add => false,
@@ -219,6 +229,8 @@ impl Default for ActionRegisty {
         ActionRegisty {
             registered_type: vec![
                 ActionType::List,
+                ActionType::Start,
+                ActionType::Stop,
                 ActionType::Help,
                 ActionType::Add,
                 ActionType::Command,
@@ -256,6 +268,8 @@ impl ActionRegisty {
         for action_type in action_type_dict.keys() {
             let description = match action_type {
                 ActionType::List => action_list::ListTaskAction::get_command_description(),
+                ActionType::Start => action_start::StartTaskAction::get_command_description(),
+                ActionType::Stop => action_stop::StopTaskAction::get_command_description(),
                 ActionType::Help => action_help::HelpTaskAction::get_command_description(),
                 ActionType::Info => action_info::InfoTaskAction::get_command_description(),
                 ActionType::Add => action_add::AddTaskAction::get_command_description(),
@@ -278,6 +292,12 @@ impl ActionRegisty {
     fn get_action_from_name(&self, name: &str) -> Box<dyn TaskAction> {
         match ActionType::from(name) {
             ActionType::List => Box::new(action_list::ListTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Start => Box::new(action_start::StartTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Stop => Box::new(action_stop::StopTaskAction {
                 base: BaseTaskAction::default(),
             }),
             ActionType::Help => Box::new(action_help::HelpTaskAction {
@@ -332,4 +352,6 @@ mod action_help;
 mod action_info;
 mod action_list;
 mod action_modify;
+mod action_start;
+mod action_stop;
 mod action_undo;

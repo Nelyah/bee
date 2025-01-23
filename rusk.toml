@@ -12,6 +12,10 @@ bg = "#282c34"
 field = "primary_colour"
 
 [[colours]]
+fg = "#33bbff"
+field = "active"
+
+[[colours]]
 bg = "#1a1a1a"
 fg = "#ffd966"
 field = "tag"
@@ -32,4 +36,4 @@ filters = []
 column_names = ["ID", "Date", "Project", "Summary", "Due", "Tags", "Urgency"]
 columns = ["id", "date_created", "project", "summary", "date_due", "tags", "urgency"]
 default = true
-filters = ['status:pending']
+filters = ['status:pending or status:active']

@@ -47,8 +47,13 @@ cargo run help
     - [X] Filter on dependencies
 - [X] Task Info
 - [X] Task history
+- [X] Improve autocompletion
+- [ ] Add a start and stop action
+    - [X] Implement it
+    - [ ] Add tests
+- [ ] Padding on annotations that take multiple lines
+- [ ] Sync with JIRA
 - [ ] Import from Taskwarrior
-- [ ] Improve autocompletion
 
 ### Next steps
 

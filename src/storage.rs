@@ -266,9 +266,31 @@ fn get_data_file_impl<'a>(
         panic!("Invalid filename given to 'get_data_file_impl'");
     }
 
+    if let Some(rusk_data_home) = env.getenv("RUSK_DATA_HOME") {
+        debug!("Read 'RUSK_DATA_HOME' env variable as '{}'", rusk_data_home);
+        let dir_path = PathBuf::from(&rusk_data_home);
+        let file_path = dir_path.join(filename).to_string_lossy().into_owned();
+
+        if !find_file_only {
+            debug!(
+                "Rusk data file should be located at {}",
+                env.getenv("RUSK_DATA_HOME").unwrap()
+            );
+            return Ok(file_path);
+        }
+        if fs.stat(&file_path).is_ok() {
+            debug!(
+                "Rusk data file exists at {}",
+                env.getenv("RUSK_DATA_HOME").unwrap()
+            );
+            return Ok(file_path);
+        }
+        return Err(io::Error::new(io::ErrorKind::NotFound, "File not found"));
+    }
+
     // Check $XDG_DATA_HOME/rusk/data.json
-    if let Some(xdg_config_home) = env.getenv("XDG_DATA_HOME") {
-        let xdg_path = PathBuf::from(xdg_config_home).join("rusk").join(filename);
+    if let Some(xdg_data_home) = env.getenv("XDG_DATA_HOME") {
+        let xdg_path = PathBuf::from(xdg_data_home).join("rusk").join(filename);
         if !find_file_only {
             return Ok(xdg_path.to_string_lossy().into_owned());
         }

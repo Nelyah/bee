@@ -159,3 +159,32 @@ fn test_find_data_file() {
         assert_eq!(p, "rusk-logged-tasks.json");
     }
 }
+
+#[test]
+fn test_find_data_file_with_custom_data_home() {
+    let mock_fs = MockFileSystem {
+        files: HashSet::from([
+            ("/custom/rusk/rusk-data.json".to_string()),
+            ("/custom/rusk/rusk-logged-tasks.json".to_string()),
+            ("/custom/xdg/rusk/rusk-data.json".to_string()),
+            ("/custom/xdg/rusk/rusk-logged-tasks.json".to_string()),
+        ]),
+    };
+
+    let mut mock_env = MockEnv {
+        vars: HashMap::from([
+            ("XDG_DATA_HOME".to_string(), "/custom/xdg".to_string()),
+            ("HOME".to_string(), "/home/user".to_string()),
+        ]),
+    };
+
+    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true).unwrap();
+    assert_eq!(path, "/custom/xdg/rusk/rusk-data.json");
+
+    mock_env
+        .vars
+        .insert("RUSK_DATA_HOME".to_string(), "/custom/rusk".to_string());
+
+    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
+    assert_eq!(path.unwrap(), "/custom/rusk/rusk-data.json");
+}

@@ -31,6 +31,9 @@ impl TaskAction for StartTaskAction {
             let task_before = self.base.tasks.get_task_map().get(&uuid).unwrap().clone();
             let res = self.base.tasks.apply(&uuid, &props);
 
+            // I "know" that I can expect Err here that is not fatal and should be given as
+            // a warning.
+            // TODO: Have a better Error handling with custom types
             if let Some(err) = res.err() {
                 p.show_information_message(err.as_str());
                 continue;

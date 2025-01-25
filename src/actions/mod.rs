@@ -111,19 +111,20 @@ pub struct ActionRegisty {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum ActionType {
+    Add,
     Annotate,
     Command,
-    List,
-    Start,
-    Stop,
+    Delete,
+    Done,
+    Edit,
+    Export,
     Help,
     Info,
-    Add,
-    Undo,
-    Export,
-    Done,
-    Delete,
+    List,
     Modify,
+    Start,
+    Stop,
+    Undo,
 }
 
 /// This traits implement the name of the action type. This can potentially
@@ -131,19 +132,20 @@ enum ActionType {
 impl fmt::Display for ActionType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
+            ActionType::Add => "Add",
             ActionType::Annotate => "Annotate",
             ActionType::Command => "Command",
-            ActionType::Start => "Start",
-            ActionType::Stop => "Stop",
-            ActionType::List => "List",
+            ActionType::Delete => "Delete",
+            ActionType::Done => "Done",
+            ActionType::Edit => "Edit",
+            ActionType::Export => "Export",
             ActionType::Help => "Help",
             ActionType::Info => "Info",
-            ActionType::Add => "Add",
-            ActionType::Undo => "Undo",
-            ActionType::Export => "Export",
-            ActionType::Done => "Done",
-            ActionType::Delete => "Delete",
+            ActionType::List => "List",
             ActionType::Modify => "Modify",
+            ActionType::Start => "Start",
+            ActionType::Stop => "Stop",
+            ActionType::Undo => "Undo",
         };
         write!(f, "{}", s)
     }
@@ -158,35 +160,37 @@ impl ActionType {
             ActionType::Add => (),
             ActionType::Annotate => (),
             ActionType::Command => (),
-            ActionType::List => (),
-            ActionType::Start => (),
-            ActionType::Stop => (),
+            ActionType::Delete => (),
+            ActionType::Done => (),
+            ActionType::Edit => (),
+            ActionType::Export => (),
             ActionType::Help => (),
             ActionType::Info => (),
-            ActionType::Export => (),
-            ActionType::Undo => (),
-            ActionType::Done => (),
-            ActionType::Delete => (),
+            ActionType::List => (),
             ActionType::Modify => (),
+            ActionType::Start => (),
+            ActionType::Stop => (),
+            ActionType::Undo => (),
         }
         let mut map = HashMap::new();
 
-        map.insert(ActionType::List, vec!["list".to_string()]);
-        map.insert(ActionType::Start, vec!["start".to_string()]);
-        map.insert(ActionType::Stop, vec!["stop".to_string()]);
+        map.insert(ActionType::Add, vec!["add".to_string()]);
+        map.insert(ActionType::Annotate, vec!["annotate".to_string()]);
+        map.insert(ActionType::Command, vec!["_cmd".to_string()]);
+        map.insert(ActionType::Delete, vec!["delete".to_string()]);
+        map.insert(ActionType::Done, vec!["done".to_string()]);
+        map.insert(ActionType::Edit, vec!["edit".to_string()]);
+        map.insert(ActionType::Export, vec!["export".to_string()]);
         map.insert(ActionType::Help, vec!["help".to_string()]);
         map.insert(ActionType::Info, vec!["info".to_string()]);
-        map.insert(ActionType::Add, vec!["add".to_string()]);
-        map.insert(ActionType::Command, vec!["_cmd".to_string()]);
-        map.insert(ActionType::Annotate, vec!["annotate".to_string()]);
-        map.insert(ActionType::Export, vec!["export".to_string()]);
-        map.insert(ActionType::Undo, vec!["undo".to_string()]);
-        map.insert(ActionType::Done, vec!["done".to_string()]);
-        map.insert(ActionType::Delete, vec!["delete".to_string()]);
+        map.insert(ActionType::List, vec!["list".to_string()]);
         map.insert(
             ActionType::Modify,
             vec!["modify".to_string(), "mod".to_string()],
         );
+        map.insert(ActionType::Start, vec!["start".to_string()]);
+        map.insert(ActionType::Stop, vec!["stop".to_string()]);
+        map.insert(ActionType::Undo, vec!["undo".to_string()]);
 
         map
     }
@@ -207,19 +211,20 @@ impl ActionType {
 
     pub fn use_arguments_as_filter(&self) -> bool {
         match self {
-            Self::List => true,
-            Self::Start => true,
-            Self::Stop => true,
+            Self::Add => false,
+            Self::Annotate => false,
+            Self::Command => false,
+            Self::Delete => false,
+            Self::Done => false,
+            Self::Edit => true,
+            Self::Export => true,
             Self::Help => false,
             Self::Info => true,
-            Self::Add => false,
-            Self::Command => false,
-            Self::Annotate => false,
-            Self::Export => true,
-            Self::Undo => false,
-            Self::Done => false,
-            Self::Delete => false,
+            Self::List => true,
             Self::Modify => false,
+            Self::Start => true,
+            Self::Stop => true,
+            Self::Undo => false,
         }
     }
 }
@@ -228,19 +233,20 @@ impl Default for ActionRegisty {
     fn default() -> Self {
         ActionRegisty {
             registered_type: vec![
+                ActionType::Add,
+                ActionType::Annotate,
+                ActionType::Command,
+                ActionType::Delete,
+                ActionType::Done,
+                ActionType::Edit,
+                ActionType::Export,
+                ActionType::Help,
+                ActionType::Info,
                 ActionType::List,
+                ActionType::Modify,
                 ActionType::Start,
                 ActionType::Stop,
-                ActionType::Help,
-                ActionType::Add,
-                ActionType::Command,
-                ActionType::Annotate,
-                ActionType::Info,
-                ActionType::Export,
                 ActionType::Undo,
-                ActionType::Done,
-                ActionType::Delete,
-                ActionType::Modify,
             ],
         }
     }
@@ -267,21 +273,22 @@ impl ActionRegisty {
 
         for action_type in action_type_dict.keys() {
             let description = match action_type {
-                ActionType::List => action_list::ListTaskAction::get_command_description(),
-                ActionType::Start => action_start::StartTaskAction::get_command_description(),
-                ActionType::Stop => action_stop::StopTaskAction::get_command_description(),
-                ActionType::Help => action_help::HelpTaskAction::get_command_description(),
-                ActionType::Info => action_info::InfoTaskAction::get_command_description(),
                 ActionType::Add => action_add::AddTaskAction::get_command_description(),
-                ActionType::Command => action_cmd::CmdTaskAction::get_command_description(),
-                ActionType::Export => action_export::ExportTaskAction::get_command_description(),
-                ActionType::Undo => action_undo::UndoTaskAction::get_command_description(),
-                ActionType::Done => action_done::DoneTaskAction::get_command_description(),
-                ActionType::Delete => action_delete::DeleteTaskAction::get_command_description(),
                 ActionType::Annotate => {
                     action_annotate::AnnotateTaskAction::get_command_description()
                 }
+                ActionType::Command => action_cmd::CmdTaskAction::get_command_description(),
+                ActionType::Delete => action_delete::DeleteTaskAction::get_command_description(),
+                ActionType::Done => action_done::DoneTaskAction::get_command_description(),
+                ActionType::Edit => action_edit::EditTaskAction::get_command_description(),
+                ActionType::Export => action_export::ExportTaskAction::get_command_description(),
+                ActionType::Help => action_help::HelpTaskAction::get_command_description(),
+                ActionType::Info => action_info::InfoTaskAction::get_command_description(),
+                ActionType::List => action_list::ListTaskAction::get_command_description(),
                 ActionType::Modify => action_modify::ModifyTaskAction::get_command_description(),
+                ActionType::Start => action_start::StartTaskAction::get_command_description(),
+                ActionType::Stop => action_stop::StopTaskAction::get_command_description(),
+                ActionType::Undo => action_undo::UndoTaskAction::get_command_description(),
             };
             action_descriptions.insert(action_type.to_string(), description);
         }
@@ -291,13 +298,25 @@ impl ActionRegisty {
 
     fn get_action_from_name(&self, name: &str) -> Box<dyn TaskAction> {
         match ActionType::from(name) {
-            ActionType::List => Box::new(action_list::ListTaskAction {
+            ActionType::Add => Box::new(action_add::AddTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            ActionType::Start => Box::new(action_start::StartTaskAction {
+            ActionType::Annotate => Box::new(action_annotate::AnnotateTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            ActionType::Stop => Box::new(action_stop::StopTaskAction {
+            ActionType::Command => Box::new(action_cmd::CmdTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Delete => Box::new(action_delete::DeleteTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Done => Box::new(action_done::DoneTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Edit => Box::new(action_edit::EditTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Export => Box::new(action_export::ExportTaskAction {
                 base: BaseTaskAction::default(),
             }),
             ActionType::Help => Box::new(action_help::HelpTaskAction {
@@ -307,28 +326,19 @@ impl ActionRegisty {
             ActionType::Info => Box::new(action_info::InfoTaskAction {
                 base: BaseTaskAction::default(),
             }),
-            ActionType::Add => Box::new(action_add::AddTaskAction {
-                base: BaseTaskAction::default(),
-            }),
-            ActionType::Command => Box::new(action_cmd::CmdTaskAction {
-                base: BaseTaskAction::default(),
-            }),
-            ActionType::Export => Box::new(action_export::ExportTaskAction {
-                base: BaseTaskAction::default(),
-            }),
-            ActionType::Undo => Box::new(action_undo::UndoTaskAction {
-                base: BaseTaskAction::default(),
-            }),
-            ActionType::Done => Box::new(action_done::DoneTaskAction {
-                base: BaseTaskAction::default(),
-            }),
-            ActionType::Delete => Box::new(action_delete::DeleteTaskAction {
-                base: BaseTaskAction::default(),
-            }),
-            ActionType::Annotate => Box::new(action_annotate::AnnotateTaskAction {
+            ActionType::List => Box::new(action_list::ListTaskAction {
                 base: BaseTaskAction::default(),
             }),
             ActionType::Modify => Box::new(action_modify::ModifyTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Start => Box::new(action_start::StartTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Stop => Box::new(action_stop::StopTaskAction {
+                base: BaseTaskAction::default(),
+            }),
+            ActionType::Undo => Box::new(action_undo::UndoTaskAction {
                 base: BaseTaskAction::default(),
             }),
         }
@@ -347,6 +357,7 @@ mod action_annotate;
 mod action_cmd;
 mod action_delete;
 mod action_done;
+mod action_edit;
 mod action_export;
 mod action_help;
 mod action_info;

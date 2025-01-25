@@ -52,6 +52,7 @@ cargo run help
     - [X] Implement it
     - [X] Add tests
 - [X] Padding on annotations that take multiple lines
+- [X] Edit action
 - [ ] Sync with JIRA
 - [ ] Import from Taskwarrior
 

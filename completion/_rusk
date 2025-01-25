@@ -124,6 +124,7 @@ _rusk_commands() {
         'info:Show detailed information about tasks:'
         'help:Show the help message:'
         'list:Show tasks:'
+        'edit:Edit tasks with an editor:'
         'undo:Undo last changes:'
     )
     _regex_words command_group 'Commands' "${_task_commands_args_as_filter[@]}"

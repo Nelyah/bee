@@ -76,13 +76,18 @@ pub enum DependsOnIdentifier {
 /// This structure contains information regarding setting fields for a Task
 /// that can be parsed from a user query, i.e. from the command line
 /// It only contains the fields that can be set by a User
+///
+/// Tags are always FIRST removed, THEN applied
 #[derive(Clone, Default, PartialEq, Debug, serde::Deserialize)]
 pub struct TaskProperties {
     summary: Option<String>,
     tags_remove: Option<Vec<String>>,
     tags_add: Option<Vec<String>>,
     status: Option<TaskStatus>,
+    /// Single annotation to ADD to a task
     annotation: Option<String>,
+    /// Replace all of this task's annotations with the given vector
+    annotations: Option<Vec<TaskAnnotation>>,
     active_status: Option<bool>,
     project: Option<Project>,
     #[serde(default)]
@@ -95,6 +100,24 @@ pub struct TaskProperties {
 impl TaskProperties {
     pub fn set_annotate(&mut self, value: String) {
         self.annotation = Some(value);
+    }
+
+    pub fn set_annotations(&mut self, annotations: &Vec<TaskAnnotation>) {
+        self.annotations = Some(annotations.to_owned());
+    }
+
+    pub fn set_summary(&mut self, summary: &str) {
+        self.summary = Some(summary.to_string());
+    }
+
+    /// Sets the vector of tags that should be removed
+    pub fn set_tag_remove(&mut self, tags: &Vec<String>) {
+        self.tags_remove = Some(tags.to_owned());
+    }
+
+    /// Sets the vector of tags that should be added
+    pub fn set_tag_add(&mut self, tags: &Vec<String>) {
+        self.tags_add = Some(tags.to_owned());
     }
 
     /// When applied, task status will be set to active
@@ -446,6 +469,14 @@ impl Task {
                 value: ann.to_string(),
                 time: Local::now(),
             });
+        }
+
+        if let Some(annotations) = &props.annotations {
+            self.history.push(TaskHistory {
+                time: Local::now(),
+                value: "The list of annotations have been changed".to_string(),
+            });
+            self.annotations = annotations.to_owned();
         }
 
         if let Some(depends_on) = &props.depends_on {

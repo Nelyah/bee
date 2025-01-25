@@ -20,6 +20,11 @@ terminal_size = "0.4"
 toml = "0.7"
 typetag = "0.2"
 
+# Be able to manage temporary files or directories.
+# This is useful for instance for the 'edit' command that will need
+# such feature
+tempfile = "3"
+
 [dependencies.uuid]
 features = [
     "v4",  # Lets you generate random UUIDs

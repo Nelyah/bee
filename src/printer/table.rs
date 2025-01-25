@@ -1,6 +1,7 @@
 use colored::{ColoredString, Colorize, Styles};
 use regex::Regex;
 use std::io::Write;
+use terminal_size::{terminal_size, Width};
 
 use crate::config::get_config;
 
@@ -260,7 +261,11 @@ fn split_most_whitespaces(input: &str) -> Vec<String> {
 }
 
 fn get_terminal_width() -> usize {
-    term_size::dimensions().map_or(80, |(w, _)| w)
+    if let Some((Width(w), _)) = terminal_size() {
+        w.into()
+    } else {
+        80
+    }
 }
 
 fn wrap_text(text: &str, width: usize) -> String {

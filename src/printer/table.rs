@@ -1,5 +1,5 @@
 use colored::{ColoredString, Colorize, Styles};
-use log::debug;
+use regex::Regex;
 use std::io::Write;
 
 use crate::config::get_config;
@@ -264,32 +264,54 @@ fn get_terminal_width() -> usize {
 }
 
 fn wrap_text(text: &str, width: usize) -> String {
+    let date_regex = Regex::new(r"\d{4}-\d{2}-\d{2}").unwrap();
+
     if get_max_width_of_cell(text) <= width {
         return text.to_string();
     }
 
     let mut wrapped_text = String::new();
     let mut line_length = 0;
+    let mut newline_str = "\n";
 
+    // Go over every word split on space, not \n
     for outer_word in split_most_whitespaces(text) {
         let mut first = true;
+
+        // If there is a word that contains one (or more) newline(s), go over each
         for word in outer_word.split('\n') {
+            // HACK: If we notice a date, the following lines (but not this one) will be indented
+            // The reason is that for most (all?) cases, this happens with annotations
+            // and having the rest of the annotation indent is nicer. Not sure whether this
+            // can have more side effects.
+            // This also assumes that there are only annotations coming below the first annotation
+            if date_regex.is_match(word) {
+                newline_str = "\n";
+            }
+
+            // The word that comes after a \n
             if !first {
-                wrapped_text.push('\n');
+                wrapped_text.push_str(newline_str);
                 line_length = 0;
             }
             first = false;
+
+            // If this goes over width
             if line_length + word.len() + 1 > width {
-                wrapped_text.push('\n');
+                wrapped_text.push_str(newline_str);
                 line_length = 0;
             }
             wrapped_text.push_str(word);
             wrapped_text.push(' ');
             line_length += word.len() + 1;
+
+            // Set the indent after we've seen a date
+            if date_regex.is_match(word) {
+                newline_str = "\n              ";
+            }
         }
     }
 
-    debug!("{}", wrapped_text);
     wrapped_text.trim().to_string()
 }
 

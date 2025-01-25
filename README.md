@@ -48,10 +48,10 @@ cargo run help
 - [X] Task Info
 - [X] Task history
 - [X] Improve autocompletion
-- [ ] Add a start and stop action
+- [X] Add a start and stop action
     - [X] Implement it
-    - [ ] Add tests
-- [ ] Padding on annotations that take multiple lines
+    - [X] Add tests
+- [X] Padding on annotations that take multiple lines
 - [ ] Sync with JIRA
 - [ ] Import from Taskwarrior
 

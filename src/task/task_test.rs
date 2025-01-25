@@ -52,6 +52,103 @@ fn setup_task_property() -> TaskProperties {
 }
 
 #[test]
+fn test_apply_active() {
+    let mut task = setup_task();
+    let props = TaskProperties {
+        active_status: Some(true),
+        ..Default::default()
+    };
+
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Pending);
+    let _ = task.apply(&props);
+    assert_eq!(task.get_status(), &TaskStatus::Active);
+    assert_false!(task.get_history().is_empty());
+
+    let mut task = Task {
+        status: TaskStatus::Deleted,
+        ..Default::default()
+    };
+
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Deleted);
+    let res = task.apply(&props);
+    assert_true!(res.is_err());
+
+    let mut task = Task {
+        status: TaskStatus::Completed,
+        ..Default::default()
+    };
+
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Completed);
+    let res = task.apply(&props);
+    assert_true!(res.is_err());
+
+    let mut task = Task {
+        status: TaskStatus::Active,
+        ..Default::default()
+    };
+
+    // Assert that history is still empty
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Active);
+    let _ = task.apply(&props);
+    assert_eq!(task.get_status(), &TaskStatus::Active);
+    assert_true!(task.get_history().is_empty());
+}
+
+#[test]
+fn test_apply_stop() {
+    let mut task = Task {
+        status: TaskStatus::Active,
+        ..Default::default()
+    };
+    let props = TaskProperties {
+        active_status: Some(false),
+        ..Default::default()
+    };
+
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Active);
+    let _ = task.apply(&props);
+    assert_eq!(task.get_status(), &TaskStatus::Pending);
+    assert_false!(task.get_history().is_empty());
+
+    let mut task = Task {
+        status: TaskStatus::Deleted,
+        ..Default::default()
+    };
+
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Deleted);
+    let res = task.apply(&props);
+    assert_true!(res.is_err());
+
+    let mut task = Task {
+        status: TaskStatus::Completed,
+        ..Default::default()
+    };
+
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Completed);
+    let res = task.apply(&props);
+    assert_true!(res.is_err());
+
+    let mut task = Task {
+        status: TaskStatus::Pending,
+        ..Default::default()
+    };
+
+    // Assert that history is still empty
+    assert_true!(task.get_history().is_empty());
+    assert_eq!(task.get_status(), &TaskStatus::Pending);
+    let _ = task.apply(&props);
+    assert_eq!(task.get_status(), &TaskStatus::Pending);
+    assert_true!(task.get_history().is_empty());
+}
+
+#[test]
 fn test_apply_project() {
     let mut task = setup_task();
     let mut props = setup_task_property();

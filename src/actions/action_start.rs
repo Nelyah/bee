@@ -65,3 +65,85 @@ impl StartTaskAction {
         .to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use all_asserts::{assert_false, assert_true};
+
+    use super::*;
+    use crate::config::ReportConfig;
+    use crate::task::{Task, TaskData, TaskProperties, TaskStatus};
+    use crate::Printer;
+
+    struct MockPrinter;
+
+    impl Printer for MockPrinter {
+        fn show_help(
+            &self,
+            _help_section_description: &HashMap<String, String>,
+        ) -> Result<(), String> {
+            Ok(())
+        }
+        fn print_task_info(&self, _task: &Task) -> Result<(), String> {
+            Ok(())
+        }
+        fn print_raw(&self, _: &str) {}
+        fn show_information_message(&self, _message: &str) {}
+        fn error(&self, _: &str) {}
+
+        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> Result<(), String> {
+            Err("Not implemented".to_string())
+        }
+    }
+
+    #[test]
+    fn test_do_action_no_tasks() {
+        let mut action = StartTaskAction::default();
+        let printer = MockPrinter;
+
+        let result = action.do_action(&printer);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_do_action_with_tasks() {
+        // Make sure we add something to the undo and that the task is correctly modified
+        let mut action = StartTaskAction::default();
+        assert_true!(action.base.undos.is_empty());
+        let printer = MockPrinter;
+
+        // Add a task to the action
+        let mut tasks = TaskData::default();
+        let task1 = tasks
+            .add_task(
+                &TaskProperties::from(&["this is a task1".to_owned()]).unwrap(),
+                TaskStatus::Pending,
+            )
+            .unwrap()
+            .clone();
+
+        action.base.tasks = tasks;
+
+        let result = action.do_action(&printer);
+        assert!(result.is_ok());
+
+        assert_eq!(
+            action
+                .base
+                .tasks
+                .get_task_map()
+                .get(task1.get_uuid())
+                .unwrap()
+                .get_status(),
+            &TaskStatus::Active
+        );
+
+        assert_eq!(action.base.undos.len(), 1);
+        assert_eq!(action.base.undos.first().unwrap().tasks.len(), 1);
+    }
+
+    #[test]
+    fn test_get_command_description() {
+        assert_false!(StartTaskAction::get_command_description().is_empty());
+    }
+}

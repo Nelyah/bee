@@ -1,6 +1,6 @@
 use colored::{ColoredString, Colorize, Styles};
 use regex::Regex;
-use std::io::Write;
+use std::{cmp::max, io::Write};
 use terminal_size::{terminal_size, Width};
 
 use crate::config::get_config;
@@ -304,7 +304,7 @@ fn wrap_text(text: &str, width: usize) -> String {
             // If this goes over width
             if line_length + word.len() + 1 > width {
                 wrapped_text.push_str(newline_str);
-                line_length = 0;
+                line_length = max(0, newline_str.len());
             }
             wrapped_text.push_str(word);
             wrapped_text.push(' ');

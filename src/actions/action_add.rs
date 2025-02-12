@@ -1,4 +1,5 @@
 use super::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction};
+use log::info;
 
 use crate::task::{Task, TaskProperties, TaskStatus};
 use crate::Printer;
@@ -13,6 +14,7 @@ pub struct AddTaskAction {
 impl TaskAction for AddTaskAction {
     impl_taskaction_from_base!();
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+        info!("Performing AddTaskAction");
         let props = TaskProperties::from(&self.base.arguments)?;
 
         // Clone here to avoid having multiple mutable borrows

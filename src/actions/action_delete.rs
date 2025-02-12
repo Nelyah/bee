@@ -1,3 +1,4 @@
+use log::info;
 use uuid::Uuid;
 
 use super::{ActionUndo, BaseTaskAction, TaskAction};
@@ -15,6 +16,7 @@ pub struct DeleteTaskAction {
 impl TaskAction for DeleteTaskAction {
     impl_taskaction_from_base!();
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
+        info!("Performing DeleteTaskAction");
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
         if self.base.tasks.get_task_map().is_empty() {
             p.show_information_message("No task to complete.");
@@ -36,10 +38,14 @@ impl TaskAction for DeleteTaskAction {
             }
             match t.get_id() {
                 Some(id) => {
-                    p.show_information_message(&format!("Deleted Task {}.", id));
+                    p.show_information_message(&format!(
+                        "Deleted Task {} '{}'.",
+                        id,
+                        t.get_summary()
+                    ));
                 }
                 None => {
-                    p.show_information_message(&format!("Deleted Task {}.", t.get_uuid()));
+                    p.show_information_message(&format!("Deleted Task '{}'.", t.get_summary()));
                 }
             }
         }

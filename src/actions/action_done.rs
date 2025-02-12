@@ -1,3 +1,4 @@
+use log::info;
 use uuid::Uuid;
 
 use super::{ActionUndo, BaseTaskAction, TaskAction};
@@ -15,6 +16,7 @@ pub struct DoneTaskAction {
 impl TaskAction for DoneTaskAction {
     impl_taskaction_from_base!();
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
+        info!("Performing DoneTaskAction");
         if self.base.tasks.get_task_map().is_empty() {
             p.show_information_message(" No task to complete.");
             return Ok(());
@@ -42,10 +44,14 @@ impl TaskAction for DoneTaskAction {
             }
             match t.get_id() {
                 Some(id) => {
-                    p.show_information_message(&format!("Completed Task {}.", id));
+                    p.show_information_message(&format!(
+                        "Completed Task {} '{}'.",
+                        id,
+                        t.get_summary()
+                    ));
                 }
                 None => {
-                    p.show_information_message(&format!("Completed Task {}.", t.get_uuid()));
+                    p.show_information_message(&format!("Completed Task '{}'.", t.get_summary()));
                 }
             }
         }

@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, info};
 use uuid::Uuid;
 
 use super::{ActionUndo, BaseTaskAction, TaskAction};
@@ -17,6 +17,7 @@ pub struct ModifyTaskAction {
 impl TaskAction for ModifyTaskAction {
     impl_taskaction_from_base!();
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
+        info!("Performing ModifyTaskAction");
         let props = TaskProperties::from(&self.base.arguments)?;
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
 
@@ -42,10 +43,14 @@ impl TaskAction for ModifyTaskAction {
             }
             match t.get_id() {
                 Some(id) => {
-                    p.show_information_message(&format!("Modified Task {}.", id));
+                    p.show_information_message(&format!(
+                        "Modified Task {} '{}'.",
+                        id,
+                        t.get_summary()
+                    ));
                 }
                 None => {
-                    p.show_information_message(&format!("Modified Task {}.", t.get_uuid()));
+                    p.show_information_message(&format!("Modified Task '{}'.", t.get_summary()));
                 }
             }
         }

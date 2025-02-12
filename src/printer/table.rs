@@ -1,9 +1,17 @@
 use colored::{ColoredString, Colorize, Styles};
+use log::trace;
 use regex::Regex;
 use std::{cmp::max, io::Write};
 use terminal_size::{terminal_size, Width};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::config::get_config;
+
+// Get the number of actual characters in a string, where
+// 1 character = 1 grapheme
+fn get_str_len(value: &str) -> usize {
+    value.graphemes(true).count()
+}
 
 #[derive(Clone)]
 pub struct StyledText {
@@ -234,7 +242,7 @@ impl<W: Write> Table<W> {
 ///
 /// Lines are separated by the '\n' character.
 fn get_max_width_of_cell(cell: &str) -> usize {
-    cell.split('\n').map(|line| line.len()).max().unwrap_or(0)
+    cell.split('\n').map(get_str_len).max().unwrap_or(0)
 }
 
 // This does the same as `split_whitespace` but ignores '\n' chars
@@ -269,9 +277,13 @@ fn get_terminal_width() -> usize {
 }
 
 fn wrap_text(text: &str, width: usize) -> String {
+    trace!("Starting to wrap '{}' with width {}", text, width);
+    trace!("Original text has .len() {}", text.len());
+    trace!("Original text has {} graphemes", get_str_len(text));
     let date_regex = Regex::new(r"\d{4}-\d{2}-\d{2}").unwrap();
 
     if get_max_width_of_cell(text) <= width {
+        trace!("Text fits in the width of the cell");
         return text.to_string();
     }
 
@@ -281,6 +293,7 @@ fn wrap_text(text: &str, width: usize) -> String {
 
     // Go over every word split on space, not \n
     for outer_word in split_most_whitespaces(text) {
+        trace!("outer_word is {}", outer_word);
         let mut first = true;
 
         // If there is a word that contains one (or more) newline(s), go over each
@@ -298,17 +311,25 @@ fn wrap_text(text: &str, width: usize) -> String {
             if !first {
                 wrapped_text.push_str(newline_str);
                 line_length = 0;
+                trace!("We inserted newline before the word");
             }
             first = false;
 
             // If this goes over width
-            if line_length + word.len() + 1 > width {
+            if line_length + get_str_len(word) + 1 > width {
                 wrapped_text.push_str(newline_str);
+                trace!(
+                    "We inserted newline before the word because line_length {} \
+                    and word is '{}' and word grapheme len is {}",
+                    line_length,
+                    word,
+                    get_str_len(word)
+                );
                 line_length = max(0, newline_str.len());
             }
             wrapped_text.push_str(word);
             wrapped_text.push(' ');
-            line_length += word.len() + 1;
+            line_length += get_str_len(word) + 1;
 
             // Set the indent after we've seen a date
             if date_regex.is_match(word) {

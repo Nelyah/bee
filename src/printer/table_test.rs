@@ -52,3 +52,19 @@ fn test_table() {
     let content = String::from_utf8(t.writer.into_parts().1.unwrap()).unwrap();
     assert_eq!(content.chars().filter(|&c| c == '\n').count(), 4);
 }
+
+#[allow(dead_code)]
+fn get_newline_count(cell: String) -> usize {
+    cell.chars().filter(|&c| c == '\n').count()
+}
+
+#[test]
+fn test_wrapped_cell_with_multibyte_char() {
+    let cell_text = "aaaaa aaaaa aaaaa aaaaa ".to_string();
+    assert_eq!(get_newline_count(wrap_text(&cell_text, 30)), 0);
+
+    // Make sure that we count the graphemes when wrapping text, not the
+    // string size
+    let cell_text = "ååååå ååååå ååååå ååååå ".to_string();
+    assert_eq!(get_newline_count(wrap_text(&cell_text, 30)), 0);
+}

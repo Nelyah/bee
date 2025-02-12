@@ -2,6 +2,45 @@
 use super::*;
 
 #[test]
+fn test_lexer_with_accents() {
+    let mut lexer = Lexer::new("é".to_string());
+    assert_eq!("é".len(), 2);
+    assert_eq!(lexer.get_input_len(), 1);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "é");
+    assert_eq!(tok.token_type, TokenType::WordString);
+}
+
+#[test]
+fn test_lexer_uuid() {
+    let mut lexer = Lexer::new("2c3d7839-1919-472f-858b-0534038b5463".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "2c3d7839-1919-472f-858b-0534038b5463");
+    assert_eq!(tok.token_type, TokenType::Uuid);
+
+    // Now check what happens if we have multibyte char before the UUID
+    // This checks that the position we read from is ok
+    let mut lexer = Lexer::new("éééàå 2c3d7839-1919-472f-858b-0534038b5463".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "éééàå");
+    assert_eq!(tok.token_type, TokenType::WordString);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, " ");
+    assert_eq!(tok.token_type, TokenType::Blank);
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "2c3d7839-1919-472f-858b-0534038b5463");
+    assert_eq!(tok.token_type, TokenType::Uuid);
+}
+
+#[test]
+fn test_lexer_with_multibyte_char() {
+    let mut lexer = Lexer::new("ååååååååååååää∂ååååååååååååååååååååååååååååååååååååååååååååååååååååååååååä å  öööööö öööööö ööööö öööö".to_string());
+    lexer.position = 84;
+    // check that this doesn't crash - doesn't go out of bounds or something
+    lexer.match_keyword("and");
+}
+
+#[test]
 fn test_lexer() {
     let mut lexer = Lexer::new("00.".to_string());
     let tok = lexer.next_token().unwrap();

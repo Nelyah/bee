@@ -164,6 +164,15 @@ fn test_parse_project_filter() {
     });
     assert_eq!(&f, &expected_filter);
 
+    let lexer = Lexer::new("project:A-B-C".to_string());
+    let mut p = FilterParser::new(lexer);
+    let f = p.parse_filter().unwrap();
+
+    let expected_filter: Box<dyn Filter> = Box::new(ProjectFilter {
+        name: Project::from("A-B-C".to_owned()),
+    });
+    assert_eq!(&f, &expected_filter);
+
     let lexer = Lexer::new("project:A.B.C".to_string());
     let mut p = FilterParser::new(lexer);
     let f = p.parse_filter().unwrap();
@@ -172,6 +181,11 @@ fn test_parse_project_filter() {
         name: Project::from("A.B.C".to_owned()),
     });
     assert_eq!(&f, &expected_filter);
+
+    let lexer = Lexer::new("project:A-B-C-".to_string());
+    let mut p = FilterParser::new(lexer);
+    let f = p.parse_filter();
+    assert_true!(f.is_err());
 
     let lexer = Lexer::new("project:A.B.C.".to_string());
     let mut p = FilterParser::new(lexer);

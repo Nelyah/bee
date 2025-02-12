@@ -276,16 +276,33 @@ impl FilterParser {
                             ));
                     }
 
-                    if self.current_token.literal.ends_with('.') {
+                    let mut project_name = self.current_token.literal.to_string();
+
+                    while self.peek_token.token_type == TokenType::TagMinusPrefix
+                        || self.peek_token.token_type == TokenType::WordString
+                    {
+                        project_name.push_str(&self.peek_token.literal);
+                        self.next_token();
+                    }
+
+                    if project_name.ends_with('.') {
                         return Err(err_msg_prefix
                             + &format!(
                                 "A project name cannot end with a '.' (name: '{}')",
-                                self.current_token.literal
+                                project_name
+                            ));
+                    }
+
+                    if project_name.ends_with('-') {
+                        return Err(err_msg_prefix
+                            + &format!(
+                                "A project name cannot end with a '-' (name: '{}')",
+                                project_name
                             ));
                     }
 
                     let project_filter = Box::new(ProjectFilter {
-                        name: task::Project::from(self.current_token.literal.to_owned()),
+                        name: task::Project::from(project_name),
                     });
                     filter = add_to_current_filter(filter, project_filter, &ScopeOperator::And);
 

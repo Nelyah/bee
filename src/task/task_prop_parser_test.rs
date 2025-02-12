@@ -1,3 +1,4 @@
+use all_asserts::assert_true;
 use chrono::{Local, NaiveTime, TimeZone};
 
 use super::*;
@@ -6,6 +7,35 @@ fn from_string(value: &str) -> TaskProperties {
     let lexer = Lexer::new(value.to_owned());
     let mut parser = TaskPropertyParser::new(lexer);
     parser.parse_task_properties().unwrap()
+}
+
+#[test]
+fn test_project_string() {
+    let tp = from_string("project:p.a.b.c");
+    let props = TaskProperties {
+        project: Some(Project {
+            name: "p.a.b.c".to_string(),
+        }),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let tp = from_string("project:p-a-b.c");
+    let props = TaskProperties {
+        project: Some(Project {
+            name: "p-a-b.c".to_string(),
+        }),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let lexer = Lexer::new("project:p.a.b.c.".to_string());
+    let mut parser = TaskPropertyParser::new(lexer);
+    assert_true!(parser.parse_task_properties().is_err());
+
+    let lexer = Lexer::new("project:p.a.b-c-".to_string());
+    let mut parser = TaskPropertyParser::new(lexer);
+    assert_true!(parser.parse_task_properties().is_err());
 }
 
 #[test]

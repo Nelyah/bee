@@ -1,4 +1,4 @@
-#compdef rusk
+#compdef bee
 
 # Completion script. For the ZSH documentation, see 
 # https://zsh.sourceforge.io/Doc/Release/Completion-System.html
@@ -6,17 +6,17 @@
 # To run / develop this:
 # fpath=($PWD/completion $fpath)
 # export PATH="$PWD/target/release:$PATH"
-# autoload -Uz _rusk
-# compdef _rusk rusk
+# autoload -Uz _bee
+# compdef _bee bee
 #
 # Then to reload this script afterwards (from the same terminal session):
-# unfunction _rusk && autoload -Uz _rusk && compdef _rusk rusk
+# unfunction _bee && autoload -Uz _bee && compdef _bee bee
 
-zstyle ':completion:*:*:rusk:*' verbose yes
-zstyle ':completion:*:*:rusk:*:descriptions' format '%U%B%d%b%u'
-zstyle ':completion:*:*:rusk:*' group-name ''
+zstyle ':completion:*:*:bee:*' verbose yes
+zstyle ':completion:*:*:bee:*:descriptions' format '%U%B%d%b%u'
+zstyle ':completion:*:*:bee:*' group-name ''
 
-_rusk_filters() {
+_bee_filters() {
     local -a reply
     local word=$'[^\0]#\0'
 
@@ -30,7 +30,7 @@ _rusk_filters() {
 
 
     local -a _task_projects
-    _task_projects+=($(rusk _cmd get projects)) 
+    _task_projects+=($(bee _cmd get projects)) 
     _regex_words filter_group 'Project names' "${_task_projects[@]}"
     local task_projects=( "$reply[@]" )
 
@@ -40,7 +40,7 @@ _rusk_filters() {
     local task_status=( "$reply[@]" )
 
     local -a _task_tags_name
-    _task_tags_name+=($(rusk _cmd get tags))
+    _task_tags_name+=($(bee _cmd get tags))
     _regex_words filter_group 'Task tags' "${_task_tags_name[@]}"
     local task_tags_name=( "$reply[@]" )
 
@@ -70,7 +70,7 @@ _rusk_filters() {
     task_filter=( "${reply[@]}" )
 }
 
-_rusk_modifiers() {
+_bee_modifiers() {
     local -a reply
     local word=$'[^\0]#\0'
 
@@ -84,7 +84,7 @@ _rusk_modifiers() {
 
 
     local -a _task_projects
-    _task_projects+=($(rusk _cmd get projects)) 
+    _task_projects+=($(bee _cmd get projects)) 
     _regex_words filter_group 'Project names' "${_task_projects[@]}"
     local task_projects=( "$reply[@]" )
 
@@ -94,7 +94,7 @@ _rusk_modifiers() {
     local task_status=( "$reply[@]" )
 
     local -a _task_tags_name
-    _task_tags_name+=($(rusk _cmd get tags))
+    _task_tags_name+=($(bee _cmd get tags))
     _regex_words filter_group 'Task tags' "${_task_tags_name[@]}"
     local task_tags_name=( "$reply[@]" )
 
@@ -118,7 +118,7 @@ _rusk_modifiers() {
     task_modifiers=( "${reply[@]}" )
 }
 
-_rusk_commands() {
+_bee_commands() {
     local _task_commands_args_as_filter=(
         'export:Export tasks as JSON:'
         'info:Show detailed information about tasks:'
@@ -144,16 +144,16 @@ _rusk_commands() {
     task_commands=( "$reply[@]" )
 }
 
-_rusk_filters
-_rusk_commands
-_rusk_modifiers
+_bee_filters
+_bee_commands
+_bee_modifiers
 
 local word=$'[^\0]#\0'
 
 # This is the 'regex' that actually checks the command line
 # It checks it by looking at a series of 'spec' (the arrays here)
 # the quoted '#' means "any number of that spec"
-_regex_arguments _rusk /$'[^\0]##\0'/ \
+_regex_arguments _bee /$'[^\0]##\0'/ \
     \( "${task_filter[@]}" \| "${task_filter_tags[@]}" \| /"$word"/ \) '#' \
     \( \
         \( "${task_commands[@]}" \( "${task_modifiers[@]}" \| "${task_modifier_tags[@]}" \| /"$word"/ \) '#' \) \
@@ -161,6 +161,6 @@ _regex_arguments _rusk /$'[^\0]##\0'/ \
     \)
 
 
-_rusk "$@"
+_bee "$@"
 
 # vim:ft=zsh

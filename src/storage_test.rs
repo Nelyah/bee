@@ -37,12 +37,12 @@ impl Env for MockEnv {
 fn test_find_data_file() {
     let mock_fs = MockFileSystem {
         files: HashSet::from([
-            ("/custom/xdg/rusk/rusk-data.json".to_string()),
-            ("/home/user/.local/share/rusk/rusk-data.json".to_string()),
-            ("/custom/xdg/rusk/rusk-logged-tasks.json".to_string()),
-            ("/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string()),
-            ("rusk-data.json".to_string()),
-            ("rusk-logged-tasks.json".to_string()),
+            ("/custom/xdg/bee/bee-data.json".to_string()),
+            ("/home/user/.local/share/bee/bee-data.json".to_string()),
+            ("/custom/xdg/bee/bee-logged-tasks.json".to_string()),
+            ("/home/user/.local/share/bee/bee-logged-tasks.json".to_string()),
+            ("bee-data.json".to_string()),
+            ("bee-logged-tasks.json".to_string()),
         ]),
     };
 
@@ -54,20 +54,20 @@ fn test_find_data_file() {
     };
 
     // First test
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-data.json", true);
     match path {
         Ok(p) => {
-            assert_eq!(p, "/custom/xdg/rusk/rusk-data.json");
+            assert_eq!(p, "/custom/xdg/bee/bee-data.json");
         }
         Err(_) => {
             unreachable!();
         }
     }
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-logged-tasks.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-logged-tasks.json", true);
     match path {
         Ok(p) => {
-            assert_eq!(p, "/custom/xdg/rusk/rusk-logged-tasks.json");
+            assert_eq!(p, "/custom/xdg/bee/bee-logged-tasks.json");
         }
         Err(_) => {
             unreachable!();
@@ -78,20 +78,20 @@ fn test_find_data_file() {
     mock_env
         .vars
         .insert("XDG_DATA_HOME".to_string(), "/bad/value".to_string());
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-data.json", true);
     match path {
         Ok(p) => {
-            assert_eq!(p, "/home/user/.local/share/rusk/rusk-data.json");
+            assert_eq!(p, "/home/user/.local/share/bee/bee-data.json");
         }
         Err(_) => {
             unreachable!();
         }
     }
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-logged-tasks.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-logged-tasks.json", true);
     match path {
         Ok(p) => {
-            assert_eq!(p, "/home/user/.local/share/rusk/rusk-logged-tasks.json");
+            assert_eq!(p, "/home/user/.local/share/bee/bee-logged-tasks.json");
         }
         Err(_) => {
             unreachable!();
@@ -101,20 +101,20 @@ fn test_find_data_file() {
     mock_env
         .vars
         .insert("HOME".to_string(), "/bad/value".to_string());
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-data.json", true);
     match path {
         Ok(p) => {
-            assert_eq!(p, "rusk-data.json");
+            assert_eq!(p, "bee-data.json");
         }
         Err(_) => {
             unreachable!();
         }
     }
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-logged-tasks.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-logged-tasks.json", true);
     match path {
         Ok(p) => {
-            assert_eq!(p, "rusk-logged-tasks.json");
+            assert_eq!(p, "bee-logged-tasks.json");
         }
         Err(_) => {
             unreachable!();
@@ -123,25 +123,25 @@ fn test_find_data_file() {
 
     let mock_fs = MockFileSystem {
         files: HashSet::from([
-            "/custom/xdg/rusk/rusk-data.json".to_string(),
-            "/home/user/.local/share/rusk/rusk-data.json".to_string(),
-            "/custom/xdg/rusk/rusk-logged-tasks.json".to_string(),
-            "/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string(),
+            "/custom/xdg/bee/bee-data.json".to_string(),
+            "/home/user/.local/share/bee/bee-data.json".to_string(),
+            "/custom/xdg/bee/bee-logged-tasks.json".to_string(),
+            "/home/user/.local/share/bee/bee-logged-tasks.json".to_string(),
         ]),
     };
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-data.json", true);
     assert!(path.is_err());
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-logged-tasks.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-logged-tasks.json", true);
     assert!(path.is_err());
 
     let mock_fs = MockFileSystem {
         files: HashSet::from([
-            "/custom/xdg/rusk/rusk-data.json".to_string(),
-            "/home/user/.local/share/rusk/rusk-data.json".to_string(),
-            "/custom/xdg/rusk/rusk-logged-tasks.json".to_string(),
-            "/home/user/.local/share/rusk/rusk-logged-tasks.json".to_string(),
+            "/custom/xdg/bee/bee-data.json".to_string(),
+            "/home/user/.local/share/bee/bee-data.json".to_string(),
+            "/custom/xdg/bee/bee-logged-tasks.json".to_string(),
+            "/home/user/.local/share/bee/bee-logged-tasks.json".to_string(),
         ]),
     };
 
@@ -149,14 +149,14 @@ fn test_find_data_file() {
         vars: HashMap::from([]),
     };
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-data.json", true);
     if let Ok(p) = path {
-        assert_eq!(p, "rusk-data.json");
+        assert_eq!(p, "bee-data.json");
     }
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-logged-tasks.json", true);
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-logged-tasks.json", true);
     if let Ok(p) = path {
-        assert_eq!(p, "rusk-logged-tasks.json");
+        assert_eq!(p, "bee-logged-tasks.json");
     }
 }
 
@@ -164,10 +164,10 @@ fn test_find_data_file() {
 fn test_find_data_file_with_custom_data_home() {
     let mock_fs = MockFileSystem {
         files: HashSet::from([
-            ("/custom/rusk/rusk-data.json".to_string()),
-            ("/custom/rusk/rusk-logged-tasks.json".to_string()),
-            ("/custom/xdg/rusk/rusk-data.json".to_string()),
-            ("/custom/xdg/rusk/rusk-logged-tasks.json".to_string()),
+            ("/custom/bee/bee-data.json".to_string()),
+            ("/custom/bee/bee-logged-tasks.json".to_string()),
+            ("/custom/xdg/bee/bee-data.json".to_string()),
+            ("/custom/xdg/bee/bee-logged-tasks.json".to_string()),
         ]),
     };
 
@@ -178,13 +178,13 @@ fn test_find_data_file_with_custom_data_home() {
         ]),
     };
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true).unwrap();
-    assert_eq!(path, "/custom/xdg/rusk/rusk-data.json");
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-data.json", true).unwrap();
+    assert_eq!(path, "/custom/xdg/bee/bee-data.json");
 
     mock_env
         .vars
-        .insert("RUSK_DATA_HOME".to_string(), "/custom/rusk".to_string());
+        .insert("BEE_DATA_HOME".to_string(), "/custom/bee".to_string());
 
-    let path = get_data_file_impl(&mock_fs, &mock_env, "rusk-data.json", true);
-    assert_eq!(path.unwrap(), "/custom/rusk/rusk-data.json");
+    let path = get_data_file_impl(&mock_fs, &mock_env, "bee-data.json", true);
+    assert_eq!(path.unwrap(), "/custom/bee/bee-data.json");
 }

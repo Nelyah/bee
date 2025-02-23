@@ -336,6 +336,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "bee"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "all_asserts",
+ "chrono",
+ "colored",
+ "env_logger",
+ "erased-serde",
+ "indexmap",
+ "lazy_static",
+ "log",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+ "shellexpand",
+ "tempfile",
+ "terminal_size",
+ "toml",
+ "typetag",
+ "unicode-normalization",
+ "unicode-segmentation",
+ "uuid",
+]
+
+[[package]]
 name = "bitflags"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1292,33 +1319,6 @@ name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
-
-[[package]]
-name = "rusk"
-version = "0.1.0"
-dependencies = [
- "actix-web",
- "all_asserts",
- "chrono",
- "colored",
- "env_logger",
- "erased-serde",
- "indexmap",
- "lazy_static",
- "log",
- "once_cell",
- "regex",
- "serde",
- "serde_json",
- "shellexpand",
- "tempfile",
- "terminal_size",
- "toml",
- "typetag",
- "unicode-normalization",
- "unicode-segmentation",
- "uuid",
-]
 
 [[package]]
 name = "rustc-demangle"

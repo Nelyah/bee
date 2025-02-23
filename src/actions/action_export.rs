@@ -20,7 +20,7 @@ impl TaskAction for ExportTaskAction {
 impl ExportTaskAction {
     pub fn get_command_description() -> String {
         r#"Print the tasks as JSON format.
-This is useful for scripting access to Rusk.
+This is useful for scripting access to Bee.
 Both <filters> and <arguments> are treated as filter
 "#
         .to_string()

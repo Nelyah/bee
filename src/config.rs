@@ -323,10 +323,10 @@ pub fn load_config() -> Result<Config, String> {
         Some(file) => file,
         None => {
             return Err("Could not find a config file. Searched in:\n\
-                    - $PWD/rusk.toml\n\
-                    - $XDG_CONFIG_HOME/rusk/config.toml\n\
-                    - $HOME/.config/rusk/config.toml\n\
-                    - $HOME/.rusk.toml\n"
+                    - $PWD/bee.toml\n\
+                    - $XDG_CONFIG_HOME/bee/config.toml\n\
+                    - $HOME/.config/bee/config.toml\n\
+                    - $HOME/.bee.toml\n"
                 .to_string());
         }
     };
@@ -369,10 +369,10 @@ fn find_config_file() -> Option<PathBuf> {
         env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home_dir));
 
     let paths = [
-        "rusk.toml",
-        &format!("{}/rusk/config.toml", xdg_config_home),
-        &format!("{}/.config/rusk/config.toml", home_dir),
-        &format!("{}/.rusk.toml", home_dir),
+        "bee.toml",
+        &format!("{}/bee/config.toml", xdg_config_home),
+        &format!("{}/.config/bee/config.toml", home_dir),
+        &format!("{}/.bee.toml", home_dir),
     ];
 
     for path in paths {

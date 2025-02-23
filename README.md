@@ -1,12 +1,12 @@
-# Rusk: A task management software
+# Bee: A task management software
 
 This is under active development as a pet project, and I discourage anyone to start using it seriously.
 
 If you want to get started and playing with it, run the following:
 
 ```
-git clone git@github.com:Nelyah/rusk
-cd rusk
+git clone git@github.com:Nelyah/bee
+cd bee
 cargo run help
 ```
 

@@ -239,20 +239,20 @@ impl Env for RealEnv {
 
 // Function to find data file
 fn find_data_file() -> Result<String, io::Error> {
-    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-data.json", true)
+    get_data_file_impl(&RealFileSystem, &RealEnv, "bee-data.json", true)
 }
 
 fn get_data_file_path() -> String {
-    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-data.json", false).unwrap_or_default()
+    get_data_file_impl(&RealFileSystem, &RealEnv, "bee-data.json", false).unwrap_or_default()
 }
 
 fn get_logged_tasks_file_path() -> String {
-    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-logged-tasks.json", false)
+    get_data_file_impl(&RealFileSystem, &RealEnv, "bee-logged-tasks.json", false)
         .unwrap_or_default()
 }
 
 fn find_logged_file() -> Result<String, io::Error> {
-    get_data_file_impl(&RealFileSystem, &RealEnv, "rusk-logged-tasks.json", true)
+    get_data_file_impl(&RealFileSystem, &RealEnv, "bee-logged-tasks.json", true)
 }
 
 // getDataFileImpl provides utility to find where we store the file on the filesystem
@@ -262,35 +262,35 @@ fn get_data_file_impl<'a>(
     filename: &str,
     find_file_only: bool,
 ) -> Result<String, io::Error> {
-    if filename != "rusk-data.json" && filename != "rusk-logged-tasks.json" {
+    if filename != "bee-data.json" && filename != "bee-logged-tasks.json" {
         panic!("Invalid filename given to 'get_data_file_impl'");
     }
 
-    if let Some(rusk_data_home) = env.getenv("RUSK_DATA_HOME") {
-        debug!("Read 'RUSK_DATA_HOME' env variable as '{}'", rusk_data_home);
-        let dir_path = PathBuf::from(&rusk_data_home);
+    if let Some(bee_data_home) = env.getenv("BEE_DATA_HOME") {
+        debug!("Read 'BEE_DATA_HOME' env variable as '{}'", bee_data_home);
+        let dir_path = PathBuf::from(&bee_data_home);
         let file_path = dir_path.join(filename).to_string_lossy().into_owned();
 
         if !find_file_only {
             debug!(
-                "Rusk data file should be located at {}",
-                env.getenv("RUSK_DATA_HOME").unwrap()
+                "Bee data file should be located at {}",
+                env.getenv("BEE_DATA_HOME").unwrap()
             );
             return Ok(file_path);
         }
         if fs.stat(&file_path).is_ok() {
             debug!(
-                "Rusk data file exists at {}",
-                env.getenv("RUSK_DATA_HOME").unwrap()
+                "Bee data file exists at {}",
+                env.getenv("BEE_DATA_HOME").unwrap()
             );
             return Ok(file_path);
         }
         return Err(io::Error::new(io::ErrorKind::NotFound, "File not found"));
     }
 
-    // Check $XDG_DATA_HOME/rusk/data.json
+    // Check $XDG_DATA_HOME/bee/data.json
     if let Some(xdg_data_home) = env.getenv("XDG_DATA_HOME") {
-        let xdg_path = PathBuf::from(xdg_data_home).join("rusk").join(filename);
+        let xdg_path = PathBuf::from(xdg_data_home).join("bee").join(filename);
         if !find_file_only {
             return Ok(xdg_path.to_string_lossy().into_owned());
         }
@@ -299,12 +299,12 @@ fn get_data_file_impl<'a>(
         }
     }
 
-    // Check $HOME/.local/share/rusk/rusk-data.json
+    // Check $HOME/.local/share/bee/bee-data.json
     if let Some(home) = env.getenv("HOME") {
         let home_path = PathBuf::from(home)
             .join(".local")
             .join("share")
-            .join("rusk")
+            .join("bee")
             .join(filename);
         if !find_file_only {
             return Ok(home_path.to_string_lossy().into_owned());

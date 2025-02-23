@@ -22,10 +22,10 @@ impl TaskAction for HelpTaskAction {
         self.command_descriptions.insert(
             "header".to_string(),
             r#"
-Rusk is a task management software.
+Bee is a task management software.
 Basic usage is: 
 
-rusk <filter> <action_name> <arguments>
+bee <filter> <action_name> <arguments>
 
 - <filter> restricts the tasks you will be applying the action onto.
 - <action_name> defines what action is going to be performed on those tasks.

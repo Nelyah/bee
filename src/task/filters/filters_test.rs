@@ -17,8 +17,8 @@ fn test_serialize() {
         serde_json::to_string(&filter).unwrap(),
         "{\"name\":{\"name\":\"hey\"}}"
     );
-    let filter = Box::new(RootFilter { child: None });
-    assert_eq!(serde_json::to_string(&filter).unwrap(), "{\"child\":null}");
+    let filter = Box::new(RootFilter {});
+    assert_eq!(serde_json::to_string(&filter).unwrap(), "{}");
 
     let filter: Box<dyn Filter> =
         serde_json::from_str("{\"type\":\"RootFilter\",\"value\":{\"child\":null}}").unwrap();
@@ -71,16 +71,6 @@ fn test_clone() {
             value: "hey".to_owned(),
         })],
     });
-    assert_eq!(&f, &f.clone());
-
-    f = Box::new(RootFilter {
-        child: Some(Box::new(StringFilter {
-            value: "hey".to_owned(),
-        })),
-    });
-    assert_eq!(&f, &f.clone());
-
-    f = Box::new(RootFilter { child: None });
     assert_eq!(&f, &f.clone());
 
     f = Box::new(StatusFilter {

@@ -34,7 +34,48 @@ pub trait Filter: CloneFilter + Any + Debug + Display + FilterKindGetter {
 // The two filters given in argument are linked by an AND
 // operator
 pub fn and(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
+    if lhs.get_kind() == FilterKind::Root {
+        return rhs;
+    }
+    if rhs.get_kind() == FilterKind::Root {
+        return lhs;
+    }
+    if lhs.get_kind() == FilterKind::And {
+        let mut lhs = lhs.clone();
+        lhs.add_children(rhs);
+        return lhs;
+    }
+    if rhs.get_kind() == FilterKind::And {
+        let mut rhs = rhs.clone();
+        rhs.add_children(lhs);
+        return rhs;
+    }
     Box::new(AndFilter {
+        children: vec![lhs, rhs],
+    })
+}
+
+// Consume @lhs and @rhs to return a new Box<dyn Filter>
+// The two filters given in argument are linked by an OR
+// operator
+pub fn or(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
+    if lhs.get_kind() == FilterKind::Root {
+        return rhs;
+    }
+    if rhs.get_kind() == FilterKind::Root {
+        return lhs;
+    }
+    if lhs.get_kind() == FilterKind::Or {
+        let mut lhs = lhs.clone();
+        lhs.add_children(rhs);
+        return lhs;
+    }
+    if rhs.get_kind() == FilterKind::Or {
+        let mut rhs = rhs.clone();
+        rhs.add_children(lhs);
+        return rhs;
+    }
+    Box::new(OrFilter {
         children: vec![lhs, rhs],
     })
 }
@@ -91,7 +132,7 @@ impl Clone for Box<dyn Filter> {
 
 impl Default for Box<dyn Filter> {
     fn default() -> Self {
-        Box::new(RootFilter { child: None })
+        Box::new(RootFilter {})
     }
 }
 

@@ -1,11 +1,12 @@
 use uuid::Uuid;
 
 use super::filters_impl::{DateDueFilterType, DependsOnFilter, FilterKind};
+use super::new_empty;
 
 use crate::task;
 use crate::task::filters::{
     AndFilter, DateCreatedFilter, DateDueFilter, DateEndFilter, Filter, OrFilter, ProjectFilter,
-    RootFilter, StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
+    StatusFilter, StringFilter, TagFilter, TaskIdFilter, UuidFilter, XorFilter,
 };
 use crate::task::lexer::{Lexer, Token, TokenType};
 
@@ -125,7 +126,7 @@ impl FilterParser {
         scope_operator: ScopeOperator,
         has_only_ids: &mut bool,
     ) -> Result<Box<dyn Filter>, String> {
-        let mut filter: Box<dyn Filter> = Box::new(RootFilter { child: None });
+        let mut filter: Box<dyn Filter> = new_empty();
         let err_msg_prefix: String = "could not parse the filter expression. ".to_string();
 
         if self.current_token.token_type == TokenType::Eof {

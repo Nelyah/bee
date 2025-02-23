@@ -96,50 +96,32 @@ fn indent_string(input: &str, indent: usize) -> String {
 }
 
 #[derive(PartialEq, Deserialize, Serialize)]
-pub struct RootFilter {
-    pub child: Option<Box<dyn Filter>>,
-}
+pub struct RootFilter {}
 
 impl CloneFilter for RootFilter {
     fn clone_box(&self) -> Box<dyn Filter> {
-        Box::new(RootFilter {
-            child: self.child.to_owned(),
-        })
+        Box::new(RootFilter {})
     }
 }
 
 #[typetag::serde]
 impl Filter for RootFilter {
-    fn validate_task(&self, task: &Task) -> bool {
-        if let Some(child) = &self.child {
-            return child.validate_task(task);
-        }
+    fn validate_task(&self, _task: &Task) -> bool {
         true
     }
 
-    fn add_children(&mut self, child: Box<dyn Filter>) {
-        if self.child.is_some() {
-            panic!("Trying to add a child to a RootFilter that already has a value");
-        }
-        self.child = Some(child);
+    fn add_children(&mut self, _child: Box<dyn Filter>) {
+        unreachable!("Trying to add a child to a RootFilter");
     }
 
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>) {
-        if let Some(child) = &mut self.child {
-            child.convert_id_to_uuid(id_to_uuid);
-        }
-    }
+    fn convert_id_to_uuid(&mut self, _id_to_uuid: &HashMap<usize, Uuid>) {}
 
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_> {
-        if let Some(c) = &self.child {
-            Box::new(std::iter::once(self as &dyn Filter).chain(c.iter()))
-        } else {
-            Box::new(std::iter::once(self as &dyn Filter))
-        }
+        Box::new(std::iter::once(self as &dyn Filter))
     }
 }
 
@@ -151,17 +133,7 @@ impl FilterKindGetter for RootFilter {
 
 impl RootFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let child_string = if let Some(c) = &self.child {
-            c.to_string()
-        } else {
-            "None".to_string()
-        };
-        write!(
-            f,
-            "{}:\n{}",
-            self.get_kind(),
-            indent_string(&child_string, 4)
-        )
+        write!(f, "{}", self.get_kind())
     }
 }
 
@@ -174,6 +146,9 @@ pub struct AndFilter {
 impl Filter for AndFilter {
     fn validate_task(&self, task: &Task) -> bool {
         for child in &self.children {
+            if child.get_kind() == FilterKind::Root {
+                continue;
+            }
             if !child.validate_task(task) {
                 return false;
             }
@@ -212,12 +187,17 @@ impl FilterKindGetter for AndFilter {
 impl AndFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut children_string = String::default();
+        let mut first = true;
         for c in &self.children {
-            children_string += &format!("\n{}", &c.to_string());
+            if !first {
+                children_string += "\n";
+            }
+            children_string += &c.to_string();
+            first = false;
         }
         write!(
             f,
-            "{}:{}",
+            "{}:\n{}",
             self.get_kind(),
             indent_string(&children_string, 4)
         )
@@ -242,6 +222,9 @@ impl Filter for XorFilter {
     fn validate_task(&self, task: &Task) -> bool {
         let mut valid_count = 0;
         for child in &self.children {
+            if child.get_kind() == FilterKind::Root {
+                continue;
+            }
             if child.validate_task(task) {
                 valid_count += 1;
             }
@@ -283,8 +266,13 @@ impl FilterKindGetter for XorFilter {
 impl XorFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut children_string = String::default();
+        let mut first = true;
         for c in &self.children {
-            children_string += &format!("\n{}", c);
+            if !first {
+                children_string += "\n";
+            }
+            children_string += &format!("{}", c);
+            first = false;
         }
         write!(
             f,
@@ -312,6 +300,9 @@ pub struct OrFilter {
 impl Filter for OrFilter {
     fn validate_task(&self, task: &Task) -> bool {
         for child in &self.children {
+            if child.get_kind() == FilterKind::Root {
+                continue;
+            }
             if child.validate_task(task) {
                 return true;
             }
@@ -350,12 +341,17 @@ impl FilterKindGetter for OrFilter {
 impl OrFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut children_string = String::default();
+        let mut first = true;
         for c in &self.children {
-            children_string += &format!("\n{}", c);
+            if !first {
+                children_string += "\n";
+            }
+            children_string += &format!("{}", c);
+            first = false;
         }
         write!(
             f,
-            "{}:{}",
+            "{}:\n{}",
             self.get_kind(),
             indent_string(&children_string, 4)
         )
@@ -733,13 +729,8 @@ impl FilterKindGetter for TagFilter {
 
 impl TagFilter {
     fn format_helper(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}: {}",
-            self.get_kind(),
-            &self.tag_name,
-            &self.include,
-        )
+        let include_str = if self.include { "include" } else { "exclude" };
+        write!(f, "{}: {}={}", self.get_kind(), &self.tag_name, include_str,)
     }
 }
 

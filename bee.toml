@@ -1,3 +1,5 @@
+[core]
+
 [[coefficients]]
 coefficient = -10
 field = "tag"
@@ -6,6 +8,20 @@ value = "main"
 [[coefficients]]
 coefficient = -1
 field = "depends"
+
+[report.all]
+column_names = ["Status", "UUID", "Date Created", "Date Completed", "Summary", "Tags"]
+columns = ["status", "uuid", "date_created", "date_completed", "summary", "tags"]
+default = false
+filters = []
+
+[report.default]
+column_names = ["ID", "Date", "Summary", "Due", "Tags", "Urgency"]
+columns = ["id", "date_created", "summary", "date_due", "tags", "urgency"]
+default = true
+filters = ['status:pending or status:active']
+
+[cli]
 
 [[colours]]
 bg = "#282c34"
@@ -26,23 +42,11 @@ fg = "#ff99d1"
 field = "depends"
 value = "hello"
 
-[report.all]
-column_names = ["Status", "UUID", "Date Created", "Date Completed", "Summary", "Tags"]
-columns = ["status", "uuid", "date_created", "date_completed", "summary", "tags"]
-default = false
-filters = []
-
-[report.default]
-column_names = ["ID", "Date", "Summary", "Due", "Tags", "Urgency"]
-columns = ["id", "date_created", "summary", "date_due", "tags", "urgency"]
-default = true
-filters = ['status:pending or status:active']
-
-[section]
+[cli.section]
 type = "filters"
 colour_palette = ["#ff99d1", "#33bbff", "#ffd966"]
 
-[section.filters]
+[cli.section.filters]
 section1 = ["bar"]
 section2 = ["foo or proj:foo"]
 "section with +main tag" = ["+main"]

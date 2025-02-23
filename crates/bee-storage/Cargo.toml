@@ -1,0 +1,14 @@
+[package]
+name = "bee-storage"
+version = { workspace = true }
+edition = "2024"
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-actions = { path = "../bee-actions" }
+
+env_logger.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true

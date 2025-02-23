@@ -1,5 +1,6 @@
 use log::debug;
 
+use crate::config::SectionType;
 use crate::task::filters;
 
 use crate::config::get_config;
@@ -28,6 +29,21 @@ pub struct ParsedCommand {
     pub arguments: Vec<String>,
     pub arguments_as_filters: bool,
     pub report_kind: ReportConfig,
+}
+
+fn get_section_filters() -> Result<Option<Box<dyn Filter>>, String> {
+    let mut report_filter = filters::new_empty();
+    let section_config = &get_config().section;
+    if let Some(session_type) = &section_config.section_type {
+        if *session_type == SectionType::Filters {
+            for filter in section_config.filters.values() {
+                report_filter = filters::or(report_filter, filters::from(filter)?);
+            }
+            return Ok(Some(report_filter));
+        }
+    }
+
+    Ok(None)
 }
 
 impl Parser {
@@ -63,6 +79,10 @@ impl Parser {
                     filters::from(&filters)?,
                     filters::from(&report_kind.filters)?,
                 );
+                let section_filters = get_section_filters()?;
+                if let Some(f) = section_filters {
+                    parsed_command.filters = filters::or(parsed_command.filters.clone(), f);
+                }
                 parsed_command.report_kind = report_kind;
                 return Ok(parsed_command.clone());
             }
@@ -77,11 +97,16 @@ impl Parser {
             filters.push(arg.clone());
         }
 
+        let mut command_filters = filters::and(
+            filters::from(&filters)?,
+            filters::from(&report_kind.filters)?,
+        );
+        let section_filters = get_section_filters()?;
+        if let Some(f) = section_filters {
+            command_filters = filters::or(command_filters, f);
+        }
         Ok(ParsedCommand {
-            filters: filters::and(
-                filters::from(&filters)?,
-                filters::from(&report_kind.filters)?,
-            ),
+            filters: command_filters,
             command: "list".to_string(),
             report_kind,
             ..Default::default()

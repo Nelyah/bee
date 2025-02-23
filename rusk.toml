@@ -33,7 +33,16 @@ default = false
 filters = []
 
 [report.default]
-column_names = ["ID", "Date", "Project", "Summary", "Due", "Tags", "Urgency"]
-columns = ["id", "date_created", "project", "summary", "date_due", "tags", "urgency"]
+column_names = ["ID", "Date", "Summary", "Due", "Tags", "Urgency"]
+columns = ["id", "date_created", "summary", "date_due", "tags", "urgency"]
 default = true
 filters = ['status:pending or status:active']
+
+[section]
+type = "filters"
+colour_palette = ["#ff99d1", "#33bbff", "#ffd966"]
+
+[section.filters]
+section1 = ["bar"]
+section2 = ["foo or proj:foo"]
+"section with +main tag" = ["+main"]

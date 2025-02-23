@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use log::debug;
 use once_cell::sync::Lazy;
 use serde::de;
@@ -16,21 +17,77 @@ use serde::Deserializer;
 pub struct Config {
     #[serde(skip_deserializing)]
     pub default_report: String,
+
     #[serde(default = "default_report_map")]
     #[serde(rename = "report")]
     report_map: HashMap<String, ReportConfig>,
+
     #[serde(default = "default_colour_field")]
     #[serde(rename = "colours")]
     pub colour_fields: Vec<ColourField>,
+
     #[serde(default)]
     #[serde(rename = "coefficients")]
     pub coefficients: Vec<CoeffientField>,
+
+    #[serde(default)]
+    pub section: SectionConfig,
+}
+
+impl Config {
+    fn validate(&self) -> Result<(), String> {
+        if let Some(section_type) = &self.section.section_type {
+            if section_type == &SectionType::Filters && self.section.filters.is_empty() {
+                return Err("Configuration: Section: The section configuration type is \
+                               'filters' but no filter was provided."
+                    .to_string());
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         load_config_from_string("").expect("Unable to load config from an empty string")
     }
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum SectionType {
+    Project,
+    Filters,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Default)]
+pub struct SectionConfig {
+    #[serde(default)]
+    #[serde(rename = "type")]
+    pub section_type: Option<SectionType>,
+
+    /// List of the report names
+    #[serde(default)]
+    pub filters: IndexMap<String, Vec<String>>,
+
+    #[serde(default = "default_section_colour_palette")]
+    #[serde(deserialize_with = "deserialize_colors")]
+    pub colour_palette: Vec<(u8, u8, u8)>,
+
+    /// This is the section where tasks that don't fit into any
+    /// other section go.
+    #[serde(default = "default_section_colour")]
+    #[serde(deserialize_with = "deserialize_color")]
+    pub default_section_colour: (u8, u8, u8),
+
+    #[serde(default = "default_section_header_bg")]
+    #[serde(deserialize_with = "deserialize_color")]
+    pub section_header_bg: (u8, u8, u8),
+}
+
+fn default_section_header_bg() -> (u8, u8, u8) {
+    (26, 26, 26)
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -46,15 +103,28 @@ pub struct ColourField {
     #[serde(default = "default_colour_value_value")]
     pub value: Option<String>,
     #[serde(default = "default_colour_tuple_value")]
-    #[serde(deserialize_with = "deserialize_color")]
+    #[serde(deserialize_with = "deserialize_color_option")]
     pub fg: Option<(u8, u8, u8)>,
     #[serde(default = "default_colour_tuple_value")]
-    #[serde(deserialize_with = "deserialize_color")]
+    #[serde(deserialize_with = "deserialize_color_option")]
     pub bg: Option<(u8, u8, u8)>,
+}
+
+fn default_section_colour() -> (u8, u8, u8) {
+    (153, 153, 153)
 }
 
 fn default_colour_tuple_value() -> Option<(u8, u8, u8)> {
     None
+}
+
+fn default_section_colour_palette() -> Vec<(u8, u8, u8)> {
+    vec![
+        (246, 76, 60),
+        (133, 153, 199),
+        (255, 234, 77),
+        (121, 203, 103),
+    ]
 }
 
 fn default_colour_value_value() -> Option<String> {
@@ -99,7 +169,49 @@ fn hex_to_rgb(hex_color: &str) -> Result<(u8, u8, u8), HexColorError> {
     Ok((r, g, b))
 }
 
-fn deserialize_color<'de, D>(deserializer: D) -> Result<Option<(u8, u8, u8)>, D::Error>
+fn deserialize_colors<'de, D>(deserializer: D) -> Result<Vec<(u8, u8, u8)>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let colours: Vec<String> = Vec::deserialize(deserializer)?;
+    if colours.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let mut result = Vec::new();
+
+    for s in &colours {
+        let parsed_tuple = match s {
+            s if s.starts_with('#') => match hex_to_rgb(&s[1..]) {
+                Ok(colour) => colour,
+                Err(e) => {
+                    return Err(de::Error::custom(e.to_string()));
+                }
+            },
+            _ => {
+                return Err(de::Error::custom("Error parsing colour value".to_string()));
+            }
+        };
+        result.push(parsed_tuple);
+    }
+    Ok(result)
+}
+
+fn deserialize_color<'de, D>(deserializer: D) -> Result<(u8, u8, u8), D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = String::deserialize(deserializer)?;
+    match s {
+        s if s.starts_with('#') => match hex_to_rgb(&s[1..]) {
+            Ok(colour) => Ok(colour),
+            Err(e) => Err(de::Error::custom(e.to_string())),
+        },
+        _ => Err(de::Error::custom("Error parsing colour value".to_string())),
+    }
+}
+
+fn deserialize_color_option<'de, D>(deserializer: D) -> Result<Option<(u8, u8, u8)>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -200,8 +312,10 @@ static CONFIG: Lazy<Result<Config, String>> = Lazy::new(|| match load_config() {
     Err(e) => Err(e),
 });
 
+const DEFAULT_REPORT_NAME: &str = "__default";
+
 fn default_report_map() -> HashMap<String, ReportConfig> {
-    HashMap::from([("default".to_string(), ReportConfig::default())])
+    HashMap::from([(DEFAULT_REPORT_NAME.to_string(), ReportConfig::default())])
 }
 
 pub fn load_config() -> Result<Config, String> {
@@ -240,11 +354,12 @@ fn load_config_from_string(content: &str) -> Result<Config, String> {
         }
     }
     if config.get_report(&config.default_report).is_none() {
-        config.default_report = "default".to_string();
+        config.default_report = DEFAULT_REPORT_NAME.to_string();
         config
             .report_map
-            .insert("default".to_string(), ReportConfig::default());
+            .insert(DEFAULT_REPORT_NAME.to_string(), ReportConfig::default());
     }
+    config.validate()?;
     Ok(config)
 }
 

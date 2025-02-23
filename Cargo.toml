@@ -20,6 +20,10 @@ terminal_size = "0.4"
 toml = "0.7"
 typetag = "0.2"
 
+# This is a hashmap that maintains the order of insertion
+# Useful to reproduce the order given in config file for instance
+indexmap = {version = "2.7", features = ["serde"]}
+
 # Used to iterate over user-facing representation of unicode
 # characters (instead of every byte individually)
 unicode-segmentation = "1.12"

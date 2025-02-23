@@ -1,6 +1,6 @@
 use super::table::Table;
-use crate::config::get_config;
-use crate::task::{Task, TaskStatus};
+use crate::config::{self, get_config};
+use crate::task::{filters, Task, TaskStatus};
 use crate::{config::ReportConfig, printer::table::StyledText};
 use chrono::{DateTime, Local};
 use colored::{ColoredString, Colorize};
@@ -63,6 +63,7 @@ fn format_relative_time(t: DateTime<Local>) -> String {
 
 pub struct SimpleTaskTextPrinter;
 
+// Return the style that should be applied to a Task
 fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
     let conf = get_config();
 
@@ -93,8 +94,7 @@ fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
                 }
             }
             "depends" => {
-                if !task.get_depends().is_empty()
-                {
+                if !task.get_depends().is_empty() {
                     return Ok(Some(StyledText {
                         styles: vec![],
                         background_color: colour_conf.bg,
@@ -103,13 +103,19 @@ fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
                 }
             }
             "primary_colour" | "secondary_colour" => {}
-            _ => return Err(format!("Unable to colour the output based on the unknown field '{}'. Please check your configuration.", colour_conf.field)),
+            _ => {
+                return Err(format!(
+                    "Unable to colour the output based on the unknown field '{}'.\
+                    Please check your configuration.",
+                    colour_conf.field
+                ))
+            }
         }
     }
     Ok(None)
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 struct RowTask {
     task: Task,
     row: Vec<String>,
@@ -296,16 +302,17 @@ impl Printer for SimpleTaskTextPrinter {
     }
 }
 
+// Given a report and tasks, build object containing meta information
+// required for printing out tasks (RowTask)
 impl SimpleTaskTextPrinter {
-    fn print_list_of_tasks_impl<W: Write>(
+    fn build_row_task_objects(
         &self,
         tasks: Vec<&Task>,
         report_kind: &ReportConfig,
-        writer: &mut W,
-    ) -> Result<(), String> {
-        let mut task_to_row: Vec<RowTask> = Vec::default();
+    ) -> Vec<RowTask> {
+        let mut rows: Vec<RowTask> = Vec::default();
         for t in tasks {
-            let mut row: Vec<String> = Vec::default();
+            let mut row_fields: Vec<String> = Vec::default();
             for field in &report_kind.columns {
                 match field.as_str() {
                     "date_created" | "date_completed" | "date_due" => {
@@ -313,15 +320,15 @@ impl SimpleTaskTextPrinter {
                             let local_date: DateTime<Local> = DateTime::from(
                                 DateTime::parse_from_rfc3339(date_str).ok().unwrap(),
                             );
-                            row.push(format_relative_time(local_date))
+                            row_fields.push(format_relative_time(local_date))
                         } else {
-                            row.push("".to_owned());
+                            row_fields.push("".to_owned());
                         }
                     }
                     "project" => {
                         match t.get_project() {
-                            Some(proj) => row.push(proj.get_name().to_owned()),
-                            None => row.push("".to_string()),
+                            Some(proj) => row_fields.push(proj.get_name().to_owned()),
+                            None => row_fields.push("".to_string()),
                         };
                     }
                     "summary" => {
@@ -333,31 +340,36 @@ impl SimpleTaskTextPrinter {
                                 ann.get_value()
                             )
                         });
-                        row.push(out_str);
+                        row_fields.push(out_str);
                     }
 
                     _ => {
                         let value = t.get_field(field);
-                        row.push(print_value(&value))
+                        row_fields.push(print_value(&value))
                     }
                 }
             }
-            trace!("Row: {:?}", row);
-            task_to_row.push(RowTask {
+            trace!("Row: {:?}", row_fields);
+            rows.push(RowTask {
                 task: t.to_owned(),
-                row,
+                row: row_fields,
             });
         }
+        rows
+    }
 
-        if task_to_row.is_empty() {
-            return writeln!(writer, "No task to show.").map_err(|e| e.to_string());
-        }
-
+    // If none of the tasks have values for a column, then it should not be shown
+    // Returns the updated TaskRow vector and the column names
+    fn remove_unused_columns(
+        &self,
+        mut rows: Vec<RowTask>,
+        report_kind: &ReportConfig,
+    ) -> (Vec<RowTask>, Vec<String>) {
         // Remove unused columns
         let mut column_used: Vec<bool> = Vec::default();
         column_used.resize(report_kind.column_names.len(), false);
 
-        for row_task in &task_to_row {
+        for row_task in &rows {
             for (i, col) in row_task.row.iter().enumerate() {
                 if !col.is_empty() {
                     column_used[i] = true;
@@ -372,6 +384,7 @@ impl SimpleTaskTextPrinter {
             }
         }
         let mut header_names = Vec::default();
+        // header_names.push("F".to_string());
         for idx in &used_columns {
             header_names.push(report_kind.column_names[*idx].to_owned());
         }
@@ -383,23 +396,147 @@ impl SimpleTaskTextPrinter {
                 );
             }
         }
-        let mut tbl = Table::new(&header_names, writer)?;
 
-        for row_task in task_to_row.iter_mut() {
+        for row_task in rows.iter_mut() {
             let mut new_row = Vec::default();
             for idx in &used_columns {
                 new_row.push(row_task.row[*idx].to_owned());
             }
             row_task.row = new_row;
         }
+        (rows, header_names)
+    }
 
-        task_to_row.sort();
-        task_to_row.reverse();
-        for row_task in task_to_row {
-            tbl.add_row(row_task.row, get_style_for_task(&row_task.task)?)
-                .unwrap();
+    fn split_rows_into_groups(
+        &self,
+        mut rows: Vec<RowTask>,
+        empty_key: &str,
+    ) -> Result<HashMap<String, Vec<RowTask>>, String> {
+        let mut group_on_value = HashMap::<String, Vec<RowTask>>::new();
+
+        let section_config = &get_config().section;
+
+        if let Some(section_type) = &section_config.section_type {
+            match section_type {
+                config::SectionType::Project => {
+                    for row in rows.drain(0..) {
+                        let project = row
+                            .task
+                            .get_project()
+                            .clone()
+                            .map_or(empty_key.to_string(), |p| p.to_string());
+                        group_on_value.entry(project).or_default().push(row);
+                    }
+                }
+                config::SectionType::Filters => {
+                    for (filter_name, filter_str) in &section_config.filters {
+                        trace!("There are still some rows remaining. size={}", rows.len());
+                        debug!(
+                            "Parsing filter for section... section_name='{}'",
+                            filter_name
+                        );
+                        let filter_task = filters::from(filter_str)?;
+                        let mut remaining_task_to_row = Vec::new();
+                        for row in rows.drain(0..) {
+                            if filter_task.validate_task(&row.task) {
+                                trace!("Task '{}' matches filters", row.task.get_summary());
+                                group_on_value
+                                    .entry(filter_name.to_string())
+                                    .or_default()
+                                    .push(row);
+                            } else {
+                                trace!("Task '{}' does not match filters", row.task.get_summary());
+                                remaining_task_to_row.push(row);
+                            }
+                        }
+                        if let Some(rows) = group_on_value.get(filter_name) {
+                            debug!(
+                                "Section was added to the table. section='{}', row_count={}",
+                                filter_name,
+                                rows.len()
+                            );
+                        } else {
+                            debug!(
+                                "Section was dropped because no row matched it. section_name='{}'",
+                                filter_name
+                            );
+                        }
+                        rows = remaining_task_to_row;
+                    }
+
+                    if !rows.is_empty() {
+                        debug!(
+                            "Some rows didn't fit into a section. row_count={}",
+                            rows.len()
+                        );
+                    }
+                    for row in rows.drain(0..) {
+                        group_on_value
+                            .entry(empty_key.to_string())
+                            .or_default()
+                            .push(row);
+                    }
+                }
+            }
+        } else {
+            for row in rows.drain(0..) {
+                group_on_value
+                    .entry(empty_key.to_string())
+                    .or_default()
+                    .push(row);
+            }
+        }
+        Ok(group_on_value)
+    }
+
+    fn print_list_of_tasks_impl<W: Write>(
+        &self,
+        tasks: Vec<&Task>,
+        report_kind: &ReportConfig,
+        writer: &mut W,
+    ) -> Result<(), String> {
+        let rows: Vec<RowTask> = self.build_row_task_objects(tasks, report_kind);
+
+        if rows.is_empty() {
+            return writeln!(writer, "No task to show.").map_err(|e| e.to_string());
         }
 
+        let (rows, header_names) = self.remove_unused_columns(rows, report_kind);
+
+        let empty_key = "__empty_value".to_string();
+        let mut group_on_value = self.split_rows_into_groups(rows, &empty_key)?;
+
+        let mut tbl = Table::new(&header_names, writer)?;
+        if let Some(rows) = group_on_value.get_mut(&empty_key) {
+            rows.sort();
+            rows.reverse();
+
+            tbl.add_section("".to_string());
+
+            for row in rows {
+                tbl.add_row(row.row.clone(), get_style_for_task(&row.task)?)
+                    .unwrap();
+            }
+        }
+
+        for (section_name, rows) in group_on_value.iter_mut() {
+            if section_name == &empty_key {
+                continue;
+            }
+            if rows.is_empty() {
+                debug!("Dropping section {} because it is empty!", section_name);
+                continue;
+            }
+            rows.sort();
+            rows.reverse();
+
+            tbl.add_section(section_name.to_string());
+
+            for row_task in rows {
+                tbl.add_row(row_task.row.clone(), get_style_for_task(&row_task.task)?)
+                    .unwrap();
+            }
+        }
         tbl.print();
         Ok(())
     }

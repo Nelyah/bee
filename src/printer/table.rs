@@ -1,5 +1,5 @@
 use colored::{ColoredString, Colorize, Styles};
-use log::trace;
+use log::{debug, trace};
 use regex::Regex;
 use std::{cmp::max, io::Write};
 use terminal_size::{terminal_size, Width};
@@ -7,8 +7,8 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::config::get_config;
 
-// Get the number of actual characters in a string, where
-// 1 character = 1 grapheme
+/// Get the number of actual characters in a string, where
+/// 1 character = 1 grapheme
 fn get_str_len(value: &str) -> usize {
     value.graphemes(true).count()
 }
@@ -51,17 +51,38 @@ impl StyledText {
     }
 }
 
+#[derive(Default)]
+struct Section {
+    name: String,
+    rows: Vec<Vec<String>>,
+    row_styles: Vec<Option<StyledText>>,
+}
+
+impl Section {
+    pub fn add_row(
+        &mut self,
+        row: Vec<String>,
+        style: Option<StyledText>,
+    ) -> Result<&mut Self, &'static str> {
+        self.rows.push(row);
+        self.row_styles.push(style);
+        Ok(self)
+    }
+}
+
 pub struct Table<W: Write> {
     column_padding: usize,
     columns: Vec<String>,
-    row_styles: Vec<Option<StyledText>>,
-    rows: Vec<Vec<String>>,
+    sections: Vec<Section>,
     column_widths: Vec<usize>,
     writer: W,
     max_width: usize,
     alternating_colours: bool,
     primary_style: StyledText,
     secondary_style: StyledText,
+    section_palette: Vec<(u8, u8, u8)>,
+    section_style: StyledText,
+    section_default_style: StyledText,
     header_style: StyledText,
 }
 
@@ -86,12 +107,13 @@ impl<W: Write> Table<W> {
         let column_widths = column_headers.iter().map(|header| header.len()).collect();
 
         let conf = get_config();
+        // let mut section_colour_palette = vec![];
+        // section_colour_palette = conf.section.colour_palette.clone();
 
         Ok(Table {
             column_padding: 1,
             columns: column_headers.to_owned(),
-            row_styles: Vec::new(),
-            rows: Vec::new(),
+            sections: Vec::new(),
             column_widths,
             writer,
             max_width: get_terminal_width(),
@@ -106,12 +128,31 @@ impl<W: Write> Table<W> {
                 background_color: Some(conf.get_secondary_colour_bg()),
                 foreground_color: Some(conf.get_secondary_colour_fg()),
             },
+            section_palette: conf.section.colour_palette.clone(),
+            section_default_style: StyledText {
+                styles: vec![],
+                background_color: Some(conf.section.default_section_colour),
+                foreground_color: None,
+            },
+            section_style: StyledText {
+                styles: vec![Styles::Bold],
+                background_color: Some(conf.section.section_header_bg),
+                foreground_color: Some((199, 199, 199)),
+            },
             header_style: StyledText {
                 styles: vec![Styles::Underline],
                 background_color: None,
                 foreground_color: Some((199, 199, 199)),
             },
         })
+    }
+
+    pub fn add_section(&mut self, section_name: String) {
+        debug!("Added new section in table: {}", section_name);
+        self.sections.push(Section {
+            name: section_name,
+            ..Default::default()
+        });
     }
 
     pub fn add_row(
@@ -123,23 +164,68 @@ impl<W: Write> Table<W> {
             return Err("row length does not match column length");
         }
 
-        for (i, cell) in row.iter().enumerate() {
-            let max_line_length = get_max_width_of_cell(cell);
-            if max_line_length > self.column_widths[i] {
-                self.column_widths[i] = max_line_length;
-            }
+        if self.sections.is_empty() {
+            self.sections.push(Section::default());
         }
 
-        self.rows.push(row);
-        self.row_styles.push(style);
+        let _ = self.sections.last_mut().unwrap().add_row(row, style);
         Ok(self)
     }
 
-    pub fn print(&mut self) {
-        self.update_column_width();
-        self.adjust_column_widths();
+    fn get_total_row_length(&self) -> usize {
+        let mut line_total_length: usize = self.column_widths.iter().sum();
+        line_total_length += self.column_padding * (self.column_widths.len());
+        line_total_length
+    }
 
-        let mut header = String::new();
+    fn print_empty_line(&mut self, palette_style: Option<&StyledText>) {
+        let mut row_length = self.get_total_row_length();
+        let section_column = if let Some(p_style) = palette_style {
+            row_length += 1;
+            p_style.apply(" ").to_string()
+        } else {
+            // 2 being the usual section header length
+            row_length += 2;
+            "".to_string()
+        };
+
+        let filler_space_raw = &" ".repeat(row_length);
+        let filler_space = if palette_style.is_some() {
+            self.section_style.apply(filler_space_raw).to_string()
+        } else {
+            filler_space_raw.to_string()
+        };
+
+        writeln!(self.writer, "{}{}", section_column, filler_space,).unwrap();
+    }
+
+    // Check whether we have multiple sections, or if not, if the one we have is just
+    // a placeholder
+    fn has_section(&self) -> bool {
+        if self.sections.len() > 1 {
+            return true;
+        }
+        if self.sections.is_empty() {
+            return false;
+        }
+        !self.sections.last().unwrap().name.is_empty()
+    }
+
+    pub fn print(&mut self) {
+        self.update_column_width_state();
+        self.add_padding_to_column_width();
+
+        if self.has_section() {
+            debug!("Table has named sections");
+        } else {
+            debug!("Table does NOT have named sections");
+        }
+
+        let mut header = if self.has_section() {
+            "  ".to_string()
+        } else {
+            "".to_string()
+        };
         for (i, col) in self.columns.iter().enumerate() {
             header.push_str(&format!("{:<width$}", col, width = self.column_widths[i]));
             header.push_str(&" ".repeat(self.column_padding));
@@ -147,35 +233,128 @@ impl<W: Write> Table<W> {
 
         writeln!(self.writer, "{}", self.header_style.apply(&header)).unwrap();
 
-        let primary_style = self.primary_style.clone();
-        let secondary_style = self.secondary_style.clone();
+        for section_idx in 0..self.sections.len() {
+            self.print_section(section_idx);
+        }
+    }
 
-        for i in 0..self.rows.len() {
-            let style = self.row_styles[i].to_owned();
+    fn print_section(&mut self, section_idx: usize) {
+        let section_title = &self.sections[section_idx].name;
+        let palette_style_bg = if section_title.is_empty() {
+            self.section_default_style.background_color
+        } else if self.section_palette.is_empty() {
+            None
+        } else {
+            Some(self.section_palette[section_idx % self.section_palette.len()])
+        };
+        let palette_style = StyledText {
+            background_color: palette_style_bg,
+            foreground_color: None,
+            styles: vec![],
+        };
+
+        {
+            let section_column = if self.has_section() {
+                if section_idx != 0 {
+                    self.print_empty_line(None);
+                }
+                format!("{} ", palette_style.apply(" "))
+            } else {
+                "".to_string()
+            };
+            let section_title = &self.sections[section_idx].name;
+            if !section_title.is_empty() {
+                writeln!(
+                    self.writer,
+                    "{}",
+                    self.section_style.apply(&format!(
+                        "{}{}{}",
+                        section_column,
+                        section_title,
+                        " ".repeat(
+                            self.get_total_row_length()
+                                .saturating_sub(section_title.len())
+                        )
+                    ))
+                )
+                .unwrap();
+            }
+        }
+        if self.has_section() {
+            self.print_empty_line(Some(&palette_style.clone()));
+        }
+
+        let palette_style_opt = if self.has_section() {
+            Some(&palette_style)
+        } else {
+            None
+        };
+
+        for row_idx in 0..self.sections[section_idx].rows.len() {
+            let style = self.sections[section_idx].row_styles[row_idx].to_owned();
             match style {
                 Some(style) => {
-                    if self.alternating_colours && i % 2 == 1 {
-                        self.print_row(i, &overwrite_style(style.to_owned(), &primary_style));
+                    if self.alternating_colours && row_idx % 2 == 1 {
+                        self.print_row(
+                            section_idx,
+                            row_idx,
+                            &overwrite_style(style.to_owned(), &self.primary_style),
+                            palette_style_opt,
+                        );
                     } else {
-                        self.print_row(i, &overwrite_style(style.to_owned(), &secondary_style));
+                        self.print_row(
+                            section_idx,
+                            row_idx,
+                            &overwrite_style(style.to_owned(), &self.secondary_style),
+                            palette_style_opt,
+                        );
                     }
                 }
                 None => {
-                    if self.alternating_colours && i % 2 == 1 {
-                        self.print_row(i, &primary_style.clone());
+                    if self.alternating_colours && row_idx % 2 == 1 {
+                        self.print_row(
+                            section_idx,
+                            row_idx,
+                            &self.primary_style.clone(),
+                            palette_style_opt,
+                        );
                     } else {
-                        self.print_row(i, &secondary_style.clone());
+                        self.print_row(
+                            section_idx,
+                            row_idx,
+                            &self.secondary_style.clone(),
+                            palette_style_opt,
+                        );
                     }
                 }
             }
         }
+        debug!(
+            "Printed section name={}, idx={}",
+            self.sections[section_idx].name, section_idx
+        );
     }
 
-    fn print_row(&mut self, row_index: usize, color_style: &StyledText) {
+    fn print_row(
+        &mut self,
+        section_index: usize,
+        row_index: usize,
+        color_style: &StyledText,
+        palette_style: Option<&StyledText>,
+    ) {
         let mut wrapped_cells: Vec<Vec<String>> = Vec::new();
         let mut max_height = 1;
 
-        for (i, cell) in self.rows[row_index].iter().enumerate() {
+        let section_column = if let Some(p_style) = palette_style {
+            format!("{} ", p_style.apply(" ")).to_string()
+        } else {
+            "".to_string()
+        };
+
+        for (i, cell) in self.sections[section_index].rows[row_index]
+            .iter()
+            .enumerate()
+        {
             let wrapped_cell = wrap_text(cell, self.column_widths[i]);
             let new_line_count = wrapped_cell.chars().filter(|&c| c == '\n').count();
 
@@ -196,11 +375,17 @@ impl<W: Write> Table<W> {
                 );
             }
             // Assume color_style is a function or closure that applies a style to the string
-            writeln!(self.writer, "{}", color_style.apply(&line)).unwrap();
+            writeln!(
+                self.writer,
+                "{}{}",
+                section_column,
+                color_style.apply(&line)
+            )
+            .unwrap();
         }
     }
 
-    fn adjust_column_widths(&mut self) {
+    fn add_padding_to_column_width(&mut self) {
         let mut max_column_width = 0;
         let mut max_column_id = 0;
         let mut sum_width = 0;
@@ -226,12 +411,14 @@ impl<W: Write> Table<W> {
         }
     }
 
-    fn update_column_width(&mut self) {
-        for row in &self.rows {
-            for (i, cell) in row.iter().enumerate() {
-                let cell_width = get_max_width_of_cell(cell);
-                if cell_width > self.column_widths[i] {
-                    self.column_widths[i] = cell_width;
+    fn update_column_width_state(&mut self) {
+        for section in &self.sections {
+            for row in &section.rows {
+                for (i, cell) in row.iter().enumerate() {
+                    let cell_width = get_max_width_of_cell(cell);
+                    if cell_width > self.column_widths[i] {
+                        self.column_widths[i] = cell_width;
+                    }
                 }
             }
         }

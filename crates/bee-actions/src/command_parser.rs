@@ -2,7 +2,7 @@ use bee_core::filters;
 use bee_core::filters::Filter;
 use log::debug;
 
-use bee_core::config::{get_config,ReportConfig};
+use bee_core::config::{ReportConfig, get_config};
 
 use std::collections::HashMap;
 

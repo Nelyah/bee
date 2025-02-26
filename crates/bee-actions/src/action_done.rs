@@ -103,9 +103,9 @@ mod tests {
     use all_asserts::*;
 
     use super::*;
+    use bee_core::Printer;
     use bee_core::config::ReportConfig;
     use bee_core::task::{Task, TaskData, TaskProperties, TaskStatus};
-    use bee_core::Printer;
 
     struct MockPrinter;
 

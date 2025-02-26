@@ -3,6 +3,7 @@ use bee_core::Printer;
 
 use bee_core::task::TaskData;
 
+#[derive(Default)]
 pub struct InfoTaskAction {
     pub base: BaseTaskAction,
 }

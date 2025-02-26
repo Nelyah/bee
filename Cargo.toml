@@ -28,6 +28,10 @@ chrono = {version = "0.4", features = ["serde"]}
 unicode-segmentation = "1.12"
 unicode-normalization = "0.1.24"
 
+# Be able to work with enums more easily, like iterating,
+# implementing Display for them, etc.
+strum = { version = "0.27", features = ["derive"] }
+
 [workspace.dependencies.uuid]
 features = [
     "v4",  # Lets you generate random UUIDs

@@ -19,8 +19,7 @@ impl TaskAction for AddTaskAction {
         let new_task: Task = self
             .base
             .tasks
-            .add_task(&props, TaskStatus::Pending)
-            .unwrap()
+            .add_task(&props, TaskStatus::Pending)?
             .clone();
         if let Some(new_id) = new_task.get_id() {
             printer.show_information_message(&format!("Created task {}.", new_id));

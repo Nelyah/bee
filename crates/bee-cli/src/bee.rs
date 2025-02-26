@@ -2,7 +2,7 @@ mod cli;
 mod config;
 mod table;
 
-use bee_actions::{ActionRegisty, command_parser::Parser};
+use bee_actions::{ActionRegistry, command_parser::Parser};
 use bee_core::{
     Printer,
     filters::{self, Filter},
@@ -46,8 +46,7 @@ fn main() {
     }
 
     let mut arg_parser = Parser::default();
-    let registry = ActionRegisty::default();
-    for cmd in registry.get_action_parsed_command() {
+    for cmd in ActionRegistry::get_parsed_commands() {
         arg_parser.register_command_parser(cmd);
     }
 
@@ -106,7 +105,7 @@ fn main() {
         tasks.set_undos(&undo_action.tasks);
     }
 
-    let mut action = registry.get_action_from_command_parser(&command);
+    let mut action = ActionRegistry::get_action_from_command_parser(&command);
     action.set_tasks(tasks);
     action.set_undos(undos);
     match action.do_action(&SimpleTaskTextPrinter) {

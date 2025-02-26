@@ -59,11 +59,11 @@ cargo run help
 ### Next steps
 
 - [X] Help
-- [ ] Refactor DependsOn to just be a link type in between two tasks.
 - [X] due
 - [X] 'export' action
-- [ ] Improve Task Info with printing to a table instead of regular print
-- [ ] Views (show potentially multiple reports in a single view)
+- [X] Improve Task Info with printing to a table instead of regular print
+- [X] Views (show potentially multiple reports in a single view)
+- [ ] Refactor DependsOn to just be a link type in between two tasks.
 - [ ] Recurring tasks
     - A task can recur:
         - time OR duration, on a set schedule
@@ -78,9 +78,9 @@ cargo run help
 
 ### Nice to have
 
+- [X] Customise data location
+- [X] Customise config location (through ENV var)
 - [ ] Interactive search
-- [ ] Customise data location
-- [ ] Customise config location (through ENV var)
 - [ ] Support for hooks
 - [ ] Task duration
 - [ ] Task start date

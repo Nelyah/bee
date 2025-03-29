@@ -214,8 +214,6 @@ pub struct Task {
     #[serde(default)]
     date_completed: Option<DateTime<chrono::Local>>,
 
-    sub: Vec<Uuid>,
-
     #[serde(default)]
     links: Vec<Link>,
 

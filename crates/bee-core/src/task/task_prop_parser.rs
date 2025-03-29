@@ -182,7 +182,12 @@ impl TaskPropertyParser {
                             ));
                     }
 
-                    props.project = Some(Project::from(project_name));
+                    if project_name.to_lowercase() == "none" {
+                        props.project = Some(None);
+                    } else {
+                        props.project = Some(Some(Project::from(project_name)));
+                    }
+
                     self.next_token();
                 }
                 TokenType::TagPlusPrefix => {

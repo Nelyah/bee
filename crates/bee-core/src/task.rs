@@ -85,7 +85,9 @@ pub struct TaskProperties {
     /// Replace all of this task's annotations with the given vector
     annotations: Option<Vec<TaskAnnotation>>,
     active_status: Option<bool>,
-    project: Option<Project>,
+    /// If presents, sets the task's project to the given
+    /// Option<Project>
+    project: Option<Option<Project>>,
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
     depends_on: Option<Vec<DependsOnIdentifier>>,
@@ -104,6 +106,10 @@ impl TaskProperties {
 
     pub fn set_summary(&mut self, summary: &str) {
         self.summary = Some(summary.to_string());
+    }
+
+    pub fn set_project(&mut self, project: &Option<Project>) {
+        self.project = Some(project.clone());
     }
 
     pub fn add_depends_on(&mut self, identifier: &DependsOnIdentifier) {
@@ -418,12 +424,20 @@ impl Task {
             self.status = status.to_owned();
         }
 
-        if let Some(proj) = &props.project {
-            self.history.push(TaskHistory {
-                time: Local::now(),
-                value: format!("Project set to '{}'", proj),
-            });
-            self.project = Some(proj.to_owned());
+        if let Some(proj_option) = &props.project {
+            if let Some(proj) = proj_option {
+                self.history.push(TaskHistory {
+                    time: Local::now(),
+                    value: format!("Project set to '{}'", proj),
+                });
+                self.project = Some(proj.to_owned());
+            } else {
+                self.history.push(TaskHistory {
+                    time: Local::now(),
+                    value: "Project has been unset".to_string(),
+                });
+                self.project = None;
+            }
         }
 
         if let Some(tags) = &props.tags_remove {
@@ -869,7 +883,11 @@ impl TaskData {
 
         let date_due = props.date_due.as_ref().map(|date| date.to_owned());
 
-        let project = props.project.to_owned();
+        let project = if let Some(proj) = &props.project {
+            proj.to_owned()
+        } else {
+            None
+        };
 
         let summary = match &props.summary {
             Some(summary) => summary.to_owned(),

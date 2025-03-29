@@ -155,7 +155,7 @@ fn test_apply_project() {
     let new_proj = Project {
         name: "a.b.c".to_string(),
     };
-    props.project = Some(new_proj.clone());
+    props.project = Some(Some(new_proj.clone()));
 
     assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);

@@ -13,18 +13,18 @@ fn from_string(value: &str) -> TaskProperties {
 fn test_project_string() {
     let tp = from_string("project:p.a.b.c");
     let props = TaskProperties {
-        project: Some(Project {
+        project: Some(Some(Project {
             name: "p.a.b.c".to_string(),
-        }),
+        })),
         ..TaskProperties::default()
     };
     assert_eq!(tp, props);
 
     let tp = from_string("project:p-a-b.c");
     let props = TaskProperties {
-        project: Some(Project {
+        project: Some(Some(Project {
             name: "p-a-b.c".to_string(),
-        }),
+        })),
         ..TaskProperties::default()
     };
     assert_eq!(tp, props);
@@ -62,9 +62,9 @@ fn test_task_properties_parser() {
     let props = TaskProperties {
         summary: Some("a new task summ(\tary".to_owned()),
         status: Some(TaskStatus::Pending),
-        project: Some(Project {
+        project: Some(Some(Project {
             name: "p.a.b.c".to_string(),
-        }),
+        })),
         ..TaskProperties::default()
     };
     assert_eq!(tp, props);
@@ -76,9 +76,9 @@ fn test_task_properties_parser() {
             summary: Some("a new task summary".to_owned()),
             tags_remove: Some(vec!["main".to_owned()]),
             tags_add: Some(vec!["foo".to_owned()]),
-            project: Some(Project {
+            project: Some(Some(Project {
                 name: "proj.a.b.c".to_string()
-            }),
+            })),
             ..TaskProperties::default()
         }
     );
@@ -101,9 +101,9 @@ fn test_task_properties_parser() {
             summary: Some("a new task summary".to_owned()),
             tags_remove: Some(vec!["main".to_owned()]),
             tags_add: Some(vec!["foo".to_owned()]),
-            project: Some(Project {
+            project: Some(Some(Project {
                 name: "proj.a.b.c".to_string()
-            }),
+            })),
             date_due: Some(today_start),
             ..TaskProperties::default()
         }

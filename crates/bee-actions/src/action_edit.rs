@@ -52,7 +52,7 @@ fn create_and_edit_json_file(input_serialised_tasks: &str) -> Result<TaskData, S
 }
 
 /// This will construct a TaskProperties that will only contain the fields
-/// that we are allowing to be modified (summary, annotations, tags)
+/// that we are allowing to be modified (summary, annotations, tags, project)
 fn get_task_property(old_task: &Task, new_task: &Task) -> TaskProperties {
     let mut props = TaskProperties::default();
     if new_task.get_summary() != old_task.get_summary() {
@@ -79,6 +79,10 @@ fn get_task_property(old_task: &Task, new_task: &Task) -> TaskProperties {
 
     if new_task.get_annotations() != old_task.get_annotations() {
         props.set_annotations(new_task.get_annotations());
+    }
+
+    if new_task.get_project() != old_task.get_project() {
+        props.set_project(new_task.get_project());
     }
 
     props

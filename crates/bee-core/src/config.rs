@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, info};
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -170,6 +170,10 @@ pub fn find_config_file() -> Option<PathBuf> {
         }
     }
 
+    info!(
+        "Did not find a config file in any of the following locationss: {:?}",
+        paths
+    );
     None
 }
 

@@ -170,6 +170,23 @@ impl TaskAnnotation {
     }
 }
 
+#[derive(
+    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+enum LinkType {
+    DependsOn,
+    Blocking,
+}
+
+#[derive(
+    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+pub struct Link {
+    from: Uuid,
+    to: Uuid,
+    link_type: LinkType,
+}
+
 /// This struct contains a description of what happened to a task,
 /// and when that event happened as well.
 #[derive(
@@ -199,12 +216,8 @@ pub struct Task {
 
     sub: Vec<Uuid>,
 
-    /// List of the UUIDs this task depends on
     #[serde(default)]
-    depends_on: Vec<Uuid>,
-
-    #[serde(default)]
-    blocking: Vec<Uuid>,
+    links: Vec<Link>,
 
     project: Option<Project>,
 
@@ -241,6 +254,36 @@ impl Ord for Task {
 }
 
 impl Task {
+    /// Returns true if this task depends on the given UUID. False otherwise
+    pub fn depends_on(&self, uuid: &Uuid) -> bool {
+        self.links
+            .iter()
+            .any(|link| link.link_type == LinkType::DependsOn && link.to == *uuid)
+    }
+
+    /// Returns the list of UUID this tasks depends on
+    pub fn get_depends_on(&self) -> Vec<&Uuid> {
+        self.links
+            .iter()
+            .filter(|l| l.link_type == LinkType::DependsOn)
+            .map(|l| &l.to)
+            .collect()
+    }
+
+    pub fn blocks(&self, uuid: &Uuid) -> bool {
+        self.links
+            .iter()
+            .any(|link| link.link_type == LinkType::Blocking && link.to == *uuid)
+    }
+
+    pub fn get_blocking(&self) -> Vec<&Uuid> {
+        self.links
+            .iter()
+            .filter(|l| l.link_type == LinkType::Blocking)
+            .map(|l| &l.to)
+            .collect()
+    }
+
     pub fn get_id(&self) -> Option<usize> {
         self.id
     }
@@ -290,8 +333,8 @@ impl Task {
             }
         }
 
-        urgency += self.blocking.len() as i64 * blocking_coef;
-        urgency += self.depends_on.len() as i64 * depends_coef;
+        urgency += self.get_blocking().len() as i64 * blocking_coef;
+        urgency += self.get_depends_on().len() as i64 * depends_coef;
 
         if self.status == TaskStatus::Active {
             urgency += active_status_coef;
@@ -314,14 +357,6 @@ impl Task {
 
     pub fn get_annotations(&self) -> &Vec<TaskAnnotation> {
         &self.annotations
-    }
-
-    pub fn get_blocking(&self) -> &Vec<Uuid> {
-        &self.blocking
-    }
-
-    pub fn get_depends(&self) -> &Vec<Uuid> {
-        &self.depends_on
     }
 
     pub fn get_summary(&self) -> &str {
@@ -363,7 +398,14 @@ impl Task {
 
     /// Send back a list of the UUID that this task knows about or refers to
     pub fn get_extra_uuid(&self) -> Vec<Uuid> {
-        let mut uuids = [self.depends_on.to_owned(), self.blocking.to_owned()].concat();
+        let mut uuids = [
+            self.get_depends_on()
+                .into_iter()
+                .cloned()
+                .collect::<Vec<_>>(),
+            self.get_blocking().into_iter().cloned().collect::<Vec<_>>(),
+        ]
+        .concat();
         uuids.sort_unstable();
         uuids.dedup();
         uuids
@@ -508,7 +550,7 @@ impl Task {
             // for the task. In which case just don't add any. This will update the
             // task to not have any dependencies
             if !depends_on.is_empty() {
-                self.depends_on.iter().for_each(|uuid| {
+                self.get_depends_on().iter().for_each(|&uuid| {
                     deps_set.insert(uuid.to_owned());
                 });
             }
@@ -529,12 +571,15 @@ impl Task {
                             time: Local::now(),
                             value: format!("Added a UUID to depend on: '{}'", uuid),
                         });
-                        self.depends_on.push(uuid.to_owned());
+                        self.links.push(Link {
+                            from: self.uuid,
+                            to: uuid.to_owned(),
+                            link_type: LinkType::DependsOn,
+                        });
                         deps_set.insert(uuid.to_owned());
                     }
                 }
             }
-            self.depends_on = deps_set.into_iter().collect();
         }
         self.compute_urgency()?;
         Ok(())
@@ -742,10 +787,14 @@ impl TaskData {
 
         // Update dependency status if a depended class is done / deleted
 
+        // this is the UUID with all the tasks it should depends ONTO
         let mut task_depends_to_update = HashMap::<Uuid, Vec<Uuid>>::default();
+
         for task in self.tasks.values() {
             let mut dependencies_to_update = HashSet::<Uuid>::default();
-            let deps_set_before: HashSet<Uuid> = task.depends_on.iter().cloned().collect();
+            let deps_set_before: HashSet<Uuid> =
+                task.get_depends_on().into_iter().cloned().collect();
+
             for dep_uuid in &deps_set_before {
                 if let Some(t) = self.tasks.get(dep_uuid) {
                     match t.status {
@@ -780,21 +829,45 @@ impl TaskData {
         task_depends_to_update
             .into_iter()
             .for_each(|(task_uuid, deps_uuids)| {
-                self.tasks.get_mut(&task_uuid).unwrap().depends_on = deps_uuids;
+                let t = self.tasks.get_mut(&task_uuid).unwrap();
+                t.links.retain(|l| l.link_type != LinkType::DependsOn);
+
+                for uuid in deps_uuids {
+                    trace!("adding {} -- DependsOn --> {}", t.uuid, uuid);
+                    t.links.push(Link {
+                        from: t.uuid.to_owned(),
+                        to: uuid,
+                        link_type: LinkType::DependsOn,
+                    });
+                }
             });
 
         // Add the blocking UUID when being referred by depends_on
-        let mut blockers_uuid = HashMap::new();
+        let mut blocking_to_blocked_uuids = HashMap::new();
         for task in self.tasks.values() {
-            for blocking_uuid in &task.depends_on {
-                blockers_uuid.insert(blocking_uuid.to_owned(), task.uuid.to_owned());
+            for link in &task.links {
+                match link.link_type {
+                    LinkType::DependsOn => {
+                        // If A depends on B → B blocks A
+                        blocking_to_blocked_uuids.insert(link.to, link.from);
+                    }
+                    LinkType::Blocking => {
+                        blocking_to_blocked_uuids.insert(link.from, link.to);
+                    }
+                }
             }
         }
-        for (blocker_uuid, blocked_uuid) in blockers_uuid {
-            let t = self.tasks.get_mut(&blocker_uuid).unwrap();
-            t.blocking.push(blocked_uuid);
-            t.blocking.sort_unstable();
-            t.blocking.dedup();
+
+        for (blocking_uuid, blocked_uuid) in blocking_to_blocked_uuids {
+            let t = self.tasks.get_mut(&blocking_uuid).unwrap();
+
+            if !t.blocks(&blocked_uuid) {
+                t.links.push(Link {
+                    from: blocking_uuid,
+                    to: blocked_uuid,
+                    link_type: LinkType::Blocking,
+                });
+            }
         }
 
         // Update blocking status for tasks
@@ -804,26 +877,35 @@ impl TaskData {
             .tasks
             .values()
             .filter(|t| {
-                !t.blocking.is_empty()
+                !t.get_blocking().is_empty()
                     && t.status != TaskStatus::Deleted
                     && t.status != TaskStatus::Completed
             })
             .map(|t| t.uuid)
             .collect();
         for blocker_uuid in blockers_uuid {
-            let mut blocker_task = self.tasks.get_mut(&blocker_uuid).unwrap().to_owned();
-            let mut new_blocking_uuids = Vec::new();
+            let mut new_blocked_uuids = Vec::new();
 
-            for blocked_uuid in &blocker_task.blocking {
+            for blocked_uuid in self.tasks.get(&blocker_uuid).unwrap().get_blocking() {
                 let blocked_task = self.tasks.get(blocked_uuid).unwrap();
 
-                if blocked_task.depends_on.contains(&blocker_uuid) {
-                    new_blocking_uuids.push(*blocked_uuid);
+                if blocked_task.depends_on(&blocker_uuid) {
+                    new_blocked_uuids.push(*blocked_uuid);
                 }
             }
-            blocker_task.blocking = new_blocking_uuids;
-            self.tasks
-                .insert(blocker_task.uuid.to_owned(), blocker_task);
+            let blocker_task = self.tasks.get_mut(&blocker_uuid).unwrap();
+
+            blocker_task
+                .links
+                .retain(|l| l.link_type != LinkType::Blocking);
+
+            blocker_task
+                .links
+                .extend(new_blocked_uuids.iter().map(|&uuid| Link {
+                    from: blocker_task.uuid,
+                    to: uuid,
+                    link_type: LinkType::Blocking,
+                }));
         }
 
         Ok(())
@@ -840,10 +922,10 @@ impl TaskData {
         for (key, task) in &self.tasks {
             if filter.validate_task(task) {
                 new_data.tasks.insert(key.to_owned(), task.to_owned());
-                for uuid_dep in &task.depends_on {
+                for uuid_dep in &task.get_depends_on() {
                     extra_tasks.push(self.tasks.get(uuid_dep).unwrap());
                 }
-                for uuid_dep in &task.blocking {
+                for uuid_dep in task.get_blocking() {
                     extra_tasks.push(self.tasks.get(uuid_dep).unwrap());
                 }
             }
@@ -868,6 +950,7 @@ impl TaskData {
             None => &status,
         }
         .clone();
+        let new_uuid = Uuid::new_v4();
         let new_id: Option<usize> = match status {
             TaskStatus::Pending | TaskStatus::Active => {
                 self.max_id += 1;
@@ -899,7 +982,7 @@ impl TaskData {
             None => Vec::default(),
         };
 
-        let depends_on = match &props.depends_on {
+        let links = match &props.depends_on {
             Some(_) => {
                 let my_props = self.update_task_property_depends_on(props)?;
                 let mut deps_uuid: Vec<Uuid> = Vec::new();
@@ -916,6 +999,13 @@ impl TaskData {
                     }
                 }
                 deps_uuid
+                    .iter()
+                    .map(|&uuid| Link {
+                        from: new_uuid.to_owned(),
+                        to: uuid,
+                        link_type: LinkType::DependsOn,
+                    })
+                    .collect()
             }
             None => Vec::default(),
         };
@@ -925,12 +1015,12 @@ impl TaskData {
             id: new_id,
             status,
             tags,
-            uuid: Uuid::new_v4(),
+            uuid: new_uuid,
             date_created: Local::now(),
             date_completed,
             date_due,
             project,
-            depends_on,
+            links,
             ..Task::default()
         };
         let owned_uuid = t.get_uuid().to_owned();

@@ -1,5 +1,6 @@
 use all_asserts::assert_true;
 use chrono::{Duration, Local};
+use log::debug;
 
 use crate::filters;
 
@@ -159,13 +160,21 @@ fn test_filter_taskdata() {
     let task1 = Task {
         status: TaskStatus::Pending,
         uuid: task1_uuid,
-        depends_on: vec![task2_uuid],
+        links: vec![Link {
+            from: task1_uuid,
+            to: task2_uuid,
+            link_type: LinkType::DependsOn,
+        }],
         ..Task::default()
     };
     let task2 = Task {
         status: TaskStatus::Pending,
         uuid: task2_uuid,
-        blocking: vec![task1_uuid],
+        links: vec![Link {
+            from: task2_uuid,
+            to: task1_uuid,
+            link_type: LinkType::Blocking,
+        }],
         ..Task::default()
     };
     data.tasks.insert(task1.uuid.to_owned(), task1.clone());
@@ -197,7 +206,11 @@ fn test_upkeep() {
         status: TaskStatus::Pending,
         uuid: task1_uuid,
         date_created: now,
-        depends_on: vec![task2_uuid],
+        links: vec![Link {
+            from: task1_uuid,
+            to: task2_uuid,
+            link_type: LinkType::DependsOn,
+        }],
         ..Task::default()
     };
     let task2 = Task {
@@ -214,15 +227,24 @@ fn test_upkeep() {
     assert_eq!(data.tasks.get(&task2_uuid).unwrap().id, None);
 
     // Check that we are updating the blocking status
-    assert_true!(data.tasks.get(&task2_uuid).unwrap().blocking.is_empty());
+    assert_true!(
+        data.tasks
+            .get(&task2_uuid)
+            .unwrap()
+            .get_blocking()
+            .is_empty()
+    );
 
     let _ = data.upkeep();
 
     assert_eq!(data.tasks.get(&task1_uuid).unwrap().id, Some(1));
     assert_eq!(data.tasks.get(&task2_uuid).unwrap().id, Some(2));
 
-    assert_eq!(data.tasks.get(&task2_uuid).unwrap().blocking.len(), 1);
-    assert_eq!(data.tasks.get(&task2_uuid).unwrap().blocking[0], task1_uuid);
+    assert_eq!(data.tasks.get(&task2_uuid).unwrap().get_blocking().len(), 1);
+    assert_eq!(
+        *data.tasks.get(&task2_uuid).unwrap().get_blocking()[0],
+        task1_uuid
+    );
 
     // Make sure that the delete and done functions correctly erase the blocking / done status
     // and that upkeep also checks that we need to update when task is complete
@@ -230,12 +252,84 @@ fn test_upkeep() {
     data.tasks.get_mut(&task2_uuid).unwrap().done();
 
     let _ = data.upkeep();
-    assert_true!(data.tasks.get(&task1_uuid).unwrap().depends_on.is_empty());
+    assert_true!(
+        data.tasks
+            .get(&task1_uuid)
+            .unwrap()
+            .get_depends_on()
+            .is_empty()
+    );
 
     data.tasks.insert(tmp_task2.uuid, tmp_task2);
     let _ = data.upkeep();
-    data.tasks.get_mut(&task1_uuid).unwrap().depends_on = vec![task2_uuid];
+    data.tasks.get_mut(&task1_uuid).unwrap().links = vec![Link {
+        from: task1_uuid,
+        to: task2_uuid,
+        link_type: LinkType::DependsOn,
+    }];
     data.tasks.get_mut(&task2_uuid).unwrap().delete();
     let _ = data.upkeep();
-    assert_true!(data.tasks.get(&task1_uuid).unwrap().depends_on.is_empty());
+    assert_true!(
+        data.tasks
+            .get(&task1_uuid)
+            .unwrap()
+            .get_depends_on()
+            .is_empty()
+    );
+}
+
+fn init() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+
+#[test]
+fn test_upkeep_dependency_links() {
+    init();
+    let mut data = TaskData::default();
+    let task1_uuid = Uuid::new_v4();
+    let task2_uuid = Uuid::new_v4();
+    debug!("Task1 UUID: {}", task1_uuid);
+    debug!("Task2 UUID: {}", task2_uuid);
+    let now = Local::now();
+
+    let task1 = Task {
+        status: TaskStatus::Pending,
+        uuid: task1_uuid,
+        date_created: now,
+        links: vec![Link {
+            from: task1_uuid,
+            to: task2_uuid,
+            link_type: LinkType::DependsOn,
+        }],
+        ..Task::default()
+    };
+    let task2 = Task {
+        status: TaskStatus::Pending,
+        uuid: task2_uuid,
+        date_created: now + Duration::try_hours(1).unwrap(),
+        ..Task::default()
+    };
+    data.tasks.insert(task1.uuid.to_owned(), task1.clone());
+    data.tasks.insert(task2.uuid.to_owned(), task2.clone());
+    let _ = data.upkeep();
+    {
+        let t1 = data.get_task_map().get(&task1_uuid).unwrap();
+        let t2 = data.get_task_map().get(&task2_uuid).unwrap();
+
+        assert_eq!(t1.get_depends_on()[0], &task2_uuid);
+        assert_true!(t1.get_blocking().is_empty());
+
+        assert_eq!(t2.get_blocking()[0], &task1_uuid,);
+        assert_true!(t2.get_depends_on().is_empty());
+    }
+    let _ = data.upkeep();
+
+    let t1 = data.get_task_map().get(&task1_uuid).unwrap();
+    let t2 = data.get_task_map().get(&task2_uuid).unwrap();
+
+    assert_eq!(t1.get_depends_on()[0], &task2_uuid);
+    assert_true!(t1.get_blocking().is_empty());
+
+    assert_eq!(t2.get_blocking()[0], &task1_uuid,);
+    assert_true!(t2.get_depends_on().is_empty());
 }

@@ -847,7 +847,7 @@ pub struct DependsOnFilter {
 impl Filter for DependsOnFilter {
     fn validate_task(&self, task: &Task) -> bool {
         if let Some(uuid) = &self.uuid {
-            return task.get_depends().contains(uuid);
+            return task.depends_on(uuid);
         }
 
         unreachable!("Trying to validate a DependsOn filter without a UUID");

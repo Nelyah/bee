@@ -310,34 +310,36 @@ fn test_apply_depends_on() {
     let uuid_2 = Uuid::new_v4();
     props.depends_on = Some(vec![DependsOnIdentifier::Uuid(uuid_1)]);
 
-    assert_true!(task.depends_on.is_empty());
+    assert_true!(task.get_depends_on().is_empty());
     assert_true!(task.get_history().is_empty());
     let _ = task.apply(&props);
     assert_false!(task.get_history().is_empty());
-    assert_eq!(task.depends_on.len(), 1);
+    assert_eq!(task.get_depends_on().len(), 1);
     // Evene if we apply if a second time we still have a single value because it's the same uuid
     assert_eq!(task.get_history().len(), 1);
     let _ = task.apply(&props);
     assert_eq!(task.get_history().len(), 1);
-    assert_eq!(task.depends_on.len(), 1);
-    assert_eq!(task.depends_on.first().unwrap(), &uuid_1);
+    assert_eq!(task.get_depends_on().len(), 1);
+    assert_eq!(*task.get_depends_on().first().unwrap(), &uuid_1);
 
     props.depends_on = Some(vec![
         DependsOnIdentifier::Uuid(uuid_1),
         DependsOnIdentifier::Uuid(uuid_2),
     ]);
-    assert_eq!(task.depends_on.len(), 1);
+    assert_eq!(task.get_depends_on().len(), 1);
     let _ = task.apply(&props);
-    assert_eq!(task.depends_on.len(), 2);
+    assert_eq!(task.get_depends_on().len(), 2);
     assert_true!(
-        task.depends_on.first().unwrap() == &uuid_1 || task.depends_on.first().unwrap() == &uuid_2
+        *task.get_depends_on().first().unwrap() == &uuid_1
+            || *task.get_depends_on().first().unwrap() == &uuid_2
     );
     assert_true!(
-        task.depends_on.last().unwrap() == &uuid_1 || task.depends_on.last().unwrap() == &uuid_2
+        *task.get_depends_on().last().unwrap() == &uuid_1
+            || *task.get_depends_on().last().unwrap() == &uuid_2
     );
     assert_ne!(
-        task.depends_on.first().unwrap(),
-        task.depends_on.last().unwrap()
+        task.get_depends_on().first().unwrap(),
+        task.get_depends_on().last().unwrap()
     )
 }
 

@@ -81,7 +81,7 @@ fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
                 }
             }
             "depends" => {
-                if !task.get_depends().is_empty() {
+                if !task.get_depends_on().is_empty() {
                     return Ok(Some(StyledText {
                         styles: vec![],
                         background_color: colour_conf.bg,
@@ -213,14 +213,14 @@ impl Printer for SimpleTaskTextPrinter {
             .as_str();
         }
 
-        if !task.get_depends().is_empty() || !task.get_depends().is_empty() {
+        if !task.get_depends_on().is_empty() || !task.get_depends_on().is_empty() {
             output_str += "\n";
         }
 
-        if !task.get_depends().is_empty() {
+        if !task.get_depends_on().is_empty() {
             output_str += format!(
                 "\nDepends:\t{}",
-                task.get_depends()
+                task.get_depends_on()
                     .iter()
                     .map(|uuid| uuid.to_string())
                     .collect::<Vec<String>>()

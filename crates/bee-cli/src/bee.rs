@@ -4,9 +4,7 @@ mod table;
 
 use bee_actions::{ActionRegistry, command_parser::Parser};
 use bee_core::{
-    Printer,
-    filters::{self, Filter},
-    task::TaskProperties,
+    db::run_migration, filters::{self, Filter}, task::TaskProperties, Printer
 };
 use bee_storage::storage::{JsonStore, Store};
 
@@ -33,8 +31,12 @@ fn get_section_filters() -> Result<Option<Box<dyn Filter>>, String> {
     Ok(None)
 }
 
-fn main() {
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>>{
     env_logger::init();
+    
+    run_migration().await?;
     let undo_count = 1;
 
     match config::load_config() {
@@ -124,4 +126,5 @@ fn main() {
         }
     };
     JsonStore::log_undo(undo_count, action.get_undos().to_owned());
+    Ok(())
 }

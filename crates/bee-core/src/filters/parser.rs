@@ -337,7 +337,7 @@ impl FilterParser {
                             id: self
                                 .current_token
                                 .literal
-                                .parse::<usize>()
+                                .parse::<i32>()
                                 .unwrap()
                                 .to_owned(),
                         }),
@@ -389,7 +389,7 @@ impl FilterParser {
                             id: Some(
                                 self.current_token
                                     .literal
-                                    .parse::<usize>()
+                                    .parse::<i32>()
                                     .unwrap()
                                     .to_owned(),
                             ),

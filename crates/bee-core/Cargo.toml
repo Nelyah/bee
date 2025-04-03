@@ -4,6 +4,7 @@ version = { workspace = true }
 edition = "2024"
 
 [dependencies]
+migration = { path = "../migration" }
 
 all_asserts.workspace = true
 chrono.workspace = true
@@ -25,3 +26,15 @@ shellexpand = "3.1"
 
 # Easily Serialise / deserialise `&dyn Type` objects
 typetag = "0.2"
+
+
+
+# Use SQLx 0.7 to match SeaORM
+# sqlx = { version = "^0.8", features = ["sqlite", "runtime-tokio-native-tls", "macros"] }
+
+# SeaORM 0.12 uses SQLx 0.7 internally
+sea-orm = { version = "^1.1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls"] }
+sea-orm-migration = { version = "^1.1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls"] }
+
+# Tokio runtime for async support
+tokio = { version = "1", features = ["full"] }

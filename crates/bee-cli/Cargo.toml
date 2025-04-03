@@ -11,6 +11,7 @@ edition = "2024"
 bee-core = { path = "../bee-core" }
 bee-actions = { path = "../bee-actions" }
 bee-storage = { path = "../bee-storage" }
+migration = { path = "../migration" }
 
 all_asserts.workspace = true
 chrono.workspace = true
@@ -35,3 +36,5 @@ indexmap = {version = "2.7", features = ["serde"]}
 
 # Make it easier for global static data
 once_cell = "1.17"
+# Tokio runtime for async support
+tokio = { version = "1", features = ["full"] }

@@ -211,8 +211,8 @@ impl TaskPropertyParser {
                             ));
                         }
                         TokenType::Int => {
-                            new_depends_on.push(DependsOnIdentifier::Usize(
-                                self.current_token.literal.parse::<usize>().unwrap(),
+                            new_depends_on.push(DependsOnIdentifier::Id(
+                                self.current_token.literal.parse::<i32>().unwrap(),
                             ));
                         }
                         _ if self.current_token.token_type == TokenType::WordString

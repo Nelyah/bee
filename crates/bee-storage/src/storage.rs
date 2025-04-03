@@ -53,7 +53,7 @@ impl Store for JsonStore {
         data.upkeep()?;
 
         // We need to keep some knowledge of how the ids map to the uuids
-        let mut id_to_uuid = HashMap::<usize, Uuid>::default();
+        let mut id_to_uuid = HashMap::<i32, Uuid>::default();
         for task in data
             .get_task_map()
             .values()
@@ -98,7 +98,7 @@ impl Store for JsonStore {
                         debug!("Adding extra task with uuid {} from TaskProperties", uuid);
                         new_data.insert_extra_task(data.get_owned(&uuid).unwrap())
                     }
-                    DependsOnIdentifier::Usize(id) => {
+                    DependsOnIdentifier::Id(id) => {
                         if let Some(uuid) = id_to_uuid.get(&id) {
                             debug!(
                                 "Adding extra task with id {} and uuid {} from TaskProperties",

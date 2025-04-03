@@ -1,20 +1,18 @@
 mod task_prop_parser;
 
-use log::trace;
+use crate::filters::Filter;
+use crate::lexer::Lexer;
 use task_prop_parser::TaskPropertyParser;
 
-use std::{cmp::Ordering, collections::HashSet, fmt};
-
+use chrono::Local;
 use chrono::prelude::DateTime;
+use log::trace;
+use serde::{Deserialize, Deserializer, Serialize, ser::Serializer};
 use serde_json::Value;
 use uuid::Uuid;
 
-use chrono::Local;
-use serde::{Deserialize, Deserializer, Serialize, ser::Serializer};
 use std::collections::HashMap;
-
-use crate::filters::Filter;
-use crate::lexer::Lexer;
+use std::{cmp::Ordering, collections::HashSet, fmt};
 
 #[path = "task_test.rs"]
 #[cfg(test)]
@@ -65,7 +63,7 @@ impl fmt::Display for TaskStatus {
 
 #[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum DependsOnIdentifier {
-    Usize(usize),
+    Id(i32),
     Uuid(Uuid),
 }
 
@@ -156,8 +154,10 @@ impl TaskProperties {
     Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub struct TaskAnnotation {
-    value: String,
-    time: DateTime<chrono::Local>,
+    /// ID to serve as primary key in the DB
+    pub(crate) id: Option<i32>,
+    pub(crate) value: String,
+    pub(crate) time: DateTime<chrono::Local>,
 }
 
 impl TaskAnnotation {
@@ -173,7 +173,7 @@ impl TaskAnnotation {
 #[derive(
     Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
-enum LinkType {
+pub enum LinkType {
     DependsOn,
     Blocking,
 }
@@ -182,9 +182,11 @@ enum LinkType {
     Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub struct Link {
-    from: Uuid,
-    to: Uuid,
-    link_type: LinkType,
+    /// ID to serve as primary key in the DB
+    pub(crate) id: Option<i32>,
+    pub(crate) from: Uuid,
+    pub(crate) to: Uuid,
+    pub(crate) link_type: LinkType,
 }
 
 /// This struct contains a description of what happened to a task,
@@ -193,42 +195,47 @@ pub struct Link {
     Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub struct TaskHistory {
+    /// ID serving as primary key in the database
+    pub(crate) id: Option<i32>,
     pub value: String,
-    pub time: DateTime<chrono::Local>,
+    pub datetime: DateTime<chrono::Local>,
 }
 
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct Task {
-    id: Option<usize>,
-    status: TaskStatus,
-    uuid: Uuid,
-    summary: String,
+    /// Database ID that is automatically set / incremented by the database
+    pub(crate) db_id: Option<i32>,
+
+    pub(crate) id: Option<i32>,
+    pub(crate) status: TaskStatus,
+    pub(crate) uuid: Uuid,
+    pub(crate) summary: String,
 
     #[serde(default)]
-    annotations: Vec<TaskAnnotation>,
+    pub(crate) annotations: Vec<TaskAnnotation>,
 
-    tags: Vec<String>,
+    pub(crate) tags: Vec<String>,
 
-    date_created: DateTime<chrono::Local>,
-
-    #[serde(default)]
-    date_completed: Option<DateTime<chrono::Local>>,
+    pub(crate) date_created: DateTime<chrono::Local>,
 
     #[serde(default)]
-    links: Vec<Link>,
-
-    project: Option<Project>,
+    pub(crate) date_completed: Option<DateTime<chrono::Local>>,
 
     #[serde(default)]
-    date_due: Option<DateTime<chrono::Local>>,
+    pub(crate) links: Vec<Link>,
+
+    pub(crate) project: Option<Project>,
+
+    #[serde(default)]
+    pub(crate) date_due: Option<DateTime<chrono::Local>>,
 
     /// Urgency score that will be computed depending on the other fields of the task
     #[serde(default)]
-    urgency: Option<i64>,
+    pub(crate) urgency: Option<i64>,
 
     /// All the events that have happened to a task after its creation
     #[serde(default)]
-    history: Vec<TaskHistory>,
+    pub(crate) history: Vec<TaskHistory>,
 }
 
 impl PartialOrd for Task {
@@ -282,7 +289,7 @@ impl Task {
             .collect()
     }
 
-    pub fn get_id(&self) -> Option<usize> {
+    pub fn get_id(&self) -> Option<i32> {
         self.id
     }
 
@@ -412,7 +419,8 @@ impl Task {
     pub fn apply(&mut self, props: &TaskProperties) -> Result<(), String> {
         if let Some(summary) = &props.summary {
             self.history.push(TaskHistory {
-                time: Local::now(),
+                id: None,
+                datetime: Local::now(),
                 value: format!("Summary changed from '{}' to '{}'.", self.summary, summary),
             });
             self.summary = summary.clone();
@@ -420,7 +428,8 @@ impl Task {
 
         if let Some(date_due) = &props.date_due {
             self.history.push(TaskHistory {
-                time: Local::now(),
+                id: None,
+                datetime: Local::now(),
                 value: format!("Due date set to {}", date_due),
             });
             self.date_due = Some(date_due.to_owned());
@@ -436,7 +445,8 @@ impl Task {
                 }
                 self.status = TaskStatus::Active;
                 self.history.push(TaskHistory {
-                    time: Local::now(),
+                    id: None,
+                    datetime: Local::now(),
                     value: "Status changed from 'PENDING' to 'ACTIVE'".to_string(),
                 });
             } else {
@@ -448,7 +458,8 @@ impl Task {
                 }
                 self.status = TaskStatus::Pending;
                 self.history.push(TaskHistory {
-                    time: Local::now(),
+                    id: None,
+                    datetime: Local::now(),
                     value: "Status changed from 'ACTIVE' to 'PENDING'".to_string(),
                 });
             }
@@ -457,7 +468,8 @@ impl Task {
         if let Some(status) = &props.status {
             if &self.status != status {
                 self.history.push(TaskHistory {
-                    time: Local::now(),
+                    id: None,
+                    datetime: Local::now(),
                     value: format!("Status changed from '{}' to '{}'", self.status, status),
                 });
             }
@@ -467,13 +479,15 @@ impl Task {
         if let Some(proj_option) = &props.project {
             if let Some(proj) = proj_option {
                 self.history.push(TaskHistory {
-                    time: Local::now(),
+                    id: None,
+                    datetime: Local::now(),
                     value: format!("Project set to '{}'", proj),
                 });
                 self.project = Some(proj.to_owned());
             } else {
                 self.history.push(TaskHistory {
-                    time: Local::now(),
+                    id: None,
+                    datetime: Local::now(),
                     value: "Project has been unset".to_string(),
                 });
                 self.project = None;
@@ -494,7 +508,8 @@ impl Task {
 
             if !removed_tags.is_empty() {
                 self.history.push(TaskHistory {
-                    time: Local::now(),
+                    id: None,
+                    datetime: Local::now(),
                     value: format!("Removed tag(s) '{}'", removed_tags.join(", ")),
                 });
             }
@@ -509,7 +524,8 @@ impl Task {
                 new_tags.difference(&existing_tags).cloned().collect();
             if !tags_added.is_empty() {
                 self.history.push(TaskHistory {
-                    time: Local::now(),
+                    id: None,
+                    datetime: Local::now(),
                     value: format!(
                         "Added tag(s) '{}'",
                         tags_added
@@ -524,10 +540,12 @@ impl Task {
 
         if let Some(ann) = &props.annotation {
             self.history.push(TaskHistory {
-                time: Local::now(),
+                id: None,
+                datetime: Local::now(),
                 value: format!("Added an annotation '{}'", ann),
             });
             self.annotations.push(TaskAnnotation {
+                id: None,
                 value: ann.to_string(),
                 time: Local::now(),
             });
@@ -535,7 +553,8 @@ impl Task {
 
         if let Some(annotations) = &props.annotations {
             self.history.push(TaskHistory {
-                time: Local::now(),
+                id: None,
+                datetime: Local::now(),
                 value: "The list of annotations have been changed".to_string(),
             });
             self.annotations = annotations.to_owned();
@@ -554,7 +573,7 @@ impl Task {
             }
             for dep in depends_on {
                 match dep {
-                    DependsOnIdentifier::Usize(_) => {
+                    DependsOnIdentifier::Id(_) => {
                         unreachable!(
                             "We should not have a usize here. \
                             We should have converted it to a UUID before applying \
@@ -566,10 +585,12 @@ impl Task {
                             continue;
                         }
                         self.history.push(TaskHistory {
-                            time: Local::now(),
+                            id: None,
+                            datetime: Local::now(),
                             value: format!("Added a UUID to depend on: '{}'", uuid),
                         });
                         self.links.push(Link {
+                            id: None,
                             from: self.uuid,
                             to: uuid.to_owned(),
                             link_type: LinkType::DependsOn,
@@ -599,7 +620,8 @@ impl Task {
 
     pub fn delete(&mut self) {
         self.history.push(TaskHistory {
-            time: Local::now(),
+            id: None,
+            datetime: Local::now(),
             value: "Deleted task.".to_string(),
         });
         self.status = TaskStatus::Deleted;
@@ -610,7 +632,8 @@ impl Task {
     pub fn done(&mut self) {
         let current_time = Local::now();
         self.history.push(TaskHistory {
-            time: current_time,
+            id: None,
+            datetime: current_time,
             value: "Marked task as done".to_string(),
         });
         self.status = TaskStatus::Completed;
@@ -622,7 +645,12 @@ impl Task {
 
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Debug, Eq, PartialOrd, Ord, Hash)]
 pub struct Project {
-    name: String,
+    /// Primary key in the database
+    pub(crate) id: Option<i32>,
+    /// Name of the project.
+    /// Dots (.) separate a project into sub projects
+    /// a.project --> 'a' is a project with subproject 'a.project'
+    pub(crate) name: String,
 }
 
 impl Project {
@@ -631,7 +659,10 @@ impl Project {
     }
 
     pub fn from(value: String) -> Project {
-        Project { name: value }
+        Project {
+            name: value,
+            id: None,
+        }
     }
 }
 
@@ -651,9 +682,9 @@ pub struct TaskData {
     undos: HashMap<Uuid, Task>,
 
     /// Dictionary of ID to UUID of ALL the tasks. Not just the ones that are loaded
-    id_to_uuid: HashMap<usize, Uuid>,
+    id_to_uuid: HashMap<i32, Uuid>,
 
-    max_id: usize,
+    max_id: i32,
 
     /// Those are the tasks not required by the filters, but that might be needed
     /// when processing the action because they are linked to the filters
@@ -665,11 +696,11 @@ impl TaskData {
         &self.tasks
     }
 
-    pub fn get_id_to_uuid(&self) -> &HashMap<usize, Uuid> {
+    pub fn get_id_to_uuid(&self) -> &HashMap<i32, Uuid> {
         &self.id_to_uuid
     }
 
-    pub fn insert_id_to_uuid(&mut self, id: usize, uuid: Uuid) {
+    pub fn insert_id_to_uuid(&mut self, id: i32, uuid: Uuid) {
         self.id_to_uuid.insert(id, uuid);
     }
 
@@ -741,7 +772,7 @@ impl TaskData {
                     DependsOnIdentifier::Uuid(uuid) => {
                         new_depends_on.push(DependsOnIdentifier::Uuid(uuid.to_owned()))
                     }
-                    DependsOnIdentifier::Usize(id) => {
+                    DependsOnIdentifier::Id(id) => {
                         new_depends_on.push(DependsOnIdentifier::Uuid(
                             self.id_to_uuid
                                 .get(id)
@@ -833,6 +864,7 @@ impl TaskData {
                 for uuid in deps_uuids {
                     trace!("adding {} -- DependsOn --> {}", t.uuid, uuid);
                     t.links.push(Link {
+                        id: None,
                         from: t.uuid.to_owned(),
                         to: uuid,
                         link_type: LinkType::DependsOn,
@@ -861,6 +893,7 @@ impl TaskData {
 
             if !t.blocks(&blocked_uuid) {
                 t.links.push(Link {
+                    id: None,
                     from: blocking_uuid,
                     to: blocked_uuid,
                     link_type: LinkType::Blocking,
@@ -900,6 +933,7 @@ impl TaskData {
             blocker_task
                 .links
                 .extend(new_blocked_uuids.iter().map(|&uuid| Link {
+                    id: None,
                     from: blocker_task.uuid,
                     to: uuid,
                     link_type: LinkType::Blocking,
@@ -949,7 +983,7 @@ impl TaskData {
         }
         .clone();
         let new_uuid = Uuid::new_v4();
-        let new_id: Option<usize> = match status {
+        let new_id: Option<i32> = match status {
             TaskStatus::Pending | TaskStatus::Active => {
                 self.max_id += 1;
                 Some(self.max_id)
@@ -986,7 +1020,7 @@ impl TaskData {
                 let mut deps_uuid: Vec<Uuid> = Vec::new();
                 for item in my_props.depends_on.unwrap() {
                     match item {
-                        DependsOnIdentifier::Usize(_) => {
+                        DependsOnIdentifier::Id(_) => {
                             unreachable!(
                                 "We should not have a usize here. \
                             We should have converted it to a UUID before applying \
@@ -999,6 +1033,7 @@ impl TaskData {
                 deps_uuid
                     .iter()
                     .map(|&uuid| Link {
+                        id: None,
                         from: new_uuid.to_owned(),
                         to: uuid,
                         link_type: LinkType::DependsOn,

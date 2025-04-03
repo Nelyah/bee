@@ -248,7 +248,7 @@ impl Printer for SimpleTaskTextPrinter {
             for event in task.get_history() {
                 output_str += format!(
                     "\n- {} | {}",
-                    event.time.format("%Y-%m-%d %H:%M").to_string().bold(),
+                    event.datetime.format("%Y-%m-%d %H:%M").to_string().bold(),
                     &event.value
                 )
                 .as_str();

@@ -1,6 +1,7 @@
 pub mod config;
 pub mod filters;
 pub mod task;
+pub mod db;
 
 mod lexer;
 mod parser;

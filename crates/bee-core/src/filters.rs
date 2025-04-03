@@ -27,7 +27,7 @@ pub trait Filter: CloneFilter + Any + Debug + Display + FilterKindGetter {
     fn add_children(&mut self, child: Box<dyn Filter>);
     fn as_any(&self) -> &dyn Any;
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_>;
-    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<usize, Uuid>);
+    fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<i32, Uuid>);
 }
 
 // Consume @lhs and @rhs to return a new Box<dyn Filter>

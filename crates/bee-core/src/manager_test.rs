@@ -125,7 +125,7 @@ fn test_update_task_property_depends_on_usize() {
     data.insert_id_to_uuid(1, uuid);
 
     let props = TaskProperties {
-        depends_on: Some(vec![DependsOnIdentifier::Usize(1)]),
+        depends_on: Some(vec![DependsOnIdentifier::Id(1)]),
         ..TaskProperties::default()
     };
 
@@ -141,7 +141,7 @@ fn test_update_task_property_depends_on_usize() {
 fn test_update_task_property_depends_on_usize_not_found() {
     let data = TaskData::default();
     let props = TaskProperties {
-        depends_on: Some(vec![DependsOnIdentifier::Usize(1)]),
+        depends_on: Some(vec![DependsOnIdentifier::Id(1)]),
         ..TaskProperties::default()
     };
 

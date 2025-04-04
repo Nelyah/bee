@@ -4,10 +4,7 @@ mod table;
 
 use bee_actions::{ActionRegistry, command_parser::Parser};
 use bee_core::{
-    Printer,
-    db::run_migration,
-    filters::{self, Filter},
-    task::TaskProperties,
+    db::insert_task, filters::{self, Filter}, task::{Task, TaskProperties}, Printer
 };
 use bee_storage::storage::{JsonStore, Store};
 
@@ -38,7 +35,8 @@ fn get_section_filters() -> Result<Option<Box<dyn Filter>>, String> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    run_migration().await?;
+    let t = Task::default();
+    insert_task(&t).await?;
     let undo_count = 1;
 
     match config::load_config() {

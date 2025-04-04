@@ -13,7 +13,7 @@ use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, QueryTrait,
 };
 
-pub async fn run_migration() -> Result<(), Box<dyn std::error::Error>> {
+async fn get_database() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
     let db = Database::connect("sqlite://db.sqlite?mode=rwc")
         .await
         .unwrap();
@@ -21,6 +21,11 @@ pub async fn run_migration() -> Result<(), Box<dyn std::error::Error>> {
     // Run all unapplied migrations automatically
     let _ = Migrator::up(&db, None).await;
 
+    Ok(db)
+}
+
+pub async fn insert_task(_task: &Task)  -> Result<(), Box<dyn std::error::Error>> {
+    let db = get_database().await.unwrap();
     let t = Task {
         db_id: Some(1),
         id: None,

@@ -4,7 +4,10 @@ mod table;
 
 use bee_actions::{ActionRegistry, command_parser::Parser};
 use bee_core::{
-    db::run_migration, filters::{self, Filter}, task::TaskProperties, Printer
+    Printer,
+    db::run_migration,
+    filters::{self, Filter},
+    task::TaskProperties,
 };
 use bee_storage::storage::{JsonStore, Store};
 
@@ -31,11 +34,10 @@ fn get_section_filters() -> Result<Option<Box<dyn Filter>>, String> {
     Ok(None)
 }
 
-
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>>{
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    
+
     run_migration().await?;
     let undo_count = 1;
 

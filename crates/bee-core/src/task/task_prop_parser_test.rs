@@ -121,10 +121,7 @@ fn test_task_properties_parser() {
 
     let tp = from_string("depends:6 depends:7");
     let props = TaskProperties {
-        depends_on: Some(vec![
-            DependsOnIdentifier::Id(6),
-            DependsOnIdentifier::Id(7),
-        ]),
+        depends_on: Some(vec![DependsOnIdentifier::Id(6), DependsOnIdentifier::Id(7)]),
         ..TaskProperties::default()
     };
     assert_eq!(tp, props);

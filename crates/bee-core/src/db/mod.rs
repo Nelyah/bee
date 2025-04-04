@@ -1,8 +1,17 @@
-use log::debug;
-use migration::{Migrator, MigratorTrait, sea_orm::Database}; // This is the module created by sea-orm-cli
 mod tables;
 
-use sea_orm::*;
+use crate::task::{Link, LinkType, Project, Task, TaskAnnotation, TaskHistory, TaskStatus};
+use migration::{Migrator, MigratorTrait, sea_orm::Database};
+use tables::{annotations, history, links, projects, tags, tasks, tasks_tags};
+
+use log::debug;
+use uuid::Uuid;
+
+use sea_orm::{
+    ActiveModelTrait,
+    ActiveValue::{self, Set},
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, QueryTrait,
+};
 
 pub async fn run_migration() -> Result<(), Box<dyn std::error::Error>> {
     let db = Database::connect("sqlite://db.sqlite?mode=rwc")
@@ -34,7 +43,6 @@ pub async fn run_migration() -> Result<(), Box<dyn std::error::Error>> {
     let model_project = if let Some(task_proj) = &t.project {
         Some(insert_or_update_project(&db, project_to_active_model(&db, &task_proj).await).await)
     } else {
-        debug!("Proj model is None");
         None
     };
 
@@ -69,7 +77,6 @@ pub async fn run_migration() -> Result<(), Box<dyn std::error::Error>> {
 
     insert_or_update_tags(&db, &t.tags).await;
     insert_or_update_tasks_tags(&db, &model_task.db_id, &t.tags).await;
-    debug!("hey {:?}", model_task);
 
     Ok(())
 }
@@ -203,7 +210,7 @@ async fn insert_or_update_task(
 
     if let Some(db_id) = db_id_option {
         if let Ok(Some(_)) = tables::tasks::Entity::find_by_id(db_id).one(db).await {
-            debug!("We are updating the task entry with {}", db_id);
+            debug!("We are updating the task entry with db_id={}", db_id);
             return task_model_active.clone().update(db).await.unwrap();
         }
     }
@@ -344,14 +351,6 @@ async fn insert_or_update_tasks_tags(db: &DatabaseConnection, task_id: &i32, tag
     }
 }
 
-use sea_orm::ActiveValue::Set;
-use uuid::Uuid;
-
-// Assume these are the seaORM entity modules.
-use tables::{annotations, history, links, projects, tags, tasks, tasks_tags};
-
-use crate::task::{Link, LinkType, Project, Task, TaskAnnotation, TaskHistory, TaskStatus};
-
 /// A structure to group all ActiveModels corresponding to a Task.
 pub struct TaskActiveModels {
     pub task: tables::tasks::ActiveModel,
@@ -395,7 +394,6 @@ async fn task_to_active_model(
 ) -> tasks::ActiveModel {
     let status_str = task_obj.status.to_string().to_uppercase();
 
-        debug!("Proj model now is {:?}", project_dbid_option);
 
     let mut task_active = tasks::ActiveModel {
         db_id: match task_obj.db_id {
@@ -425,7 +423,7 @@ async fn task_to_active_model(
         },
         ..Default::default()
     };
-        debug!("Proj model after is {:?}", task_active.project_id);
+
     if let Some(db_id) = &task_obj.db_id {
         if let Ok(Some(existing)) = tables::tasks::Entity::find_by_id(db_id.clone())
             .one(db)

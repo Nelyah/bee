@@ -95,7 +95,8 @@ impl MigrationTrait for Migration {
                             .from(History::Table, History::TaskId)
                             // Reference the business id from tasks.
                             .to(Tasks::Table, Tasks::DbId)
-                            .on_delete(ForeignKeyAction::Cascade),
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )
@@ -122,7 +123,8 @@ impl MigrationTrait for Migration {
                             .name("fk_annotations_task")
                             .from(Annotations::Table, Annotations::TaskId)
                             .to(Tasks::Table, Tasks::DbId)
-                            .on_delete(ForeignKeyAction::Cascade),
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )
@@ -149,14 +151,16 @@ impl MigrationTrait for Migration {
                             .name("fk_links_from_task")
                             .from(Links::Table, Links::FromTaskId)
                             .to(Tasks::Table, Tasks::DbId)
-                            .on_delete(ForeignKeyAction::Cascade),
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_links_to_task")
                             .from(Links::Table, Links::ToTaskId)
                             .to(Tasks::Table, Tasks::DbId)
-                            .on_delete(ForeignKeyAction::Cascade),
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )
@@ -192,14 +196,16 @@ impl MigrationTrait for Migration {
                             .name("fk_task_tags_task")
                             .from(TasksTags::Table, TasksTags::TaskId)
                             .to(Tasks::Table, Tasks::DbId)
-                            .on_delete(ForeignKeyAction::Cascade),
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_task_tags_tags")
                             .from(TasksTags::Table, TasksTags::TagId)
                             .to(Tags::Table, Tags::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )

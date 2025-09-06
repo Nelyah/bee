@@ -164,6 +164,7 @@ fn test_filter_taskdata() {
             from: task1_uuid,
             to: task2_uuid,
             link_type: LinkType::DependsOn,
+            id: None,
         }],
         ..Task::default()
     };
@@ -174,6 +175,7 @@ fn test_filter_taskdata() {
             from: task2_uuid,
             to: task1_uuid,
             link_type: LinkType::Blocking,
+            id: None,
         }],
         ..Task::default()
     };
@@ -210,6 +212,7 @@ fn test_upkeep() {
             from: task1_uuid,
             to: task2_uuid,
             link_type: LinkType::DependsOn,
+            id: None,
         }],
         ..Task::default()
     };
@@ -266,6 +269,7 @@ fn test_upkeep() {
         from: task1_uuid,
         to: task2_uuid,
         link_type: LinkType::DependsOn,
+        id: None,
     }];
     data.tasks.get_mut(&task2_uuid).unwrap().delete();
     let _ = data.upkeep();
@@ -300,6 +304,7 @@ fn test_upkeep_dependency_links() {
             from: task1_uuid,
             to: task2_uuid,
             link_type: LinkType::DependsOn,
+            id: None,
         }],
         ..Task::default()
     };

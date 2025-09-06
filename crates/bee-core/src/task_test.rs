@@ -154,6 +154,7 @@ fn test_apply_project() {
     let mut props = setup_task_property();
     let new_proj = Project {
         name: "a.b.c".to_string(),
+        id: None,
     };
     props.project = Some(Some(new_proj.clone()));
 

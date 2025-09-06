@@ -15,6 +15,7 @@ fn test_project_string() {
     let props = TaskProperties {
         project: Some(Some(Project {
             name: "p.a.b.c".to_string(),
+            ..Default::default()
         })),
         ..TaskProperties::default()
     };
@@ -24,6 +25,7 @@ fn test_project_string() {
     let props = TaskProperties {
         project: Some(Some(Project {
             name: "p-a-b.c".to_string(),
+            ..Default::default()
         })),
         ..TaskProperties::default()
     };
@@ -64,6 +66,7 @@ fn test_task_properties_parser() {
         status: Some(TaskStatus::Pending),
         project: Some(Some(Project {
             name: "p.a.b.c".to_string(),
+            ..Default::default()
         })),
         ..TaskProperties::default()
     };
@@ -77,7 +80,8 @@ fn test_task_properties_parser() {
             tags_remove: Some(vec!["main".to_owned()]),
             tags_add: Some(vec!["foo".to_owned()]),
             project: Some(Some(Project {
-                name: "proj.a.b.c".to_string()
+                name: "proj.a.b.c".to_string(),
+                ..Default::default()
             })),
             ..TaskProperties::default()
         }
@@ -102,7 +106,8 @@ fn test_task_properties_parser() {
             tags_remove: Some(vec!["main".to_owned()]),
             tags_add: Some(vec!["foo".to_owned()]),
             project: Some(Some(Project {
-                name: "proj.a.b.c".to_string()
+                name: "proj.a.b.c".to_string(),
+                ..Default::default()
             })),
             date_due: Some(today_start),
             ..TaskProperties::default()

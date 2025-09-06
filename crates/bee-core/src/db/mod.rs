@@ -1,6 +1,9 @@
 mod tables;
 
-use crate::task::{Link, LinkType, Project, Task, TaskAnnotation, TaskHistory, TaskStatus};
+use crate::{
+    filters::Filter,
+    task::{Link, LinkType, Project, Task, TaskAnnotation, TaskHistory, TaskStatus},
+};
 use migration::{Migrator, MigratorTrait, sea_orm::Database};
 use tables::{annotations, history, links, projects, tags, tasks, tasks_tags};
 
@@ -13,79 +16,110 @@ use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, QueryTrait,
 };
 
-async fn get_database() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
-    let db = Database::connect("sqlite://db.sqlite?mode=rwc")
+async fn get_database(
+    db_address: Option<&str>,
+) -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
+    let db = Database::connect(db_address.unwrap_or("sqlite://db.sqlite?mode=rwc"))
         .await
         .unwrap();
 
-    // Run all unapplied migrations automatically
-    let _ = Migrator::up(&db, None).await;
+    Migrator::up(&db, None).await?;
 
     Ok(db)
 }
 
-pub async fn insert_task(_task: &Task)  -> Result<(), Box<dyn std::error::Error>> {
-    let db = get_database().await.unwrap();
-    let t = Task {
-        db_id: Some(1),
-        id: None,
-        status: TaskStatus::Completed, // Use an appropriate variant
-        uuid: Uuid::new_v4(),
-        summary: "Initial summary".to_string(),
-        tags: vec!["initial_tag1".to_string(), "initial_tag2".to_string()],
-        date_created: chrono::Local::now(),
-        project: None,
-        ..Task::default()
-    };
+// TODO: 'Load' function to get tasks from DB
+// This will require being able to construct the query using filters implementation
+// I will probably need to make the filters pub(crate) to access their fields here
+//  AndFilter,
+//  OrFilter,
+//  RootFilter,
+//  ProjectFilter,
+//  StatusFilter,
+//  DateEndFilter,
+//  DateCreatedFilter,
+//  DateDueFilter,
+//  StringFilter,
+//  TagFilter,
+//  TaskIdFilter,
+//  DependsOnFilter,
+//  UuidFilter,
+//  XorFilter
 
-    delete_projects(&db).await;
-    delete_annotations(&db, &t).await;
-    delete_history_events(&db, &t).await;
-    delete_links(&db, &t).await;
-    delete_tasks_tags(&db, &t).await;
-    delete_tags(&db).await;
+// TODO: Once the Load function is done, I can make tests and checks that things in the DB
+// are correctly being added
 
-    let model_project = if let Some(task_proj) = &t.project {
-        Some(insert_or_update_project(&db, project_to_active_model(&db, &task_proj).await).await)
+pub async fn load_tasks(filter: &Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error>> {
+    Ok(())
+}
+
+pub async fn insert_tasks(tasks: &Vec<Task>) -> Result<(), Box<dyn std::error::Error>> {
+    let db = get_database(None).await.unwrap();
+    for task in tasks {
+        insert_task_impl(&db, task).await?;
+    }
+    Ok(())
+}
+
+pub async fn insert_task(task: &Task) -> Result<(), Box<dyn std::error::Error>> {
+    let db = get_database(None).await.unwrap();
+    insert_task_impl(&db, task).await
+}
+
+async fn insert_task_impl(
+    db: &DatabaseConnection,
+    task: &Task,
+) -> Result<(), Box<dyn std::error::Error>> {
+    delete_projects(db).await;
+    delete_annotations(db, task).await;
+    delete_history_events(db, task).await;
+    delete_links(db, task).await;
+    delete_tasks_tags(db, task).await;
+    delete_tags(db).await;
+
+    let model_project = if let Some(task_proj) = &task.project {
+        Some(insert_or_update_project(db, project_to_active_model(db, &task_proj).await).await)
     } else {
         None
     };
 
     let model_task_active = task_to_active_model(
-        &db,
-        &t,
+        db,
+        task,
         match model_project {
             Some(model) => Some(model.id),
             None => None,
         },
     )
     .await;
-    let model_task = insert_or_update_task(&db, &model_task_active).await;
+    let model_task = insert_or_update_task(db, &model_task_active).await;
 
     insert_or_update_annotations(
-        &db,
-        annotations_to_active_model(&db, &t.annotations, &ActiveValue::Set(model_task.db_id)).await,
+        db,
+        annotations_to_active_model(db, &task.annotations, &ActiveValue::Set(model_task.db_id))
+            .await,
     )
     .await;
 
     insert_or_update_links(
-        &db,
-        links_to_active_model(&db, &t.links, &ActiveValue::Set(model_task.db_id)).await,
+        db,
+        links_to_active_model(db, &task.links, &ActiveValue::Set(model_task.db_id)).await,
     )
     .await;
 
     insert_or_update_history(
-        &db,
-        history_to_active_model(&db, &t.history, &ActiveValue::Set(model_task.db_id)).await,
+        db,
+        history_to_active_model(db, &task.history, &ActiveValue::Set(model_task.db_id)).await,
     )
     .await;
 
-    insert_or_update_tags(&db, &t.tags).await;
-    insert_or_update_tasks_tags(&db, &model_task.db_id, &t.tags).await;
+    insert_or_update_tags(db, &task.tags).await;
+    insert_or_update_tasks_tags(db, &model_task.db_id, &task.tags).await;
 
     Ok(())
 }
 
+/// Delete annotations that were previously linked to a task but not anymore
 async fn delete_annotations(db: &DatabaseConnection, task_obj: &Task) {
     if task_obj.db_id.is_none() {
         return;
@@ -108,6 +142,7 @@ async fn delete_annotations(db: &DatabaseConnection, task_obj: &Task) {
         .await;
 }
 
+/// Delete links referring a task that no longer has that link
 async fn delete_links(db: &DatabaseConnection, task_obj: &Task) {
     if task_obj.db_id.is_none() {
         return;
@@ -134,6 +169,7 @@ async fn delete_links(db: &DatabaseConnection, task_obj: &Task) {
         .await;
 }
 
+/// Delete from the Tag table all those not referrenced by any task
 async fn delete_tags(db: &DatabaseConnection) {
     let tags_used_query = tables::tasks_tags::Entity::find()
         .select_only()
@@ -147,6 +183,8 @@ async fn delete_tags(db: &DatabaseConnection) {
         .await;
 }
 
+/// Delete from the TasksTag table the entries that are not used anymore by
+/// the task_obj parameter
 async fn delete_tasks_tags(db: &DatabaseConnection, task_obj: &Task) {
     if task_obj.db_id.is_none() {
         return;
@@ -399,7 +437,6 @@ async fn task_to_active_model(
 ) -> tasks::ActiveModel {
     let status_str = task_obj.status.to_string().to_uppercase();
 
-
     let mut task_active = tasks::ActiveModel {
         db_id: match task_obj.db_id {
             Some(id) => ActiveValue::Set(id),
@@ -563,4 +600,101 @@ async fn resolve_uuid_to_db_id(db: &DatabaseConnection, _id: Uuid) -> Option<i32
         .unwrap();
 
     return Some(t.unwrap().db_id);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*; // Import the function and domain types
+    use chrono::Utc;
+    use sea_orm::{ActiveValue, Database, DatabaseConnection};
+
+    #[tokio::test]
+    async fn test_annotations_to_active_model_new_annotation() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        // Create a TaskAnnotation with no id (new record).
+        let ann = TaskAnnotation {
+            id: None,
+            value: "Test annotation".to_owned(),
+            time: Utc::now().into(),
+        };
+        let task_id = ActiveValue::Set(1);
+        let active_models = annotations_to_active_model(&db, &vec![ann.clone()], &task_id).await;
+        assert_eq!(active_models.len(), 1);
+        let active = &active_models[0];
+
+        // Check that the active model fields are Set with the expected values.
+        if let ActiveValue::Set(ref val) = active.value {
+            assert_eq!(val, &ann.value);
+        } else {
+            panic!("Expected value to be Set");
+        }
+        if let ActiveValue::Set(ref dt) = active.datetime {
+            assert_eq!(dt, &ann.time.to_rfc3339());
+        } else {
+            panic!("Expected datetime to be Set");
+        }
+        // task_id should be set to 1.
+        if let ActiveValue::Set(ref tid) = active.task_id {
+            assert_eq!(*tid, 1);
+        } else {
+            panic!("Expected task_id to be Set");
+        }
+
+        // TODO: Test making annotation model when we update the model
+    }
+
+    // TODO: Add test to insert a task
+    #[tokio::test]
+    async fn test_insert_task() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        let t = Task::default();
+        insert_task_impl(&db, &t).await.unwrap();
+        insert_task_impl(&db, &t).await.unwrap();
+    }
+
+    // #[tokio::test]
+    // async fn test_annotations_to_active_model_existing_annotation() {
+    //     let db = get_database(Some("sqlite::memory:")).await;
+    //     let now = Utc::now();
+    //     // First, insert an annotation into the DB.
+    //     let insert_result = sqlx::query(
+    //         r#"
+    //         INSERT INTO annotations (value, datetime, task_id)
+    //         VALUES (?, ?, ?)
+    //         "#,
+    //     )
+    //     .bind("Existing annotation")
+    //     .bind(now.to_rfc3339())
+    //     .bind(1)
+    //     .execute(db.as_ref())
+    //     .await
+    //     .unwrap();
+    //     let inserted_id = insert_result.last_insert_rowid() as i32;
+
+    //     // Create a TaskAnnotation with the same values as the inserted record.
+    //     let ann = TaskAnnotation {
+    //         id: Some(inserted_id),
+    //         value: "Existing annotation".to_owned(),
+    //         time: now,
+    //     };
+    //     let task_id = ActiveValue::Set(1);
+    //     let active_models = annotations_to_active_model(&db, &vec![ann.clone()], &task_id).await;
+    //     assert_eq!(active_models.len(), 1);
+    //     let active = &active_models[0];
+
+    //     // Because the values match the existing DB record, the function should mark them as Unchanged.
+    //     match active.value {
+    //         ActiveValue::Unchanged(ref existing_val) => {
+    //             // Here we expect the value to remain as the same (should be "Existing annotation").
+    //             assert_eq!(existing_val, "Existing annotation");
+    //         }
+    //         _ => panic!("Expected value to be Unchanged"),
+    //     }
+    //     match active.datetime {
+    //         ActiveValue::Unchanged(ref existing_dt) => {
+    //             assert_eq!(existing_dt, &now.to_rfc3339());
+    //         }
+    //         _ => panic!("Expected datetime to be Unchanged"),
+    //     }
+    // }
 }

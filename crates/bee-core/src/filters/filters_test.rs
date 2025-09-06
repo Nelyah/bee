@@ -15,7 +15,7 @@ fn test_serialize() {
     };
     assert_eq!(
         serde_json::to_string(&filter).unwrap(),
-        "{\"name\":{\"name\":\"hey\"}}"
+        "{\"name\":{\"id\":null,\"name\":\"hey\"}}"
     );
     let filter = Box::new(RootFilter {});
     assert_eq!(serde_json::to_string(&filter).unwrap(), "{}");

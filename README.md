@@ -63,7 +63,7 @@ cargo run help
 - [X] 'export' action
 - [X] Improve Task Info with printing to a table instead of regular print
 - [X] Views (show potentially multiple reports in a single view)
-- [ ] Refactor DependsOn to just be a link type in between two tasks.
+- [X] Refactor DependsOn to just be a link type in between two tasks.
 - [ ] Recurring tasks
     - A task can recur:
         - time OR duration, on a set schedule

@@ -2,6 +2,8 @@
 
 use sea_orm::entity::prelude::*;
 
+use crate::task::TaskAnnotation;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "projects")]
 pub struct Model {

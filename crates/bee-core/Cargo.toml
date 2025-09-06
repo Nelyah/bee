@@ -33,7 +33,7 @@ typetag = "0.2"
 # sqlx = { version = "^0.8", features = ["sqlite", "runtime-tokio-native-tls", "macros"] }
 
 # SeaORM 0.12 uses SQLx 0.7 internally
-sea-orm = { version = "^1.1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls"] }
+sea-orm = { version = "^1.1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
 sea-orm-migration = { version = "^1.1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls"] }
 
 # Tokio runtime for async support

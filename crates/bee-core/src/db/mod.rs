@@ -13,7 +13,8 @@ use uuid::Uuid;
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{self, Set},
-    ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, QueryTrait,
+    ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, LoaderTrait,
+    QueryFilter, QuerySelect, QueryTrait, Related,
 };
 
 async fn get_database(
@@ -63,64 +64,74 @@ pub async fn insert_tasks(tasks: &Vec<Task>) -> Result<(), Box<dyn std::error::E
 
 pub async fn insert_task(task: &Task) -> Result<(), Box<dyn std::error::Error>> {
     let db = get_database(None).await.unwrap();
-    insert_task_impl(&db, task).await
+    let mut t = task.clone();
+    t.project = Some(Project {
+        name: "foo-projj".to_string(),
+        ..Default::default()
+    });
+    t.db_id = Some(12);
+    insert_task_impl(&db, &t).await
 }
 
 async fn insert_task_impl(
     db: &DatabaseConnection,
     task: &Task,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    delete_projects(db).await;
-    delete_annotations(db, task).await;
-    delete_history_events(db, task).await;
-    delete_links(db, task).await;
-    delete_tasks_tags(db, task).await;
-    delete_tags(db).await;
+    debug!("Enter in insert_task_impl");
+    upkeep_projects(db).await;
+    upkeep_annotations(db, task).await;
+    upkeep_history_events(db, task).await;
+    upkeep_links(db, task).await;
+    upkeep_tasks_tags(db, task).await;
+    upkeep_tags(db).await;
 
-    let model_project = if let Some(task_proj) = &task.project {
-        Some(insert_or_update_project(db, project_to_active_model(db, &task_proj).await).await)
+    let project_id = if let Some(task_proj) = &task.project {
+        let project_active = project_to_active_model(db, &task_proj)
+            .await?
+            .save(db)
+            .await?;
+        Some(project_active.id.unwrap())
     } else {
         None
     };
 
-    let model_task_active = task_to_active_model(
-        db,
-        task,
-        match model_project {
-            Some(model) => Some(model.id),
-            None => None,
-        },
-    )
-    .await;
+    let model_task_active = task_to_active_model(db, task, project_id).await;
     let model_task = insert_or_update_task(db, &model_task_active).await;
 
-    insert_or_update_annotations(
-        db,
+    let vec_annotations =
         annotations_to_active_model(db, &task.annotations, &ActiveValue::Set(model_task.db_id))
-            .await,
-    )
-    .await;
+            .await?;
+    for ann in vec_annotations {
+        ann.save(db).await?;
+    }
 
-    insert_or_update_links(
-        db,
-        links_to_active_model(db, &task.links, &ActiveValue::Set(model_task.db_id)).await,
-    )
-    .await;
+    let vec_links =
+        links_to_active_model(db, &task.links, &ActiveValue::Set(model_task.db_id)).await?;
+    for link in vec_links {
+        link.save(db).await?;
+    }
 
-    insert_or_update_history(
-        db,
-        history_to_active_model(db, &task.history, &ActiveValue::Set(model_task.db_id)).await,
-    )
-    .await;
+    let vec_history =
+        history_to_active_model(db, &task.history, &ActiveValue::Set(model_task.db_id)).await?;
+    for history in vec_history {
+        history.save(db).await?;
+    }
 
-    insert_or_update_tags(db, &task.tags).await;
+    let tasks: Vec<tasks::Model> = tasks::Entity::find().all(db).await?;
+    let annotations: Vec<Vec<annotations::Model>> =
+        tasks.load_many(annotations::Entity, db).await?;
+    let tags = tasks
+        .load_many_to_many(tags::Entity, tasks_tags::Entity, db)
+        .await?;
+    let p = tasks.load_one(projects::Entity, db).await?;
+    save_tags(db, &task.tags).await;
     insert_or_update_tasks_tags(db, &model_task.db_id, &task.tags).await;
 
     Ok(())
 }
 
 /// Delete annotations that were previously linked to a task but not anymore
-async fn delete_annotations(db: &DatabaseConnection, task_obj: &Task) {
+async fn upkeep_annotations(db: &DatabaseConnection, task_obj: &Task) {
     if task_obj.db_id.is_none() {
         return;
     }
@@ -143,7 +154,7 @@ async fn delete_annotations(db: &DatabaseConnection, task_obj: &Task) {
 }
 
 /// Delete links referring a task that no longer has that link
-async fn delete_links(db: &DatabaseConnection, task_obj: &Task) {
+async fn upkeep_links(db: &DatabaseConnection, task_obj: &Task) {
     if task_obj.db_id.is_none() {
         return;
     }
@@ -170,7 +181,7 @@ async fn delete_links(db: &DatabaseConnection, task_obj: &Task) {
 }
 
 /// Delete from the Tag table all those not referrenced by any task
-async fn delete_tags(db: &DatabaseConnection) {
+async fn upkeep_tags(db: &DatabaseConnection) {
     let tags_used_query = tables::tasks_tags::Entity::find()
         .select_only()
         .column(tables::tasks_tags::Column::TagId)
@@ -185,7 +196,7 @@ async fn delete_tags(db: &DatabaseConnection) {
 
 /// Delete from the TasksTag table the entries that are not used anymore by
 /// the task_obj parameter
-async fn delete_tasks_tags(db: &DatabaseConnection, task_obj: &Task) {
+async fn upkeep_tasks_tags(db: &DatabaseConnection, task_obj: &Task) {
     if task_obj.db_id.is_none() {
         return;
     }
@@ -206,7 +217,7 @@ async fn delete_tasks_tags(db: &DatabaseConnection, task_obj: &Task) {
         .await;
 }
 
-async fn delete_history_events(db: &DatabaseConnection, task_obj: &Task) {
+async fn upkeep_history_events(db: &DatabaseConnection, task_obj: &Task) {
     if task_obj.db_id.is_none() {
         return;
     }
@@ -228,7 +239,7 @@ async fn delete_history_events(db: &DatabaseConnection, task_obj: &Task) {
         .await;
 }
 
-async fn delete_projects(db: &DatabaseConnection) {
+async fn upkeep_projects(db: &DatabaseConnection) {
     let used_project_ids_query = tables::tasks::Entity::find()
         .select_only()
         .column(tables::tasks::Column::ProjectId)
@@ -246,6 +257,7 @@ async fn insert_or_update_task(
     db: &DatabaseConnection,
     task_model_active: &tasks::ActiveModel,
 ) -> tables::tasks::Model {
+    debug!("Enter insert_or_update_task");
     let db_id_option: Option<i32> = match &task_model_active.db_id {
         sea_orm::ActiveValue::Set(val) | sea_orm::ActiveValue::Unchanged(val) => Some(*val),
         ActiveValue::NotSet => None,
@@ -346,7 +358,7 @@ async fn insert_or_update_annotations(
     }
 }
 
-async fn insert_or_update_tags(db: &DatabaseConnection, tags: &Vec<String>) {
+async fn save_tags(db: &DatabaseConnection, tags: &Vec<String>) {
     for tag in tags {
         // let mut tag_model_active = tags::ActiveModel {
         if let Ok(Some(_)) = tags::Entity::find()
@@ -404,30 +416,47 @@ pub struct TaskActiveModels {
     pub tags: Vec<tags::ActiveModel>,
 }
 
-/// Converts a Task into all its corresponding seaORM ActiveModels.
+// Macro to diff fields into an ActiveModel
+macro_rules! diff_active_model {
+    ($am:ident, $old:ident, $new:ident, { $($field:ident),+ $(,)? }) => {
+        $(
+            if $old.$field != $new.$field {
+                $am.$field = Set($new.$field.clone());
+            }
+        )+
+    };
+}
 
-async fn project_to_active_model(
+pub async fn project_to_active_model(
     db: &DatabaseConnection,
     project_obj: &Project,
-) -> projects::ActiveModel {
-    // Build the ActiveModel for the project.
-    let mut project_active = projects::ActiveModel {
-        // Set the name from the project.
-        name: ActiveValue::Set(project_obj.name.clone()),
-        ..Default::default()
-    };
+) -> Result<projects::ActiveModel, DbErr> {
+    // 1. Fetch existing Model if we have an ID
+    let project_model: Option<projects::Model> = projects::Entity::find()
+        .filter(projects::Column::Name.eq(&project_obj.name))
+        .one(db)
+        .await?;
 
-    // If an id is present, fetch the existing record from the DB to compare fields.
+    // 2. Start from existing.into_active_model() or default
+    let mut project_active = project_model
+        .clone()
+        .map(|m| m.into_active_model())
+        .unwrap_or_default();
+
+    // 3. Ensure PK is set for update (leaving it NotSet for insert)
     if let Some(id) = project_obj.id {
-        if let Ok(Some(existing)) = projects::Entity::find_by_id(id).one(db).await {
-            // If the name hasn't changed, mark it as Unchanged.
-            if existing.name == project_obj.name {
-                project_active.name = ActiveValue::Unchanged(existing.name);
-            }
-        }
+        project_active.id = Set(id);
     }
 
-    project_active
+    // 4. Diff the `name` field if updating, or set it on insert
+    if let Some(old) = &project_model {
+        diff_active_model!(project_active, old, project_obj, { name });
+    } else {
+        project_active.name = Set(project_obj.name.clone());
+    }
+
+    debug!("End of project_to_active_model {:?}", project_active);
+    Ok(project_active)
 }
 
 async fn task_to_active_model(
@@ -505,43 +534,71 @@ async fn annotations_to_active_model(
     db: &DatabaseConnection,
     annotations: &Vec<TaskAnnotation>,
     task_id: &ActiveValue<i32>,
-) -> Vec<annotations::ActiveModel> {
+) -> Result<Vec<annotations::ActiveModel>, DbErr> {
     let mut annotations_active: Vec<annotations::ActiveModel> = vec![];
 
     for ann in annotations {
-        let mut ann_active = annotations::ActiveModel {
-            id: Set(ann.id.unwrap_or_default()),
-            value: Set(ann.value.clone()),
-            datetime: Set(ann.time.to_rfc3339()),
-            // The annotations table references the task’s db_id.
-            task_id: task_id.to_owned(),
-            ..Default::default()
+        let model: Option<tables::annotations::Model> = if let Some(id) = ann.id {
+            annotations::Entity::find_by_id(id).one(db).await?
+        } else {
+            None
         };
-        if let Some(id) = ann.id {
-            if let Ok(Some(existing)) = annotations::Entity::find_by_id(id).one(db).await {
-                if existing.value == ann.value {
-                    ann_active.value = ActiveValue::Unchanged(existing.datetime.clone());
+
+        let mut model_active = match model.clone() {
+            Some(model) => model.into_active_model(),
+            None => <annotations::ActiveModel as sea_orm::ActiveModelTrait>::default(),
+        };
+
+        match model {
+            Some(m) => {
+                if m.value != ann.value {
+                    model_active.value = Set(ann.value.clone());
                 }
-                if existing.datetime == ann.time.to_rfc3339() {
-                    ann_active.value = ActiveValue::Unchanged(existing.datetime.clone());
+                if m.datetime != ann.time.to_rfc3339() {
+                    model_active.datetime = Set(ann.time.to_rfc3339());
                 }
+                model_active.task_id = task_id.clone();
             }
+            _ => {}
         }
-        annotations_active.push(ann_active);
+        annotations_active.push(model_active);
     }
-    annotations_active
+    Ok(annotations_active)
 }
 
 async fn links_to_active_model(
     db: &DatabaseConnection,
     links: &Vec<Link>,
     task_id: &ActiveValue<i32>,
-) -> Vec<links::ActiveModel> {
+) -> Result<Vec<links::ActiveModel>, DbErr> {
     let mut links_active: Vec<links::ActiveModel> = vec![];
 
     for link in links {
+        let link_model = if let Some(id) = link.id {
+            links::Entity::find_by_id(id).one(db).await?
+        } else {
+            None
+        };
+
+        let mut link_model_active = link_model
+            .clone()
+            .map(|m| m.into_active_model())
+            .unwrap_or_default();
+
+        // TODO: Do the diff between the model and the ModelActive
+        match link.id {
+            Some(id) => sea_orm::ActiveValue::Unchanged(id),
+            None => sea_orm::ActiveValue::NotSet,
+        };
+        if link_
+            // We assume the current task is the source of the link.
+            from_task_id: task_id.to_owned(),
+
         links_active.push(links::ActiveModel {
-            id: Set(link.id.unwrap_or_default()),
+            id: match link.id {
+                Some(id) => sea_orm::ActiveValue::Unchanged(id),
+                None => sea_orm::ActiveValue::NotSet,
+            },
             // We assume the current task is the source of the link.
             from_task_id: task_id.to_owned(),
             // Since the migration requires an integer foreign key,
@@ -555,14 +612,14 @@ async fn links_to_active_model(
         });
     }
 
-    links_active
+    Ok(links_active)
 }
 
 async fn history_to_active_model(
     db: &DatabaseConnection,
     history_events: &Vec<TaskHistory>,
     task_id: &ActiveValue<i32>,
-) -> Vec<history::ActiveModel> {
+) -> Result<Vec<history::ActiveModel>, DbErr> {
     let mut history_events_active: Vec<history::ActiveModel> = vec![];
 
     for event in history_events {
@@ -586,11 +643,10 @@ async fn history_to_active_model(
         }
         history_events_active.push(event_active);
     }
-    history_events_active
+    Ok(history_events_active)
 }
 
 /// Placeholder function for converting a Uuid to the corresponding database id.
-/// You must implement this logic based on your application's context.
 async fn resolve_uuid_to_db_id(db: &DatabaseConnection, _id: Uuid) -> Option<i32> {
     // For now, simply return None or an appropriate default.
     let t = tables::tasks::Entity::find()
@@ -604,7 +660,9 @@ async fn resolve_uuid_to_db_id(db: &DatabaseConnection, _id: Uuid) -> Option<i32
 
 #[cfg(test)]
 mod tests {
-    use super::*; // Import the function and domain types
+    use super::*;
+    use all_asserts::{assert_false, assert_true};
+    // Import the function and domain types
     use chrono::Utc;
     use sea_orm::{ActiveValue, Database, DatabaseConnection};
 
@@ -618,7 +676,9 @@ mod tests {
             time: Utc::now().into(),
         };
         let task_id = ActiveValue::Set(1);
-        let active_models = annotations_to_active_model(&db, &vec![ann.clone()], &task_id).await;
+        let active_models = annotations_to_active_model(&db, &vec![ann.clone()], &task_id)
+            .await
+            .unwrap();
         assert_eq!(active_models.len(), 1);
         let active = &active_models[0];
 
@@ -647,9 +707,35 @@ mod tests {
     #[tokio::test]
     async fn test_insert_task() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
-        let t = Task::default();
+        let mut t = Task::default();
         insert_task_impl(&db, &t).await.unwrap();
+        let t_model_opt = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(t.uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap();
+
+        let t_model = t_model_opt.unwrap();
+        assert_eq!(t.uuid, Uuid::parse_str(&t_model.uuid).unwrap());
+
+        let annotation_model_opt = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(t_model.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+
+        assert_true!(annotation_model_opt.is_empty());
+
+        t.annotations.push(TaskAnnotation::default());
         insert_task_impl(&db, &t).await.unwrap();
+
+        let annotation_model_opt = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(t_model.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+
+        assert_false!(annotation_model_opt.is_empty());
     }
 
     // #[tokio::test]

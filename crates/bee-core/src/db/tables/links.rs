@@ -18,7 +18,7 @@ pub enum Relation {
         belongs_to = "super::tasks::Entity",
         from = "Column::ToTaskId",
         to = "super::tasks::Column::DbId",
-        on_update = "NoAction",
+        on_update = "Cascade",
         on_delete = "Cascade"
     )]
     Tasks2,
@@ -26,7 +26,7 @@ pub enum Relation {
         belongs_to = "super::tasks::Entity",
         from = "Column::FromTaskId",
         to = "super::tasks::Column::DbId",
-        on_update = "NoAction",
+        on_update = "Cascade",
         on_delete = "Cascade"
     )]
     Tasks1,

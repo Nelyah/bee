@@ -3,6 +3,7 @@ mod task_prop_parser;
 use crate::filters::Filter;
 use crate::lexer::Lexer;
 use task_prop_parser::TaskPropertyParser;
+use sea_orm::entity;
 
 use chrono::Local;
 use chrono::prelude::DateTime;
@@ -151,7 +152,7 @@ impl TaskProperties {
 }
 
 #[derive(
-    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default
 )]
 pub struct TaskAnnotation {
     /// ID to serve as primary key in the DB
@@ -200,6 +201,7 @@ pub struct TaskHistory {
     pub value: String,
     pub datetime: DateTime<chrono::Local>,
 }
+
 
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct Task {

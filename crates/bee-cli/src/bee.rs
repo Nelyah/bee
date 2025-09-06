@@ -125,6 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+
     match JsonStore::write_tasks(action.get_tasks()) {
         Ok(_) => (),
         Err(msg) => {

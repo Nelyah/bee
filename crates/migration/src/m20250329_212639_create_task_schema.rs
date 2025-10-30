@@ -211,6 +211,30 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_table(
+                Table::create()
+                    .table(UndoActions::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(UndoActions::Id)
+                            .unsigned()
+                            .not_null()
+                            .primary_key()
+                            .auto_increment(),
+                    )
+                    .col(ColumnDef::new(UndoActions::ActionType).string().not_null())
+                    .col(ColumnDef::new(UndoActions::Payload).text().not_null())
+                    .col(
+                        ColumnDef::new(UndoActions::CreatedAt)
+                            .string()
+                            .not_null()
+                            .default(Expr::cust("CURRENT_TIMESTAMP")),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
         // 6. Create a unique index on the links table.
         manager
             .create_index(
@@ -252,6 +276,9 @@ impl MigrationTrait for Migration {
             .await?;
         manager
             .drop_table(Table::drop().table(Projects::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(UndoActions::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Tags::Table).to_owned())
@@ -299,6 +326,15 @@ enum TasksTags {
     Table,
     TagId,
     TaskId,
+}
+
+#[derive(Iden)]
+enum UndoActions {
+    Table,
+    Id,
+    ActionType,
+    Payload,
+    CreatedAt,
 }
 
 #[derive(Iden)]

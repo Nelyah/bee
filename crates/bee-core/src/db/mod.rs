@@ -56,7 +56,7 @@ pub async fn load_tasks(filter: &Box<dyn Filter>) -> Result<(), Box<dyn std::err
 
 pub async fn insert_tasks(tasks: &Vec<Task>) -> Result<(), Box<dyn std::error::Error>> {
     let db = get_database(None).await.unwrap();
-    for task in tasks {
+    for task in tasks.iter() {
         insert_task_impl(&db, task).await?;
     }
     Ok(())
@@ -64,13 +64,7 @@ pub async fn insert_tasks(tasks: &Vec<Task>) -> Result<(), Box<dyn std::error::E
 
 pub async fn insert_task(task: &Task) -> Result<(), Box<dyn std::error::Error>> {
     let db = get_database(None).await.unwrap();
-    let mut t = task.clone();
-    t.project = Some(Project {
-        name: "foo-projj".to_string(),
-        ..Default::default()
-    });
-    t.db_id = Some(12);
-    insert_task_impl(&db, &t).await
+    insert_task_impl(&db, task).await.map(|_| ())
 }
 
 async fn insert_task_impl(
@@ -85,17 +79,16 @@ async fn insert_task_impl(
     upkeep_tasks_tags(db, task).await;
     upkeep_tags(db).await;
 
+    // Resolve (or create) project first
     let project_id = if let Some(task_proj) = &task.project {
-        let project_active = project_to_active_model(db, &task_proj)
-            .await?
-            .save(db)
-            .await?;
+        let project_active = project_to_active_model(db, task_proj).await?.save(db).await?;
         Some(project_active.id.unwrap())
     } else {
         None
     };
 
-    let model_task_active = task_to_active_model(db, task, project_id).await;
+    let model_task_active = task_to_active_model(db, task, project_id).await?;
+    // If we already have a persisted row, ensure we update instead of inserting duplicate
     let model_task = insert_or_update_task(db, &model_task_active).await;
 
     let vec_annotations =
@@ -463,8 +456,15 @@ async fn task_to_active_model(
     db: &DatabaseConnection,
     task_obj: &Task,
     project_dbid_option: Option<i32>,
-) -> tasks::ActiveModel {
+) -> Result<tasks::ActiveModel, Box<dyn std::error::Error>> {
     let status_str = task_obj.status.to_string().to_uppercase();
+
+    let existing_db_task = tasks::Entity::find()
+        .filter(tasks::Column::Uuid.eq(task_obj.uuid.to_string()))
+        .one(db)
+        .await?;
+
+
 
     let mut task_active = tasks::ActiveModel {
         db_id: match task_obj.db_id {
@@ -527,7 +527,15 @@ async fn task_to_active_model(
         }
     }
 
-    task_active
+    if let Some(existing) = existing_db_task {
+        task_active.db_id = ActiveValue::Set(existing.db_id);
+        // Preserve existing user-visible id if task.id is None (so we don't null it unintentionally)
+        if task_obj.id.is_none() && existing.id.is_some() {
+            task_active.id = ActiveValue::Set(existing.id);
+        }
+    }
+
+    Ok(task_active)
 }
 
 async fn annotations_to_active_model(
@@ -551,15 +559,27 @@ async fn annotations_to_active_model(
 
         match model {
             Some(m) => {
-                if m.value != ann.value {
+                // Existing annotation: diff fields
+                if m.value == ann.value {
+                    model_active.value = ActiveValue::Unchanged(m.value.clone());
+                } else {
                     model_active.value = Set(ann.value.clone());
                 }
-                if m.datetime != ann.time.to_rfc3339() {
-                    model_active.datetime = Set(ann.time.to_rfc3339());
+                let ann_dt = ann.time.to_rfc3339();
+                if m.datetime == ann_dt {
+                    model_active.datetime = ActiveValue::Unchanged(m.datetime.clone());
+                } else {
+                    model_active.datetime = Set(ann_dt);
                 }
+                // Always ensure task_id (FK) is set (or unchanged if same)
                 model_active.task_id = task_id.clone();
             }
-            _ => {}
+            None => {
+                // New annotation: set all required fields
+                model_active.value = Set(ann.value.clone());
+                model_active.datetime = Set(ann.time.to_rfc3339());
+                model_active.task_id = task_id.clone();
+            }
         }
         annotations_active.push(model_active);
     }
@@ -571,45 +591,73 @@ async fn links_to_active_model(
     links: &Vec<Link>,
     task_id: &ActiveValue<i32>,
 ) -> Result<Vec<links::ActiveModel>, DbErr> {
-    let mut links_active: Vec<links::ActiveModel> = vec![];
+    let mut links_active: Vec<links::ActiveModel> = Vec::new();
+
+    // Batch resolve target UUIDs (best effort – still sequential today, but cached).
+    use std::collections::HashMap as StdHashMap;
+    let mut target_uuid_map: StdHashMap<Uuid, Option<i32>> = StdHashMap::new();
+    for l in links {
+        target_uuid_map
+            .entry(l.to)
+            .or_insert(resolve_uuid_to_db_id(db, l.to).await);
+    }
 
     for link in links {
-        let link_model = if let Some(id) = link.id {
+        let existing_model = if let Some(id) = link.id {
             links::Entity::find_by_id(id).one(db).await?
         } else {
             None
         };
 
-        let mut link_model_active = link_model
+        let to_db_id = target_uuid_map
+            .get(&link.to)
+            .and_then(|x| *x)
+            .ok_or_else(|| {
+                DbErr::RecordNotFound(format!("Link target uuid {} not found", link.to))
+            })?;
+
+        // Start from existing ActiveModel (diff) or default (insert)
+        let mut am = existing_model
             .clone()
             .map(|m| m.into_active_model())
             .unwrap_or_default();
 
-        // TODO: Do the diff between the model and the ModelActive
-        match link.id {
-            Some(id) => sea_orm::ActiveValue::Unchanged(id),
-            None => sea_orm::ActiveValue::NotSet,
+        // id: unchanged if existing, otherwise NotSet
+        am.id = match existing_model {
+            Some(ref m) => ActiveValue::Unchanged(m.id),
+            None => ActiveValue::NotSet,
         };
-        if link_
-            // We assume the current task is the source of the link.
-            from_task_id: task_id.to_owned(),
 
-        links_active.push(links::ActiveModel {
-            id: match link.id {
-                Some(id) => sea_orm::ActiveValue::Unchanged(id),
-                None => sea_orm::ActiveValue::NotSet,
-            },
-            // We assume the current task is the source of the link.
-            from_task_id: task_id.to_owned(),
-            // Since the migration requires an integer foreign key,
-            // a helper function is used to map the target Uuid to its db_id.
-            to_task_id: Set(resolve_uuid_to_db_id(db, link.to).await.unwrap()),
-            // Convert the link type to its string representation.
-            r#type: Set(match link.link_type {
-                LinkType::DependsOn => "DependsOn".to_owned(),
-                LinkType::Blocking => "Blocking".to_owned(),
-            }),
-        });
+        // from_task_id always points to the source task
+        am.from_task_id = task_id.clone();
+
+        // to_task_id diff
+        if let Some(ref m) = existing_model {
+            if m.to_task_id == to_db_id {
+                am.to_task_id = ActiveValue::Unchanged(m.to_task_id);
+            } else {
+                am.to_task_id = Set(to_db_id);
+            }
+        } else {
+            am.to_task_id = Set(to_db_id);
+        }
+
+        // type diff
+        let link_type_string = match link.link_type {
+            LinkType::DependsOn => "DependsOn".to_owned(),
+            LinkType::Blocking => "Blocking".to_owned(),
+        };
+        if let Some(ref m) = existing_model {
+            if m.r#type == link_type_string {
+                am.r#type = ActiveValue::Unchanged(m.r#type.clone());
+            } else {
+                am.r#type = Set(link_type_string);
+            }
+        } else {
+            am.r#type = Set(link_type_string);
+        }
+
+        links_active.push(am);
     }
 
     Ok(links_active)
@@ -623,25 +671,51 @@ async fn history_to_active_model(
     let mut history_events_active: Vec<history::ActiveModel> = vec![];
 
     for event in history_events {
-        let mut event_active = history::ActiveModel {
-            id: Set(event.id.unwrap_or_default()),
-            value: Set(event.value.clone()),
-            datetime: Set(event.datetime.to_rfc3339()),
-            // The history table references the task’s db_id.
-            task_id: task_id.to_owned(),
-            ..Default::default()
-        };
         if let Some(id) = event.id {
-            if let Ok(Some(existing)) = history::Entity::find_by_id(id).one(db).await {
-                if existing.value == event.value {
-                    event_active.value = ActiveValue::Unchanged(existing.datetime.clone());
+            // Existing event: fetch and diff
+            let existing_opt = history::Entity::find_by_id(id).one(db).await?;
+            if let Some(existing_model) = existing_opt {
+                // Clone so we can still access fields after into_active_model consumes the value
+                let mut event_active = existing_model.clone().into_active_model();
+
+                // Diff value
+                if existing_model.value == event.value {
+                    event_active.value = ActiveValue::Unchanged(existing_model.value.clone());
+                } else {
+                    event_active.value = Set(event.value.clone());
                 }
-                if existing.datetime == event.datetime.to_rfc3339() {
-                    event_active.value = ActiveValue::Unchanged(existing.datetime.clone());
+
+                // Diff datetime
+                let event_dt = event.datetime.to_rfc3339();
+                if existing_model.datetime == event_dt {
+                    event_active.datetime = ActiveValue::Unchanged(existing_model.datetime.clone());
+                } else {
+                    event_active.datetime = Set(event_dt);
                 }
+
+                // Ensure FK
+                event_active.task_id = task_id.clone();
+                history_events_active.push(event_active);
+            } else {
+                // ID provided but not found; treat as new insert (avoid panic)
+                history_events_active.push(history::ActiveModel {
+                    id: ActiveValue::NotSet,
+                    value: Set(event.value.clone()),
+                    datetime: Set(event.datetime.to_rfc3339()),
+                    task_id: task_id.clone(),
+                    ..Default::default()
+                });
             }
+        } else {
+            // New event
+            history_events_active.push(history::ActiveModel {
+                id: ActiveValue::NotSet,
+                value: Set(event.value.clone()),
+                datetime: Set(event.datetime.to_rfc3339()),
+                task_id: task_id.clone(),
+                ..Default::default()
+            });
         }
-        history_events_active.push(event_active);
     }
     Ok(history_events_active)
 }
@@ -686,18 +760,18 @@ mod tests {
         if let ActiveValue::Set(ref val) = active.value {
             assert_eq!(val, &ann.value);
         } else {
-            panic!("Expected value to be Set");
+            assert!(false, "Expected value to be Set");
         }
         if let ActiveValue::Set(ref dt) = active.datetime {
             assert_eq!(dt, &ann.time.to_rfc3339());
         } else {
-            panic!("Expected datetime to be Set");
+            assert!(false, "Expected datetime to be Set");
         }
         // task_id should be set to 1.
         if let ActiveValue::Set(ref tid) = active.task_id {
             assert_eq!(*tid, 1);
         } else {
-            panic!("Expected task_id to be Set");
+            assert!(false, "Expected task_id to be Set");
         }
 
         // TODO: Test making annotation model when we update the model
@@ -707,35 +781,190 @@ mod tests {
     #[tokio::test]
     async fn test_insert_task() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        // 1. Create an in-memory task and save its UUID
         let mut t = Task::default();
+        let saved_uuid = t.uuid; // UUID auto-generated in default impl
+
+        // 2. First insert
         insert_task_impl(&db, &t).await.unwrap();
-        let t_model_opt = tables::tasks::Entity::find()
-            .filter(tables::tasks::Column::Uuid.eq(t.uuid.to_string()))
+
+        // 3. Retrieve task by saved UUID
+        let initial_db_task = tasks::Entity::find()
+            .filter(tasks::Column::Uuid.eq(saved_uuid.to_string()))
             .one(&db)
             .await
-            .unwrap();
+            .unwrap()
+            .expect("Task should have been inserted");
+        assert_eq!(saved_uuid.to_string(), initial_db_task.uuid);
 
-        let t_model = t_model_opt.unwrap();
-        assert_eq!(t.uuid, Uuid::parse_str(&t_model.uuid).unwrap());
-
-        let annotation_model_opt = tables::tasks::Entity::find()
-            .filter(tables::tasks::Column::Uuid.eq(t_model.db_id))
+        // Ensure there are currently no annotations linked
+        let annotations_before = annotations::Entity::find()
+            .filter(annotations::Column::TaskId.eq(initial_db_task.db_id))
             .all(&db)
             .await
             .unwrap();
+        assert!(annotations_before.is_empty(), "Expected no annotations after first insert");
 
-        assert_true!(annotation_model_opt.is_empty());
+        // 4. Add annotation to in-memory task (value + current time)
+        t.annotations.push(TaskAnnotation {
+            id: None,
+            value: "Test annotation".to_string(),
+            time: chrono::Local::now(),
+        });
 
-        t.annotations.push(TaskAnnotation::default());
+        // 5. Re-insert (should update existing row by UUID, not duplicate)
         insert_task_impl(&db, &t).await.unwrap();
 
-        let annotation_model_opt = tables::tasks::Entity::find()
-            .filter(tables::tasks::Column::Uuid.eq(t_model.db_id))
+        // Fetch task again to ensure we are still referencing same db_id
+        let updated_db_task = tasks::Entity::find()
+            .filter(tasks::Column::Uuid.eq(saved_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should still exist after update");
+        assert_eq!(initial_db_task.db_id, updated_db_task.db_id, "Task update should not create a new row");
+
+        let annotations_after = annotations::Entity::find()
+            .filter(annotations::Column::TaskId.eq(updated_db_task.db_id))
             .all(&db)
             .await
             .unwrap();
+        assert!(!annotations_after.is_empty(), "Expected at least one annotation row after update");
+    }
 
-        assert_false!(annotation_model_opt.is_empty());
+    #[tokio::test]
+    async fn test_annotations_to_active_model_update_diff_logic() {
+        use chrono::Local;
+        use sea_orm::{ActiveModelTrait, EntityTrait};
+
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        // Insert a minimal task row
+        let uuid = Uuid::new_v4();
+        let task_model = tasks::ActiveModel {
+            status: ActiveValue::Set("PENDING".to_string()),
+            uuid: ActiveValue::Set(uuid.to_string()),
+            summary: ActiveValue::Set("Summary".to_string()),
+            date_created: ActiveValue::Set(Local::now().to_rfc3339()),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+
+        // Create a new annotation (no id)
+        let ann_time = Local::now();
+        let ann = TaskAnnotation {
+            id: None,
+            value: "Initial".to_string(),
+            time: ann_time,
+        };
+        let active_vec = annotations_to_active_model(&db, &vec![ann.clone()], &ActiveValue::Set(task_model.db_id))
+            .await
+            .unwrap();
+        assert_eq!(active_vec.len(), 1);
+        // Persist it
+        let saved_ann = active_vec[0].clone().insert(&db).await.unwrap();
+
+        // Unchanged update
+        let ann_unchanged = TaskAnnotation {
+            id: Some(saved_ann.id),
+            value: saved_ann.value.clone(),
+            time: chrono::DateTime::parse_from_rfc3339(&saved_ann.datetime)
+                .unwrap()
+                .with_timezone(&Local),
+        };
+        let update_vec = annotations_to_active_model(&db, &vec![ann_unchanged], &ActiveValue::Set(task_model.db_id))
+            .await
+            .unwrap();
+        if let ActiveValue::Unchanged(_) = update_vec[0].value {
+        } else {
+            assert!(false, "Value field should be Unchanged for identical annotation");
+        }
+        if let ActiveValue::Unchanged(_) = update_vec[0].datetime {
+        } else {
+            assert!(false, "Datetime field should be Unchanged for identical annotation");
+        }
+
+        // Changed value only
+        let ann_changed = TaskAnnotation {
+            id: Some(saved_ann.id),
+            value: "Modified".to_string(),
+            time: chrono::DateTime::parse_from_rfc3339(&saved_ann.datetime)
+                .unwrap()
+                .with_timezone(&Local),
+        };
+        let changed_vec = annotations_to_active_model(&db, &vec![ann_changed], &ActiveValue::Set(task_model.db_id))
+            .await
+            .unwrap();
+        if let ActiveValue::Set(ref v) = changed_vec[0].value {
+            assert_eq!(v, "Modified");
+        } else {
+            assert!(false, "Value field should be Set for modified annotation");
+        }
+        if let ActiveValue::Unchanged(_) = changed_vec[0].datetime {
+        } else {
+            assert!(false, "Datetime field should remain Unchanged when only value changes");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_history_to_active_model_update_diff_logic() {
+        use chrono::Local;
+        use sea_orm::{ActiveModelTrait, EntityTrait};
+
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        // Insert task
+        let uuid = Uuid::new_v4();
+        let task_model = tasks::ActiveModel {
+            status: ActiveValue::Set("PENDING".to_string()),
+            uuid: ActiveValue::Set(uuid.to_string()),
+            summary: ActiveValue::Set("Summary".to_string()),
+            date_created: ActiveValue::Set(Local::now().to_rfc3339()),
+            ..Default::default()
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+
+        // New history event
+        let evt_time = Local::now();
+        let evt = TaskHistory {
+            id: None,
+            value: "Created".to_string(),
+            datetime: evt_time,
+        };
+        let history_vec = history_to_active_model(&db, &vec![evt.clone()], &ActiveValue::Set(task_model.db_id))
+            .await
+            .unwrap();
+        assert_eq!(history_vec.len(), 1);
+        // New row should have NotSet id
+        if let ActiveValue::NotSet = history_vec[0].id {
+        } else {
+            assert!(false, "New history event id should be NotSet");
+        }
+        // Persist
+        let saved_evt = history_vec[0].clone().insert(&db).await.unwrap();
+
+        // Unchanged event
+        let evt_unchanged = TaskHistory {
+            id: Some(saved_evt.id),
+            value: saved_evt.value.clone(),
+            datetime: chrono::DateTime::parse_from_rfc3339(&saved_evt.datetime)
+                .unwrap()
+                .with_timezone(&Local),
+        };
+        let unchanged_vec = history_to_active_model(&db, &vec![evt_unchanged], &ActiveValue::Set(task_model.db_id))
+            .await
+            .unwrap();
+        if let ActiveValue::Unchanged(_) = unchanged_vec[0].value {
+        } else {
+            assert!(false, "History value should be Unchanged for identical update");
+        }
+        if let ActiveValue::Unchanged(_) = unchanged_vec[0].datetime {
+        } else {
+            assert!(false, "History datetime should be Unchanged for identical update");
+        }
     }
 
     // #[tokio::test]

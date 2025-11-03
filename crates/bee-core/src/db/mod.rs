@@ -1,7 +1,10 @@
 mod tables;
 
 use crate::{
-    filters::Filter,
+    filters::{
+        Filter,
+        filters_impl::{FilterKind, StringFilter},
+    },
     task::{
         ActionUndo, ActionUndoType, Link, LinkType, Project, Task, TaskAnnotation, TaskHistory,
     },
@@ -17,7 +20,8 @@ use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{self, Set},
     ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
-    EntityTrait, IntoActiveModel, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
+    EntityTrait, IdenStatic, IntoActiveModel, QueryFilter, QueryOrder, QuerySelect, Related,
+    TransactionTrait,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -54,8 +58,33 @@ async fn get_database(
 // TODO: Once the Load function is done, I can make tests and checks that things in the DB
 // are correctly being added
 
-pub async fn load_tasks(_filter: &Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error>> {
-    Ok(())
+pub async fn load_tasks(filter: &Box<dyn Filter>) -> Result<Vec<tasks::Model>, sea_orm::DbErr> {
+    let db = get_database(None).await.unwrap();
+    load_tasks_impl(&db, filter).await
+}
+pub async fn load_tasks_impl(
+    db: &DatabaseConnection,
+    filter: &Box<dyn Filter>,
+) -> Result<Vec<tasks::Model>, sea_orm::DbErr> {
+    if filter.get_kind() == FilterKind::String {
+        return tables::tasks::Entity::find()
+            .filter(
+                tasks::Column::Summary.contains(
+                    filter
+                        .as_any()
+                        .downcast_ref::<StringFilter>()
+                        .unwrap()
+                        .value
+                        .as_str()
+                        .to_lowercase()
+                        .as_str(),
+                ),
+            )
+            .all(db)
+            .await;
+    } else {
+        unimplemented!();
+    }
 }
 
 pub async fn insert_tasks(tasks: &[Task]) -> Result<(), Box<dyn std::error::Error>> {
@@ -76,9 +105,7 @@ pub async fn append_undo_action(undo: &ActionUndo) -> Result<(), Box<dyn std::er
     append_undo_action_impl(&db, undo).await
 }
 
-pub async fn fetch_undos(
-    limit: usize,
-) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
+pub async fn fetch_undos(limit: usize) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
     if limit == 0 {
         return Ok(Vec::new());
     }
@@ -86,7 +113,6 @@ pub async fn fetch_undos(
     let db = get_database(None).await?;
     fetch_undos_impl(&db, limit).await
 }
-
 
 async fn append_undo_action_impl(
     db: &DatabaseConnection,
@@ -690,6 +716,38 @@ mod tests {
 
         assert_eq!(latest.action_type, expected_latest.action_type);
         assert_eq!(latest.tasks, expected_latest.tasks);
+    }
+    #[tokio::test]
+    async fn test_insert_load_task() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        // 1. Create an in-memory task and save its UUID
+        let mut t = Task::default();
+        let saved_uuid = t.uuid; // UUID auto-generated in default impl
+        t.summary = "foo bar".to_string();
+
+        // 2. First insert
+        insert_task_impl(&db, &t).await.unwrap();
+
+        // 3. Retrieve task by saved UUID
+        let initial_db_task = tasks::Entity::find()
+            .filter(tasks::Column::Uuid.eq(saved_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should have been inserted");
+        assert_eq!(saved_uuid.to_string(), initial_db_task.uuid);
+
+        let f: Box<dyn Filter> = Box::new(StringFilter{value: "foo".to_string()});
+        let loaded = load_tasks_impl(&db, &f).await.unwrap();
+        assert_eq!(loaded.len(), 1, "Should have one task retrieved");
+
+        let f: Box<dyn Filter> = Box::new(StringFilter{value: "FOO".to_string()});
+        let loaded = load_tasks_impl(&db, &f).await.unwrap();
+        assert_eq!(loaded.len(), 1, "Should be case insensitive");
+
+        let f: Box<dyn Filter> = Box::new(StringFilter{value: "NO".to_string()});
+        let loaded = load_tasks_impl(&db, &f).await.unwrap();
+        assert_eq!(loaded.len(), 0, "Should not be matching");
     }
 
     #[tokio::test]

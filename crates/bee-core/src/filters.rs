@@ -1,4 +1,4 @@
-mod filters_impl;
+pub(crate) mod filters_impl;
 
 mod parser;
 

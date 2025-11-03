@@ -3,7 +3,6 @@ mod task_prop_parser;
 use crate::filters::Filter;
 use crate::lexer::Lexer;
 use task_prop_parser::TaskPropertyParser;
-use sea_orm::entity;
 
 use chrono::Local;
 use chrono::prelude::DateTime;
@@ -61,6 +60,20 @@ impl fmt::Display for TaskStatus {
         }
     }
 }
+
+#[derive(Default, Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+pub enum ActionUndoType {
+    Add,
+    #[default]
+    Modify,
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+pub struct ActionUndo {
+    pub action_type: ActionUndoType,
+    pub tasks: Vec<Task>,
+}
+
 
 #[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum DependsOnIdentifier {

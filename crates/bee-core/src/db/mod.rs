@@ -2,10 +2,13 @@ mod tables;
 
 use crate::{
     filters::Filter,
-    task::{Link, LinkType, Project, Task, TaskAnnotation, TaskHistory},
+    task::{
+        ActionUndo, ActionUndoType, Link, LinkType, Project, Task, TaskAnnotation, TaskHistory,
+    },
 };
-use migration::{sea_orm::Database, Migrator, MigratorTrait};
-use tables::{annotations, history, links, projects, tags, tasks, tasks_tags};
+use migration::{Migrator, MigratorTrait, sea_orm::Database};
+use serde_json;
+use tables::{annotations, history, links, projects, tags, tasks, tasks_tags, undo_actions};
 
 use log::debug;
 use uuid::Uuid;
@@ -14,7 +17,7 @@ use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{self, Set},
     ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
-    EntityTrait, IntoActiveModel, QueryFilter, TransactionTrait,
+    EntityTrait, IntoActiveModel, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -68,6 +71,81 @@ pub async fn insert_task(task: &Task) -> Result<(), Box<dyn std::error::Error>> 
     insert_task_impl(&db, task).await
 }
 
+pub async fn append_undo_action(undo: &ActionUndo) -> Result<(), Box<dyn std::error::Error>> {
+    let db = get_database(None).await?;
+    append_undo_action_impl(&db, undo).await
+}
+
+pub async fn fetch_undos(
+    limit: usize,
+) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
+    if limit == 0 {
+        return Ok(Vec::new());
+    }
+
+    let db = get_database(None).await?;
+    fetch_undos_impl(&db, limit).await
+}
+
+
+async fn append_undo_action_impl(
+    db: &DatabaseConnection,
+    undo: &ActionUndo,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let payload = serde_json::to_string(undo)?;
+    let active = undo_actions::ActiveModel {
+        action_type: Set(match undo.action_type {
+            ActionUndoType::Add => "ADD".to_string(),
+            ActionUndoType::Modify => "MODIFY".to_string(),
+        }),
+        payload: Set(payload),
+        ..Default::default()
+    };
+    active.insert(db).await?;
+    Ok(())
+}
+
+async fn fetch_undos_impl(
+    db: &DatabaseConnection,
+    limit: usize,
+) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
+    if limit == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut records = undo_actions::Entity::find()
+        .order_by_desc(undo_actions::Column::CreatedAt)
+        .order_by_desc(undo_actions::Column::Id)
+        .limit(limit as u64)
+        .all(db)
+        .await?;
+
+    records.reverse();
+
+    let mut undos: Vec<ActionUndo> = Vec::with_capacity(records.len());
+    for record in records {
+        let mut undo: ActionUndo = serde_json::from_str(&record.payload)?;
+        undo.action_type = match record.action_type.as_str() {
+            "ADD" => ActionUndoType::Add,
+            "MODIFY" => ActionUndoType::Modify,
+            other => return Err(format!("Unknown undo action type '{}'", other).into()),
+        };
+        undos.push(undo);
+    }
+    Ok(undos)
+}
+
+// Macro to diff fields into an ActiveModel
+macro_rules! diff_active_model {
+    ($am:ident, $old:ident, $new:ident, { $($field:ident),+ $(,)? }) => {
+        $(
+            if $old.$field != $new.$field {
+                $am.$field = Set($new.$field.clone());
+            }
+        )+
+    };
+}
+
 async fn insert_task_impl(
     db: &DatabaseConnection,
     task: &Task,
@@ -104,6 +182,41 @@ async fn insert_or_update_task(
         }
     }
     task_model_active.clone().insert(db).await
+}
+
+async fn project_to_active_model<C>(
+    db: &C,
+    project_obj: &Project,
+) -> Result<projects::ActiveModel, DbErr>
+where
+    C: ConnectionTrait,
+{
+    // 1. Fetch existing Model if we have an ID
+    let project_model: Option<projects::Model> = projects::Entity::find()
+        .filter(projects::Column::Name.eq(&project_obj.name))
+        .one(db)
+        .await?;
+
+    // 2. Start from existing.into_active_model() or default
+    let mut project_active = project_model
+        .clone()
+        .map(|m| m.into_active_model())
+        .unwrap_or_default();
+
+    // 3. Ensure PK is set for update (leaving it NotSet for insert)
+    if let Some(id) = project_obj.id {
+        project_active.id = Set(id);
+    }
+
+    // 4. Diff the `name` field if updating, or set it on insert
+    if let Some(old) = &project_model {
+        diff_active_model!(project_active, old, project_obj, { name });
+    } else {
+        project_active.name = Set(project_obj.name.clone());
+    }
+
+    debug!("End of project_to_active_model {:?}", project_active);
+    Ok(project_active)
 }
 
 async fn persist_project(
@@ -220,10 +333,7 @@ async fn sync_history(
         existing_map.insert(row.id, row);
     }
 
-    let desired_ids: HashSet<i32> = desired_history
-        .iter()
-        .filter_map(|evt| evt.id)
-        .collect();
+    let desired_ids: HashSet<i32> = desired_history.iter().filter_map(|evt| evt.id).collect();
 
     let to_delete: Vec<i32> = existing_ids
         .into_iter()
@@ -309,10 +419,7 @@ async fn sync_links(
         existing_map.insert(row.id, row);
     }
 
-    let desired_ids: HashSet<i32> = desired_links
-        .iter()
-        .filter_map(|link| link.id)
-        .collect();
+    let desired_ids: HashSet<i32> = desired_links.iter().filter_map(|link| link.id).collect();
 
     let to_delete: Vec<i32> = existing_ids
         .into_iter()
@@ -410,12 +517,14 @@ async fn sync_tags(
             .await?
         {
             Some(model) => model,
-            None => tags::ActiveModel {
-                id: ActiveValue::NotSet,
-                name: Set(tag_name.clone()),
+            None => {
+                tags::ActiveModel {
+                    id: ActiveValue::NotSet,
+                    name: Set(tag_name.clone()),
+                }
+                .insert(db)
+                .await?
             }
-            .insert(db)
-            .await?,
         };
 
         desired_tag_ids.insert(tag_model.id);
@@ -448,62 +557,6 @@ async fn sync_tags(
     Ok(())
 }
 
-/// A structure to group all ActiveModels corresponding to a Task.
-pub struct TaskActiveModels {
-    pub task: tables::tasks::ActiveModel,
-    pub project: Option<projects::ActiveModel>,
-    pub annotations: Vec<annotations::ActiveModel>,
-    pub history: Vec<history::ActiveModel>,
-    pub links: Vec<links::ActiveModel>,
-    pub tags: Vec<tags::ActiveModel>,
-}
-
-// Macro to diff fields into an ActiveModel
-macro_rules! diff_active_model {
-    ($am:ident, $old:ident, $new:ident, { $($field:ident),+ $(,)? }) => {
-        $(
-            if $old.$field != $new.$field {
-                $am.$field = Set($new.$field.clone());
-            }
-        )+
-    };
-}
-
-pub async fn project_to_active_model<C>(
-    db: &C,
-    project_obj: &Project,
-) -> Result<projects::ActiveModel, DbErr>
-where
-    C: ConnectionTrait,
-{
-    // 1. Fetch existing Model if we have an ID
-    let project_model: Option<projects::Model> = projects::Entity::find()
-        .filter(projects::Column::Name.eq(&project_obj.name))
-        .one(db)
-        .await?;
-
-    // 2. Start from existing.into_active_model() or default
-    let mut project_active = project_model
-        .clone()
-        .map(|m| m.into_active_model())
-        .unwrap_or_default();
-
-    // 3. Ensure PK is set for update (leaving it NotSet for insert)
-    if let Some(id) = project_obj.id {
-        project_active.id = Set(id);
-    }
-
-    // 4. Diff the `name` field if updating, or set it on insert
-    if let Some(old) = &project_model {
-        diff_active_model!(project_active, old, project_obj, { name });
-    } else {
-        project_active.name = Set(project_obj.name.clone());
-    }
-
-    debug!("End of project_to_active_model {:?}", project_active);
-    Ok(project_active)
-}
-
 async fn task_to_active_model<C>(
     db: &C,
     task_obj: &Task,
@@ -518,8 +571,6 @@ where
         .filter(tasks::Column::Uuid.eq(task_obj.uuid.to_string()))
         .one(db)
         .await?;
-
-
 
     let mut task_active = tasks::ActiveModel {
         db_id: match task_obj.db_id {
@@ -593,193 +644,8 @@ where
     Ok(task_active)
 }
 
-async fn annotations_to_active_model(
-    db: &DatabaseConnection,
-    annotations: &Vec<TaskAnnotation>,
-    task_id: &ActiveValue<i32>,
-) -> Result<Vec<annotations::ActiveModel>, DbErr> {
-    let mut annotations_active: Vec<annotations::ActiveModel> = vec![];
-
-    for ann in annotations {
-        let model: Option<tables::annotations::Model> = if let Some(id) = ann.id {
-            annotations::Entity::find_by_id(id).one(db).await?
-        } else {
-            None
-        };
-
-        let mut model_active = match model.clone() {
-            Some(model) => model.into_active_model(),
-            None => <annotations::ActiveModel as sea_orm::ActiveModelTrait>::default(),
-        };
-
-        match model {
-            Some(m) => {
-                // Existing annotation: diff fields
-                if m.value == ann.value {
-                    model_active.value = ActiveValue::Unchanged(m.value.clone());
-                } else {
-                    model_active.value = Set(ann.value.clone());
-                }
-                let ann_dt = ann.time.to_rfc3339();
-                if m.datetime == ann_dt {
-                    model_active.datetime = ActiveValue::Unchanged(m.datetime.clone());
-                } else {
-                    model_active.datetime = Set(ann_dt);
-                }
-                // Always ensure task_id (FK) is set (or unchanged if same)
-                model_active.task_id = task_id.clone();
-            }
-            None => {
-                // New annotation: set all required fields
-                model_active.value = Set(ann.value.clone());
-                model_active.datetime = Set(ann.time.to_rfc3339());
-                model_active.task_id = task_id.clone();
-            }
-        }
-        annotations_active.push(model_active);
-    }
-    Ok(annotations_active)
-}
-
-async fn links_to_active_model(
-    db: &DatabaseConnection,
-    links: &Vec<Link>,
-    task_id: &ActiveValue<i32>,
-) -> Result<Vec<links::ActiveModel>, DbErr> {
-    let mut links_active: Vec<links::ActiveModel> = Vec::new();
-
-    // Batch resolve target UUIDs (best effort – still sequential today, but cached).
-    use std::collections::HashMap as StdHashMap;
-    let mut target_uuid_map: StdHashMap<Uuid, Option<i32>> = StdHashMap::new();
-    for l in links {
-        target_uuid_map
-            .entry(l.to)
-            .or_insert(resolve_uuid_to_db_id(db, l.to).await?);
-    }
-
-    for link in links {
-        let existing_model = if let Some(id) = link.id {
-            links::Entity::find_by_id(id).one(db).await?
-        } else {
-            None
-        };
-
-        let to_db_id = target_uuid_map
-            .get(&link.to)
-            .and_then(|x| *x)
-            .ok_or_else(|| {
-                DbErr::RecordNotFound(format!("Link target uuid {} not found", link.to))
-            })?;
-
-        // Start from existing ActiveModel (diff) or default (insert)
-        let mut am = existing_model
-            .clone()
-            .map(|m| m.into_active_model())
-            .unwrap_or_default();
-
-        // id: unchanged if existing, otherwise NotSet
-        am.id = match existing_model {
-            Some(ref m) => ActiveValue::Unchanged(m.id),
-            None => ActiveValue::NotSet,
-        };
-
-        // from_task_id always points to the source task
-        am.from_task_id = task_id.clone();
-
-        // to_task_id diff
-        if let Some(ref m) = existing_model {
-            if m.to_task_id == to_db_id {
-                am.to_task_id = ActiveValue::Unchanged(m.to_task_id);
-            } else {
-                am.to_task_id = Set(to_db_id);
-            }
-        } else {
-            am.to_task_id = Set(to_db_id);
-        }
-
-        // type diff
-        let link_type_string = match link.link_type {
-            LinkType::DependsOn => "DependsOn".to_owned(),
-            LinkType::Blocking => "Blocking".to_owned(),
-        };
-        if let Some(ref m) = existing_model {
-            if m.r#type == link_type_string {
-                am.r#type = ActiveValue::Unchanged(m.r#type.clone());
-            } else {
-                am.r#type = Set(link_type_string);
-            }
-        } else {
-            am.r#type = Set(link_type_string);
-        }
-
-        links_active.push(am);
-    }
-
-    Ok(links_active)
-}
-
-async fn history_to_active_model(
-    db: &DatabaseConnection,
-    history_events: &Vec<TaskHistory>,
-    task_id: &ActiveValue<i32>,
-) -> Result<Vec<history::ActiveModel>, DbErr> {
-    let mut history_events_active: Vec<history::ActiveModel> = vec![];
-
-    for event in history_events {
-        if let Some(id) = event.id {
-            // Existing event: fetch and diff
-            let existing_opt = history::Entity::find_by_id(id).one(db).await?;
-            if let Some(existing_model) = existing_opt {
-                // Clone so we can still access fields after into_active_model consumes the value
-                let mut event_active = existing_model.clone().into_active_model();
-
-                // Diff value
-                if existing_model.value == event.value {
-                    event_active.value = ActiveValue::Unchanged(existing_model.value.clone());
-                } else {
-                    event_active.value = Set(event.value.clone());
-                }
-
-                // Diff datetime
-                let event_dt = event.datetime.to_rfc3339();
-                if existing_model.datetime == event_dt {
-                    event_active.datetime = ActiveValue::Unchanged(existing_model.datetime.clone());
-                } else {
-                    event_active.datetime = Set(event_dt);
-                }
-
-                // Ensure FK
-                event_active.task_id = task_id.clone();
-                history_events_active.push(event_active);
-            } else {
-                // ID provided but not found; treat as new insert (avoid panic)
-                history_events_active.push(history::ActiveModel {
-                    id: ActiveValue::NotSet,
-                    value: Set(event.value.clone()),
-                    datetime: Set(event.datetime.to_rfc3339()),
-                    task_id: task_id.clone(),
-                    ..Default::default()
-                });
-            }
-        } else {
-            // New event
-            history_events_active.push(history::ActiveModel {
-                id: ActiveValue::NotSet,
-                value: Set(event.value.clone()),
-                datetime: Set(event.datetime.to_rfc3339()),
-                task_id: task_id.clone(),
-                ..Default::default()
-            });
-        }
-    }
-    Ok(history_events_active)
-}
-
 /// Placeholder function for converting a Uuid to the corresponding database id.
-async fn resolve_uuid_to_db_id<C>(
-    db: &C,
-    id: Uuid,
-) -> Result<Option<i32>, DbErr>
+async fn resolve_uuid_to_db_id<C>(db: &C, id: Uuid) -> Result<Option<i32>, DbErr>
 where
     C: ConnectionTrait,
 {
@@ -794,49 +660,38 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use all_asserts::{assert_false, assert_true};
-    // Import the function and domain types
-    use chrono::Utc;
-    use sea_orm::{ActiveValue, Database, DatabaseConnection};
 
+    /// Ensure undo actions are persisted and the most recent entry is fetched.
     #[tokio::test]
-    async fn test_annotations_to_active_model_new_annotation() {
+    async fn test_append_undo_action_persists_and_fetches_latest() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
-        // Create a TaskAnnotation with no id (new record).
-        let ann = TaskAnnotation {
-            id: None,
-            value: "Test annotation".to_owned(),
-            time: Utc::now().into(),
+
+        let mut first_task = Task::default();
+        first_task.set_summary("First undo task");
+        let first_undo = ActionUndo {
+            action_type: ActionUndoType::Add,
+            tasks: vec![first_task],
         };
-        let task_id = ActiveValue::Set(1);
-        let active_models = annotations_to_active_model(&db, &vec![ann.clone()], &task_id)
-            .await
-            .unwrap();
-        assert_eq!(active_models.len(), 1);
-        let active = &active_models[0];
 
-        // Check that the active model fields are Set with the expected values.
-        if let ActiveValue::Set(ref val) = active.value {
-            assert_eq!(val, &ann.value);
-        } else {
-            assert!(false, "Expected value to be Set");
-        }
-        if let ActiveValue::Set(ref dt) = active.datetime {
-            assert_eq!(dt, &ann.time.to_rfc3339());
-        } else {
-            assert!(false, "Expected datetime to be Set");
-        }
-        // task_id should be set to 1.
-        if let ActiveValue::Set(ref tid) = active.task_id {
-            assert_eq!(*tid, 1);
-        } else {
-            assert!(false, "Expected task_id to be Set");
-        }
+        let mut second_task = Task::default();
+        second_task.set_summary("Second undo task");
+        let second_undo = ActionUndo {
+            action_type: ActionUndoType::Modify,
+            tasks: vec![second_task],
+        };
+        let expected_latest = second_undo.clone();
 
-        // TODO: Test making annotation model when we update the model
+        append_undo_action_impl(&db, &first_undo).await.unwrap();
+        append_undo_action_impl(&db, &second_undo).await.unwrap();
+
+        let recent = fetch_undos_impl(&db, 1).await.unwrap();
+        assert_eq!(recent.len(), 1, "Expected a single undo action returned");
+        let latest = &recent[0];
+
+        assert_eq!(latest.action_type, expected_latest.action_type);
+        assert_eq!(latest.tasks, expected_latest.tasks);
     }
 
-    // TODO: Add test to insert a task
     #[tokio::test]
     async fn test_insert_task() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
@@ -862,7 +717,10 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert!(annotations_before.is_empty(), "Expected no annotations after first insert");
+        assert!(
+            annotations_before.is_empty(),
+            "Expected no annotations after first insert"
+        );
 
         // 4. Add annotation to in-memory task (value + current time)
         t.annotations.push(TaskAnnotation {
@@ -881,14 +739,20 @@ mod tests {
             .await
             .unwrap()
             .expect("Task should still exist after update");
-        assert_eq!(initial_db_task.db_id, updated_db_task.db_id, "Task update should not create a new row");
+        assert_eq!(
+            initial_db_task.db_id, updated_db_task.db_id,
+            "Task update should not create a new row"
+        );
 
         let annotations_after = annotations::Entity::find()
             .filter(annotations::Column::TaskId.eq(updated_db_task.db_id))
             .all(&db)
             .await
             .unwrap();
-        assert!(!annotations_after.is_empty(), "Expected at least one annotation row after update");
+        assert!(
+            !annotations_after.is_empty(),
+            "Expected at least one annotation row after update"
+        );
     }
 
     #[tokio::test]
@@ -917,7 +781,11 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert_eq!(annotations_before.len(), 1, "Expected one annotation after initial insert");
+        assert_eq!(
+            annotations_before.len(),
+            1,
+            "Expected one annotation after initial insert"
+        );
 
         task.annotations.clear();
         insert_task_impl(&db, &task).await.unwrap();
@@ -927,7 +795,10 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert!(annotations_after.is_empty(), "Annotation should be removed after sync with empty annotations");
+        assert!(
+            annotations_after.is_empty(),
+            "Annotation should be removed after sync with empty annotations"
+        );
     }
 
     #[tokio::test]
@@ -956,7 +827,11 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert_eq!(history_before.len(), 1, "Expected one history event after initial insert");
+        assert_eq!(
+            history_before.len(),
+            1,
+            "Expected one history event after initial insert"
+        );
 
         task.history.clear();
         insert_task_impl(&db, &task).await.unwrap();
@@ -966,14 +841,17 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert!(history_after.is_empty(), "History should be removed after sync with empty events");
+        assert!(
+            history_after.is_empty(),
+            "History should be removed after sync with empty events"
+        );
     }
 
     #[tokio::test]
     async fn test_links_removed_after_sync() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 
-        let mut target_task = Task::default();
+        let target_task = Task::default();
         let target_uuid = target_task.uuid;
         insert_task_impl(&db, &target_task).await.unwrap();
 
@@ -1000,7 +878,11 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert_eq!(links_before.len(), 1, "Expected one link after initial insert");
+        assert_eq!(
+            links_before.len(),
+            1,
+            "Expected one link after initial insert"
+        );
 
         source_task.links.clear();
         insert_task_impl(&db, &source_task).await.unwrap();
@@ -1010,7 +892,10 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert!(links_after.is_empty(), "Links should be removed after sync with empty collection");
+        assert!(
+            links_after.is_empty(),
+            "Links should be removed after sync with empty collection"
+        );
     }
 
     #[tokio::test]
@@ -1033,7 +918,10 @@ mod tests {
             .await
             .unwrap()
             .expect("Task should exist after insert");
-        assert!(persisted_task.project_id.is_some(), "Project should be set after initial insert");
+        assert!(
+            persisted_task.project_id.is_some(),
+            "Project should be set after initial insert"
+        );
 
         task.project = None;
         insert_task_impl(&db, &task).await.unwrap();
@@ -1044,7 +932,10 @@ mod tests {
             .await
             .unwrap()
             .expect("Task should still exist after project removal");
-        assert!(updated_task.project_id.is_none(), "Project should be cleared after sync with None");
+        assert!(
+            updated_task.project_id.is_none(),
+            "Project should be cleared after sync with None"
+        );
     }
 
     #[tokio::test]
@@ -1069,7 +960,24 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert_eq!(tags_before.len(), 1, "Expected one task-tag link after initial insert");
+        assert_eq!(
+            tags_before.len(),
+            1,
+            "Expected one task-tag link after initial insert"
+        );
+
+        let tag_ids: Vec<i32> = tags_before.iter().map(|t| t.tag_id).collect();
+        let tag_alpha = tags::Entity::find()
+            .filter(tags::Column::Id.is_in(tag_ids))
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(tag_alpha.len(), 1, "Expected matching tag row to exist");
+        assert_eq!(
+            tag_alpha.first().unwrap().name,
+            "alpha",
+            "Tag should still have the same name"
+        );
 
         task.tags.clear();
         insert_task_impl(&db, &task).await.unwrap();
@@ -1079,187 +987,9 @@ mod tests {
             .all(&db)
             .await
             .unwrap();
-        assert!(tags_after.is_empty(), "Task-tag links should be removed after sync with empty tags");
+        assert!(
+            tags_after.is_empty(),
+            "Task-tag links should be removed after sync with empty tags"
+        );
     }
-
-    #[tokio::test]
-    async fn test_annotations_to_active_model_update_diff_logic() {
-        use chrono::Local;
-        use sea_orm::{ActiveModelTrait, EntityTrait};
-
-        let db = get_database(Some("sqlite::memory:")).await.unwrap();
-
-        // Insert a minimal task row
-        let uuid = Uuid::new_v4();
-        let task_model = tasks::ActiveModel {
-            status: ActiveValue::Set("PENDING".to_string()),
-            uuid: ActiveValue::Set(uuid.to_string()),
-            summary: ActiveValue::Set("Summary".to_string()),
-            date_created: ActiveValue::Set(Local::now().to_rfc3339()),
-            ..Default::default()
-        }
-        .insert(&db)
-        .await
-        .unwrap();
-
-        // Create a new annotation (no id)
-        let ann_time = Local::now();
-        let ann = TaskAnnotation {
-            id: None,
-            value: "Initial".to_string(),
-            time: ann_time,
-        };
-        let active_vec = annotations_to_active_model(&db, &vec![ann.clone()], &ActiveValue::Set(task_model.db_id))
-            .await
-            .unwrap();
-        assert_eq!(active_vec.len(), 1);
-        // Persist it
-        let saved_ann = active_vec[0].clone().insert(&db).await.unwrap();
-
-        // Unchanged update
-        let ann_unchanged = TaskAnnotation {
-            id: Some(saved_ann.id),
-            value: saved_ann.value.clone(),
-            time: chrono::DateTime::parse_from_rfc3339(&saved_ann.datetime)
-                .unwrap()
-                .with_timezone(&Local),
-        };
-        let update_vec = annotations_to_active_model(&db, &vec![ann_unchanged], &ActiveValue::Set(task_model.db_id))
-            .await
-            .unwrap();
-        if let ActiveValue::Unchanged(_) = update_vec[0].value {
-        } else {
-            assert!(false, "Value field should be Unchanged for identical annotation");
-        }
-        if let ActiveValue::Unchanged(_) = update_vec[0].datetime {
-        } else {
-            assert!(false, "Datetime field should be Unchanged for identical annotation");
-        }
-
-        // Changed value only
-        let ann_changed = TaskAnnotation {
-            id: Some(saved_ann.id),
-            value: "Modified".to_string(),
-            time: chrono::DateTime::parse_from_rfc3339(&saved_ann.datetime)
-                .unwrap()
-                .with_timezone(&Local),
-        };
-        let changed_vec = annotations_to_active_model(&db, &vec![ann_changed], &ActiveValue::Set(task_model.db_id))
-            .await
-            .unwrap();
-        if let ActiveValue::Set(ref v) = changed_vec[0].value {
-            assert_eq!(v, "Modified");
-        } else {
-            assert!(false, "Value field should be Set for modified annotation");
-        }
-        if let ActiveValue::Unchanged(_) = changed_vec[0].datetime {
-        } else {
-            assert!(false, "Datetime field should remain Unchanged when only value changes");
-        }
-    }
-
-    #[tokio::test]
-    async fn test_history_to_active_model_update_diff_logic() {
-        use chrono::Local;
-        use sea_orm::{ActiveModelTrait, EntityTrait};
-
-        let db = get_database(Some("sqlite::memory:")).await.unwrap();
-        // Insert task
-        let uuid = Uuid::new_v4();
-        let task_model = tasks::ActiveModel {
-            status: ActiveValue::Set("PENDING".to_string()),
-            uuid: ActiveValue::Set(uuid.to_string()),
-            summary: ActiveValue::Set("Summary".to_string()),
-            date_created: ActiveValue::Set(Local::now().to_rfc3339()),
-            ..Default::default()
-        }
-        .insert(&db)
-        .await
-        .unwrap();
-
-        // New history event
-        let evt_time = Local::now();
-        let evt = TaskHistory {
-            id: None,
-            value: "Created".to_string(),
-            datetime: evt_time,
-        };
-        let history_vec = history_to_active_model(&db, &vec![evt.clone()], &ActiveValue::Set(task_model.db_id))
-            .await
-            .unwrap();
-        assert_eq!(history_vec.len(), 1);
-        // New row should have NotSet id
-        if let ActiveValue::NotSet = history_vec[0].id {
-        } else {
-            assert!(false, "New history event id should be NotSet");
-        }
-        // Persist
-        let saved_evt = history_vec[0].clone().insert(&db).await.unwrap();
-
-        // Unchanged event
-        let evt_unchanged = TaskHistory {
-            id: Some(saved_evt.id),
-            value: saved_evt.value.clone(),
-            datetime: chrono::DateTime::parse_from_rfc3339(&saved_evt.datetime)
-                .unwrap()
-                .with_timezone(&Local),
-        };
-        let unchanged_vec = history_to_active_model(&db, &vec![evt_unchanged], &ActiveValue::Set(task_model.db_id))
-            .await
-            .unwrap();
-        if let ActiveValue::Unchanged(_) = unchanged_vec[0].value {
-        } else {
-            assert!(false, "History value should be Unchanged for identical update");
-        }
-        if let ActiveValue::Unchanged(_) = unchanged_vec[0].datetime {
-        } else {
-            assert!(false, "History datetime should be Unchanged for identical update");
-        }
-    }
-
-    // #[tokio::test]
-    // async fn test_annotations_to_active_model_existing_annotation() {
-    //     let db = get_database(Some("sqlite::memory:")).await;
-    //     let now = Utc::now();
-    //     // First, insert an annotation into the DB.
-    //     let insert_result = sqlx::query(
-    //         r#"
-    //         INSERT INTO annotations (value, datetime, task_id)
-    //         VALUES (?, ?, ?)
-    //         "#,
-    //     )
-    //     .bind("Existing annotation")
-    //     .bind(now.to_rfc3339())
-    //     .bind(1)
-    //     .execute(db.as_ref())
-    //     .await
-    //     .unwrap();
-    //     let inserted_id = insert_result.last_insert_rowid() as i32;
-
-    //     // Create a TaskAnnotation with the same values as the inserted record.
-    //     let ann = TaskAnnotation {
-    //         id: Some(inserted_id),
-    //         value: "Existing annotation".to_owned(),
-    //         time: now,
-    //     };
-    //     let task_id = ActiveValue::Set(1);
-    //     let active_models = annotations_to_active_model(&db, &vec![ann.clone()], &task_id).await;
-    //     assert_eq!(active_models.len(), 1);
-    //     let active = &active_models[0];
-
-    //     // Because the values match the existing DB record, the function should mark them as Unchanged.
-    //     match active.value {
-    //         ActiveValue::Unchanged(ref existing_val) => {
-    //             // Here we expect the value to remain as the same (should be "Existing annotation").
-    //             assert_eq!(existing_val, "Existing annotation");
-    //         }
-    //         _ => panic!("Expected value to be Unchanged"),
-    //     }
-    //     match active.datetime {
-    //         ActiveValue::Unchanged(ref existing_dt) => {
-    //             assert_eq!(existing_dt, &now.to_rfc3339());
-    //         }
-    //         _ => panic!("Expected datetime to be Unchanged"),
-    //     }
-    // }
 }

@@ -7,3 +7,4 @@ pub mod projects;
 pub mod tags;
 pub mod tasks;
 pub mod tasks_tags;
+pub mod undo_actions;

@@ -17,22 +17,13 @@ mod action_start;
 mod action_stop;
 mod action_undo;
 
-use action_type::ActionType;
-use serde::{Deserialize, Serialize};
-
-use crate::command_parser::ParsedCommand;
+use crate::{action_type::ActionType, command_parser::ParsedCommand};
 use bee_core::{
     Printer,
     config::ReportConfig,
-    task::{Task, TaskData},
+    task::{ActionUndo, ActionUndoType, TaskData},
+  
 };
-
-#[derive(Default, Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
-pub enum ActionUndoType {
-    Add,
-    #[default]
-    Modify,
-}
 
 pub trait TaskAction {
     /// This is the main execution of the action. This is where it will affect
@@ -57,12 +48,6 @@ pub trait TaskAction {
     /// Set the report this action should use. This is important
     /// to decide how the printer should behave in some cases
     fn set_report(&mut self, report: ReportConfig);
-}
-
-#[derive(Default, Serialize, Deserialize, Clone, Debug)]
-pub struct ActionUndo {
-    pub action_type: ActionUndoType,
-    pub tasks: Vec<Task>,
 }
 
 #[derive(Default)]

@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
 
 use bee_core::Printer;
-use bee_core::task::{Task, TaskData, TaskProperties};
+use bee_core::task::{ActionUndoType, Task, TaskData, TaskProperties};
 
 use std::collections::HashMap;
 
@@ -51,7 +51,7 @@ impl TaskAction for StartTaskAction {
         }
         if !undos.is_empty() {
             self.base.undos.push(ActionUndo {
-                action_type: super::ActionUndoType::Modify,
+                action_type: ActionUndoType::Modify,
                 tasks: undos.into_values().collect(),
             });
         }

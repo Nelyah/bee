@@ -1,10 +1,9 @@
 use log::debug;
 use uuid::Uuid;
 
-use bee_actions::ActionUndo;
 use bee_core::{
     filters::{self, Filter},
-    task::{DependsOnIdentifier, TaskData, TaskProperties},
+    task::{ActionUndo, DependsOnIdentifier, TaskData, TaskProperties},
 };
 
 use std::collections::HashMap;

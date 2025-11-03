@@ -1,4 +1,5 @@
-use crate::{ActionUndo, ActionUndoType, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use bee_core::task::ActionUndoType;
 
 use bee_core::Printer;
 

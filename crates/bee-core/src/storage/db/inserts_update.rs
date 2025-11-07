@@ -340,9 +340,8 @@ pub(super) async fn load_tasks_impl(
             task_data.insert_extra_task(t);
         }
     }
+    // TODO: Figure out how to do upkeep
 
-    // TODO: Need to build a id to uuid index for the props so I can search for DependsOnIdentifier
-    // and get the extra tasks.
     Ok(task_data)
 }
 
@@ -1072,6 +1071,7 @@ where
 mod tests {
     use super::*;
     use crate::task::TaskStatus;
+    use all_asserts::assert_true;
     use chrono::{Duration, Local, TimeZone};
 
     async fn assert_single_match(
@@ -1891,6 +1891,88 @@ mod tests {
             &dependent_task,
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn test_load_extra_tasks() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut target_task = Task::default();
+        target_task.summary = "Target Task".to_string();
+        target_task.uuid = Uuid::new_v4();
+        target_task.id = Some(1);
+        let target_uuid = target_task.uuid;
+        write_tasks_impl(&db, &target_task).await.unwrap();
+
+        let mut dependent_task = Task::default();
+        dependent_task.summary = "Dependent Task".to_string();
+        dependent_task.uuid = Uuid::new_v4();
+        dependent_task.id = Some(2);
+        let dependent_uuid = dependent_task.uuid;
+        dependent_task.links.push(Link {
+            id: None,
+            from: dependent_uuid,
+            to: target_uuid,
+            link_type: LinkType::DependsOn,
+        });
+        write_tasks_impl(&db, &dependent_task).await.unwrap();
+
+        let mut independent_task = Task::default();
+        independent_task.summary = "Independent Task".to_string();
+        independent_task.uuid = Uuid::new_v4();
+        write_tasks_impl(&db, &independent_task).await.unwrap();
+
+        // Check for the uuid props extra task
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: target_uuid });
+
+        let mut task_props = TaskProperties::default();
+        task_props.depends_on = Some(vec![DependsOnIdentifier::Uuid(dependent_uuid.to_owned())]);
+        let results_data = load_tasks_impl(&db, &filter, Some(task_props))
+            .await
+            .unwrap();
+        assert_eq!(results_data.to_vec().len(), 1);
+        assert_eq!(results_data.to_vec()[0].uuid, target_uuid);
+        assert_eq!(results_data.get_extra_tasks().len(), 1);
+        assert_true!(
+            results_data
+                .get_extra_tasks()
+                .get(&dependent_uuid)
+                .is_some()
+        );
+
+        // check with the ID props extra task
+        let mut task_props = TaskProperties::default();
+        task_props.depends_on = Some(vec![DependsOnIdentifier::Id(
+            dependent_task.id.unwrap().to_owned(),
+        )]);
+        let results_data = load_tasks_impl(&db, &filter, Some(task_props))
+            .await
+            .unwrap();
+        assert_eq!(results_data.to_vec().len(), 1);
+        assert_eq!(results_data.to_vec()[0].uuid, target_uuid);
+        assert_eq!(results_data.get_extra_tasks().len(), 1);
+        assert_true!(
+            results_data
+                .get_extra_tasks()
+                .get(&dependent_uuid)
+                .is_some()
+        );
+        assert_eq!(
+            results_data
+                .get_extra_tasks()
+                .get(&dependent_uuid)
+                .unwrap()
+                .id,
+            dependent_task.id
+        );
+
+        // check with No Task props, should be no extra tasks (?)
+        let results_data = load_tasks_impl(&db, &filter, None)
+            .await
+            .unwrap();
+        assert_eq!(results_data.to_vec().len(), 1);
+        assert_eq!(results_data.to_vec()[0].uuid, target_uuid);
+        assert_true!(results_data.get_extra_tasks().is_empty());
     }
 
     #[tokio::test]

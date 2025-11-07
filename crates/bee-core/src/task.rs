@@ -102,7 +102,7 @@ pub struct TaskProperties {
     project: Option<Option<Project>>,
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
-    depends_on: Option<Vec<DependsOnIdentifier>>,
+    pub(crate) depends_on: Option<Vec<DependsOnIdentifier>>,
 }
 
 // We implement a specific function for annotate because we cannot know how to differenciate

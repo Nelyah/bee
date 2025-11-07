@@ -2,12 +2,18 @@ use super::tables;
 use crate::{
     filters::{
         Filter,
-        filters_impl::{FilterKind, StringFilter},
+        filters_impl::{
+            AndFilter, DateCreatedFilter, DateDueFilter, DateDueFilterType, DateEndFilter,
+            DependsOnFilter, FilterKind, OrFilter, ProjectFilter, StatusFilter, StringFilter,
+            TagFilter, TaskIdFilter, UuidFilter, XorFilter,
+        },
     },
     task::{
         ActionUndo, ActionUndoType, Link, LinkType, Project, Task, TaskAnnotation, TaskHistory,
+        TaskStatus,
     },
 };
+use chrono::{DateTime, Local};
 use migration::{Migrator, MigratorTrait, sea_orm::Database};
 use serde_json;
 use tables::{annotations, history, links, projects, tags, tasks, tasks_tags, undo_actions};
@@ -21,9 +27,12 @@ use sea_orm::{
     ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
     EntityTrait, IntoActiveModel, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
     prelude::Expr,
-    sea_query::Func,
+    sea_query::{Alias, ConditionExpression, Func, Query, SelectStatement},
 };
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 pub(super) async fn get_database(
     db_address: Option<&str>,
@@ -37,27 +46,280 @@ pub(super) async fn get_database(
     Ok(db)
 }
 
-pub(super) async fn load_tasks_impl(
-    db: &DatabaseConnection,
-    filter: &Box<dyn Filter>,
-) -> Result<Vec<tasks::Model>, sea_orm::DbErr> {
-    if filter.get_kind() == FilterKind::String {
-        let filter_value = filter
-            .as_any()
-            .downcast_ref::<StringFilter>()
-            .unwrap()
-            .value
-            .to_owned();
-        return tables::tasks::Entity::find()
-            .filter(
+fn filter_to_condition_expr(filter: &Box<dyn Filter>) -> ConditionExpression {
+    match filter.get_kind() {
+        FilterKind::Root => ConditionExpression::SimpleExpr(Expr::value(true)),
+        FilterKind::And => {
+            let composite = filter.as_any().downcast_ref::<AndFilter>().unwrap();
+
+            let mut condition = Condition::all();
+            for child in &composite.children {
+                if child.get_kind() == FilterKind::Root {
+                    continue;
+                }
+                condition = condition.add(condition_expression_to_condition(
+                    filter_to_condition_expr(child),
+                ));
+            }
+
+            ConditionExpression::Condition(condition)
+        }
+        FilterKind::Or => {
+            let composite = filter.as_any().downcast_ref::<OrFilter>().unwrap();
+
+            let mut condition = Condition::any();
+            for child in &composite.children {
+                if child.get_kind() == FilterKind::Root {
+                    continue;
+                }
+                condition = condition.add(condition_expression_to_condition(
+                    filter_to_condition_expr(child),
+                ));
+            }
+
+            ConditionExpression::Condition(condition)
+        }
+        FilterKind::Xor => {
+            let composite = filter.as_any().downcast_ref::<XorFilter>().unwrap();
+
+            let mut at_least_one = Condition::any();
+            let mut many_children = Vec::new();
+            for child in &composite.children {
+                if child.get_kind() == FilterKind::Root {
+                    continue;
+                }
+                let expr = filter_to_condition_expr(child);
+                at_least_one = at_least_one.add(expr.clone());
+                many_children.push(expr);
+            }
+
+            let mut more_than_one = Condition::any();
+            for i in 0..many_children.len() {
+                for j in (i + 1)..many_children.len() {
+                    more_than_one = more_than_one.add(ConditionExpression::Condition(
+                        Condition::all()
+                            .add(many_children[i].clone())
+                            .add(many_children[j].clone()),
+                    ));
+                }
+            }
+
+            ConditionExpression::Condition(
+                Condition::all()
+                    .add(at_least_one)
+                    .add(Condition::not(more_than_one)),
+            )
+        }
+        FilterKind::DateDue => {
+            let f = filter.as_any().downcast_ref::<DateDueFilter>().unwrap();
+            let condition = match f.type_when {
+                DateDueFilterType::Day => Condition::all()
+                    .add(tasks::Column::DateDue.is_not_null())
+                    .add(tasks::Column::DateDue.like(format!("{}%", f.time.date_naive()))),
+                DateDueFilterType::Before => Condition::all()
+                    .add(tasks::Column::DateDue.is_not_null())
+                    .add(tasks::Column::DateDue.lt(f.time.to_rfc3339())),
+                DateDueFilterType::After => Condition::all()
+                    .add(tasks::Column::DateDue.is_not_null())
+                    .add(tasks::Column::DateDue.gte(f.time.to_rfc3339())),
+            };
+            ConditionExpression::Condition(condition)
+        }
+        FilterKind::DateCreated => {
+            let f = filter.as_any().downcast_ref::<DateCreatedFilter>().unwrap();
+
+            let timestamp = f.time.to_rfc3339();
+            let mut condition = Condition::all();
+
+            if f.before {
+                condition = condition.add(tasks::Column::DateCreated.lt(timestamp));
+            } else {
+                condition = condition.add(tasks::Column::DateCreated.gte(timestamp));
+            }
+
+            ConditionExpression::Condition(condition)
+        }
+        FilterKind::DateEnd => {
+            let f = filter.as_any().downcast_ref::<DateEndFilter>().unwrap();
+            let mut condition = Condition::all().add(tasks::Column::DateCompleted.is_not_null());
+            if f.before {
+                condition = condition.add(tasks::Column::DateCompleted.lt(f.time.to_rfc3339()));
+            }
+            ConditionExpression::Condition(condition)
+        }
+        FilterKind::DependsOn => {
+            let f = filter.as_any().downcast_ref::<DependsOnFilter>().unwrap();
+
+            let mut target_ids_query: SelectStatement = Query::select();
+            target_ids_query
+                .column(tasks::Column::DbId)
+                .from(tasks::Entity);
+
+            if let Some(uuid) = &f.uuid {
+                target_ids_query.and_where(
+                    Expr::col((tasks::Entity, tasks::Column::Uuid)).eq(uuid.to_string()),
+                );
+            }
+
+            if let Some(id) = f.id {
+                target_ids_query.and_where(Expr::col((tasks::Entity, tasks::Column::Id)).eq(id));
+            }
+
+            let mut exists_query: SelectStatement = Query::select();
+            exists_query
+                // EXISTS needs a scalar expression, this is just a placeholder but doesn't mean
+                // much
+                .expr(Expr::val(1))
+                .from(links::Entity)
+                .and_where(
+                    Expr::col((links::Entity, links::Column::FromTaskId))
+                        .eq(Expr::col((Alias::new("tasks"), tasks::Column::DbId))),
+                )
+                .and_where(
+                    Expr::col((links::Entity, links::Column::Type))
+                        .eq(LinkType::DependsOn.to_string()),
+                )
+                .and_where(
+                    Expr::col((links::Entity, links::Column::ToTaskId))
+                        .in_subquery(target_ids_query),
+                );
+
+            ConditionExpression::SimpleExpr(Expr::exists(exists_query))
+        }
+        FilterKind::TaskId => {
+            let filter_value = filter.as_any().downcast_ref::<TaskIdFilter>().unwrap().id;
+            ConditionExpression::Condition(Condition::all().add(tasks::Column::Id.eq(filter_value)))
+        }
+        FilterKind::Uuid => {
+            let filter_value = filter
+                .as_any()
+                .downcast_ref::<UuidFilter>()
+                .unwrap()
+                .uuid
+                .to_string();
+            sea_orm::sea_query::ConditionExpression::SimpleExpr(
+                tasks::Column::Uuid.eq(filter_value),
+            )
+        }
+        FilterKind::Project => {
+            let project_filter = filter.as_any().downcast_ref::<ProjectFilter>().unwrap();
+            let project_name = project_filter.name.get_name().clone();
+
+            let mut name_query: SelectStatement = Query::select();
+            name_query
+                .column(projects::Column::Id)
+                .from(projects::Entity)
+                .and_where(
+                    Expr::col((projects::Entity, projects::Column::Name))
+                        .like(format!("{}%", project_name)),
+                );
+
+            ConditionExpression::Condition(
+                Condition::all()
+                    .add(tasks::Column::ProjectId.is_not_null())
+                    .add(tasks::Column::ProjectId.in_subquery(name_query)),
+            )
+        }
+        FilterKind::Tag => {
+            let tag_filter = filter.as_any().downcast_ref::<TagFilter>().unwrap();
+            let tag_name = tag_filter.tag_name.clone();
+            if tag_filter.include {
+                let mut tag_id_query: SelectStatement = Query::select();
+                tag_id_query
+                    .column(tags::Column::Id)
+                    .from(tags::Entity)
+                    .and_where(Expr::col((tags::Entity, tags::Column::Name)).eq(tag_name));
+
+                let mut link_exists_query: SelectStatement = Query::select();
+                link_exists_query
+                    .expr(Expr::val(1))
+                    .from(tasks_tags::Entity)
+                    .and_where(
+                        Expr::col((tasks_tags::Entity, tasks_tags::Column::TaskId))
+                            .eq(Expr::col((Alias::new("tasks"), tasks::Column::DbId))),
+                    )
+                    .and_where(
+                        Expr::col((tasks_tags::Entity, tasks_tags::Column::TagId))
+                            .in_subquery(tag_id_query),
+                    );
+
+                ConditionExpression::SimpleExpr(Expr::exists(link_exists_query))
+            } else {
+                let mut tag_id_query: SelectStatement = Query::select();
+                tag_id_query
+                    .column(tags::Column::Id)
+                    .from(tags::Entity)
+                    .and_where(Expr::col((tags::Entity, tags::Column::Name)).eq(tag_name));
+
+                ConditionExpression::SimpleExpr(
+                    Expr::exists({
+                        let mut exclude_query: SelectStatement = Query::select();
+                        exclude_query
+                            .expr(Expr::val(1))
+                            .from(tasks_tags::Entity)
+                            .and_where(
+                                Expr::col((tasks_tags::Entity, tasks_tags::Column::TaskId))
+                                    .eq(Expr::col((Alias::new("tasks"), tasks::Column::DbId))),
+                            )
+                            .and_where(
+                                Expr::col((tasks_tags::Entity, tasks_tags::Column::TagId))
+                                    .in_subquery(tag_id_query),
+                            );
+                        exclude_query
+                    })
+                    .not(),
+                )
+            }
+        }
+        FilterKind::Status => {
+            let filter_value = filter
+                .as_any()
+                .downcast_ref::<StatusFilter>()
+                .unwrap()
+                .status
+                .to_owned();
+            sea_orm::sea_query::ConditionExpression::SimpleExpr(
+                tasks::Column::Status.eq(filter_value.to_string().to_uppercase()),
+            )
+        }
+        FilterKind::String => {
+            let filter_value = filter
+                .as_any()
+                .downcast_ref::<StringFilter>()
+                .unwrap()
+                .value
+                .to_owned();
+
+            sea_orm::sea_query::ConditionExpression::SimpleExpr(
                 Expr::expr(Func::lower(Expr::col(tasks::Column::Summary)))
                     .like(format!("%{}%", filter_value.to_lowercase())),
             )
-            .all(db)
-            .await;
-    } else {
-        unimplemented!();
+        }
     }
+}
+
+fn condition_expression_to_condition(expr: ConditionExpression) -> Condition {
+    match expr {
+        ConditionExpression::Condition(cond) => cond,
+        ConditionExpression::SimpleExpr(simple) => Condition::all().add(simple),
+    }
+}
+
+pub(super) async fn load_tasks_impl(
+    db: &DatabaseConnection,
+    filter: &Box<dyn Filter>,
+) -> Result<Vec<Task>, Box<dyn std::error::Error>> {
+    let models = tables::tasks::Entity::find()
+        .filter(condition_expression_to_condition(filter_to_condition_expr(
+            filter,
+        )))
+        .all(db)
+        .await?;
+    let mut tasks_obj = Vec::new();
+    for model in models {
+        tasks_obj.push(task_model_to_object(db, &model).await?);
+    }
+    Ok(tasks_obj)
 }
 
 pub(super) async fn append_undo_action_impl(
@@ -436,10 +698,7 @@ async fn sync_links(
                     active.to_task_id = ActiveValue::Unchanged(existing_model.to_task_id);
                 }
 
-                let link_type_string = match link.link_type {
-                    LinkType::DependsOn => "DependsOn".to_owned(),
-                    LinkType::Blocking => "Blocking".to_owned(),
-                };
+                let link_type_string = link.link_type.to_string();
                 if existing_model.r#type != link_type_string {
                     active.r#type = Set(link_type_string);
                     changed = true;
@@ -458,10 +717,7 @@ async fn sync_links(
             id: ActiveValue::NotSet,
             from_task_id: Set(task_model.db_id),
             to_task_id: Set(to_db_id),
-            r#type: Set(match link.link_type {
-                LinkType::DependsOn => "DependsOn".to_owned(),
-                LinkType::Blocking => "Blocking".to_owned(),
-            }),
+            r#type: Set(link.link_type.to_string()),
         }
         .save(db)
         .await?;
@@ -527,6 +783,148 @@ async fn sync_tags(
     }
 
     Ok(())
+}
+
+/// Build an in-memory [`Task`] from the persisted database model and its related tables.
+async fn task_model_to_object<C>(
+    db: &C,
+    task_model: &tasks::Model,
+) -> Result<Task, Box<dyn std::error::Error>>
+where
+    C: ConnectionTrait,
+{
+    let parse_datetime = |value: &str| -> Result<DateTime<Local>, chrono::ParseError> {
+        DateTime::parse_from_rfc3339(value).map(|dt| dt.with_timezone(&Local))
+    };
+
+    let uuid = Uuid::parse_str(&task_model.uuid)?;
+    let status = TaskStatus::from_string(&task_model.status)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+    let date_created = parse_datetime(&task_model.date_created)?;
+    let date_completed = task_model
+        .date_completed
+        .as_ref()
+        .map(|value| parse_datetime(value))
+        .transpose()?;
+    let date_due = task_model
+        .date_due
+        .as_ref()
+        .map(|value| parse_datetime(value))
+        .transpose()?;
+    let urgency = task_model.urgency.map(|value| value as i64);
+
+    let project = match task_model.project_id {
+        Some(project_id) => {
+            let project_model = projects::Entity::find_by_id(project_id).one(db).await?;
+            project_model.map(|model| Project {
+                id: Some(model.id),
+                name: model.name,
+            })
+        }
+        None => None,
+    };
+
+    let tag_links = tasks_tags::Entity::find()
+        .filter(tasks_tags::Column::TaskId.eq(task_model.db_id))
+        .all(db)
+        .await?;
+    let tag_ids: Vec<i32> = tag_links.iter().map(|link| link.tag_id).collect();
+    let tags = if tag_ids.is_empty() {
+        Vec::new()
+    } else {
+        tags::Entity::find()
+            .filter(tags::Column::Id.is_in(tag_ids))
+            .order_by_asc(tags::Column::Name)
+            .all(db)
+            .await?
+            .into_iter()
+            .map(|model| model.name)
+            .collect()
+    };
+
+    let annotation_models = annotations::Entity::find()
+        .filter(annotations::Column::TaskId.eq(task_model.db_id))
+        .order_by_asc(annotations::Column::Datetime)
+        .all(db)
+        .await?;
+    let mut annotations_vec = Vec::with_capacity(annotation_models.len());
+    for model in annotation_models {
+        annotations_vec.push(TaskAnnotation {
+            id: Some(model.id),
+            value: model.value,
+            time: parse_datetime(&model.datetime)?,
+        });
+    }
+
+    let history_models = history::Entity::find()
+        .filter(history::Column::TaskId.eq(task_model.db_id))
+        .order_by_asc(history::Column::Datetime)
+        .all(db)
+        .await?;
+    let mut history_vec = Vec::with_capacity(history_models.len());
+    for model in history_models {
+        history_vec.push(TaskHistory {
+            id: Some(model.id),
+            value: model.value,
+            datetime: parse_datetime(&model.datetime)?,
+        });
+    }
+
+    let link_models = links::Entity::find()
+        .filter(links::Column::FromTaskId.eq(task_model.db_id))
+        .all(db)
+        .await?;
+    let mut links_vec = Vec::with_capacity(link_models.len());
+    if !link_models.is_empty() {
+        let to_ids: Vec<i32> = link_models.iter().map(|link| link.to_task_id).collect();
+        let target_models = tasks::Entity::find()
+            .filter(tasks::Column::DbId.is_in(to_ids))
+            .all(db)
+            .await?;
+
+        let mut to_uuid_map: HashMap<i32, Uuid> = HashMap::new();
+        for model in target_models {
+            let target_uuid = Uuid::parse_str(&model.uuid)?;
+            to_uuid_map.insert(model.db_id, target_uuid);
+        }
+
+        for link in link_models {
+            let link_type = LinkType::from_str(link.r#type.as_str())?;
+            let to_uuid = *to_uuid_map.get(&link.to_task_id).ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!(
+                        "Could not resolve linked task id {} to a UUID",
+                        link.to_task_id
+                    ),
+                )
+            })?;
+
+            links_vec.push(Link {
+                id: Some(link.id),
+                from: uuid,
+                to: to_uuid,
+                link_type,
+            });
+        }
+    }
+
+    Ok(Task {
+        db_id: Some(task_model.db_id),
+        id: task_model.id,
+        status,
+        uuid,
+        summary: task_model.summary.to_owned(),
+        annotations: annotations_vec,
+        tags,
+        date_created,
+        date_completed,
+        links: links_vec,
+        project,
+        date_due,
+        urgency,
+        history: history_vec,
+    })
 }
 
 async fn task_to_active_model<C>(
@@ -632,6 +1030,33 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::task::TaskStatus;
+    use chrono::{Duration, Local, TimeZone};
+
+    async fn assert_single_match(
+        db: &DatabaseConnection,
+        filter: Box<dyn Filter>,
+        expected_task: &Task,
+    ) {
+        let results = load_tasks_impl(db, &filter).await.unwrap();
+        assert_eq!(results.len(), 1, "expected a single matching task");
+        let result = &results[0];
+        let mut expected_task_mut = expected_task.clone();
+        expected_task_mut.db_id = result.db_id;
+        if let Some(proj) = &mut expected_task_mut.project {
+            proj.id = result.project.to_owned().unwrap().id;
+        }
+        for ann_idx in 0..expected_task_mut.annotations.len() {
+            expected_task_mut.annotations[ann_idx].id = result.annotations[ann_idx].id;
+        }
+        for link_idx in 0..expected_task_mut.links.len() {
+            expected_task_mut.links[link_idx].id = result.links[link_idx].id;
+        }
+        for history_idx in 0..expected_task_mut.history.len() {
+            expected_task_mut.history[history_idx].id = result.history[history_idx].id;
+        }
+        assert_eq!(result, &expected_task_mut);
+    }
 
     /// Ensure undo actions are persisted and the most recent entry is fetched.
     #[tokio::test]
@@ -1017,5 +1442,512 @@ mod tests {
             tags_after.is_empty(),
             "Task-tag links should be removed after sync with empty tags"
         );
+    }
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    #[tokio::test]
+    async fn test_filter_status_matches_single_task() {
+        init();
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut active_task = Task::default();
+        active_task.summary = "active-task".to_string();
+        active_task.status = TaskStatus::Active;
+        active_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &active_task).await.unwrap();
+
+        let mut pending_task = Task::default();
+        pending_task.summary = "pending-task".to_string();
+        pending_task.status = TaskStatus::Pending;
+        pending_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &pending_task).await.unwrap();
+
+        let all_tasks = tables::tasks::Entity::find().all(&db).await.unwrap();
+        debug!("FOO {:?}", &all_tasks);
+        assert_eq!(all_tasks.len(), 2);
+        let statuses: Vec<_> = all_tasks.iter().map(|t| t.status.clone()).collect();
+        assert!(statuses.contains(&TaskStatus::Active.to_string().to_uppercase()));
+        assert!(statuses.contains(&TaskStatus::Pending.to_string().to_uppercase()));
+
+        assert_single_match(
+            &db,
+            Box::new(StatusFilter {
+                status: TaskStatus::Active,
+            }),
+            &active_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_string_matches_single_task() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut alpha_task = Task::default();
+        alpha_task.summary = "Alpha Project".to_string();
+        alpha_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &alpha_task).await.unwrap();
+
+        let mut beta_task = Task::default();
+        beta_task.summary = "Beta Project".to_string();
+        beta_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &beta_task).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(StringFilter {
+                value: "alpha".to_string(),
+            }),
+            &alpha_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_task_id_matches_only_exact_id() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut task_one = Task::default();
+        task_one.summary = "Task-1".to_string();
+        task_one.id = Some(101);
+        task_one.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &task_one).await.unwrap();
+
+        let mut task_two = Task::default();
+        task_two.summary = "Task-2".to_string();
+        task_two.id = Some(202);
+        task_two.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &task_two).await.unwrap();
+
+        assert_single_match(&db, Box::new(TaskIdFilter { id: 101 }), &task_one).await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_uuid_matches_single_task() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut matched = Task::default();
+        matched.summary = "Uuid-Match".to_string();
+        matched.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &matched).await.unwrap();
+
+        let mut other = Task::default();
+        other.summary = "Uuid-Other".to_string();
+        other.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &other).await.unwrap();
+
+        assert_single_match(&db, Box::new(UuidFilter { uuid: matched.uuid }), &matched).await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_project_matches_prefix() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut alpha_task = Task::default();
+        alpha_task.summary = "Alpha Task".to_string();
+        alpha_task.project = Some(Project {
+            id: None,
+            name: "alpha.core".to_string(),
+        });
+        alpha_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &alpha_task).await.unwrap();
+
+        let mut beta_task = Task::default();
+        beta_task.summary = "Beta Task".to_string();
+        beta_task.project = Some(Project {
+            id: None,
+            name: "beta.core".to_string(),
+        });
+        beta_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &beta_task).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(ProjectFilter {
+                name: Project {
+                    id: None,
+                    name: "alpha".to_string(),
+                },
+            }),
+            &alpha_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_tag_include_matches_only_tagged_task() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut tagged_task = Task::default();
+        tagged_task.summary = "Tagged Task".to_string();
+        tagged_task.tags.push("urgent".to_string());
+        tagged_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &tagged_task).await.unwrap();
+
+        let mut untagged_task = Task::default();
+        untagged_task.summary = "Untagged Task".to_string();
+        untagged_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &untagged_task).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(TagFilter {
+                include: true,
+                tag_name: "urgent".to_string(),
+            }),
+            &tagged_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_tag_exclude_omits_tagged_task() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut tagged_task = Task::default();
+        tagged_task.summary = "Tagged Task".to_string();
+        tagged_task.tags.push("chore".to_string());
+        tagged_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &tagged_task).await.unwrap();
+
+        let mut clean_task = Task::default();
+        clean_task.summary = "Clean Task".to_string();
+        clean_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &clean_task).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(TagFilter {
+                include: false,
+                tag_name: "chore".to_string(),
+            }),
+            &clean_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_date_created_before() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let early = Local.with_ymd_and_hms(2024, 1, 1, 9, 0, 0).unwrap();
+        let late = Local.with_ymd_and_hms(2024, 1, 3, 9, 0, 0).unwrap();
+        let threshold = Local.with_ymd_and_hms(2024, 1, 2, 9, 0, 0).unwrap();
+
+        let mut early_task = Task::default();
+        early_task.summary = "Early Task".to_string();
+        early_task.date_created = early;
+        early_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &early_task).await.unwrap();
+
+        let mut late_task = Task::default();
+        late_task.summary = "Late Task".to_string();
+        late_task.date_created = late;
+        late_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &late_task).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(DateCreatedFilter {
+                time: threshold,
+                before: true,
+            }),
+            &early_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_date_created_after_or_equal() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let early = Local.with_ymd_and_hms(2024, 1, 1, 9, 0, 0).unwrap();
+        let late = Local.with_ymd_and_hms(2024, 1, 3, 9, 0, 0).unwrap();
+        let threshold = Local.with_ymd_and_hms(2024, 1, 2, 9, 0, 0).unwrap();
+
+        let mut early_task = Task::default();
+        early_task.summary = "Early Task".to_string();
+        early_task.date_created = early;
+        early_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &early_task).await.unwrap();
+
+        let mut late_task = Task::default();
+        late_task.summary = "Late Task".to_string();
+        late_task.date_created = late;
+        late_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &late_task).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(DateCreatedFilter {
+                time: threshold,
+                before: false,
+            }),
+            &late_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_date_due_day() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let reference = Local.with_ymd_and_hms(2024, 2, 10, 10, 0, 0).unwrap();
+
+        let mut due_today = Task::default();
+        due_today.summary = "Due Today".to_string();
+        due_today.date_due = Some(reference);
+        due_today.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &due_today).await.unwrap();
+
+        let mut due_tomorrow = Task::default();
+        due_tomorrow.summary = "Due Tomorrow".to_string();
+        due_tomorrow.date_due = Some(reference + Duration::days(1));
+        due_tomorrow.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &due_tomorrow).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(DateDueFilter {
+                time: reference,
+                type_when: DateDueFilterType::Day,
+            }),
+            &due_today,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_date_due_before() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let early_due = Local.with_ymd_and_hms(2024, 3, 1, 12, 0, 0).unwrap();
+        let late_due = Local.with_ymd_and_hms(2024, 3, 5, 12, 0, 0).unwrap();
+        let threshold = Local.with_ymd_and_hms(2024, 3, 4, 12, 0, 0).unwrap();
+
+        let mut due_early = Task::default();
+        due_early.summary = "Due Early".to_string();
+        due_early.date_due = Some(early_due);
+        due_early.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &due_early).await.unwrap();
+
+        let mut due_late = Task::default();
+        due_late.summary = "Due Late".to_string();
+        due_late.date_due = Some(late_due);
+        due_late.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &due_late).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(DateDueFilter {
+                time: threshold,
+                type_when: DateDueFilterType::Before,
+            }),
+            &due_early,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_date_due_after() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let early_due = Local.with_ymd_and_hms(2024, 4, 1, 12, 0, 0).unwrap();
+        let late_due = Local.with_ymd_and_hms(2024, 4, 5, 12, 0, 0).unwrap();
+        let threshold = Local.with_ymd_and_hms(2024, 4, 3, 12, 0, 0).unwrap();
+
+        let mut due_early = Task::default();
+        due_early.summary = "Due Early".to_string();
+        due_early.date_due = Some(early_due);
+        due_early.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &due_early).await.unwrap();
+
+        let mut due_later = Task::default();
+        due_later.summary = "Due Later".to_string();
+        due_later.date_due = Some(late_due);
+        due_later.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &due_later).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(DateDueFilter {
+                time: threshold,
+                type_when: DateDueFilterType::After,
+            }),
+            &due_later,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_date_end_before() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let early_complete = Local.with_ymd_and_hms(2024, 5, 1, 8, 0, 0).unwrap();
+        let late_complete = Local.with_ymd_and_hms(2024, 5, 3, 8, 0, 0).unwrap();
+        let threshold = Local.with_ymd_and_hms(2024, 5, 2, 8, 0, 0).unwrap();
+
+        let mut completed_early = Task::default();
+        completed_early.summary = "Completed Early".to_string();
+        completed_early.date_completed = Some(early_complete);
+        completed_early.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &completed_early).await.unwrap();
+
+        let mut completed_late = Task::default();
+        completed_late.summary = "Completed Late".to_string();
+        completed_late.date_completed = Some(late_complete);
+        completed_late.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &completed_late).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(DateEndFilter {
+                time: threshold,
+                before: true,
+            }),
+            &completed_early,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_depends_on_returns_only_dependents() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut target_task = Task::default();
+        target_task.summary = "Target Task".to_string();
+        target_task.uuid = Uuid::new_v4();
+        let target_uuid = target_task.uuid;
+        insert_task_impl(&db, &target_task).await.unwrap();
+
+        let mut dependent_task = Task::default();
+        dependent_task.summary = "Dependent Task".to_string();
+        dependent_task.uuid = Uuid::new_v4();
+        let dependent_uuid = dependent_task.uuid;
+        dependent_task.links.push(Link {
+            id: None,
+            from: dependent_uuid,
+            to: target_uuid,
+            link_type: LinkType::DependsOn,
+        });
+        insert_task_impl(&db, &dependent_task).await.unwrap();
+
+        let mut independent_task = Task::default();
+        independent_task.summary = "Independent Task".to_string();
+        independent_task.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &independent_task).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(DependsOnFilter {
+                id: None,
+                uuid: Some(target_uuid),
+            }),
+            &dependent_task,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_and_combination() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut alpha_active = Task::default();
+        alpha_active.summary = "Alpha Active".to_string();
+        alpha_active.status = TaskStatus::Active;
+        alpha_active.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &alpha_active).await.unwrap();
+
+        let mut alpha_pending = Task::default();
+        alpha_pending.summary = "Alpha Pending".to_string();
+        alpha_pending.status = TaskStatus::Pending;
+        alpha_pending.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &alpha_pending).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(AndFilter {
+                children: vec![
+                    Box::new(StatusFilter {
+                        status: TaskStatus::Active,
+                    }),
+                    Box::new(StringFilter {
+                        value: "alpha".to_string(),
+                    }),
+                ],
+            }),
+            &alpha_active,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_or_combination() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut alpha_pending = Task::default();
+        alpha_pending.summary = "Alpha Pending".to_string();
+        alpha_pending.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &alpha_pending).await.unwrap();
+
+        let mut beta_pending = Task::default();
+        beta_pending.summary = "Beta Pending".to_string();
+        beta_pending.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &beta_pending).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(OrFilter {
+                children: vec![
+                    Box::new(StringFilter {
+                        value: "alpha".to_string(),
+                    }),
+                    Box::new(StatusFilter {
+                        status: TaskStatus::Active,
+                    }),
+                ],
+            }),
+            &alpha_pending,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_filter_xor_combination() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut alpha_pending = Task::default();
+        alpha_pending.summary = "Alpha Pending".to_string();
+        alpha_pending.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &alpha_pending).await.unwrap();
+
+        let mut beta_pending = Task::default();
+        beta_pending.summary = "Beta Pending".to_string();
+        beta_pending.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &beta_pending).await.unwrap();
+
+        let mut alpha_active = Task::default();
+        alpha_active.summary = "Alpha Active".to_string();
+        alpha_active.status = TaskStatus::Active;
+        alpha_active.uuid = Uuid::new_v4();
+        insert_task_impl(&db, &alpha_active).await.unwrap();
+
+        assert_single_match(
+            &db,
+            Box::new(XorFilter {
+                children: vec![
+                    Box::new(StringFilter {
+                        value: "alpha".to_string(),
+                    }),
+                    Box::new(StatusFilter {
+                        status: TaskStatus::Active,
+                    }),
+                ],
+            }),
+            &alpha_pending,
+        )
+        .await;
     }
 }

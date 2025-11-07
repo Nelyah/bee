@@ -34,7 +34,7 @@ use crate::{
 // https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/
 // sea-orm-cli generate entity --output-dir ./src/entity --entity-format dense
 
-pub async fn load_tasks(filter: &Box<dyn Filter>) -> Result<Vec<tasks::Model>, sea_orm::DbErr> {
+pub async fn load_tasks(filter: &Box<dyn Filter>) -> Result<Vec<Task>, Box<dyn std::error::Error>> {
     let db = get_database(None).await.unwrap();
     load_tasks_impl(&db, filter).await
 }

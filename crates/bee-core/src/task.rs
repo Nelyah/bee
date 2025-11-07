@@ -2,6 +2,7 @@ mod task_prop_parser;
 
 use crate::filters::Filter;
 use crate::lexer::Lexer;
+use strum::{Display, EnumString};
 use task_prop_parser::TaskPropertyParser;
 
 use chrono::Local;
@@ -73,7 +74,6 @@ pub struct ActionUndo {
     pub action_type: ActionUndoType,
     pub tasks: Vec<Task>,
 }
-
 
 #[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum DependsOnIdentifier {
@@ -165,7 +165,16 @@ impl TaskProperties {
 }
 
 #[derive(
-    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default
+    Clone,
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
 )]
 pub struct TaskAnnotation {
     /// ID to serve as primary key in the DB
@@ -185,7 +194,17 @@ impl TaskAnnotation {
 }
 
 #[derive(
-    Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+    Display,
+    EnumString,
+    Clone,
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
 )]
 pub enum LinkType {
     DependsOn,
@@ -211,10 +230,18 @@ pub struct Link {
 pub struct TaskHistory {
     /// ID serving as primary key in the database
     pub(crate) id: Option<i32>,
-    pub value: String,
-    pub datetime: DateTime<chrono::Local>,
+    pub(crate) value: String,
+    pub(crate) datetime: DateTime<chrono::Local>,
 }
 
+impl TaskHistory {
+    pub fn get_datetime(&self) -> &DateTime<chrono::Local> {
+        &self.datetime
+    }
+    pub fn get_value(&self) -> &String {
+        &self.value
+    }
+}
 
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct Task {

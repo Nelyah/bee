@@ -10,7 +10,6 @@ edition = "2024"
 [dependencies]
 bee-core = { path = "../bee-core" }
 bee-actions = { path = "../bee-actions" }
-bee-storage = { path = "../bee-storage" }
 migration = { path = "../migration" }
 
 all_asserts.workspace = true

@@ -1,7 +1,7 @@
 use log::debug;
 use uuid::Uuid;
 
-use bee_core::{
+use crate::{
     filters::{self, Filter},
     task::{ActionUndo, DependsOnIdentifier, TaskData, TaskProperties},
 };

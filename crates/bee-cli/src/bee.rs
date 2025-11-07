@@ -4,9 +4,11 @@ mod table;
 
 use bee_actions::{ActionRegistry, command_parser::Parser};
 use bee_core::{
-    db::insert_task, filters::{self, Filter}, task::{Task, TaskProperties}, Printer
+    Printer,
+    filters::{self, Filter},
+    storage::{db::insert_task, json::storage::{JsonStore, Store}},
+    task::{Task, TaskProperties},
 };
-use bee_storage::storage::{JsonStore, Store};
 
 use crate::{
     cli::SimpleTaskTextPrinter,
@@ -31,9 +33,7 @@ fn get_section_filters() -> Result<Option<Box<dyn Filter>>, String> {
     Ok(None)
 }
 
-fn l() {
-
-}
+fn l() {}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -124,7 +124,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             exit(1);
         }
     }
-
 
     match JsonStore::write_tasks(action.get_tasks()) {
         Ok(_) => (),

@@ -2,33 +2,12 @@ mod inserts_update;
 mod tables;
 
 use crate::{
-    db::{inserts_update::{
+    storage::db::inserts_update::{
         append_undo_action_impl, fetch_undos_impl, get_database, insert_task_impl, load_tasks_impl,
-    }, tables::tasks}, filters::Filter, task::{
-        ActionUndo, Task
-    }
+    },
+    filters::Filter,
+    task::{ActionUndo, Task},
 };
-
-// TODO: 'Load' function to get tasks from DB
-// This will require being able to construct the query using filters implementation
-// I will probably need to make the filters pub(crate) to access their fields here
-//  AndFilter,
-//  OrFilter,
-//  RootFilter,
-//  ProjectFilter,
-//  StatusFilter,
-//  DateEndFilter,
-//  DateCreatedFilter,
-//  DateDueFilter,
-//  StringFilter,
-//  TagFilter,
-//  TaskIdFilter,
-//  DependsOnFilter,
-//  UuidFilter,
-//  XorFilter
-
-// TODO: Once the Load function is done, I can make tests and checks that things in the DB
-// are correctly being added
 
 // TODO: Need to update SeaORM to use the newer related entities and subtypes
 // https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/

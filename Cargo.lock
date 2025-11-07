@@ -354,7 +354,6 @@ dependencies = [
  "all_asserts",
  "bee-actions",
  "bee-core",
- "bee-storage",
  "chrono",
  "colored",
  "env_logger",
@@ -393,19 +392,6 @@ dependencies = [
  "typetag",
  "unicode-normalization",
  "unicode-segmentation",
- "uuid",
-]
-
-[[package]]
-name = "bee-storage"
-version = "0.1.0"
-dependencies = [
- "bee-actions",
- "bee-core",
- "env_logger",
- "log",
- "serde",
- "serde_json",
  "uuid",
 ]
 

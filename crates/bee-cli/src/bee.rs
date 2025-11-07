@@ -6,9 +6,10 @@ use bee_actions::{ActionRegistry, command_parser::Parser};
 use bee_core::{
     Printer,
     filters::{self, Filter},
-    storage::{db::insert_task, json::storage::{JsonStore, Store}},
+    storage::{Store, db::insert_task, json::storage::JsonStore},
     task::{Task, TaskProperties},
 };
+
 
 use crate::{
     cli::SimpleTaskTextPrinter,

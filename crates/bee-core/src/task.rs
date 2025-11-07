@@ -1011,6 +1011,16 @@ impl TaskData {
 
         new_data
     }
+    pub fn add_task_object(&mut self, task: Task) {
+        if let Some(task_id) = &task.id {
+            self.id_to_uuid
+                .insert(task_id.to_owned(), task.uuid.to_owned());
+            if *task_id > self.max_id {
+                self.max_id = *task_id;
+            }
+        }
+        self.tasks.insert(task.uuid.to_owned(), task);
+    }
 
     pub fn add_task(
         &mut self,
@@ -1099,6 +1109,9 @@ impl TaskData {
             ..Task::default()
         };
         let owned_uuid = t.get_uuid().to_owned();
+        if let Some(task_id) = t.id {
+            self.id_to_uuid.insert(task_id, owned_uuid.to_owned());
+        }
         self.tasks.insert(owned_uuid, t);
         Ok(self.tasks.get(&owned_uuid).unwrap())
     }

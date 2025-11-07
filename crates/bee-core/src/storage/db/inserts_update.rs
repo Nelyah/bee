@@ -9,8 +9,8 @@ use crate::{
         },
     },
     task::{
-        ActionUndo, ActionUndoType, Link, LinkType, Project, Task, TaskAnnotation, TaskHistory,
-        TaskStatus,
+        ActionUndo, ActionUndoType, DependsOnIdentifier, Link, LinkType, Project, Task,
+        TaskAnnotation, TaskData, TaskHistory, TaskProperties, TaskStatus,
     },
 };
 use chrono::{DateTime, Local};
@@ -31,6 +31,7 @@ use sea_orm::{
 };
 use std::{
     collections::{HashMap, HashSet},
+    default,
     str::FromStr,
 };
 
@@ -308,6 +309,46 @@ fn condition_expression_to_condition(expr: ConditionExpression) -> Condition {
 pub(super) async fn load_tasks_impl(
     db: &DatabaseConnection,
     filter: &Box<dyn Filter>,
+    props: Option<TaskProperties>,
+) -> Result<TaskData, Box<dyn std::error::Error>> {
+    let tasks_obj = tasks_from_filter(db, filter).await?;
+
+    let mut task_data = TaskData::default();
+    for t in tasks_obj {
+        task_data.add_task_object(t);
+    }
+    if let Some(props) = props {
+        let mut extra_task_filter = OrFilter::default();
+
+        for task_identifier in props.get_referenced_tasks() {
+            match task_identifier {
+                DependsOnIdentifier::Uuid(uuid) => {
+                    extra_task_filter
+                        .children
+                        .push(Box::new(UuidFilter { uuid: uuid }));
+                }
+                DependsOnIdentifier::Id(id) => {
+                    extra_task_filter
+                        .children
+                        .push(Box::new(TaskIdFilter { id: id }));
+                }
+            }
+        }
+        let f: Box<dyn Filter> = Box::new(extra_task_filter);
+        let extra_tasks_obj = tasks_from_filter(db, &f).await?;
+        for t in extra_tasks_obj {
+            task_data.insert_extra_task(t);
+        }
+    }
+
+    // TODO: Need to build a id to uuid index for the props so I can search for DependsOnIdentifier
+    // and get the extra tasks.
+    Ok(task_data)
+}
+
+async fn tasks_from_filter(
+    db: &DatabaseConnection,
+    filter: &Box<dyn Filter>,
 ) -> Result<Vec<Task>, Box<dyn std::error::Error>> {
     let models = tables::tasks::Entity::find()
         .filter(condition_expression_to_condition(filter_to_condition_expr(
@@ -339,7 +380,7 @@ pub(super) async fn append_undo_action_impl(
     Ok(())
 }
 
-pub(super) async fn fetch_undos_impl(
+pub(super) async fn load_undos_impl(
     db: &DatabaseConnection,
     limit: usize,
 ) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
@@ -380,7 +421,7 @@ macro_rules! diff_active_model {
     };
 }
 
-pub(super) async fn insert_task_impl(
+pub(super) async fn write_tasks_impl(
     db: &DatabaseConnection,
     task: &Task,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -1038,9 +1079,11 @@ mod tests {
         filter: Box<dyn Filter>,
         expected_task: &Task,
     ) {
-        let results = load_tasks_impl(db, &filter).await.unwrap();
+        let results_data = load_tasks_impl(db, &filter, None).await.unwrap();
+        let results = results_data.to_vec();
+
         assert_eq!(results.len(), 1, "expected a single matching task");
-        let result = &results[0];
+        let result = results[0];
         let mut expected_task_mut = expected_task.clone();
         expected_task_mut.db_id = result.db_id;
         if let Some(proj) = &mut expected_task_mut.project {
@@ -1081,7 +1124,7 @@ mod tests {
         append_undo_action_impl(&db, &first_undo).await.unwrap();
         append_undo_action_impl(&db, &second_undo).await.unwrap();
 
-        let recent = fetch_undos_impl(&db, 1).await.unwrap();
+        let recent = load_undos_impl(&db, 1).await.unwrap();
         assert_eq!(recent.len(), 1, "Expected a single undo action returned");
         let latest = &recent[0];
 
@@ -1097,7 +1140,7 @@ mod tests {
         t.summary = "foo bar café".to_string();
 
         // 2. First insert
-        insert_task_impl(&db, &t).await.unwrap();
+        write_tasks_impl(&db, &t).await.unwrap();
 
         // 3. Retrieve task by saved UUID
         let initial_db_task = tasks::Entity::find()
@@ -1111,27 +1154,27 @@ mod tests {
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "foo bar café".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f).await.unwrap();
-        assert_eq!(loaded.len(), 1, "Should have one task retrieved");
+        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        assert_eq!(loaded.to_vec().len(), 1, "Should have one task retrieved");
 
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "FOO".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f).await.unwrap();
-        assert_eq!(loaded.len(), 1, "Should be case insensitive");
+        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        assert_eq!(loaded.to_vec().len(), 1, "Should be case insensitive");
 
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "café".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f).await.unwrap();
-        assert_eq!(loaded.len(), 1, "Should be case insensitive");
+        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        assert_eq!(loaded.to_vec().len(), 1, "Should be case insensitive");
 
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "CAFÉ".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f).await.unwrap();
+        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
         assert_eq!(
-            loaded.len(),
+            loaded.to_vec().len(),
             1,
             "Should be case insensitive with non-ascii char"
         );
@@ -1139,8 +1182,8 @@ mod tests {
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "NO".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f).await.unwrap();
-        assert_eq!(loaded.len(), 0, "Should not be matching");
+        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        assert_eq!(loaded.to_vec().len(), 0, "Should not be matching");
     }
 
     #[tokio::test]
@@ -1151,7 +1194,7 @@ mod tests {
         let saved_uuid = t.uuid; // UUID auto-generated in default impl
 
         // 2. First insert
-        insert_task_impl(&db, &t).await.unwrap();
+        write_tasks_impl(&db, &t).await.unwrap();
 
         // 3. Retrieve task by saved UUID
         let initial_db_task = tasks::Entity::find()
@@ -1181,7 +1224,7 @@ mod tests {
         });
 
         // 5. Re-insert (should update existing row by UUID, not duplicate)
-        insert_task_impl(&db, &t).await.unwrap();
+        write_tasks_impl(&db, &t).await.unwrap();
 
         // Fetch task again to ensure we are still referencing same db_id
         let updated_db_task = tasks::Entity::find()
@@ -1218,7 +1261,7 @@ mod tests {
             time: chrono::Local::now(),
         });
 
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let persisted_task = tasks::Entity::find()
             .filter(tasks::Column::Uuid.eq(task_uuid.to_string()))
@@ -1239,7 +1282,7 @@ mod tests {
         );
 
         task.annotations.clear();
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let annotations_after = annotations::Entity::find()
             .filter(annotations::Column::TaskId.eq(persisted_task.db_id))
@@ -1264,7 +1307,7 @@ mod tests {
             datetime: chrono::Local::now(),
         });
 
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let persisted_task = tasks::Entity::find()
             .filter(tasks::Column::Uuid.eq(task_uuid.to_string()))
@@ -1285,7 +1328,7 @@ mod tests {
         );
 
         task.history.clear();
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let history_after = history::Entity::find()
             .filter(history::Column::TaskId.eq(persisted_task.db_id))
@@ -1304,7 +1347,7 @@ mod tests {
 
         let target_task = Task::default();
         let target_uuid = target_task.uuid;
-        insert_task_impl(&db, &target_task).await.unwrap();
+        write_tasks_impl(&db, &target_task).await.unwrap();
 
         let mut source_task = Task::default();
         let source_uuid = source_task.uuid;
@@ -1315,7 +1358,7 @@ mod tests {
             link_type: LinkType::DependsOn,
         });
 
-        insert_task_impl(&db, &source_task).await.unwrap();
+        write_tasks_impl(&db, &source_task).await.unwrap();
 
         let persisted_source = tasks::Entity::find()
             .filter(tasks::Column::Uuid.eq(source_uuid.to_string()))
@@ -1336,7 +1379,7 @@ mod tests {
         );
 
         source_task.links.clear();
-        insert_task_impl(&db, &source_task).await.unwrap();
+        write_tasks_impl(&db, &source_task).await.unwrap();
 
         let links_after = links::Entity::find()
             .filter(links::Column::FromTaskId.eq(persisted_source.db_id))
@@ -1361,7 +1404,7 @@ mod tests {
             name: project_name.clone(),
         });
 
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let persisted_task = tasks::Entity::find()
             .filter(tasks::Column::Uuid.eq(task_uuid.to_string()))
@@ -1375,7 +1418,7 @@ mod tests {
         );
 
         task.project = None;
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let updated_task = tasks::Entity::find()
             .filter(tasks::Column::Uuid.eq(task_uuid.to_string()))
@@ -1397,7 +1440,7 @@ mod tests {
         let task_uuid = task.uuid;
         task.tags.push("alpha".to_string());
 
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let persisted_task = tasks::Entity::find()
             .filter(tasks::Column::Uuid.eq(task_uuid.to_string()))
@@ -1431,7 +1474,7 @@ mod tests {
         );
 
         task.tags.clear();
-        insert_task_impl(&db, &task).await.unwrap();
+        write_tasks_impl(&db, &task).await.unwrap();
 
         let tags_after = tasks_tags::Entity::find()
             .filter(tasks_tags::Column::TaskId.eq(persisted_task.db_id))
@@ -1456,13 +1499,13 @@ mod tests {
         active_task.summary = "active-task".to_string();
         active_task.status = TaskStatus::Active;
         active_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &active_task).await.unwrap();
+        write_tasks_impl(&db, &active_task).await.unwrap();
 
         let mut pending_task = Task::default();
         pending_task.summary = "pending-task".to_string();
         pending_task.status = TaskStatus::Pending;
         pending_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &pending_task).await.unwrap();
+        write_tasks_impl(&db, &pending_task).await.unwrap();
 
         let all_tasks = tables::tasks::Entity::find().all(&db).await.unwrap();
         debug!("FOO {:?}", &all_tasks);
@@ -1488,12 +1531,12 @@ mod tests {
         let mut alpha_task = Task::default();
         alpha_task.summary = "Alpha Project".to_string();
         alpha_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &alpha_task).await.unwrap();
+        write_tasks_impl(&db, &alpha_task).await.unwrap();
 
         let mut beta_task = Task::default();
         beta_task.summary = "Beta Project".to_string();
         beta_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &beta_task).await.unwrap();
+        write_tasks_impl(&db, &beta_task).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1513,13 +1556,13 @@ mod tests {
         task_one.summary = "Task-1".to_string();
         task_one.id = Some(101);
         task_one.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &task_one).await.unwrap();
+        write_tasks_impl(&db, &task_one).await.unwrap();
 
         let mut task_two = Task::default();
         task_two.summary = "Task-2".to_string();
         task_two.id = Some(202);
         task_two.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &task_two).await.unwrap();
+        write_tasks_impl(&db, &task_two).await.unwrap();
 
         assert_single_match(&db, Box::new(TaskIdFilter { id: 101 }), &task_one).await;
     }
@@ -1531,12 +1574,12 @@ mod tests {
         let mut matched = Task::default();
         matched.summary = "Uuid-Match".to_string();
         matched.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &matched).await.unwrap();
+        write_tasks_impl(&db, &matched).await.unwrap();
 
         let mut other = Task::default();
         other.summary = "Uuid-Other".to_string();
         other.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &other).await.unwrap();
+        write_tasks_impl(&db, &other).await.unwrap();
 
         assert_single_match(&db, Box::new(UuidFilter { uuid: matched.uuid }), &matched).await;
     }
@@ -1552,7 +1595,7 @@ mod tests {
             name: "alpha.core".to_string(),
         });
         alpha_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &alpha_task).await.unwrap();
+        write_tasks_impl(&db, &alpha_task).await.unwrap();
 
         let mut beta_task = Task::default();
         beta_task.summary = "Beta Task".to_string();
@@ -1561,7 +1604,7 @@ mod tests {
             name: "beta.core".to_string(),
         });
         beta_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &beta_task).await.unwrap();
+        write_tasks_impl(&db, &beta_task).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1584,12 +1627,12 @@ mod tests {
         tagged_task.summary = "Tagged Task".to_string();
         tagged_task.tags.push("urgent".to_string());
         tagged_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &tagged_task).await.unwrap();
+        write_tasks_impl(&db, &tagged_task).await.unwrap();
 
         let mut untagged_task = Task::default();
         untagged_task.summary = "Untagged Task".to_string();
         untagged_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &untagged_task).await.unwrap();
+        write_tasks_impl(&db, &untagged_task).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1610,12 +1653,12 @@ mod tests {
         tagged_task.summary = "Tagged Task".to_string();
         tagged_task.tags.push("chore".to_string());
         tagged_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &tagged_task).await.unwrap();
+        write_tasks_impl(&db, &tagged_task).await.unwrap();
 
         let mut clean_task = Task::default();
         clean_task.summary = "Clean Task".to_string();
         clean_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &clean_task).await.unwrap();
+        write_tasks_impl(&db, &clean_task).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1640,13 +1683,13 @@ mod tests {
         early_task.summary = "Early Task".to_string();
         early_task.date_created = early;
         early_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &early_task).await.unwrap();
+        write_tasks_impl(&db, &early_task).await.unwrap();
 
         let mut late_task = Task::default();
         late_task.summary = "Late Task".to_string();
         late_task.date_created = late;
         late_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &late_task).await.unwrap();
+        write_tasks_impl(&db, &late_task).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1671,13 +1714,13 @@ mod tests {
         early_task.summary = "Early Task".to_string();
         early_task.date_created = early;
         early_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &early_task).await.unwrap();
+        write_tasks_impl(&db, &early_task).await.unwrap();
 
         let mut late_task = Task::default();
         late_task.summary = "Late Task".to_string();
         late_task.date_created = late;
         late_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &late_task).await.unwrap();
+        write_tasks_impl(&db, &late_task).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1700,13 +1743,13 @@ mod tests {
         due_today.summary = "Due Today".to_string();
         due_today.date_due = Some(reference);
         due_today.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &due_today).await.unwrap();
+        write_tasks_impl(&db, &due_today).await.unwrap();
 
         let mut due_tomorrow = Task::default();
         due_tomorrow.summary = "Due Tomorrow".to_string();
         due_tomorrow.date_due = Some(reference + Duration::days(1));
         due_tomorrow.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &due_tomorrow).await.unwrap();
+        write_tasks_impl(&db, &due_tomorrow).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1731,13 +1774,13 @@ mod tests {
         due_early.summary = "Due Early".to_string();
         due_early.date_due = Some(early_due);
         due_early.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &due_early).await.unwrap();
+        write_tasks_impl(&db, &due_early).await.unwrap();
 
         let mut due_late = Task::default();
         due_late.summary = "Due Late".to_string();
         due_late.date_due = Some(late_due);
         due_late.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &due_late).await.unwrap();
+        write_tasks_impl(&db, &due_late).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1762,13 +1805,13 @@ mod tests {
         due_early.summary = "Due Early".to_string();
         due_early.date_due = Some(early_due);
         due_early.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &due_early).await.unwrap();
+        write_tasks_impl(&db, &due_early).await.unwrap();
 
         let mut due_later = Task::default();
         due_later.summary = "Due Later".to_string();
         due_later.date_due = Some(late_due);
         due_later.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &due_later).await.unwrap();
+        write_tasks_impl(&db, &due_later).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1793,13 +1836,13 @@ mod tests {
         completed_early.summary = "Completed Early".to_string();
         completed_early.date_completed = Some(early_complete);
         completed_early.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &completed_early).await.unwrap();
+        write_tasks_impl(&db, &completed_early).await.unwrap();
 
         let mut completed_late = Task::default();
         completed_late.summary = "Completed Late".to_string();
         completed_late.date_completed = Some(late_complete);
         completed_late.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &completed_late).await.unwrap();
+        write_tasks_impl(&db, &completed_late).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1820,7 +1863,7 @@ mod tests {
         target_task.summary = "Target Task".to_string();
         target_task.uuid = Uuid::new_v4();
         let target_uuid = target_task.uuid;
-        insert_task_impl(&db, &target_task).await.unwrap();
+        write_tasks_impl(&db, &target_task).await.unwrap();
 
         let mut dependent_task = Task::default();
         dependent_task.summary = "Dependent Task".to_string();
@@ -1832,12 +1875,12 @@ mod tests {
             to: target_uuid,
             link_type: LinkType::DependsOn,
         });
-        insert_task_impl(&db, &dependent_task).await.unwrap();
+        write_tasks_impl(&db, &dependent_task).await.unwrap();
 
         let mut independent_task = Task::default();
         independent_task.summary = "Independent Task".to_string();
         independent_task.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &independent_task).await.unwrap();
+        write_tasks_impl(&db, &independent_task).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1858,13 +1901,13 @@ mod tests {
         alpha_active.summary = "Alpha Active".to_string();
         alpha_active.status = TaskStatus::Active;
         alpha_active.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &alpha_active).await.unwrap();
+        write_tasks_impl(&db, &alpha_active).await.unwrap();
 
         let mut alpha_pending = Task::default();
         alpha_pending.summary = "Alpha Pending".to_string();
         alpha_pending.status = TaskStatus::Pending;
         alpha_pending.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &alpha_pending).await.unwrap();
+        write_tasks_impl(&db, &alpha_pending).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1890,12 +1933,12 @@ mod tests {
         let mut alpha_pending = Task::default();
         alpha_pending.summary = "Alpha Pending".to_string();
         alpha_pending.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &alpha_pending).await.unwrap();
+        write_tasks_impl(&db, &alpha_pending).await.unwrap();
 
         let mut beta_pending = Task::default();
         beta_pending.summary = "Beta Pending".to_string();
         beta_pending.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &beta_pending).await.unwrap();
+        write_tasks_impl(&db, &beta_pending).await.unwrap();
 
         assert_single_match(
             &db,
@@ -1921,18 +1964,18 @@ mod tests {
         let mut alpha_pending = Task::default();
         alpha_pending.summary = "Alpha Pending".to_string();
         alpha_pending.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &alpha_pending).await.unwrap();
+        write_tasks_impl(&db, &alpha_pending).await.unwrap();
 
         let mut beta_pending = Task::default();
         beta_pending.summary = "Beta Pending".to_string();
         beta_pending.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &beta_pending).await.unwrap();
+        write_tasks_impl(&db, &beta_pending).await.unwrap();
 
         let mut alpha_active = Task::default();
         alpha_active.summary = "Alpha Active".to_string();
         alpha_active.status = TaskStatus::Active;
         alpha_active.uuid = Uuid::new_v4();
-        insert_task_impl(&db, &alpha_active).await.unwrap();
+        write_tasks_impl(&db, &alpha_active).await.unwrap();
 
         assert_single_match(
             &db,

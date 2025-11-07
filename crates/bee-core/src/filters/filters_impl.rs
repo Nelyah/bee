@@ -290,7 +290,7 @@ impl CloneFilter for XorFilter {
     }
 }
 
-#[derive(PartialEq, Deserialize, Serialize)]
+#[derive(PartialEq, Deserialize, Serialize, Default)]
 pub struct OrFilter {
     pub children: Vec<Box<dyn Filter>>,
 }

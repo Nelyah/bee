@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     filters::{self, Filter},
+    storage::Store,
     task::{ActionUndo, DependsOnIdentifier, TaskData, TaskProperties},
 };
 
@@ -15,18 +16,6 @@ use std::path::{Path, PathBuf};
 
 #[path = "storage_test.rs"]
 mod storage_test;
-
-pub trait Store {
-    #[allow(clippy::borrowed_box)]
-    fn load_tasks(
-        filter: Option<&Box<dyn Filter>>,
-        props: Option<TaskProperties>,
-    ) -> Result<TaskData, String>;
-    /// Will write the task and return the TaskData written
-    fn write_tasks(data: &TaskData) -> Result<TaskData, String>;
-    fn load_undos(last_count: usize) -> Vec<ActionUndo>;
-    fn log_undo(count: usize, updated_undos: Vec<ActionUndo>);
-}
 
 #[derive(Default)]
 pub struct JsonStore {}
@@ -186,6 +175,7 @@ impl Store for JsonStore {
             }
         }
 
+        // We are replacing the last count undos with the updated_undos
         if undos.len() <= count {
             undos = updated_undos;
         } else {

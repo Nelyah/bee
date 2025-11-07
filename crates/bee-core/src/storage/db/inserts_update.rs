@@ -380,17 +380,23 @@ pub(super) async fn append_undo_action_impl(
         .into_iter()
         .map(|model| model.id)
         .collect();
-    undo_actions::Entity::delete_many()
-        .filter(undo_actions::Column::Id.is_in(last_undos_ids))
-        .exec(db)
-        .await?;
+    if !last_undos_ids.is_empty() {
+        undo_actions::Entity::delete_many()
+            .filter(undo_actions::Column::Id.is_in(last_undos_ids))
+            .exec(db)
+            .await?;
+    }
 
+    // TODO: Need to not rewrite the created_at if some undos were already present in the DB
+    // Although this is not too bad since the created_at only exists inside the DB and this is
+    // the only place we're using it.
     let undo_to_model =
         |u: ActionUndo| -> Result<undo_actions::ActiveModel, Box<dyn std::error::Error>> {
             let payload = serde_json::to_string(&u)?;
             Ok(undo_actions::ActiveModel {
                 action_type: Set(u.action_type.to_string()),
                 payload: Set(payload),
+                created_at: Set(Local::now().to_rfc3339()),
                 ..Default::default()
             })
         };
@@ -399,10 +405,14 @@ pub(super) async fn append_undo_action_impl(
     for undo in undos {
         undo_active_models.push(undo_to_model(undo)?);
     }
+
+    if undo_active_models.is_empty() {
+        return Ok(());
+    }
+
     undo_actions::Entity::insert_many(undo_active_models)
         .exec(db)
         .await?;
-
     Ok(())
 }
 
@@ -1147,7 +1157,7 @@ mod tests {
         append_undo_action_impl(&db, 1, vec![first_undo])
             .await
             .unwrap();
-        append_undo_action_impl(&db, 1, vec![second_undo])
+        append_undo_action_impl(&db, 1, vec![second_undo.to_owned()])
             .await
             .unwrap();
 
@@ -1164,13 +1174,38 @@ mod tests {
             action_type: ActionUndoType::Modify,
             tasks: vec![third_task],
         };
+
+        // If we are removing all of them
         append_undo_action_impl(&db, 2, vec![third_undo.to_owned()])
             .await
             .unwrap();
+        // Check we pass a number larger than what we have
         let undos = load_undos_impl(&db, 10).await.unwrap();
         assert_eq!(undos.len(), 1);
         assert_eq!(undos[0], third_undo);
-        
+
+        // Check if we are not removing anything
+        append_undo_action_impl(&db, 0, vec![second_undo.to_owned()])
+            .await
+            .unwrap();
+        let undos = load_undos_impl(&db, 2).await.unwrap();
+        assert_eq!(undos.len(), 2);
+        assert_eq!(undos[0], third_undo);
+        assert_eq!(undos[1], second_undo);
+
+        // Should be the same if we replace the last one
+        append_undo_action_impl(&db, 1, vec![second_undo.to_owned()])
+            .await
+            .unwrap();
+        let undos = load_undos_impl(&db, 2).await.unwrap();
+        assert_eq!(undos.len(), 2);
+        assert_eq!(undos[0], third_undo);
+        assert_eq!(undos[1], second_undo);
+
+        // Should be the same if we replace the last one
+        append_undo_action_impl(&db, 100, vec![]).await.unwrap();
+        let undos = load_undos_impl(&db, 100).await.unwrap();
+        assert_true!(undos.is_empty());
     }
     #[tokio::test]
     async fn test_insert_load_task() {

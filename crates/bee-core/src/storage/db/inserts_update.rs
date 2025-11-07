@@ -1,7 +1,7 @@
 use super::tables;
 use crate::{
     filters::{
-        Filter,
+        self, Filter,
         filters_impl::{
             AndFilter, DateCreatedFilter, DateDueFilter, DateDueFilterType, DateEndFilter,
             DependsOnFilter, FilterKind, OrFilter, ProjectFilter, StatusFilter, StringFilter,
@@ -308,9 +308,13 @@ fn condition_expression_to_condition(expr: ConditionExpression) -> Condition {
 
 pub(super) async fn load_tasks_impl(
     db: &DatabaseConnection,
-    filter: &Box<dyn Filter>,
+    filter_opt: Option<&Box<dyn Filter>>,
     props: Option<TaskProperties>,
 ) -> Result<TaskData, Box<dyn std::error::Error>> {
+    let filter = match filter_opt {
+        Some(f) => f,
+        None => &filters::new_empty(),
+    };
     let tasks_obj = tasks_from_filter(db, filter).await?;
 
     let mut task_data = TaskData::default();
@@ -364,18 +368,41 @@ async fn tasks_from_filter(
 
 pub(super) async fn append_undo_action_impl(
     db: &DatabaseConnection,
-    undo: &ActionUndo,
+    count: usize,
+    undos: Vec<ActionUndo>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let payload = serde_json::to_string(undo)?;
-    let active = undo_actions::ActiveModel {
-        action_type: Set(match undo.action_type {
-            ActionUndoType::Add => "ADD".to_string(),
-            ActionUndoType::Modify => "MODIFY".to_string(),
-        }),
-        payload: Set(payload),
-        ..Default::default()
-    };
-    active.insert(db).await?;
+    let count_u64: u64 = count.try_into().unwrap();
+    let last_undos_ids: Vec<i32> = undo_actions::Entity::find()
+        .order_by_desc(undo_actions::Column::CreatedAt)
+        .limit(count_u64)
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|model| model.id)
+        .collect();
+    undo_actions::Entity::delete_many()
+        .filter(undo_actions::Column::Id.is_in(last_undos_ids))
+        .exec(db)
+        .await?;
+
+    let undo_to_model =
+        |u: ActionUndo| -> Result<undo_actions::ActiveModel, Box<dyn std::error::Error>> {
+            let payload = serde_json::to_string(&u)?;
+            Ok(undo_actions::ActiveModel {
+                action_type: Set(u.action_type.to_string()),
+                payload: Set(payload),
+                ..Default::default()
+            })
+        };
+
+    let mut undo_active_models = Vec::new();
+    for undo in undos {
+        undo_active_models.push(undo_to_model(undo)?);
+    }
+    undo_actions::Entity::insert_many(undo_active_models)
+        .exec(db)
+        .await?;
+
     Ok(())
 }
 
@@ -399,11 +426,7 @@ pub(super) async fn load_undos_impl(
     let mut undos: Vec<ActionUndo> = Vec::with_capacity(records.len());
     for record in records {
         let mut undo: ActionUndo = serde_json::from_str(&record.payload)?;
-        undo.action_type = match record.action_type.as_str() {
-            "ADD" => ActionUndoType::Add,
-            "MODIFY" => ActionUndoType::Modify,
-            other => return Err(format!("Unknown undo action type '{}'", other).into()),
-        };
+        undo.action_type = ActionUndoType::from_str(&record.action_type)?;
         undos.push(undo);
     }
     Ok(undos)
@@ -1079,7 +1102,7 @@ mod tests {
         filter: Box<dyn Filter>,
         expected_task: &Task,
     ) {
-        let results_data = load_tasks_impl(db, &filter, None).await.unwrap();
+        let results_data = load_tasks_impl(db, Some(&filter), None).await.unwrap();
         let results = results_data.to_vec();
 
         assert_eq!(results.len(), 1, "expected a single matching task");
@@ -1121,8 +1144,12 @@ mod tests {
         };
         let expected_latest = second_undo.clone();
 
-        append_undo_action_impl(&db, &first_undo).await.unwrap();
-        append_undo_action_impl(&db, &second_undo).await.unwrap();
+        append_undo_action_impl(&db, 1, vec![first_undo])
+            .await
+            .unwrap();
+        append_undo_action_impl(&db, 1, vec![second_undo])
+            .await
+            .unwrap();
 
         let recent = load_undos_impl(&db, 1).await.unwrap();
         assert_eq!(recent.len(), 1, "Expected a single undo action returned");
@@ -1130,6 +1157,20 @@ mod tests {
 
         assert_eq!(latest.action_type, expected_latest.action_type);
         assert_eq!(latest.tasks, expected_latest.tasks);
+
+        let mut third_task = Task::default();
+        third_task.set_summary("Third undo task");
+        let third_undo = ActionUndo {
+            action_type: ActionUndoType::Modify,
+            tasks: vec![third_task],
+        };
+        append_undo_action_impl(&db, 2, vec![third_undo.to_owned()])
+            .await
+            .unwrap();
+        let undos = load_undos_impl(&db, 10).await.unwrap();
+        assert_eq!(undos.len(), 1);
+        assert_eq!(undos[0], third_undo);
+        
     }
     #[tokio::test]
     async fn test_insert_load_task() {
@@ -1154,25 +1195,25 @@ mod tests {
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "foo bar café".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        let loaded = load_tasks_impl(&db, Some(&f), None).await.unwrap();
         assert_eq!(loaded.to_vec().len(), 1, "Should have one task retrieved");
 
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "FOO".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        let loaded = load_tasks_impl(&db, Some(&f), None).await.unwrap();
         assert_eq!(loaded.to_vec().len(), 1, "Should be case insensitive");
 
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "café".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        let loaded = load_tasks_impl(&db, Some(&f), None).await.unwrap();
         assert_eq!(loaded.to_vec().len(), 1, "Should be case insensitive");
 
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "CAFÉ".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        let loaded = load_tasks_impl(&db, Some(&f), None).await.unwrap();
         assert_eq!(
             loaded.to_vec().len(),
             1,
@@ -1182,7 +1223,7 @@ mod tests {
         let f: Box<dyn Filter> = Box::new(StringFilter {
             value: "NO".to_string(),
         });
-        let loaded = load_tasks_impl(&db, &f, None).await.unwrap();
+        let loaded = load_tasks_impl(&db, Some(&f), None).await.unwrap();
         assert_eq!(loaded.to_vec().len(), 0, "Should not be matching");
     }
 
@@ -1927,7 +1968,7 @@ mod tests {
 
         let mut task_props = TaskProperties::default();
         task_props.depends_on = Some(vec![DependsOnIdentifier::Uuid(dependent_uuid.to_owned())]);
-        let results_data = load_tasks_impl(&db, &filter, Some(task_props))
+        let results_data = load_tasks_impl(&db, Some(&filter), Some(task_props))
             .await
             .unwrap();
         assert_eq!(results_data.to_vec().len(), 1);
@@ -1945,7 +1986,7 @@ mod tests {
         task_props.depends_on = Some(vec![DependsOnIdentifier::Id(
             dependent_task.id.unwrap().to_owned(),
         )]);
-        let results_data = load_tasks_impl(&db, &filter, Some(task_props))
+        let results_data = load_tasks_impl(&db, Some(&filter), Some(task_props))
             .await
             .unwrap();
         assert_eq!(results_data.to_vec().len(), 1);
@@ -1967,9 +2008,7 @@ mod tests {
         );
 
         // check with No Task props, should be no extra tasks (?)
-        let results_data = load_tasks_impl(&db, &filter, None)
-            .await
-            .unwrap();
+        let results_data = load_tasks_impl(&db, Some(&filter), None).await.unwrap();
         assert_eq!(results_data.to_vec().len(), 1);
         assert_eq!(results_data.to_vec()[0].uuid, target_uuid);
         assert_true!(results_data.get_extra_tasks().is_empty());

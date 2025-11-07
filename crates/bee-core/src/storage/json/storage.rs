@@ -114,7 +114,7 @@ impl Store for JsonStore {
         Ok(new_data)
     }
 
-    fn write_tasks(data: &TaskData) -> Result<TaskData, String> {
+    fn write_tasks(data: &TaskData) -> Result<(), String> {
         let mut stored_tasks = Self::load_tasks(None, None)?;
         for t in data.get_task_map().values() {
             stored_tasks.set_task(t.clone());
@@ -133,7 +133,7 @@ impl Store for JsonStore {
 
         fs::write(data_file, tasks_as_json).expect("Could not write data file");
 
-        Ok(stored_tasks)
+        Ok(())
     }
 
     fn load_undos(last_count: usize) -> Vec<ActionUndo> {

@@ -62,14 +62,14 @@ impl fmt::Display for TaskStatus {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[derive(Display, EnumString, Default, Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub enum ActionUndoType {
     Add,
     #[default]
     Modify,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ActionUndo {
     pub action_type: ActionUndoType,
     pub tasks: Vec<Task>,

@@ -34,21 +34,16 @@ fn get_section_filters() -> Result<Option<Box<dyn Filter>>, String> {
     Ok(None)
 }
 
-fn l() {}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    let a = 1;
-
-    // awefwafieawf;
 
     let t = Task::default();
     insert_task(&t).await?;
     let undo_count = 1;
 
     match config::load_config() {
-        Ok(e) => {}
+        Ok(_) => {}
         Err(msg) => {
             SimpleTaskTextPrinter.error(&msg);
             exit(1);

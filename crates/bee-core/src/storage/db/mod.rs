@@ -3,9 +3,13 @@ mod tables;
 
 use crate::{
     filters::Filter,
-    storage::{AsyncStore, db::inserts_update::{
-        append_undo_action_impl, get_database, load_tasks_impl, load_undos_impl, write_tasks_impl,
-    }},
+    storage::{
+        AsyncStore,
+        db::inserts_update::{
+            append_undo_action_impl, get_database, load_tasks_impl, load_undos_impl,
+            write_tasks_impl,
+        },
+    },
     task::{ActionUndo, Task, TaskData, TaskProperties},
 };
 
@@ -21,35 +25,36 @@ pub async fn insert_task(task: &Task) -> Result<(), Box<dyn std::error::Error>> 
     write_tasks_impl(&db, task).await
 }
 
-
 impl AsyncStore for DbStore {
-
-async fn load_tasks(
-    filter: Option<&Box<dyn Filter>>,
-    props: Option<TaskProperties>,
-) -> Result<TaskData, Box<dyn std::error::Error>> {
-    let db = get_database(None).await.unwrap();
-    load_tasks_impl(&db, filter, props).await
-}
-async fn write_tasks(data: &TaskData) -> Result<(), Box<dyn std::error::Error>> {
-    let db = get_database(None).await.unwrap();
-    for task in data.to_vec().iter() {
-        write_tasks_impl(&db, task).await?;
+    async fn load_tasks(
+        filter: Option<&Box<dyn Filter>>,
+        props: Option<TaskProperties>,
+    ) -> Result<TaskData, Box<dyn std::error::Error>> {
+        let db = get_database(None).await.unwrap();
+        load_tasks_impl(&db, filter, props).await
     }
-    Ok(())
-}
-
-async fn log_undo(count: usize, undos: Vec<ActionUndo>) -> Result<(), Box<dyn std::error::Error>> {
-    let db = get_database(None).await?;
-    append_undo_action_impl(&db, count, undos).await
-}
-
-async fn load_undos(limit: usize) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
-    if limit == 0 {
-        return Ok(Vec::new());
+    async fn write_tasks(data: &TaskData) -> Result<(), Box<dyn std::error::Error>> {
+        let db = get_database(None).await.unwrap();
+        for task in data.to_vec().iter() {
+            write_tasks_impl(&db, task).await?;
+        }
+        Ok(())
     }
 
-    let db = get_database(None).await?;
-    load_undos_impl(&db, limit).await
-}
+    async fn log_undo(
+        count: usize,
+        undos: Vec<ActionUndo>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let db = get_database(None).await?;
+        append_undo_action_impl(&db, count, undos).await
+    }
+
+    async fn load_undos(limit: usize) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+
+        let db = get_database(None).await?;
+        load_undos_impl(&db, limit).await
+    }
 }

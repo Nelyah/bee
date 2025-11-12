@@ -24,11 +24,13 @@ use uuid::Uuid;
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{self, Set},
-    ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
-    EntityTrait, IntoActiveModel, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
+    ColumnTrait, Condition, ConnectionTrait, DatabaseBackend, DatabaseConnection,
+    DatabaseTransaction, DbErr, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder, QuerySelect,
+    Statement, TransactionTrait,
     prelude::Expr,
     sea_query::{Alias, ConditionExpression, Func, Query, SelectStatement},
 };
+
 use std::{
     collections::{HashMap, HashSet},
     default,
@@ -349,6 +351,33 @@ pub(super) async fn load_tasks_impl(
     Ok(task_data)
 }
 
+/// Execute the task ID resequencing logic within an existing transaction.
+///
+/// The transaction should already encompass any writes that require the IDs to be rebalanced.
+async fn resequence_task_ids_txn(db: &DatabaseTransaction) -> Result<(), DbErr> {
+    let clear_inactive_ids = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        "UPDATE tasks SET id = NULL WHERE status IN ('COMPLETED','DELETED')",
+    );
+    db.execute(clear_inactive_ids).await?;
+
+    let resequence_ids = Statement::from_string(
+        DatabaseBackend::Sqlite,
+        r#"WITH ranked AS (
+             SELECT db_id, ROW_NUMBER() OVER (ORDER BY date_created) AS new_id
+             FROM tasks
+             WHERE status IN ('PENDING','ACTIVE')
+         )
+         UPDATE tasks
+         SET id = (SELECT new_id FROM ranked WHERE ranked.db_id = tasks.db_id)
+         WHERE db_id IN (SELECT db_id FROM ranked)"#,
+    );
+
+    db.execute(resequence_ids).await?;
+
+    Ok(())
+}
+
 async fn tasks_from_filter(
     db: &DatabaseConnection,
     filter: &Box<dyn Filter>,
@@ -467,6 +496,7 @@ pub(super) async fn write_tasks_impl(
     sync_history(&txn, &model_task, &task.history).await?;
     sync_links(&txn, &model_task, &task.links).await?;
     sync_tags(&txn, &model_task, &task.tags).await?;
+    resequence_task_ids_txn(&txn).await?;
 
     txn.commit().await?;
     Ok(())
@@ -1104,7 +1134,7 @@ where
 mod tests {
     use super::*;
     use crate::task::TaskStatus;
-    use all_asserts::assert_true;
+    use all_asserts::{assert_false, assert_true};
     use chrono::{Duration, Local, TimeZone};
 
     async fn assert_single_match(
@@ -1131,6 +1161,10 @@ mod tests {
         for history_idx in 0..expected_task_mut.history.len() {
             expected_task_mut.history[history_idx].id = result.history[history_idx].id;
         }
+
+        // we set that here because this ID is set automatically when we write to the DB, so not
+        // something I want to be testing
+        expected_task_mut.id = result.id;
         assert_eq!(result, &expected_task_mut);
     }
 
@@ -1630,17 +1664,17 @@ mod tests {
 
         let mut task_one = Task::default();
         task_one.summary = "Task-1".to_string();
-        task_one.id = Some(101);
+        task_one.id = Some(1);
         task_one.uuid = Uuid::new_v4();
         write_tasks_impl(&db, &task_one).await.unwrap();
 
         let mut task_two = Task::default();
         task_two.summary = "Task-2".to_string();
-        task_two.id = Some(202);
+        task_two.id = Some(2);
         task_two.uuid = Uuid::new_v4();
         write_tasks_impl(&db, &task_two).await.unwrap();
 
-        assert_single_match(&db, Box::new(TaskIdFilter { id: 101 }), &task_one).await;
+        assert_single_match(&db, Box::new(TaskIdFilter { id: 1 }), &task_one).await;
     }
 
     #[tokio::test]
@@ -1898,6 +1932,56 @@ mod tests {
             &due_later,
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn test_resequence_task_ids_orders_active_and_pending() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let base = Local.with_ymd_and_hms(2024, 6, 1, 8, 0, 0).unwrap();
+
+        let mut pending_early = Task::default();
+        pending_early.summary = "pending-early".to_string();
+        pending_early.status = TaskStatus::Pending;
+        pending_early.uuid = Uuid::new_v4();
+        pending_early.date_created = base;
+        write_tasks_impl(&db, &pending_early).await.unwrap();
+
+        let mut active_late = Task::default();
+        active_late.summary = "active-late".to_string();
+        active_late.status = TaskStatus::Active;
+        active_late.uuid = Uuid::new_v4();
+        active_late.date_created = base + Duration::days(1);
+        write_tasks_impl(&db, &active_late).await.unwrap();
+
+        let mut completed_latest = Task::default();
+
+        completed_latest.summary = "completed".to_string();
+        completed_latest.status = TaskStatus::Completed;
+        completed_latest.uuid = Uuid::new_v4();
+        completed_latest.date_created = base + Duration::days(2);
+        write_tasks_impl(&db, &completed_latest).await.unwrap();
+
+        let rows = tasks::Entity::find()
+            .order_by_asc(tasks::Column::DateCreated)
+            .all(&db)
+            .await
+            .unwrap();
+        assert_false!(rows.is_empty());
+        debug!("{:?}", rows);
+
+        let mut sequential = Vec::new();
+        for row in &rows {
+            match TaskStatus::from_string(row.status.as_str()).unwrap() {
+                TaskStatus::Pending | TaskStatus::Active => sequential.push(row.id),
+                TaskStatus::Completed => {
+                    assert!(row.id.is_none(), "completed task should not have an id")
+                }
+                other => panic!("unexpected status {other}"),
+            }
+        }
+
+        assert_eq!(sequential, vec![Some(1), Some(2)]);
     }
 
     #[tokio::test]

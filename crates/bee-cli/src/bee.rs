@@ -10,7 +10,6 @@ use bee_core::{
     task::{Task, TaskProperties},
 };
 
-
 use crate::{
     cli::SimpleTaskTextPrinter,
     config::{SectionType, get_cli_config},

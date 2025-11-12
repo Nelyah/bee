@@ -22,7 +22,6 @@ use bee_core::{
     Printer,
     config::ReportConfig,
     task::{ActionUndo, ActionUndoType, TaskData},
-  
 };
 
 pub trait TaskAction {

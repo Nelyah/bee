@@ -20,12 +20,13 @@ pub struct Config {
 
 impl Config {
     fn validate(&self) -> Result<(), String> {
-        if let Some(section_type) = &self.section.section_type {
-            if section_type == &SectionType::Filters && self.section.filters.is_empty() {
-                return Err("Configuration: Section: The section configuration type is \
+        if let Some(section_type) = &self.section.section_type
+            && section_type == &SectionType::Filters
+            && self.section.filters.is_empty()
+        {
+            return Err("Configuration: Section: The section configuration type is \
                                'filters' but no filter was provided."
-                    .to_string());
-            }
+                .to_string());
         }
 
         Ok(())
@@ -72,13 +73,6 @@ pub struct SectionConfig {
 
 fn default_section_header_bg() -> (u8, u8, u8) {
     (26, 26, 26)
-}
-
-#[derive(Deserialize, Debug, PartialEq)]
-pub struct CoeffientField {
-    pub field: String,
-    pub value: Option<String>,
-    pub coefficient: i64,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]

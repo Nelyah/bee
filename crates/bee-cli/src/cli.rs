@@ -147,6 +147,7 @@ impl Printer for SimpleTaskTextPrinter {
             TaskStatus::Active => task.get_status().to_string().to_uppercase().green(),
             TaskStatus::Pending => task.get_status().to_string().to_uppercase().blue(),
             TaskStatus::Completed => task.get_status().to_string().to_uppercase().green(),
+            TaskStatus::Blocked => task.get_status().to_string().to_uppercase().bright_yellow(),
             TaskStatus::Deleted => task.get_status().to_string().to_uppercase().bright_red(),
         };
         let mut output_str = String::default();

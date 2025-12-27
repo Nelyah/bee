@@ -2,7 +2,6 @@ use log::info;
 use uuid::Uuid;
 
 use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
-use bee_core::task::ActionUndoType;
 
 use bee_core::Printer;
 

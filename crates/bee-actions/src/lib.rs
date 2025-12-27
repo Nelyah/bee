@@ -10,6 +10,7 @@ mod action_done;
 mod action_edit;
 mod action_export;
 mod action_help;
+mod action_import;
 mod action_info;
 mod action_list;
 mod action_modify;

@@ -6,8 +6,9 @@ use crate::{
     BaseTaskAction, TaskAction, action_add::AddTaskAction, action_annotate::AnnotateTaskAction,
     action_cmd::CmdTaskAction, action_delete::DeleteTaskAction, action_done::DoneTaskAction,
     action_edit::EditTaskAction, action_export::ExportTaskAction, action_help::HelpTaskAction,
-    action_info::InfoTaskAction, action_list::ListTaskAction, action_modify::ModifyTaskAction,
-    action_start::StartTaskAction, action_stop::StopTaskAction, action_undo::UndoTaskAction,
+    action_import::ImportTaskAction, action_info::InfoTaskAction, action_list::ListTaskAction,
+    action_modify::ModifyTaskAction, action_start::StartTaskAction, action_stop::StopTaskAction,
+    action_undo::UndoTaskAction,
 };
 
 pub struct ActionTypeData {
@@ -26,6 +27,7 @@ pub enum ActionType {
     Edit,
     Export,
     Help,
+    Import,
     Info,
     List,
     Modify,
@@ -48,6 +50,7 @@ impl ActionType {
             ActionType::Edit => (),
             ActionType::Export => (),
             ActionType::Help => (),
+            ActionType::Import => (),
             ActionType::Info => (),
             ActionType::List => (),
             ActionType::Modify => (),
@@ -136,6 +139,16 @@ impl ActionType {
                             parsed_string: vec!["help".to_string()],
                             use_arguments_as_filter: false,
                             documentation_string: HelpTaskAction::get_command_description(),
+                        },
+                    );
+                }
+                ActionType::Import => {
+                    map.insert(
+                        action_type,
+                        ActionTypeData {
+                            parsed_string: vec!["import".to_string()],
+                            use_arguments_as_filter: false,
+                            documentation_string: ImportTaskAction::get_command_description(),
                         },
                     );
                 }
@@ -243,6 +256,7 @@ impl ActionType {
                 base: BaseTaskAction::default(),
                 command_descriptions: Self::get_command_descriptions(),
             }),
+            ActionType::Import => Box::new(ImportTaskAction::default()),
             ActionType::Info => Box::new(InfoTaskAction::default()),
             ActionType::List => Box::new(ListTaskAction::default()),
             ActionType::Modify => Box::new(ModifyTaskAction::default()),

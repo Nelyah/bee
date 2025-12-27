@@ -18,6 +18,8 @@ pub struct TaskPropertyParser {
     buffer_index: usize,
 }
 
+// TODO: Be able to parse a blocks: property
+
 impl BaseParser for TaskPropertyParser {
     fn get_buffer_index(&self) -> usize {
         self.buffer_index

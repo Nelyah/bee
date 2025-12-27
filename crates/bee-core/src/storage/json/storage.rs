@@ -21,15 +21,15 @@ mod storage_test;
 pub struct JsonStore {}
 
 impl Store for JsonStore {
-    #[allow(clippy::borrowed_box)]
     fn load_tasks(
-        filter: Option<&Box<dyn Filter>>,
+        filter: Option<Box<dyn Filter>>,
         props: Option<TaskProperties>,
     ) -> Result<TaskData, String> {
-        debug!(
-            "Loading tasks using filter:\n{}",
-            &filter.unwrap_or(&filters::new_empty()).to_string()
-        );
+        let filter_debug = filter
+            .as_ref()
+            .map(|f| f.to_string())
+            .unwrap_or_else(|| filters::new_empty().to_string());
+        debug!("Loading tasks using filter:\n{}", filter_debug);
         let mut data = match find_data_file() {
             Ok(data_file) => {
                 serde_json::from_str(&fs::read_to_string(data_file).expect("unable to read file"))
@@ -37,8 +37,6 @@ impl Store for JsonStore {
             }
             Err(_) => TaskData::default(),
         };
-
-        data.upkeep()?;
 
         // We need to keep some knowledge of how the ids map to the uuids
         let mut id_to_uuid = HashMap::<i32, Uuid>::default();
@@ -54,10 +52,9 @@ impl Store for JsonStore {
         }
 
         // Load extra UUIDs from loaded tasks
-        let mut new_data = if let Some(filter) = filter {
-            let mut filter_mut = filter.clone();
-            filter_mut.convert_id_to_uuid(&id_to_uuid);
-            data.filter(&filter_mut)
+        let mut new_data = if let Some(mut filter) = filter {
+            filter.convert_id_to_uuid(&id_to_uuid);
+            data.filter(filter.as_ref())
         } else {
             data.to_owned()
         };
@@ -119,7 +116,6 @@ impl Store for JsonStore {
         for t in data.get_task_map().values() {
             stored_tasks.set_task(t.clone());
         }
-        stored_tasks.upkeep()?;
 
         let tasks_as_json =
             serde_json::to_string_pretty(&stored_tasks).expect("Failed to serialize tasks to JSON");

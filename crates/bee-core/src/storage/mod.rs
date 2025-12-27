@@ -7,9 +7,8 @@ pub mod db;
 pub mod json;
 
 pub trait Store {
-    #[allow(clippy::borrowed_box)]
     fn load_tasks(
-        filter: Option<&Box<dyn Filter>>,
+        filter: Option<Box<dyn Filter>>,
         props: Option<TaskProperties>,
     ) -> Result<TaskData, String>;
     /// Will write the task and return the TaskData written
@@ -23,9 +22,8 @@ pub trait Store {
 }
 
 pub trait AsyncStore {
-    #[allow(clippy::borrowed_box)]
     fn load_tasks(
-        filter: Option<&Box<dyn Filter>>,
+        filter: Option<Box<dyn Filter>>,
         props: Option<TaskProperties>,
     ) -> impl std::future::Future<Output = Result<TaskData, Box<dyn std::error::Error>>>;
     /// Will write the task and return the TaskData written

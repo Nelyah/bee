@@ -1,33 +1,37 @@
+mod blocking;
+mod connection;
+mod filter_sql;
 mod inserts_update;
+mod sync_relations;
 mod tables;
+mod task_read;
+mod task_write;
+mod undo;
 
 use crate::{
     filters::Filter,
     storage::{
         AsyncStore,
-        db::inserts_update::{
-            append_undo_action_impl, get_database, load_tasks_impl, load_undos_impl,
-            write_tasks_impl,
+        db::{
+            connection::get_database,
+            task_read::load_tasks_impl,
+            task_write::write_tasks_impl,
+            undo::{append_undo_action_impl, load_undos_impl},
         },
     },
-    task::{ActionUndo, Task, TaskData, TaskProperties},
+    task::{ActionUndo, TaskData, TaskProperties},
 };
 
 // TODO: Need to update SeaORM to use the newer related entities and subtypes
 // https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/
 // sea-orm-cli generate entity --output-dir ./src/entity --entity-format dense
 
-// TODO: implement the Store trait
-
-struct DbStore {}
-pub async fn insert_task(task: &Task) -> Result<(), Box<dyn std::error::Error>> {
-    let db = get_database(None).await.unwrap();
-    write_tasks_impl(&db, task).await
-}
+/// Async store backed by the sqlite database.
+pub struct DbStore {}
 
 impl AsyncStore for DbStore {
     async fn load_tasks(
-        filter: Option<&Box<dyn Filter>>,
+        filter: Option<Box<dyn Filter>>,
         props: Option<TaskProperties>,
     ) -> Result<TaskData, Box<dyn std::error::Error>> {
         let db = get_database(None).await.unwrap();

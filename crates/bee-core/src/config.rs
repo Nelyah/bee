@@ -162,11 +162,11 @@ pub fn find_config_file() -> Option<PathBuf> {
             Cow::Owned(v) => v.to_string(),
         };
 
-        if let Ok(full_path) = Path::new(&expanded_path).canonicalize() {
-            if full_path.exists() {
-                debug!("Found config file {}", expanded_path);
-                return Some(full_path);
-            }
+        if let Ok(full_path) = Path::new(&expanded_path).canonicalize()
+            && full_path.exists()
+        {
+            debug!("Found config file {}", expanded_path);
+            return Some(full_path);
         }
     }
 

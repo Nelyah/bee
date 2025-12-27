@@ -92,10 +92,9 @@ pub fn new_empty() -> Box<dyn Filter> {
     Default::default()
 }
 
-#[allow(clippy::borrowed_box)]
 fn downcast_and_compare<T: Filter + PartialEq>(
-    self_filter: &Box<dyn Filter>,
-    other_filter: &Box<dyn Filter>,
+    self_filter: &dyn Filter,
+    other_filter: &dyn Filter,
 ) -> bool {
     if let (Some(self_concrete), Some(other_concrete)) = (
         self_filter.as_any().downcast_ref::<T>(),
@@ -143,20 +142,36 @@ impl PartialEq for Box<dyn Filter> {
         }
 
         match self.get_kind() {
-            FilterKind::Root => downcast_and_compare::<RootFilter>(self, other),
-            FilterKind::And => downcast_and_compare::<AndFilter>(self, other),
-            FilterKind::Or => downcast_and_compare::<OrFilter>(self, other),
-            FilterKind::Xor => downcast_and_compare::<XorFilter>(self, other),
-            FilterKind::String => downcast_and_compare::<StringFilter>(self, other),
-            FilterKind::Status => downcast_and_compare::<StatusFilter>(self, other),
-            FilterKind::Project => downcast_and_compare::<ProjectFilter>(self, other),
-            FilterKind::Tag => downcast_and_compare::<TagFilter>(self, other),
-            FilterKind::Uuid => downcast_and_compare::<UuidFilter>(self, other),
-            FilterKind::TaskId => downcast_and_compare::<TaskIdFilter>(self, other),
-            FilterKind::DependsOn => downcast_and_compare::<DependsOnFilter>(self, other),
-            FilterKind::DateEnd => downcast_and_compare::<DateEndFilter>(self, other),
-            FilterKind::DateCreated => downcast_and_compare::<DateCreatedFilter>(self, other),
-            FilterKind::DateDue => downcast_and_compare::<DateDueFilter>(self, other),
+            FilterKind::Root => downcast_and_compare::<RootFilter>(self.as_ref(), other.as_ref()),
+            FilterKind::And => downcast_and_compare::<AndFilter>(self.as_ref(), other.as_ref()),
+            FilterKind::Or => downcast_and_compare::<OrFilter>(self.as_ref(), other.as_ref()),
+            FilterKind::Xor => downcast_and_compare::<XorFilter>(self.as_ref(), other.as_ref()),
+            FilterKind::String => {
+                downcast_and_compare::<StringFilter>(self.as_ref(), other.as_ref())
+            }
+            FilterKind::Status => {
+                downcast_and_compare::<StatusFilter>(self.as_ref(), other.as_ref())
+            }
+            FilterKind::Project => {
+                downcast_and_compare::<ProjectFilter>(self.as_ref(), other.as_ref())
+            }
+            FilterKind::Tag => downcast_and_compare::<TagFilter>(self.as_ref(), other.as_ref()),
+            FilterKind::Uuid => downcast_and_compare::<UuidFilter>(self.as_ref(), other.as_ref()),
+            FilterKind::TaskId => {
+                downcast_and_compare::<TaskIdFilter>(self.as_ref(), other.as_ref())
+            }
+            FilterKind::DependsOn => {
+                downcast_and_compare::<DependsOnFilter>(self.as_ref(), other.as_ref())
+            }
+            FilterKind::DateEnd => {
+                downcast_and_compare::<DateEndFilter>(self.as_ref(), other.as_ref())
+            }
+            FilterKind::DateCreated => {
+                downcast_and_compare::<DateCreatedFilter>(self.as_ref(), other.as_ref())
+            }
+            FilterKind::DateDue => {
+                downcast_and_compare::<DateDueFilter>(self.as_ref(), other.as_ref())
+            }
         }
     }
 }

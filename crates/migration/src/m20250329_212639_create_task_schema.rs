@@ -53,7 +53,7 @@ impl MigrationTrait for Migration {
                             .string()
                             .not_null()
                             .check(Expr::cust(
-                                "status IN ('PENDING','COMPLETED','ACTIVE','DELETED')",
+                                "status IN ('PENDING','COMPLETED','ACTIVE','DELETED','BLOCKED')",
                             )),
                     )
                     .col(ColumnDef::new(Tasks::Uuid).string().not_null())

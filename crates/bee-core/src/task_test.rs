@@ -1,18 +1,7 @@
 use all_asserts::{assert_false, assert_true};
-use chrono::{Duration, Local, NaiveTime, TimeZone};
+use chrono::{Local, NaiveTime, TimeZone};
 
 use super::*;
-
-fn new_task(summary: &str, status: TaskStatus) -> Task {
-    Task {
-        summary: summary.to_string(),
-        id: None,
-        status,
-        uuid: Uuid::new_v4(),
-        date_created: Local::now(),
-        ..Default::default()
-    }
-}
 
 #[test]
 fn test_task_status_from_str() {
@@ -304,6 +293,39 @@ fn test_apply_no_change() {
 }
 
 #[test]
+fn test_apply_depends_on_taskdata() {
+    let task1 = setup_task();
+    let task2 = setup_task();
+    let props = TaskProperties {
+        depends_on: Some(vec![DependsOnIdentifier::Uuid(task2.uuid.to_owned())]),
+        ..Default::default()
+    };
+    let mut taskdata = TaskData::default();
+    taskdata.add_task_object(task1.to_owned());
+    taskdata.add_task_object(task2.to_owned());
+
+    taskdata.apply(&task1.uuid, &props).unwrap();
+    assert_eq!(
+        taskdata.get_task_map().get(&task1.uuid).unwrap().links[0],
+        Link {
+            from: task1.uuid.to_owned(),
+            to: task2.uuid.to_owned(),
+            link_type: LinkType::DependsOn,
+            id: None,
+        }
+    );
+    assert_eq!(
+        taskdata.get_task_map().get(&task2.uuid).unwrap().links[0],
+        Link {
+            from: task2.uuid.to_owned(),
+            to: task1.uuid.to_owned(),
+            link_type: LinkType::Blocking,
+            id: None,
+        }
+    );
+}
+
+#[test]
 fn test_apply_depends_on() {
     let mut task = setup_task();
     let mut props = TaskProperties::default();
@@ -345,72 +367,6 @@ fn test_apply_depends_on() {
 }
 
 #[test]
-fn test_upkeep_sorts_tasks_and_updates_ids() {
-    let mut task_data = TaskData {
-        max_id: 0,
-        ..TaskData::default()
-    };
-
-    let mut t1 = new_task("Task 1", TaskStatus::Pending);
-    t1.date_created = Local::now();
-    let mut t2 = new_task("Task 2", TaskStatus::Pending);
-    t2.date_created = Local::now() + Duration::try_seconds(1).unwrap();
-    let mut t3 = new_task("Task 3", TaskStatus::Pending);
-    t3.date_created = Local::now() + Duration::try_seconds(2).unwrap();
-
-    task_data.tasks.insert(t3.uuid, t3.clone());
-
-    task_data.tasks.insert(t2.uuid, t2.clone());
-
-    task_data.tasks.insert(t1.uuid, t1.clone());
-
-    // Run upkeep
-    let _ = task_data.upkeep();
-
-    // Verify the tasks are sorted and ids are updated correctly
-    let task1 = task_data.tasks.get(&t1.uuid).unwrap();
-    let task2 = task_data.tasks.get(&t2.uuid).unwrap();
-    let task3 = task_data.tasks.get(&t3.uuid).unwrap();
-
-    assert_eq!(task_data.tasks.len(), 3);
-    assert_eq!(task1.id, Some(1));
-    assert_eq!(task2.id, Some(2));
-    assert_eq!(task3.id, Some(3));
-}
-
-#[test]
-fn test_upkeep_handles_deleted_and_completed_tasks() {
-    let mut task_data = TaskData {
-        max_id: 0,
-        ..TaskData::default()
-    };
-
-    let t1 = new_task("Task 1", TaskStatus::Pending);
-    let t2 = new_task("Task 2", TaskStatus::Completed);
-    let t4 = new_task("Task 4", TaskStatus::Pending);
-    let t3 = new_task("Task 3", TaskStatus::Deleted);
-
-    task_data.tasks.insert(t1.uuid, t1.clone());
-    task_data.tasks.insert(t2.uuid, t2.clone());
-    task_data.tasks.insert(t3.uuid, t3.clone());
-    task_data.tasks.insert(t4.uuid, t4.clone());
-
-    // Run upkeep
-    let _ = task_data.upkeep();
-
-    // Verify the tasks are sorted and ids are updated correctly
-    let task1 = task_data.tasks.get(&t1.uuid).unwrap();
-    let task2 = task_data.tasks.get(&t2.uuid).unwrap();
-    let task3 = task_data.tasks.get(&t3.uuid).unwrap();
-    let task4 = task_data.tasks.get(&t4.uuid).unwrap();
-
-    assert_eq!(task1.id, Some(1));
-    assert_eq!(task2.id, None);
-    assert_eq!(task3.id, None);
-    assert_eq!(task4.id, Some(2));
-}
-
-#[test]
 fn test_sort_tasks() {
     let now = Local::now();
     let today_start = Local
@@ -420,7 +376,7 @@ fn test_sort_tasks() {
         )
         .single()
         .unwrap();
-    let mut tasks = vec![
+    let mut tasks = [
         Task {
             id: Some(2),
             urgency: Some(2),
@@ -439,7 +395,7 @@ fn test_sort_tasks() {
     assert_eq!(tasks[0].id, Some(1));
     assert_eq!(tasks[1].id, Some(2));
 
-    let mut tasks = vec![
+    let mut tasks = [
         Task {
             id: Some(2),
             urgency: Some(2),
@@ -458,7 +414,7 @@ fn test_sort_tasks() {
     assert_eq!(tasks[0].id, Some(1));
     assert_eq!(tasks[1].id, Some(2));
 
-    let mut tasks = vec![
+    let mut tasks = [
         Task {
             id: Some(2),
             urgency: None,
@@ -477,7 +433,7 @@ fn test_sort_tasks() {
     assert_eq!(tasks[0].id, Some(1));
     assert_eq!(tasks[1].id, Some(2));
 
-    let mut tasks = vec![
+    let mut tasks = [
         Task {
             id: Some(2),
             urgency: None,

@@ -7,7 +7,6 @@ use task_prop_parser::TaskPropertyParser;
 
 use chrono::Local;
 use chrono::prelude::DateTime;
-use log::trace;
 use serde::{Deserialize, Deserializer, Serialize, ser::Serializer};
 use serde_json::Value;
 use uuid::Uuid;
@@ -37,6 +36,7 @@ pub enum TaskStatus {
     Active,
     Completed,
     Deleted,
+    Blocked,
 }
 
 impl TaskStatus {
@@ -46,7 +46,19 @@ impl TaskStatus {
             "pending" => Ok(TaskStatus::Pending),
             "completed" => Ok(TaskStatus::Completed),
             "deleted" => Ok(TaskStatus::Deleted),
+            "blocked" => Ok(TaskStatus::Blocked),
             _ => Err("Invalid task status name".to_string()),
+        }
+    }
+
+    /// Returns the uppercase string representation used in the database
+    pub fn to_db_string(&self) -> String {
+        match self {
+            TaskStatus::Active => "ACTIVE".to_string(),
+            TaskStatus::Pending => "PENDING".to_string(),
+            TaskStatus::Completed => "COMPLETED".to_string(),
+            TaskStatus::Deleted => "DELETED".to_string(),
+            TaskStatus::Blocked => "BLOCKED".to_string(),
         }
     }
 }
@@ -58,6 +70,7 @@ impl fmt::Display for TaskStatus {
             TaskStatus::Pending => write!(f, "pending"),
             TaskStatus::Completed => write!(f, "completed"),
             TaskStatus::Deleted => write!(f, "deleted"),
+            TaskStatus::Blocked => write!(f, "blocked"),
         }
     }
 }
@@ -103,6 +116,7 @@ pub struct TaskProperties {
     #[serde(default)]
     date_due: Option<DateTime<chrono::Local>>,
     pub(crate) depends_on: Option<Vec<DependsOnIdentifier>>,
+    pub(crate) blocks: Option<Vec<DependsOnIdentifier>>,
 }
 
 // We implement a specific function for annotate because we cannot know how to differenciate
@@ -458,7 +472,7 @@ impl Task {
         uuids
     }
 
-    pub fn apply(&mut self, props: &TaskProperties) -> Result<(), String> {
+    pub(crate) fn apply(&mut self, props: &TaskProperties) -> Result<(), String> {
         if let Some(summary) = &props.summary {
             self.history.push(TaskHistory {
                 id: None,
@@ -642,6 +656,46 @@ impl Task {
                 }
             }
         }
+        if let Some(blocks) = &props.blocks {
+            let mut deps_set = HashSet::<Uuid>::new();
+
+            // If the vector is empty, it's because we want to cancel all dependencies
+            // for the task. In which case just don't add any. This will update the
+            // task to not have any dependencies
+            if !blocks.is_empty() {
+                self.get_blocking().iter().for_each(|&uuid| {
+                    deps_set.insert(uuid.to_owned());
+                });
+            }
+            for dep in blocks {
+                match dep {
+                    DependsOnIdentifier::Id(_) => {
+                        unreachable!(
+                            "We should not have a usize here. \
+                            We should have converted it to a UUID before applying \
+                            the properties to the task."
+                        );
+                    }
+                    DependsOnIdentifier::Uuid(uuid) => {
+                        if deps_set.contains(uuid) {
+                            continue;
+                        }
+                        self.history.push(TaskHistory {
+                            id: None,
+                            datetime: Local::now(),
+                            value: format!("Added a UUID to block: '{}'", uuid),
+                        });
+                        self.links.push(Link {
+                            id: None,
+                            from: self.uuid,
+                            to: uuid.to_owned(),
+                            link_type: LinkType::Blocking,
+                        });
+                        deps_set.insert(uuid.to_owned());
+                    }
+                }
+            }
+        }
         self.compute_urgency()?;
         Ok(())
     }
@@ -759,11 +813,31 @@ impl TaskData {
     }
 
     pub fn apply(&mut self, task_uuid: &Uuid, props: &TaskProperties) -> Result<(), String> {
-        if props.depends_on.is_none() {
+        if props.depends_on.is_none() && props.blocks.is_none() {
             return self.tasks.get_mut(task_uuid).unwrap().apply(props);
         }
 
         let my_props = self.update_task_property_depends_on(props)?;
+
+        if let Some(depends_on_ids) = &my_props.depends_on {
+            for depends_on_id in depends_on_ids {
+                match depends_on_id {
+                    DependsOnIdentifier::Id(_) => {
+                        unreachable!("All identifiers should have been converted to Uuid!");
+                    }
+                    DependsOnIdentifier::Uuid(uuid) => {
+                        self.tasks
+                            .get_mut(uuid)
+                            .or_else(|| self.extra_tasks.get_mut(uuid))
+                            .ok_or(format!("Unable to find task with UUID {}", uuid))?
+                            .apply(&TaskProperties {
+                                blocks: Some(vec![DependsOnIdentifier::Uuid(task_uuid.to_owned())]),
+                                ..Default::default()
+                            })?;
+                    }
+                }
+            }
+        }
         self.tasks.get_mut(task_uuid).unwrap().apply(&my_props)
     }
 
@@ -832,161 +906,7 @@ impl TaskData {
         Ok(my_props)
     }
 
-    pub fn upkeep(&mut self) -> Result<(), String> {
-        let mut vec: Vec<_> = self.tasks.values().by_ref().collect();
-
-        // Set the ID of the tasks by sorting them by date_created
-        vec.sort_by(|lhs, rhs| lhs.date_created.cmp(&rhs.date_created));
-        let uuids: Vec<Uuid> = vec.iter().map(|t| t.uuid).collect();
-        let mut i = 1;
-        for cur_uuid in uuids {
-            let t: &mut Task = self.tasks.get_mut(&cur_uuid).unwrap();
-            match t.status {
-                TaskStatus::Pending | TaskStatus::Active => {
-                    self.tasks.get_mut(&cur_uuid).unwrap().id = Some(i);
-                    i += 1;
-                }
-                TaskStatus::Deleted | TaskStatus::Completed => {
-                    self.tasks.get_mut(&cur_uuid).unwrap().id = None;
-                }
-            }
-        }
-
-        for t in self.tasks.values_mut() {
-            t.compute_urgency()?;
-        }
-
-        // Update dependency status if a depended class is done / deleted
-
-        // this is the UUID with all the tasks it should depends ONTO
-        let mut task_depends_to_update = HashMap::<Uuid, Vec<Uuid>>::default();
-
-        for task in self.tasks.values() {
-            let mut dependencies_to_update = HashSet::<Uuid>::default();
-            let deps_set_before: HashSet<Uuid> =
-                task.get_depends_on().into_iter().cloned().collect();
-
-            for dep_uuid in &deps_set_before {
-                if let Some(t) = self.tasks.get(dep_uuid) {
-                    match t.status {
-                        TaskStatus::Pending | TaskStatus::Active => {}
-                        TaskStatus::Completed | TaskStatus::Deleted => {
-                            dependencies_to_update.insert(*dep_uuid);
-                        }
-                    }
-                } else if let Some(t) = self.extra_tasks.get(dep_uuid) {
-                    match t.status {
-                        TaskStatus::Pending | TaskStatus::Active => {}
-                        TaskStatus::Completed | TaskStatus::Deleted => {
-                            dependencies_to_update.insert(*dep_uuid);
-                        }
-                    }
-                } else {
-                    trace!("We have {} task", self.tasks.len());
-                    trace!("tasks are: {:?}", self.tasks);
-                    unreachable!(
-                        "We were unable to find the task associated with uuid {:?} during upkeep phase",
-                        dep_uuid
-                    );
-                }
-            }
-
-            let deps_set_after: HashSet<Uuid> = deps_set_before
-                .difference(&dependencies_to_update)
-                .cloned()
-                .collect();
-            task_depends_to_update.insert(task.uuid, deps_set_after.into_iter().collect());
-        }
-        task_depends_to_update
-            .into_iter()
-            .for_each(|(task_uuid, deps_uuids)| {
-                let t = self.tasks.get_mut(&task_uuid).unwrap();
-                t.links.retain(|l| l.link_type != LinkType::DependsOn);
-
-                for uuid in deps_uuids {
-                    trace!("adding {} -- DependsOn --> {}", t.uuid, uuid);
-                    t.links.push(Link {
-                        id: None,
-                        from: t.uuid.to_owned(),
-                        to: uuid,
-                        link_type: LinkType::DependsOn,
-                    });
-                }
-            });
-
-        // Add the blocking UUID when being referred by depends_on
-        let mut blocking_to_blocked_uuids = HashMap::new();
-        for task in self.tasks.values() {
-            for link in &task.links {
-                match link.link_type {
-                    LinkType::DependsOn => {
-                        // If A depends on B → B blocks A
-                        blocking_to_blocked_uuids.insert(link.to, link.from);
-                    }
-                    LinkType::Blocking => {
-                        blocking_to_blocked_uuids.insert(link.from, link.to);
-                    }
-                }
-            }
-        }
-
-        for (blocking_uuid, blocked_uuid) in blocking_to_blocked_uuids {
-            let t = self.tasks.get_mut(&blocking_uuid).unwrap();
-
-            if !t.blocks(&blocked_uuid) {
-                t.links.push(Link {
-                    id: None,
-                    from: blocking_uuid,
-                    to: blocked_uuid,
-                    link_type: LinkType::Blocking,
-                });
-            }
-        }
-
-        // Update blocking status for tasks
-        // For each blocking task, this looks up the tasks depending on it and keeps
-        // the blocking list up to date.
-        let blockers_uuid: Vec<_> = self
-            .tasks
-            .values()
-            .filter(|t| {
-                !t.get_blocking().is_empty()
-                    && t.status != TaskStatus::Deleted
-                    && t.status != TaskStatus::Completed
-            })
-            .map(|t| t.uuid)
-            .collect();
-        for blocker_uuid in blockers_uuid {
-            let mut new_blocked_uuids = Vec::new();
-
-            for blocked_uuid in self.tasks.get(&blocker_uuid).unwrap().get_blocking() {
-                let blocked_task = self.tasks.get(blocked_uuid).unwrap();
-
-                if blocked_task.depends_on(&blocker_uuid) {
-                    new_blocked_uuids.push(*blocked_uuid);
-                }
-            }
-            let blocker_task = self.tasks.get_mut(&blocker_uuid).unwrap();
-
-            blocker_task
-                .links
-                .retain(|l| l.link_type != LinkType::Blocking);
-
-            blocker_task
-                .links
-                .extend(new_blocked_uuids.iter().map(|&uuid| Link {
-                    id: None,
-                    from: blocker_task.uuid,
-                    to: uuid,
-                    link_type: LinkType::Blocking,
-                }));
-        }
-
-        Ok(())
-    }
-
-    #[allow(clippy::borrowed_box)]
-    pub fn filter(&self, filter: &Box<dyn Filter>) -> Self {
+    pub fn filter(&self, filter: &dyn Filter) -> Self {
         let mut new_data = TaskData {
             tasks: HashMap::default(),
             ..TaskData::clone(self)
@@ -1036,7 +956,7 @@ impl TaskData {
         .clone();
         let new_uuid = Uuid::new_v4();
         let new_id: Option<i32> = match status {
-            TaskStatus::Pending | TaskStatus::Active => {
+            TaskStatus::Blocked | TaskStatus::Pending | TaskStatus::Active => {
                 self.max_id += 1;
                 Some(self.max_id)
             }
@@ -1044,7 +964,7 @@ impl TaskData {
         };
 
         let date_completed: Option<DateTime<chrono::Local>> = match status {
-            TaskStatus::Pending | TaskStatus::Active => None,
+            TaskStatus::Pending | TaskStatus::Active | TaskStatus::Blocked => None,
             TaskStatus::Completed | TaskStatus::Deleted => Some(Local::now()),
         };
 

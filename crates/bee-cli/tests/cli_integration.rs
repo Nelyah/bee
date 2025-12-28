@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use bee_core::task::TaskData;
+
 struct TestWorkspace {
     root: PathBuf,
     data_home: PathBuf,
@@ -56,6 +58,16 @@ fn run_bee(workspace: &TestWorkspace, args: &[&str]) -> String {
     String::from_utf8_lossy(&output.stdout).to_string()
 }
 
+/// Runs `bee export` and parses the JSON output into TaskData.
+fn export_tasks(workspace: &TestWorkspace, filters: &[&str]) -> TaskData {
+    let mut args = Vec::with_capacity(filters.len() + 1);
+    args.push("export");
+    args.extend(filters);
+
+    let stdout = run_bee(workspace, &args);
+    serde_json::from_str(&stdout).expect("failed to parse export JSON")
+}
+
 #[test]
 fn add_then_filter_by_id_shows_single_task() {
     let workspace = setup_workspace();
@@ -63,16 +75,16 @@ fn add_then_filter_by_id_shows_single_task() {
     run_bee(&workspace, &["add", "foo"]);
     run_bee(&workspace, &["add", "bar"]);
 
-    let stdout = run_bee(&workspace, &["1"]);
+    let exported = export_tasks(&workspace, &["1"]);
+    let tasks: Vec<_> = exported.get_task_map().values().collect();
 
+    assert_eq!(tasks.len(), 1, "expected one task, got {}", tasks.len());
     assert!(
-        stdout.contains("foo"),
-        "expected foo in output, got: {}",
-        stdout
+        tasks.iter().any(|task| task.get_summary() == "foo"),
+        "expected foo in export"
     );
     assert!(
-        !stdout.contains("bar"),
-        "expected bar to be filtered out, got: {}",
-        stdout
+        !tasks.iter().any(|task| task.get_summary() == "bar"),
+        "expected bar to be filtered out"
     );
 }

@@ -1,5 +1,5 @@
 use migration::{Migrator, MigratorTrait, sea_orm::Database};
-use sea_orm::DatabaseConnection;
+use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
 use std::path::PathBuf;
 
 /// Returns the database URL using a fallback chain:
@@ -73,6 +73,14 @@ pub(super) async fn get_database(
     ensure_parent_directories(&url)?;
 
     let db = Database::connect(&url).await?;
+
+    if url.starts_with("sqlite:") {
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "PRAGMA foreign_keys = ON",
+        ))
+        .await?;
+    }
 
     Migrator::up(&db, None).await?;
 

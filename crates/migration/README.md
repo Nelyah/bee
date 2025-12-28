@@ -39,3 +39,11 @@
     ```sh
     cargo run -- status
     ```
+
+## Schema invariants
+
+These invariants are enforced at the database level and validated by tests:
+
+- `tasks.uuid` is unique and non-null.
+- `links.type` must be one of `DependsOn` or `Blocking`.
+- Foreign key constraints are enforced by the application (`PRAGMA foreign_keys = ON`).

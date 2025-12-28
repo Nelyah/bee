@@ -56,7 +56,7 @@ impl MigrationTrait for Migration {
                                 "status IN ('PENDING','COMPLETED','ACTIVE','DELETED','BLOCKED')",
                             )),
                     )
-                    .col(ColumnDef::new(Tasks::Uuid).string().not_null())
+                    .col(ColumnDef::new(Tasks::Uuid).string().not_null().unique_key())
                     .col(ColumnDef::new(Tasks::Summary).string().not_null())
                     .col(ColumnDef::new(Tasks::DateCreated).string().not_null())
                     .col(ColumnDef::new(Tasks::DateCompleted).string().null())
@@ -145,7 +145,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Links::FromTaskId).unsigned().not_null())
                     .col(ColumnDef::new(Links::ToTaskId).unsigned().not_null())
-                    .col(ColumnDef::new(Links::Type).string().not_null())
+                    .col(
+                        ColumnDef::new(Links::Type)
+                            .string()
+                            .not_null()
+                            .check(Expr::cust("type IN ('DependsOn','Blocking')")),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_links_from_task")

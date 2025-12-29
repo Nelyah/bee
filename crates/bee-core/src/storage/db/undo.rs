@@ -85,3 +85,80 @@ pub(super) async fn load_undos_impl(
     }
     Ok(undos)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::connection::get_database;
+    use super::*;
+    use crate::task::{ActionUndo, ActionUndoType, Task};
+    use all_asserts::assert_true;
+
+    /// Ensure undo actions are persisted and the most recent entry is fetched.
+    #[tokio::test]
+    async fn test_append_undo_action_persists_and_fetches_latest() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut first_task = Task::default();
+        first_task.set_summary("First undo task");
+        let first_undo = ActionUndo {
+            action_type: ActionUndoType::Add,
+            tasks: vec![first_task],
+        };
+
+        let mut second_task = Task::default();
+        second_task.set_summary("Second undo task");
+        let second_undo = ActionUndo {
+            action_type: ActionUndoType::Modify,
+            tasks: vec![second_task],
+        };
+        let expected_latest = second_undo.clone();
+
+        append_undo_action_impl(&db, 1, vec![first_undo])
+            .await
+            .unwrap();
+        append_undo_action_impl(&db, 1, vec![second_undo.to_owned()])
+            .await
+            .unwrap();
+
+        let recent = load_undos_impl(&db, 1).await.unwrap();
+        assert_eq!(recent.len(), 1, "Expected a single undo action returned");
+        let latest = &recent[0];
+
+        assert_eq!(latest.action_type, expected_latest.action_type);
+        assert_eq!(latest.tasks, expected_latest.tasks);
+
+        let mut third_task = Task::default();
+        third_task.set_summary("Third undo task");
+        let third_undo = ActionUndo {
+            action_type: ActionUndoType::Modify,
+            tasks: vec![third_task],
+        };
+
+        append_undo_action_impl(&db, 2, vec![third_undo.to_owned()])
+            .await
+            .unwrap();
+        let undos = load_undos_impl(&db, 10).await.unwrap();
+        assert_eq!(undos.len(), 1);
+        assert_eq!(undos[0], third_undo);
+
+        append_undo_action_impl(&db, 0, vec![second_undo.to_owned()])
+            .await
+            .unwrap();
+        let undos = load_undos_impl(&db, 2).await.unwrap();
+        assert_eq!(undos.len(), 2);
+        assert_eq!(undos[0], third_undo);
+        assert_eq!(undos[1], second_undo);
+
+        append_undo_action_impl(&db, 1, vec![second_undo.to_owned()])
+            .await
+            .unwrap();
+        let undos = load_undos_impl(&db, 2).await.unwrap();
+        assert_eq!(undos.len(), 2);
+        assert_eq!(undos[0], third_undo);
+        assert_eq!(undos[1], second_undo);
+
+        append_undo_action_impl(&db, 100, vec![]).await.unwrap();
+        let undos = load_undos_impl(&db, 100).await.unwrap();
+        assert_true!(undos.is_empty());
+    }
+}

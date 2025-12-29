@@ -1,6 +1,8 @@
 use async_std::test;
+use migration::sea_orm::{
+    ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Statement,
+};
 use migration::{Migrator, MigratorTrait};
-use migration::sea_orm::{ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Statement};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 

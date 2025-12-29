@@ -194,3 +194,276 @@ where
 
     Ok(task_active)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{connection::get_database, tables};
+    use super::*;
+    use crate::task::{Link, LinkType, Project, Task, TaskAnnotation, TaskHistory};
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn test_insert_task() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        let mut t = Task::default();
+        let saved_uuid = t.uuid;
+
+        write_tasks_impl(&db, &t).await.unwrap();
+
+        let initial_db_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(saved_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should have been inserted");
+        assert_eq!(saved_uuid.to_string(), initial_db_task.uuid);
+
+        let annotations_before = tables::annotations::Entity::find()
+            .filter(tables::annotations::Column::TaskId.eq(initial_db_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert!(annotations_before.is_empty(), "Expected no annotations");
+
+        t.annotations.push(TaskAnnotation {
+            id: None,
+            value: "Test annotation".to_string(),
+            time: chrono::Local::now(),
+        });
+
+        write_tasks_impl(&db, &t).await.unwrap();
+
+        let updated_db_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(saved_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should still exist after update");
+        assert_eq!(
+            initial_db_task.db_id, updated_db_task.db_id,
+            "Task update should not create a new row"
+        );
+
+        let annotations_after = tables::annotations::Entity::find()
+            .filter(tables::annotations::Column::TaskId.eq(updated_db_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert!(
+            !annotations_after.is_empty(),
+            "Expected at least one annotation row after update"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_annotation_removed_after_sync() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut task = Task::default();
+        let task_uuid = task.uuid;
+        task.annotations.push(TaskAnnotation {
+            id: None,
+            value: "Initial annotation".to_string(),
+            time: chrono::Local::now(),
+        });
+
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let persisted_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(task_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should exist after insert");
+
+        let annotations_before = tables::annotations::Entity::find()
+            .filter(tables::annotations::Column::TaskId.eq(persisted_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(annotations_before.len(), 1, "Expected one annotation");
+
+        task.annotations.clear();
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let annotations_after = tables::annotations::Entity::find()
+            .filter(tables::annotations::Column::TaskId.eq(persisted_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert!(annotations_after.is_empty(), "Annotation should be removed");
+    }
+
+    #[tokio::test]
+    async fn test_history_removed_after_sync() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut task = Task::default();
+        let task_uuid = task.uuid;
+        task.history.push(TaskHistory {
+            id: None,
+            value: "Created".to_string(),
+            datetime: chrono::Local::now(),
+        });
+
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let persisted_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(task_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should exist after insert");
+
+        let history_before = tables::history::Entity::find()
+            .filter(tables::history::Column::TaskId.eq(persisted_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(history_before.len(), 1, "Expected one history event");
+
+        task.history.clear();
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let history_after = tables::history::Entity::find()
+            .filter(tables::history::Column::TaskId.eq(persisted_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert!(history_after.is_empty(), "History should be removed");
+    }
+
+    #[tokio::test]
+    async fn test_links_removed_after_sync() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let target_task = Task {
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+        let target_uuid = target_task.uuid;
+        write_tasks_impl(&db, &target_task).await.unwrap();
+
+        let mut source_task = Task {
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+        let source_uuid = source_task.uuid;
+        source_task.links.push(Link {
+            id: None,
+            from: source_uuid,
+            to: target_uuid,
+            link_type: LinkType::DependsOn,
+        });
+
+        write_tasks_impl(&db, &source_task).await.unwrap();
+
+        let persisted_source = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(source_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Source task should exist after insert");
+
+        let links_before = tables::links::Entity::find()
+            .filter(tables::links::Column::FromTaskId.eq(persisted_source.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(links_before.len(), 1, "Expected one link");
+
+        source_task.links.clear();
+        write_tasks_impl(&db, &source_task).await.unwrap();
+
+        let links_after = tables::links::Entity::find()
+            .filter(tables::links::Column::FromTaskId.eq(persisted_source.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert!(links_after.is_empty(), "Links should be removed");
+    }
+
+    #[tokio::test]
+    async fn test_project_cleared_after_sync() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let project_name = "sync-project".to_string();
+        let mut task = Task {
+            project: Some(Project {
+                id: None,
+                name: project_name.clone(),
+            }),
+            ..Default::default()
+        };
+        let task_uuid = task.uuid;
+
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let persisted_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(task_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should exist after insert");
+        assert!(persisted_task.project_id.is_some(), "Project should be set");
+
+        task.project = None;
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let updated_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(task_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should still exist after project removal");
+        assert!(
+            updated_task.project_id.is_none(),
+            "Project should be cleared"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_tags_removed_after_sync() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut task = Task::default();
+        let task_uuid = task.uuid;
+        task.tags.push("alpha".to_string());
+
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let persisted_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(task_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should exist after insert");
+
+        let tags_before = tables::tasks_tags::Entity::find()
+            .filter(tables::tasks_tags::Column::TaskId.eq(persisted_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(tags_before.len(), 1, "Expected one task-tag link");
+
+        let tag_ids: Vec<i32> = tags_before.iter().map(|t| t.tag_id).collect();
+        let tag_alpha = tables::tags::Entity::find()
+            .filter(tables::tags::Column::Id.is_in(tag_ids))
+            .all(&db)
+            .await
+            .unwrap();
+        assert_eq!(tag_alpha.len(), 1, "Expected matching tag row to exist");
+        assert_eq!(tag_alpha.first().unwrap().name, "alpha");
+
+        task.tags.clear();
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        let tags_after = tables::tasks_tags::Entity::find()
+            .filter(tables::tasks_tags::Column::TaskId.eq(persisted_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+        assert!(tags_after.is_empty(), "Task-tag links should be removed");
+    }
+}

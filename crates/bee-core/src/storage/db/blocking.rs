@@ -230,3 +230,295 @@ pub(super) async fn resequence_task_ids_txn(db: &DatabaseTransaction) -> Result<
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{
+        connection::get_database, tables, task_read::load_tasks_impl, task_write::write_tasks_impl,
+    };
+    use super::*;
+    use crate::{
+        filters::{
+            Filter,
+            filters_impl::{StatusFilter, UuidFilter},
+        },
+        task::{Link, LinkType, Task, TaskStatus},
+    };
+    use all_asserts::assert_false;
+    use chrono::{Duration, Local, TimeZone};
+    use log::debug;
+    use sea_orm::sea_query::Query;
+    use sea_orm::{EntityTrait, QueryOrder};
+    use sea_orm_migration::prelude::SqliteQueryBuilder;
+    use std::collections::HashSet;
+    use uuid::Uuid;
+
+    /// Compare the filtered results against a single expected task.
+    async fn assert_single_match(
+        db: &sea_orm::DatabaseConnection,
+        filter: Box<dyn Filter>,
+        expected_task: &Task,
+    ) {
+        let results_data = load_tasks_impl(db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1, "expected a single matching task");
+        let result = results[0];
+        let mut expected_task_mut = expected_task.clone();
+        expected_task_mut.db_id = result.db_id;
+        if let Some(proj) = &mut expected_task_mut.project {
+            proj.id = result.project.to_owned().unwrap().id;
+        }
+        for ann_idx in 0..expected_task_mut.annotations.len() {
+            expected_task_mut.annotations[ann_idx].id = result.annotations[ann_idx].id;
+        }
+        for link_idx in 0..expected_task_mut.links.len() {
+            expected_task_mut.links[link_idx].id = result.links[link_idx].id;
+        }
+        for history_idx in 0..expected_task_mut.history.len() {
+            expected_task_mut.history[history_idx].id = result.history[history_idx].id;
+        }
+
+        expected_task_mut.id = result.id;
+        assert_eq!(result, &expected_task_mut);
+    }
+
+    /// Initialize a test logger once for noisy DB tests.
+    fn init_logger() {
+        let _ = env_logger::builder()
+            .is_test(true)
+            .filter_module("sqlx", log::LevelFilter::Off)
+            .try_init();
+    }
+
+    #[test]
+    fn test_determine_status_transitions_assigns_correct_sets() {
+        let dependency_pairs = vec![(1, 2), (3, 4)];
+        let currently_blocked: HashSet<i32> = HashSet::from([1, 5]);
+        let dependents: HashSet<i32> = HashSet::from([1, 3]);
+        let blockers_done: HashSet<i32> = HashSet::from([2]);
+
+        let (to_block, to_unblock) = determine_status_transitions(
+            &dependency_pairs,
+            &currently_blocked,
+            &dependents,
+            &blockers_done,
+        );
+
+        let expected_block: HashSet<i32> = HashSet::from([3]);
+        let expected_unblock: HashSet<i32> = HashSet::from([1, 5]);
+
+        assert_eq!(to_block, expected_block);
+        assert_eq!(to_unblock, expected_unblock);
+    }
+
+    #[test]
+    fn test_build_status_case_expr_generates_case_when_targets_present() {
+        let statuses = StatusStrings::new();
+        let case_expr = build_status_case_expr(&[1, 2], &[3], &statuses);
+        let sql = Query::select()
+            .expr(case_expr)
+            .from(tables::tasks::Entity)
+            .to_string(SqliteQueryBuilder);
+
+        assert!(sql.contains("CASE"));
+        assert!(sql.contains(&statuses.blocked));
+        assert!(sql.contains(&statuses.pending));
+    }
+
+    #[test]
+    fn test_build_status_case_expr_falls_back_to_status_column() {
+        let statuses = StatusStrings::new();
+        let case_expr = build_status_case_expr(&[], &[], &statuses);
+        let sql = Query::select()
+            .expr(case_expr)
+            .from(tables::tasks::Entity)
+            .to_string(SqliteQueryBuilder);
+
+        assert!(!sql.contains("CASE"));
+        assert!(sql.contains("\"status\""));
+    }
+
+    #[tokio::test]
+    async fn test_resequence_task_ids_orders_active_and_pending() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        let base = Local.with_ymd_and_hms(2024, 6, 1, 8, 0, 0).unwrap();
+
+        let pending_early = Task {
+            summary: "pending-early".to_string(),
+            status: TaskStatus::Pending,
+            uuid: Uuid::new_v4(),
+            date_created: base,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &pending_early).await.unwrap();
+
+        let active_late = Task {
+            summary: "active-late".to_string(),
+            status: TaskStatus::Active,
+            uuid: Uuid::new_v4(),
+            date_created: base + Duration::days(1),
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &active_late).await.unwrap();
+
+        let completed_latest = Task {
+            summary: "completed".to_string(),
+            status: TaskStatus::Completed,
+            uuid: Uuid::new_v4(),
+            date_created: base + Duration::days(2),
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &completed_latest).await.unwrap();
+
+        let rows = tables::tasks::Entity::find()
+            .order_by_asc(tables::tasks::Column::DateCreated)
+            .all(&db)
+            .await
+            .unwrap();
+        assert_false!(rows.is_empty());
+        debug!("{:?}", rows);
+
+        let mut sequential = Vec::new();
+        for row in &rows {
+            match TaskStatus::from_string(row.status.as_str()).unwrap() {
+                TaskStatus::Pending | TaskStatus::Active => sequential.push(row.id),
+                TaskStatus::Completed => {
+                    assert!(row.id.is_none(), "completed task should not have an id")
+                }
+                other => panic!("unexpected status {other}"),
+            }
+        }
+
+        assert_eq!(sequential, vec![Some(1), Some(2)]);
+    }
+
+    #[tokio::test]
+    async fn test_update_blocking_status_blocked_has_no_links() {
+        init_logger();
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut blocked_task = Task {
+            summary: "blocked-task".to_string(),
+            status: TaskStatus::Pending,
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+
+        let mut blocking_task = Task {
+            summary: "blocking-task".to_string(),
+            status: TaskStatus::Active,
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+
+        blocking_task.links.push(Link {
+            from: blocking_task.uuid,
+            to: blocked_task.uuid,
+            link_type: LinkType::Blocking,
+            id: None,
+        });
+
+        write_tasks_impl(&db, &blocked_task).await.unwrap();
+        write_tasks_impl(&db, &blocking_task).await.unwrap();
+        blocked_task.links.push(Link {
+            from: blocked_task.uuid,
+            to: blocking_task.uuid,
+            link_type: LinkType::DependsOn,
+            id: None,
+        });
+        write_tasks_impl(&db, &blocked_task).await.unwrap();
+
+        let all_tasks = tables::tasks::Entity::find().all(&db).await.unwrap();
+        assert_eq!(all_tasks.len(), 2);
+        let statuses: Vec<_> = all_tasks.iter().map(|t| t.status.clone()).collect();
+        assert!(statuses.contains(&TaskStatus::Active.to_db_string()));
+        assert!(statuses.contains(&TaskStatus::Blocked.to_db_string()));
+
+        blocked_task.status = TaskStatus::Blocked;
+        assert_single_match(
+            &db,
+            Box::new(StatusFilter {
+                status: TaskStatus::Blocked,
+            }),
+            &blocked_task,
+        )
+        .await;
+
+        blocking_task.status = TaskStatus::Completed;
+        write_tasks_impl(&db, &blocking_task).await.unwrap();
+        let blocked_task_filter: Box<dyn Filter> = Box::new(UuidFilter {
+            uuid: blocked_task.uuid.to_owned(),
+        });
+        let results_data = load_tasks_impl(&db, Some(blocked_task_filter.clone()), None)
+            .await
+            .unwrap();
+        assert_eq!(results_data.to_vec()[0].uuid, blocked_task.uuid);
+        assert_eq!(results_data.to_vec()[0].status, TaskStatus::Pending);
+    }
+
+    #[tokio::test]
+    async fn test_delete_link_blocking() {
+        init_logger();
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let mut blocked_task = Task {
+            summary: "blocked-task".to_string(),
+            status: TaskStatus::Pending,
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+
+        let mut blocking_task = Task {
+            summary: "blocking-task".to_string(),
+            status: TaskStatus::Active,
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+
+        blocking_task.links.push(Link {
+            from: blocking_task.uuid,
+            to: blocked_task.uuid,
+            link_type: LinkType::Blocking,
+            id: None,
+        });
+
+        write_tasks_impl(&db, &blocked_task).await.unwrap();
+        write_tasks_impl(&db, &blocking_task).await.unwrap();
+        blocked_task.links.push(Link {
+            from: blocked_task.uuid,
+            to: blocking_task.uuid,
+            link_type: LinkType::DependsOn,
+            id: None,
+        });
+        blocked_task.db_id = Some(1);
+        write_tasks_impl(&db, &blocked_task).await.unwrap();
+
+        let all_links = tables::links::Entity::find().all(&db).await.unwrap();
+        assert_eq!(all_links.len(), 1);
+
+        let all_tasks = tables::tasks::Entity::find().all(&db).await.unwrap();
+        assert_eq!(all_tasks.len(), 2);
+        let statuses: Vec<_> = all_tasks.iter().map(|t| t.status.clone()).collect();
+        assert!(statuses.contains(&TaskStatus::Active.to_db_string()));
+        assert!(statuses.contains(&TaskStatus::Blocked.to_db_string()));
+
+        let blocked_task_filter: Box<dyn Filter> = Box::new(UuidFilter {
+            uuid: blocked_task.uuid.to_owned(),
+        });
+        blocked_task.status = TaskStatus::Blocked;
+
+        blocked_task.links = [].to_vec();
+        blocking_task.links = [].to_vec();
+        write_tasks_impl(&db, &blocking_task).await.unwrap();
+        write_tasks_impl(&db, &blocked_task).await.unwrap();
+        let all_links = tables::links::Entity::find().all(&db).await.unwrap();
+        assert_eq!(all_links.len(), 0);
+
+        let results_data = load_tasks_impl(&db, Some(blocked_task_filter), None)
+            .await
+            .unwrap();
+        assert_eq!(results_data.to_vec()[0].uuid, blocked_task.uuid);
+        assert_eq!(results_data.to_vec()[0].status, TaskStatus::Pending);
+    }
+}

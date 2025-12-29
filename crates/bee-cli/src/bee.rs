@@ -35,7 +35,14 @@ fn get_section_filters() -> Result<Option<Box<dyn Filter>>, String> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    let mut logger =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
+    logger
+        .filter_module("sqlx", log::LevelFilter::Warn)
+        .filter_module("sea_orm", log::LevelFilter::Warn)
+        .filter_module("sea_orm::query", log::LevelFilter::Warn)
+        .filter_module("sea_orm::executor", log::LevelFilter::Warn)
+        .init();
 
     let undo_count = 1;
 

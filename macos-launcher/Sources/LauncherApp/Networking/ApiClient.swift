@@ -51,9 +51,14 @@ final class ApiClient: ApiClientProtocol, Sendable {
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            logger.error("HTTP error \(path, privacy: .public)")
-            throw URLError(.badServerResponse)
+        guard let http = response as? HTTPURLResponse else {
+            logger.error("HTTP error \(path, privacy: .public) (no response)")
+            throw ApiClientError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let message = decodeErrorMessage(from: data) ?? "HTTP \(http.statusCode)"
+            logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
+            throw ApiClientError.api(message: message)
         }
         logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
         return try JSONDecoder().decode(Response.self, from: data)
@@ -67,11 +72,39 @@ final class ApiClient: ApiClientProtocol, Sendable {
         request.httpMethod = "GET"
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            logger.error("HTTP error \(path, privacy: .public)")
-            throw URLError(.badServerResponse)
+        guard let http = response as? HTTPURLResponse else {
+            logger.error("HTTP error \(path, privacy: .public) (no response)")
+            throw ApiClientError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let message = decodeErrorMessage(from: data) ?? "HTTP \(http.statusCode)"
+            logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
+            throw ApiClientError.api(message: message)
         }
         logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
         return try JSONDecoder().decode(Response.self, from: data)
+    }
+
+    /// Decode an API error message from a JSON error payload.
+    private func decodeErrorMessage(from data: Data) -> String? {
+        guard let response = try? JSONDecoder().decode(ApiErrorResponse.self, from: data) else {
+            return nil
+        }
+        return response.error
+    }
+}
+
+/// Errors surfaced by the API client.
+enum ApiClientError: LocalizedError {
+    case api(message: String)
+    case invalidResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .api(let message):
+            return message
+        case .invalidResponse:
+            return "Invalid response from server"
+        }
     }
 }

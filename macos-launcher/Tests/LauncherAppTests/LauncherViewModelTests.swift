@@ -96,6 +96,34 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.shouldAutoList(actionName: "list"))
         XCTAssertFalse(viewModel.shouldAutoList(actionName: "add"))
     }
+
+    func testShowToastAddsAndRemoves() async {
+        let viewModel = LauncherViewModel(apiClient: MockApiClient())
+        viewModel.showToast(message: "Boom", duration: 0.01)
+        XCTAssertEqual(viewModel.toasts.count, 1)
+
+        try? await Task.sleep(for: .milliseconds(20))
+        XCTAssertTrue(viewModel.toasts.isEmpty)
+    }
+
+    func testLoadConfigErrorShowsToast() async {
+        let mock = MockApiClient()
+        mock.configResult = .failure(SampleError(message: "Config failed"))
+        let viewModel = LauncherViewModel(apiClient: mock)
+
+        await viewModel.loadConfig()
+
+        XCTAssertEqual(viewModel.toasts.first?.message, "Config failed")
+    }
+}
+
+/// Simple error for testing toast messaging.
+private struct SampleError: LocalizedError {
+    let message: String
+
+    var errorDescription: String? {
+        message
+    }
 }
 
 /// Build a minimal ApiTask for view model tests.

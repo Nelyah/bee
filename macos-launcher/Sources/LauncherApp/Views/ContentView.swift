@@ -6,7 +6,7 @@ struct ContentView: View {
     @State private var escapeMonitor: Any?
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottomTrailing) {
             launcherBackground
 
             if viewModel.mode == .detail, let task = viewModel.selectedTask {
@@ -18,6 +18,10 @@ struct ContentView: View {
                 TaskListView(viewModel: viewModel)
                     .padding(20)
             }
+
+            ToastStackView(toasts: viewModel.toasts)
+                .padding(16)
+                .allowsHitTesting(false)
         }
         .onExitCommand {
             viewModel.closeDetail()

@@ -33,11 +33,11 @@ impl AsyncStore for DbStore {
         filter: Option<Box<dyn Filter>>,
         props: Option<TaskProperties>,
     ) -> Result<TaskData, Box<dyn std::error::Error>> {
-        let db = get_database(None).await.unwrap();
+        let db = get_database(None).await?;
         load_tasks_impl(&db, filter, props).await
     }
     async fn write_tasks(data: &TaskData) -> Result<(), Box<dyn std::error::Error>> {
-        let db = get_database(None).await.unwrap();
+        let db = get_database(None).await?;
         for task in data.to_vec().iter() {
             write_tasks_impl(&db, task).await?;
         }

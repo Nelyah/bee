@@ -1,6 +1,8 @@
 import Foundation
 import OSLog
 
+import SwiftUI
+
 @MainActor
 final class LauncherViewModel: ObservableObject {
     @Published var input: String = ""
@@ -11,6 +13,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var mode: LauncherMode = .list
     @Published var statusMessage: String?
     @Published var reportConfig: ReportConfig?
+    @Published var toasts: [ToastMessage] = []
 
     private let apiClient: ApiClientProtocol
     private var requestCounter: Int = 0
@@ -33,6 +36,7 @@ final class LauncherViewModel: ObservableObject {
             logger.info("Config loaded: \(config.report.columns.count) columns")
         } catch {
             logger.error("Failed to load config: \(error.localizedDescription, privacy: .public)")
+            showToast(message: error.localizedDescription)
             // Use default config on failure
             reportConfig = ReportConfig(
                 filters: ["status:pending or status:active"],
@@ -80,6 +84,7 @@ final class LauncherViewModel: ObservableObject {
             tokens = []
             actionName = ""
             logger.error("Parse request failed. id=\(requestId), error=\(error.localizedDescription, privacy: .public)")
+            showToast(message: error.localizedDescription)
         }
     }
 
@@ -126,6 +131,23 @@ final class LauncherViewModel: ObservableObject {
             guard requestId == requestCounter else { return }
             tasks = []
             logger.error("Action request failed. id=\(requestId), error=\(error.localizedDescription, privacy: .public)")
+            showToast(message: error.localizedDescription)
+        }
+    }
+
+    /// Present a toast message that auto-dismisses after a duration.
+    func showToast(message: String, duration: TimeInterval = 10) {
+        let toast = ToastMessage(message: message)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            toasts.append(toast)
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(duration))
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    toasts.removeAll { $0.id == toast.id }
+                }
+            }
         }
     }
 

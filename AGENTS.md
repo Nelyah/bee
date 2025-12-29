@@ -1,4 +1,5 @@
 This is a rust application. It is a todo application (task maangement software).
+It includes a Rust backend (core + API + CLI) and a macOS SwiftUI launcher app.
 
 It consists of a couple of crates:
 # bee-core
@@ -43,6 +44,21 @@ revert the change.
 This is the CLI application. It relies on the rest to provide a CLI interface. It implements how things
 will look in the terminal, will take care of writing the main function, retrieving tasks from the database, 
 reading the configuration file.
+
+# macos-launcher
+
+This is the macOS SwiftUI launcher app. It provides a GUI over the API, with MVVM-style ViewModels.
+It talks to the running API server over HTTP (see `ApiClient`), and surfaces errors from the API
+to the UI (toasts). Mock data is available via `MockApiClient` for previews and local testing.
+
+# Quick navigation
+
+- Start here for backend behavior: `crates/bee-api/src/api.rs`
+- Database connection + pragmas: `crates/bee-core/src/storage/db/connection.rs`
+- Task model and properties: `crates/bee-core/src/task.rs`
+- macOS entry point + window styling: `macos-launcher/Sources/LauncherApp/LauncherApp.swift`
+- macOS navigation flow (list/detail switch, Escape handling): `macos-launcher/Sources/LauncherApp/Views/ContentView.swift`
+- macOS data flow (inputs/actions/toasts): `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift`
 
 # Coding guidelines
 

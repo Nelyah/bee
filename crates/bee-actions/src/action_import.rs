@@ -65,7 +65,6 @@ Usage: bee import <file_path>
        bee import -  (read from stdin)
 
 The JSON format should match the export format (TaskData serialized as JSON).
-This is useful for migrating data from JSON storage to the database.
 "#
         .to_string()
     }

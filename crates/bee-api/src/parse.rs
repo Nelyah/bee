@@ -104,6 +104,14 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_input_with_action_and_filters() {
+        let parsed = parse_input("list project:demo").unwrap();
+        assert_eq!(parsed.action, "list");
+        assert!(parsed.filter.is_some());
+        assert!(parsed.properties.is_none());
+    }
+
+    #[test]
     fn test_parse_input_with_filters_only() {
         let parsed = parse_input("project:demo").unwrap();
         assert_eq!(parsed.action, "list");

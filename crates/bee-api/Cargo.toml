@@ -3,7 +3,7 @@ name = "beed"
 path = "src/main.rs"
 
 [package]
-name = "beed"
+name = "bee-api"
 version = { workspace = true }
 edition = "2024"
 
@@ -20,3 +20,11 @@ uuid.workspace = true
 
 tokio = { version = "1", features = ["full"] }
 axum = "0.7"
+toml = "0.7"
+once_cell = "1.17"
+utoipa = "4"
+utoipa-swagger-ui = { version = "7", features = ["axum", "vendored"] }
+tower = "0.5"
+http-body-util = "0.1"
+tower-http = { version = "0.6", features = ["trace"] }
+tracing = "0.1"

@@ -2,36 +2,46 @@ use bee_core::task::{Task, TaskStatus};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+/// Request payload for running an action against tasks.
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ActionRequest {
     pub action: String,
+    #[schema(value_type = utoipa::openapi::Object)]
     pub properties: Option<Value>,
+    #[schema(value_type = utoipa::openapi::Object)]
     pub filter: Option<Value>,
 }
 
-#[derive(Debug, Serialize)]
+/// Response payload for action execution.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ActionResponse {
     pub action: String,
     pub tasks: Vec<ApiTask>,
     pub events: Vec<ApiEvent>,
 }
 
-#[derive(Debug, Deserialize)]
+/// Request payload for parsing user input into action/filters/properties.
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ParseRequest {
     pub input: String,
 }
 
-#[derive(Debug, Serialize)]
+/// Response payload for parse results and token spans.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ParseResponse {
     pub action: String,
+    #[schema(value_type = utoipa::openapi::Object)]
     pub properties: Option<Value>,
+    #[schema(value_type = utoipa::openapi::Object)]
     pub filter: Option<Value>,
     pub tokens: Vec<TokenSpan>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+/// Structured event emitted by actions (info/warn/error/etc).
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct ApiEvent {
     pub kind: String,
     pub message: String,
@@ -47,16 +57,22 @@ impl ApiEvent {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// Trimmed task payload returned by the API.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ApiTask {
     pub id: Option<i32>,
+    #[schema(value_type = String, format = "uuid")]
     pub uuid: Uuid,
+    #[schema(value_type = String)]
     pub status: TaskStatus,
     pub summary: String,
     pub project: Option<String>,
     pub tags: Vec<String>,
+    #[schema(value_type = String, format = DateTime)]
     pub date_created: DateTime<Local>,
+    #[schema(value_type = String, format = DateTime)]
     pub date_completed: Option<DateTime<Local>>,
+    #[schema(value_type = String, format = DateTime)]
     pub date_due: Option<DateTime<Local>>,
     pub urgency: Option<i64>,
 }
@@ -83,7 +99,8 @@ impl ApiTask {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// Token span emitted by the lexer for UI highlighting.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct TokenSpan {
     pub token_type: String,
     pub literal: String,

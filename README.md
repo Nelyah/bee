@@ -10,6 +10,17 @@ cd bee
 cargo run help
 ```
 
+## beed (REST API)
+
+Run the API server:
+
+```
+cargo run -p bee-api
+```
+
+Swagger UI is available at `/v1/docs` and the OpenAPI JSON at `/v1/openapi.json`.
+See `crates/bee-api/README.md` for configuration details.
+
 
 ## TODOs:
 

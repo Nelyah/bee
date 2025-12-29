@@ -1,15 +1,15 @@
 use crate::{
     config::ApiConfig,
     dto::{
-        ActionRequest, ActionResponse, ApiEvent, ApiTask, ConfigResponse, ParseRequest,
-        ParseResponse, ReportConfigDto, TokenSpan,
+        ActionRequest, ActionResponse, ApiEvent, ApiTask, CompletionItem, CompletionsResponse,
+        ConfigResponse, ParseRequest, ParseResponse, ReportConfigDto, TokenSpan,
     },
     parse::{parse_input, tokenize_with_spans},
     printer::JsonPrinter,
 };
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -19,6 +19,7 @@ use bee_core::{
     config::ReportConfig, filters::Filter, storage::AsyncStore, storage::db::DbStore,
     task::TaskProperties,
 };
+use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use std::{collections::HashSet, time::Duration};
@@ -90,6 +91,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/v1/health", get(health_handler))
         .route("/v1/config", get(config_handler))
+        .route("/v1/completions", get(completions_handler))
         .route("/v1/action", post(action_handler))
         .route("/v1/parse", post(parse_handler))
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
@@ -121,7 +123,6 @@ async fn health_handler() -> &'static str {
     "ok"
 }
 
-
 #[utoipa::path(
     get,
     path = "/v1/config",
@@ -135,6 +136,138 @@ async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
             column_names: state.report.column_names.clone(),
         },
     })
+}
+
+/// Query parameters for the completions endpoint.
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+struct CompletionsQuery {
+    /// Type of completions to return: projects, tags, actions, status, dates
+    #[serde(rename = "type")]
+    completion_type: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/completions",
+    params(CompletionsQuery),
+    responses(
+        (status = 200, description = "Completion suggestions", body = CompletionsResponse),
+        (status = 400, description = "Invalid completion type", body = ErrorResponse)
+    )
+)]
+async fn completions_handler(
+    Query(query): Query<CompletionsQuery>,
+) -> Result<Json<CompletionsResponse>, ApiError> {
+    let items = match query.completion_type.as_str() {
+        "projects" => {
+            let rows = DbStore::get_projects()
+                .await
+                .map_err(|e| ApiError::internal(format!("Failed to get projects: {e}")))?;
+            rows.into_iter()
+                .map(|r| CompletionItem {
+                    value: r.value,
+                    count: Some(r.count),
+                })
+                .collect()
+        }
+        "tags" => {
+            let rows = DbStore::get_tags()
+                .await
+                .map_err(|e| ApiError::internal(format!("Failed to get tags: {e}")))?;
+            rows.into_iter()
+                .map(|r| CompletionItem {
+                    value: r.value,
+                    count: Some(r.count),
+                })
+                .collect()
+        }
+        "actions" => {
+            let commands = ActionRegistry::get_parsed_commands();
+            commands
+                .into_iter()
+                .map(|cmd| CompletionItem {
+                    value: cmd.command,
+                    count: None,
+                })
+                .collect()
+        }
+        "status" => vec![
+            CompletionItem {
+                value: "pending".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "active".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "done".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "deleted".to_string(),
+                count: None,
+            },
+        ],
+        "dates" => vec![
+            CompletionItem {
+                value: "today".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "tomorrow".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "yesterday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "monday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "tuesday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "wednesday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "thursday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "friday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "saturday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "sunday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "eow".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "eom".to_string(),
+                count: None,
+            },
+        ],
+        other => {
+            return Err(ApiError::bad_request(format!(
+                "Invalid completion type '{}'. Valid types: projects, tags, actions, status, dates",
+                other
+            )));
+        }
+    };
+
+    Ok(Json(CompletionsResponse { items }))
 }
 
 #[utoipa::path(
@@ -294,7 +427,7 @@ fn serialize_properties(properties: Option<TaskProperties>) -> Result<Option<Val
 /// OpenAPI document for the bee-api service.
 #[derive(OpenApi)]
 #[openapi(
-    paths(health_handler, config_handler, parse_handler, action_handler),
+    paths(health_handler, config_handler, completions_handler, parse_handler, action_handler),
     components(schemas(
         ActionRequest,
         ActionResponse,
@@ -302,6 +435,8 @@ fn serialize_properties(properties: Option<TaskProperties>) -> Result<Option<Val
         ParseResponse,
         ConfigResponse,
         ReportConfigDto,
+        CompletionsResponse,
+        CompletionItem,
         ApiTask,
         ApiEvent,
         TokenSpan,

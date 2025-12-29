@@ -108,7 +108,6 @@ pub struct TokenSpan {
     pub end: usize,
 }
 
-
 /// Response payload for the config endpoint.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ConfigResponse {
@@ -124,6 +123,21 @@ pub struct ReportConfigDto {
     pub columns: Vec<String>,
     /// Display names for columns (human-readable like "ID", "Summary").
     pub column_names: Vec<String>,
+}
+
+/// Response payload for completions endpoint.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CompletionsResponse {
+    pub items: Vec<CompletionItem>,
+}
+
+/// A single completion suggestion.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CompletionItem {
+    /// The completion value (e.g., project name, tag name).
+    pub value: String,
+    /// Usage count for sorting by frequency (optional).
+    pub count: Option<i64>,
 }
 
 #[cfg(test)]

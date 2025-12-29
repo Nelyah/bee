@@ -13,7 +13,7 @@ use crate::{
         AsyncStore,
         db::{
             connection::get_database,
-            task_read::load_tasks_impl,
+            task_read::{get_projects_with_counts, get_tags_with_counts, load_tasks_impl},
             task_write::write_tasks_impl,
             undo::{append_undo_action_impl, load_undos_impl},
         },
@@ -21,12 +21,28 @@ use crate::{
     task::{ActionUndo, TaskData, TaskProperties},
 };
 
+pub use task_read::CompletionRow;
+
 // TODO: Need to update SeaORM to use the newer related entities and subtypes
 // https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/
 // sea-orm-cli generate entity --output-dir ./src/entity --entity-format dense
 
 /// Async store backed by the sqlite database.
 pub struct DbStore {}
+
+impl DbStore {
+    /// Get all unique projects with task counts.
+    pub async fn get_projects() -> Result<Vec<CompletionRow>, Box<dyn std::error::Error>> {
+        let db = get_database(None).await?;
+        get_projects_with_counts(&db).await
+    }
+
+    /// Get all unique tags with task counts.
+    pub async fn get_tags() -> Result<Vec<CompletionRow>, Box<dyn std::error::Error>> {
+        let db = get_database(None).await?;
+        get_tags_with_counts(&db).await
+    }
+}
 
 impl AsyncStore for DbStore {
     async fn load_tasks(

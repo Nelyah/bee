@@ -17,8 +17,56 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, FromQueryResult,
+    QueryFilter, QueryOrder, Statement,
 };
+
+/// A completion item with value and count.
+#[derive(Debug, Clone, FromQueryResult)]
+pub struct CompletionRow {
+    pub value: String,
+    pub count: i64,
+}
+
+/// Get all unique projects with task counts, sorted by count descending.
+pub async fn get_projects_with_counts(
+    db: &DatabaseConnection,
+) -> Result<Vec<CompletionRow>, Box<dyn std::error::Error>> {
+    let results = CompletionRow::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        r#"
+            SELECT p.name as value, COUNT(t.db_id) as count
+            FROM projects p
+            LEFT JOIN tasks t ON t.project_id = p.id
+            GROUP BY p.id, p.name
+            ORDER BY count DESC, p.name ASC
+        "#,
+        [],
+    ))
+    .all(db)
+    .await?;
+    Ok(results)
+}
+
+/// Get all unique tags with task counts, sorted by count descending.
+pub async fn get_tags_with_counts(
+    db: &DatabaseConnection,
+) -> Result<Vec<CompletionRow>, Box<dyn std::error::Error>> {
+    let results = CompletionRow::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        r#"
+            SELECT tg.name as value, COUNT(tt.task_id) as count
+            FROM tags tg
+            LEFT JOIN tasks_tags tt ON tt.tag_id = tg.id
+            GROUP BY tg.id, tg.name
+            ORDER BY count DESC, tg.name ASC
+        "#,
+        [],
+    ))
+    .all(db)
+    .await?;
+    Ok(results)
+}
 
 pub(super) async fn load_tasks_impl(
     db: &DatabaseConnection,

@@ -225,3 +225,22 @@ fn test_lexer_with_spaces() {
     assert_eq!(tok.literal, "\n");
     assert_eq!(tok.token_type, TokenType::Blank);
 }
+
+#[test]
+fn test_lexer_token_spans() {
+    let mut lexer = Lexer::new("a b".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "a");
+    assert_eq!(tok.start, 0);
+    assert_eq!(tok.end, 1);
+
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, " ");
+    assert_eq!(tok.start, 1);
+    assert_eq!(tok.end, 2);
+
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.literal, "b");
+    assert_eq!(tok.start, 2);
+    assert_eq!(tok.end, 3);
+}

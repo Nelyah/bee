@@ -3,7 +3,7 @@ pub mod filters;
 pub mod storage;
 pub mod task;
 
-mod lexer;
+pub mod lexer;
 mod parser;
 
 use std::collections::HashMap;

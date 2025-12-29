@@ -1,7 +1,7 @@
 use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
 use bee_core::Printer;
 use bee_core::task::ActionUndoType;
-use bee_core::task::{Task, TaskData, TaskProperties, TaskStatus};
+use bee_core::task::{Task, TaskData, TaskStatus};
 
 use log::info;
 
@@ -14,7 +14,7 @@ impl TaskAction for AddTaskAction {
     impl_taskaction_from_base!();
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
         info!("Performing AddTaskAction");
-        let props = TaskProperties::from(&self.base.arguments)?;
+        let props = self.base.get_properties_or_parse()?;
 
         // Clone here to avoid having multiple mutable borrows
         let new_task: Task = self

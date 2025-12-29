@@ -68,6 +68,12 @@ mod lexer_test;
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
+    /// Start position (inclusive) in grapheme indices.
+    #[allow(dead_code)]
+    pub start: usize,
+    /// End position (exclusive) in grapheme indices.
+    #[allow(dead_code)]
+    pub end: usize,
 }
 
 fn is_segment_character(ch: &char) -> bool {
@@ -248,6 +254,7 @@ impl Lexer {
     }
 
     pub fn next_token(&mut self) -> Result<Token, String> {
+        let token_start = self.position;
         let mut whitespaces = String::default();
         while matches!(&self.ch, Some(ch) if ch
                 .nfc()
@@ -262,44 +269,32 @@ impl Lexer {
             return Ok(Token {
                 literal: whitespaces,
                 token_type: TokenType::Blank,
+                start: token_start,
+                end: self.position,
             });
         }
 
-        let token = match &self.ch {
-            None => Token {
-                token_type: TokenType::Eof,
-                literal: String::new(),
-            },
+        let token_start = self.position;
+        let (token_type, literal) = match &self.ch {
+            None => (TokenType::Eof, String::new()),
             Some(ch) => match ch {
                 _ if self.is_uuid() => {
                     trace!("Token '{}' is a UUID", ch);
-                    Token {
-                        literal: self.read_uuid()?,
-                        token_type: TokenType::Uuid,
-                    }
+                    (TokenType::Uuid, self.read_uuid()?)
                 }
                 _ if self.is_digit() => {
                     trace!("Token '{}' is a digit", ch);
-                    Token {
-                        token_type: TokenType::Int,
-                        literal: self.read_int(),
-                    }
+                    (TokenType::Int, self.read_int())
                 }
                 _ if ch == "+" => {
                     trace!("Token '{}' is a TagPlusPrefix", ch);
                     self.read_char();
-                    Token {
-                        token_type: TokenType::TagPlusPrefix,
-                        literal: "+".to_owned(),
-                    }
+                    (TokenType::TagPlusPrefix, "+".to_owned())
                 }
                 _ if ch == "-" => {
                     trace!("Token '{}' is a TagMinusPrefix", ch);
                     self.read_char();
-                    Token {
-                        token_type: TokenType::TagMinusPrefix,
-                        literal: "-".to_owned(),
-                    }
+                    (TokenType::TagMinusPrefix, "-".to_owned())
                 }
                 _ if self.match_keyword("and") => {
                     let mut literal_value = self.read_word("and");
@@ -313,10 +308,7 @@ impl Lexer {
                     };
 
                     trace!("Token '{}' is a {}", literal_value, token_type);
-                    Token {
-                        literal: literal_value,
-                        token_type,
-                    }
+                    (token_type, literal_value)
                 }
                 _ if self.match_keyword("or") => {
                     let mut literal_value = self.read_word("or");
@@ -330,10 +322,7 @@ impl Lexer {
                     };
 
                     trace!("Token '{}' is a {}", literal_value, token_type);
-                    Token {
-                        literal: literal_value,
-                        token_type,
-                    }
+                    (token_type, literal_value)
                 }
                 _ if self.match_keyword("xor") => {
                     let mut literal_value = self.read_word("xor");
@@ -347,88 +336,73 @@ impl Lexer {
                     };
 
                     trace!("Token '{}' is a {}", literal_value, token_type);
-                    Token {
-                        literal: literal_value,
-                        token_type,
-                    }
+                    (token_type, literal_value)
                 }
-                _ if self.match_keyword("status:") => Token {
-                    literal: self.read_word("status:"),
-                    token_type: TokenType::FilterStatus,
-                },
-                _ if self.match_keyword("created.after:") => Token {
-                    literal: self.read_word("created.after:"),
-                    token_type: TokenType::FilterTokDateCreatedAfter,
-                },
-                _ if self.match_keyword("created.before:") => Token {
-                    literal: self.read_word("created.before:"),
-                    token_type: TokenType::FilterTokDateCreatedBefore,
-                },
-                _ if self.match_keyword("end.after:") => Token {
-                    literal: self.read_word("end.after:"),
-                    token_type: TokenType::FilterTokDateEndAfter,
-                },
-                _ if self.match_keyword("end.before:") => Token {
-                    literal: self.read_word("end.before:"),
-                    token_type: TokenType::FilterTokDateEndBefore,
-                },
-                _ if self.match_keyword("project:") => Token {
-                    literal: self.read_word("project:"),
-                    token_type: TokenType::ProjectPrefix,
-                },
-                _ if self.match_keyword("due:") => Token {
-                    literal: self.read_word("due:"),
-                    token_type: TokenType::FilterTokDateDue,
-                },
-                _ if self.match_keyword("due.before:") => Token {
-                    literal: self.read_word("due.before:"),
-                    token_type: TokenType::FilterTokDateDueBefore,
-                },
-                _ if self.match_keyword("due.after:") => Token {
-                    literal: self.read_word("due.after:"),
-                    token_type: TokenType::FilterTokDateDueAfter,
-                },
-                _ if self.match_keyword("proj:") => Token {
-                    literal: self.read_word("proj:"),
-                    token_type: TokenType::ProjectPrefix,
-                },
-                _ if self.match_keyword("depends:") => Token {
-                    literal: self.read_word("depends:"),
-                    token_type: TokenType::DependsOn,
-                },
+                _ if self.match_keyword("status:") => {
+                    (TokenType::FilterStatus, self.read_word("status:"))
+                }
+                _ if self.match_keyword("created.after:") => (
+                    TokenType::FilterTokDateCreatedAfter,
+                    self.read_word("created.after:"),
+                ),
+                _ if self.match_keyword("created.before:") => (
+                    TokenType::FilterTokDateCreatedBefore,
+                    self.read_word("created.before:"),
+                ),
+                _ if self.match_keyword("end.after:") => (
+                    TokenType::FilterTokDateEndAfter,
+                    self.read_word("end.after:"),
+                ),
+                _ if self.match_keyword("end.before:") => (
+                    TokenType::FilterTokDateEndBefore,
+                    self.read_word("end.before:"),
+                ),
+                _ if self.match_keyword("project:") => {
+                    (TokenType::ProjectPrefix, self.read_word("project:"))
+                }
+                _ if self.match_keyword("due:") => {
+                    (TokenType::FilterTokDateDue, self.read_word("due:"))
+                }
+                _ if self.match_keyword("due.before:") => (
+                    TokenType::FilterTokDateDueBefore,
+                    self.read_word("due.before:"),
+                ),
+                _ if self.match_keyword("due.after:") => (
+                    TokenType::FilterTokDateDueAfter,
+                    self.read_word("due.after:"),
+                ),
+                _ if self.match_keyword("proj:") => {
+                    (TokenType::ProjectPrefix, self.read_word("proj:"))
+                }
+                _ if self.match_keyword("depends:") => {
+                    (TokenType::DependsOn, self.read_word("depends:"))
+                }
                 _ if ch == ")" => {
                     self.read_char();
-                    Token {
-                        literal: ")".to_string(),
-                        token_type: TokenType::RightParenthesis,
-                    }
+                    (TokenType::RightParenthesis, ")".to_string())
                 }
                 _ if ch == "(" => {
                     self.read_char();
-                    Token {
-                        literal: "(".to_string(),
-                        token_type: TokenType::LeftParenthesis,
-                    }
+                    (TokenType::LeftParenthesis, "(".to_string())
                 }
                 _ if self.is_word_character() => {
                     let next_word = self.read_next_word();
                     trace!("Token '{}' is a WordString", next_word);
-                    Token {
-                        literal: next_word,
-                        token_type: TokenType::WordString,
-                    }
+                    (TokenType::WordString, next_word)
                 }
                 _ => {
                     let next_word = self.read_next_word();
                     trace!("Token '{}' is a WordString", next_word);
-                    Token {
-                        literal: next_word,
-                        token_type: TokenType::String,
-                    }
+                    (TokenType::String, next_word)
                 }
             },
         };
 
-        Ok(token)
+        Ok(Token {
+            token_type,
+            literal,
+            start: token_start,
+            end: self.position,
+        })
     }
 }

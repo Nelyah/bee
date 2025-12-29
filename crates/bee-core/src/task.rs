@@ -99,7 +99,7 @@ pub enum DependsOnIdentifier {
 /// It only contains the fields that can be set by a User
 ///
 /// Tags are always FIRST removed, THEN applied
-#[derive(Clone, Default, PartialEq, Debug, serde::Deserialize)]
+#[derive(Clone, Default, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct TaskProperties {
     summary: Option<String>,
     tags_remove: Option<Vec<String>>,

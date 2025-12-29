@@ -13,8 +13,13 @@ pub struct AnnotateTaskAction {
 impl TaskAction for AnnotateTaskAction {
     impl_taskaction_from_base!();
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
-        let mut props = TaskProperties::default();
-        props.set_annotate(self.base.arguments.join(" ").to_owned());
+        let props = if let Some(props) = self.base.get_properties() {
+            props
+        } else {
+            let mut props = TaskProperties::default();
+            props.set_annotate(self.base.arguments.join(" ").to_owned());
+            props
+        };
 
         let mut undos: Vec<Task> = Vec::default();
 

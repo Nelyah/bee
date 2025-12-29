@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
 
 use bee_core::Printer;
-use bee_core::task::{ActionUndoType, Task, TaskData, TaskProperties};
+use bee_core::task::{ActionUndoType, Task, TaskData};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -16,7 +16,7 @@ impl TaskAction for ModifyTaskAction {
     impl_taskaction_from_base!();
     fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
         info!("Performing ModifyTaskAction");
-        let props = TaskProperties::from(&self.base.arguments)?;
+        let props = self.base.get_properties_or_parse()?;
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
 
         let uuids_to_modify: Vec<Uuid> = self

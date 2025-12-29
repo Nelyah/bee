@@ -22,10 +22,10 @@ use crate::{action_type::ActionType, command_parser::ParsedCommand};
 use bee_core::{
     Printer,
     config::ReportConfig,
-    task::{ActionUndo, ActionUndoType, TaskData},
+    task::{ActionUndo, ActionUndoType, TaskData, TaskProperties},
 };
 
-pub trait TaskAction {
+pub trait TaskAction: Send {
     /// This is the main execution of the action. This is where it will affect
     /// the tasks it targets or call the printer
     fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String>;
@@ -44,6 +44,9 @@ pub trait TaskAction {
 
     /// Set the raw arguments from the command line
     fn set_arguments(&mut self, arguments: Vec<String>);
+
+    /// Provide structured task properties for non-CLI callers.
+    fn set_properties(&mut self, properties: TaskProperties);
 
     /// Set the report this action should use. This is important
     /// to decide how the printer should behave in some cases
@@ -82,9 +85,28 @@ pub struct BaseTaskAction {
     undos: Vec<ActionUndo>,
     arguments: Vec<String>,
     report: ReportConfig,
+    properties: Option<TaskProperties>,
 }
 
 impl BaseTaskAction {
+    /// Set structured task properties for non-CLI callers.
+    pub fn set_properties(&mut self, properties: TaskProperties) {
+        self.properties = Some(properties);
+    }
+
+    /// Return structured task properties if present.
+    pub fn get_properties(&self) -> Option<TaskProperties> {
+        self.properties.clone()
+    }
+
+    /// Return structured task properties or parse them from arguments.
+    pub fn get_properties_or_parse(&self) -> Result<TaskProperties, String> {
+        if let Some(properties) = &self.properties {
+            return Ok(properties.clone());
+        }
+        TaskProperties::from(&self.arguments)
+    }
+
     pub fn set_arguments(&mut self, arguments: Vec<String>) {
         self.arguments = arguments;
     }
@@ -132,6 +154,35 @@ mod macros {
             fn set_arguments(&mut self, arguments: Vec<String>) {
                 self.base.set_arguments(arguments);
             }
+            fn set_properties(&mut self, properties: bee_core::task::TaskProperties) {
+                self.base.set_properties(properties);
+            }
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BaseTaskAction;
+    use bee_core::task::TaskProperties;
+
+    #[test]
+    fn test_get_properties_or_parse_prefers_structured() {
+        let mut base = BaseTaskAction::default();
+        let props = TaskProperties::from(&["hello".to_string()]).unwrap();
+        base.set_properties(props.clone());
+
+        let parsed = base.get_properties_or_parse().unwrap();
+        assert_eq!(parsed, props);
+    }
+
+    #[test]
+    fn test_get_properties_or_parse_from_arguments() {
+        let mut base = BaseTaskAction::default();
+        base.set_arguments(vec!["hello".to_string()]);
+
+        let parsed = base.get_properties_or_parse().unwrap();
+        let expected = TaskProperties::from(&["hello".to_string()]).unwrap();
+        assert_eq!(parsed, expected);
     }
 }

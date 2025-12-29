@@ -1,0 +1,22 @@
+[[bin]]
+name = "beed"
+path = "src/main.rs"
+
+[package]
+name = "beed"
+version = { workspace = true }
+edition = "2024"
+
+[dependencies]
+bee-core = { path = "../bee-core" }
+bee-actions = { path = "../bee-actions" }
+
+chrono.workspace = true
+env_logger.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
+tokio = { version = "1", features = ["full"] }
+axum = "0.7"

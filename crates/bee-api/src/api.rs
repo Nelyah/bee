@@ -1,7 +1,8 @@
 use crate::{
     config::ApiConfig,
     dto::{
-        ActionRequest, ActionResponse, ApiEvent, ApiTask, ParseRequest, ParseResponse, TokenSpan,
+        ActionRequest, ActionResponse, ApiEvent, ApiTask, ConfigResponse, ParseRequest,
+        ParseResponse, ReportConfigDto, TokenSpan,
     },
     parse::{parse_input, tokenize_with_spans},
     printer::JsonPrinter,
@@ -88,6 +89,7 @@ pub fn router(state: AppState) -> Router {
     let openapi = ApiDoc::openapi();
     Router::new()
         .route("/v1/health", get(health_handler))
+        .route("/v1/config", get(config_handler))
         .route("/v1/action", post(action_handler))
         .route("/v1/parse", post(parse_handler))
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
@@ -117,6 +119,22 @@ fn trace_response<B>(response: &axum::http::Response<B>, latency: Duration, _spa
 )]
 async fn health_handler() -> &'static str {
     "ok"
+}
+
+
+#[utoipa::path(
+    get,
+    path = "/v1/config",
+    responses((status = 200, description = "Current report configuration", body = ConfigResponse))
+)]
+async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
+    Json(ConfigResponse {
+        report: ReportConfigDto {
+            filters: state.report.filters.clone(),
+            columns: state.report.columns.clone(),
+            column_names: state.report.column_names.clone(),
+        },
+    })
 }
 
 #[utoipa::path(
@@ -276,12 +294,14 @@ fn serialize_properties(properties: Option<TaskProperties>) -> Result<Option<Val
 /// OpenAPI document for the bee-api service.
 #[derive(OpenApi)]
 #[openapi(
-    paths(health_handler, parse_handler, action_handler),
+    paths(health_handler, config_handler, parse_handler, action_handler),
     components(schemas(
         ActionRequest,
         ActionResponse,
         ParseRequest,
         ParseResponse,
+        ConfigResponse,
+        ReportConfigDto,
         ApiTask,
         ApiEvent,
         TokenSpan,

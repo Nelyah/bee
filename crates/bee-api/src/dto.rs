@@ -108,6 +108,24 @@ pub struct TokenSpan {
     pub end: usize,
 }
 
+
+/// Response payload for the config endpoint.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ConfigResponse {
+    pub report: ReportConfigDto,
+}
+
+/// Report configuration for display in the UI.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ReportConfigDto {
+    /// Filter expressions to apply by default.
+    pub filters: Vec<String>,
+    /// Field names to display (technical names like "id", "summary").
+    pub columns: Vec<String>,
+    /// Display names for columns (human-readable like "ID", "Summary").
+    pub column_names: Vec<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::ApiTask;

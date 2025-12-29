@@ -78,6 +78,24 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertTrue(spans.contains { $0.start == 21 && $0.end == 25 && $0.kind == .tag })
         XCTAssertFalse(spans.contains { $0.start == 0 && $0.end == 4 })
     }
+
+    func testBuildStatusMessageConcatenatesEvents() {
+        let viewModel = LauncherViewModel()
+        let events = [
+            ApiEvent(kind: "info", message: "Added task."),
+            ApiEvent(kind: "info", message: "Undo recorded.")
+        ]
+
+        let status = viewModel.buildStatusMessage(from: events)
+        XCTAssertEqual(status, "Added task. Undo recorded.")
+    }
+
+    func testShouldAutoList() {
+        let viewModel = LauncherViewModel()
+        XCTAssertTrue(viewModel.shouldAutoList(actionName: ""))
+        XCTAssertTrue(viewModel.shouldAutoList(actionName: "list"))
+        XCTAssertFalse(viewModel.shouldAutoList(actionName: "add"))
+    }
 }
 
 /// Build a minimal ApiTask for view model tests.

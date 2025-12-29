@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import LauncherApp
 
@@ -115,6 +116,70 @@ final class LauncherViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.toasts.first?.message, "Config failed")
     }
+
+    func testGhostTextAttributesUsesOverlayColorAndFont() {
+        let font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        let attributes = ghostTextAttributes(font: font)
+
+        XCTAssertEqual(attributes[.foregroundColor] as? NSColor, CatppuccinTheme.overlay0NS)
+        XCTAssertEqual(attributes[.font] as? NSFont, font)
+    }
+
+    func testParseErrorToastIsDebounced() async {
+        let mock = MockApiClient()
+        let viewModel = LauncherViewModel(apiClient: mock, unexpectedTokenToastDelay: 0.05)
+
+        mock.parseResult = .failure(SampleError(message: "Unexpected token A"))
+        viewModel.handleInputChange("a")
+        try? await Task.sleep(for: .milliseconds(20))
+
+        mock.parseResult = .failure(SampleError(message: "could not parse the task property expression"))
+        viewModel.handleInputChange("ab")
+        try? await Task.sleep(for: .milliseconds(80))
+
+        XCTAssertEqual(viewModel.toasts.count, 1)
+        XCTAssertEqual(viewModel.toasts.first?.message, "could not parse the task property expression")
+    }
+
+    func testParseErrorToastWaitsUntilMenuCloses() async {
+        let mock = MockApiClient()
+        let viewModel = LauncherViewModel(apiClient: mock, unexpectedTokenToastDelay: 0.05)
+        viewModel.showCompletionMenu = true
+
+        mock.parseResult = .failure(SampleError(message: "parse error"))
+        viewModel.handleInputChange("a")
+        try? await Task.sleep(for: .milliseconds(80))
+        XCTAssertTrue(viewModel.toasts.isEmpty)
+
+        viewModel.clearCompletions()
+        try? await Task.sleep(for: .milliseconds(80))
+        XCTAssertEqual(viewModel.toasts.count, 1)
+        XCTAssertEqual(viewModel.toasts.first?.message, "parse error")
+    }
+
+    func testDetectCompletionContextDetectsDatePrefixWithValue() {
+        let viewModel = LauncherViewModel()
+        viewModel.input = "due:tom"
+        viewModel.cursorPosition = viewModel.input.count
+
+        XCTAssertEqual(viewModel.detectCompletionContext(), .date)
+    }
+
+    func testSortTasksByUrgencyOrdersHighFirstAndNilLast() {
+        let viewModel = LauncherViewModel()
+        let tasks = [
+            makeTask(id: "c", urgency: nil),
+            makeTask(id: "a", urgency: 9),
+            makeTask(id: "b", urgency: 2),
+            makeTask(id: "d", urgency: nil),
+            makeTask(id: "e", urgency: 9)
+        ]
+
+        let sorted = viewModel.sortTasksByUrgency(tasks)
+        let ids = sorted.map { $0.uuid }
+
+        XCTAssertEqual(ids, ["a", "e", "b", "c", "d"])
+    }
 }
 
 /// Simple error for testing toast messaging.
@@ -127,7 +192,7 @@ private struct SampleError: LocalizedError {
 }
 
 /// Build a minimal ApiTask for view model tests.
-private func makeTask(id: String) -> ApiTask {
+private func makeTask(id: String, urgency: Int? = nil) -> ApiTask {
     ApiTask(
         dbId: nil,
         uuid: id,
@@ -138,6 +203,6 @@ private func makeTask(id: String) -> ApiTask {
         dateCreated: "2024-01-01T00:00:00Z",
         dateCompleted: nil,
         dateDue: nil,
-        urgency: nil
+        urgency: urgency
     )
 }

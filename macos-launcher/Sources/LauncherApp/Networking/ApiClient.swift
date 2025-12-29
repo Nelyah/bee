@@ -38,6 +38,11 @@ final class ApiClient: ApiClientProtocol, Sendable {
         try await get(path: "/v1/config")
     }
 
+    /// Fetch completions of a given type from the API.
+    func fetchCompletions(type: String) async throws -> CompletionsResponse {
+        try await get(path: "/v1/completions", queryItems: [URLQueryItem(name: "type", value: type)])
+    }
+
     /// Send a JSON POST request to the API and decode the response type.
     private func send<Request: Encodable, Response: Decodable>(
         _ body: Request,
@@ -65,8 +70,17 @@ final class ApiClient: ApiClientProtocol, Sendable {
     }
 
     /// Send a GET request to the API and decode the response type.
-    private func get<Response: Decodable>(path: String) async throws -> Response {
-        let url = baseURL.appendingPathComponent(path)
+    private func get<Response: Decodable>(
+        path: String,
+        queryItems: [URLQueryItem] = []
+    ) async throws -> Response {
+        var urlComponents = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !queryItems.isEmpty {
+            urlComponents.queryItems = queryItems
+        }
+        guard let url = urlComponents.url else {
+            throw ApiClientError.invalidResponse
+        }
         logger.info("HTTP GET \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"

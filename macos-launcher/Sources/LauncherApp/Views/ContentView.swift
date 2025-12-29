@@ -24,7 +24,11 @@ struct ContentView: View {
                 .allowsHitTesting(false)
         }
         .onExitCommand {
-            viewModel.closeDetail()
+            if viewModel.showCompletionMenu {
+                viewModel.clearCompletions()
+            } else {
+                viewModel.closeDetail()
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
@@ -81,7 +85,11 @@ struct ContentView: View {
         guard escapeMonitor == nil else { return }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == 53 {
-                viewModel.closeDetail()
+                if viewModel.showCompletionMenu {
+                    viewModel.clearCompletions()
+                } else {
+                    viewModel.closeDetail()
+                }
                 return nil
             }
             return event

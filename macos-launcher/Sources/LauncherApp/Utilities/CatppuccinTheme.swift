@@ -123,6 +123,7 @@ extension NSColor {
         let r = CGFloat((int >> 16) & 0xFF) / 255.0
         let g = CGFloat((int >> 8) & 0xFF) / 255.0
         let b = CGFloat(int & 0xFF) / 255.0
-        self.init(red: r, green: g, blue: b, alpha: 1.0)
+        // Use explicit sRGB color space for accurate rendering
+        self.init(srgbRed: r, green: g, blue: b, alpha: 1.0)
     }
 }

@@ -16,6 +16,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
     ))
 
     var configResult: Result<ConfigResponse, Error> = .success(MockApiClient.sampleConfig)
+    var completionsResult: Result<CompletionsResponse, Error> = .success(MockApiClient.sampleCompletions)
 
     func parse(input: String) async throws -> ParseResponse {
         try parseResult.get()
@@ -27,6 +28,10 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func fetchConfig() async throws -> ConfigResponse {
         try configResult.get()
+    }
+
+    func fetchCompletions(type: String) async throws -> CompletionsResponse {
+        try completionsResult.get()
     }
 
     func emptyParse() -> ParseResponse {
@@ -42,6 +47,12 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             columnNames: ["ID", "Summary", "Tags", "Status", "Urgency"]
         )
     )
+
+    static let sampleCompletions = CompletionsResponse(items: [
+        CompletionItem(value: "bee", count: 10),
+        CompletionItem(value: "infra", count: 5),
+        CompletionItem(value: "work", count: 3),
+    ])
 
     static let sampleTasks: [ApiTask] = [
         ApiTask(

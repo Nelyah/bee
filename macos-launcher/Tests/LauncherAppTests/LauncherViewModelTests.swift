@@ -180,6 +180,33 @@ final class LauncherViewModelTests: XCTestCase {
 
         XCTAssertEqual(ids, ["a", "e", "b", "c", "d"])
     }
+
+    func testRunActionAppliesDefaultFiltersWhenMissing() async {
+        let mock = MockApiClient()
+        mock.parseResult = .success(ParseResponse(
+            action: "list",
+            properties: nil,
+            filter: .string("default-filter"),
+            tokens: []
+        ))
+        let viewModel = LauncherViewModel(apiClient: mock)
+        viewModel.reportConfig = ReportConfig(
+            filters: ["status:pending or status:active"],
+            columns: ["id"],
+            columnNames: ["ID"]
+        )
+
+        let parsed = ParseResponse(action: "list", properties: nil, filter: nil, tokens: [])
+        await viewModel.runAction(from: parsed, requestId: 1, resetInput: false, updateStatus: false)
+
+        XCTAssertEqual(mock.lastParseInput, "list status:pending or status:active")
+        switch mock.lastRunActionFilter {
+        case .string(let value):
+            XCTAssertEqual(value, "default-filter")
+        default:
+            XCTFail("Expected default filter to be passed to runAction")
+        }
+    }
 }
 
 /// Simple error for testing toast messaging.

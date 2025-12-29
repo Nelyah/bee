@@ -137,10 +137,11 @@ final class LauncherViewModel: ObservableObject {
             let parsed = parsed ?? apiClient.emptyParse()
             let actionName = parsed.action.isEmpty ? "list" : parsed.action
             logger.debug("Action request start. id=\(requestId), action=\(actionName)")
+            let filter = await resolveDefaultFilterIfNeeded(parsed: parsed, actionName: actionName)
             let response = try await apiClient.runAction(
                 action: actionName,
                 properties: parsed.properties,
-                filter: parsed.filter
+                filter: filter
             )
             guard requestId == requestCounter else { return }
             tasks = sortTasksByUrgency(response.tasks)
@@ -158,6 +159,22 @@ final class LauncherViewModel: ObservableObject {
             tasks = []
             logger.error("Action request failed. id=\(requestId), error=\(error.localizedDescription, privacy: .public)")
             showToast(message: error.localizedDescription)
+        }
+    }
+
+    /// Apply default report filters to list actions when no filter was provided.
+    func resolveDefaultFilterIfNeeded(parsed: ParseResponse, actionName: String) async -> JSONValue? {
+        guard actionName.lowercased() == "list" else { return parsed.filter }
+        guard parsed.filter == nil else { return parsed.filter }
+        guard let defaults = reportConfig?.filters, !defaults.isEmpty else { return parsed.filter }
+
+        let filterExpr = defaults.joined(separator: " or ")
+        do {
+            let parsedDefaults = try await apiClient.parse(input: "list \(filterExpr)")
+            return parsedDefaults.filter
+        } catch {
+            logger.error("Failed to parse default filters: \(error.localizedDescription, privacy: .public)")
+            return parsed.filter
         }
     }
 

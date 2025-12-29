@@ -17,13 +17,17 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     var configResult: Result<ConfigResponse, Error> = .success(MockApiClient.sampleConfig)
     var completionsResult: Result<CompletionsResponse, Error> = .success(MockApiClient.sampleCompletions)
+    var lastParseInput: String?
+    var lastRunActionFilter: JSONValue?
 
     func parse(input: String) async throws -> ParseResponse {
-        try parseResult.get()
+        lastParseInput = input
+        return try parseResult.get()
     }
 
     func runAction(action: String, properties: JSONValue?, filter: JSONValue?) async throws -> ActionResponse {
-        try actionResult.get()
+        lastRunActionFilter = filter
+        return try actionResult.get()
     }
 
     func fetchConfig() async throws -> ConfigResponse {

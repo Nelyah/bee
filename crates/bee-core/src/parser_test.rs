@@ -4,6 +4,17 @@ fn init() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
 
+/// Assert that two datetimes are within a given number of seconds.
+fn assert_time_close(actual: DateTime<Local>, expected: DateTime<Local>, tolerance_secs: i64) {
+    let delta = (actual.timestamp() - expected.timestamp()).abs();
+    assert!(
+        delta <= tolerance_secs,
+        "expected timestamps within {}s, got delta {}s",
+        tolerance_secs,
+        delta
+    );
+}
+
 #[derive(Debug, Default)]
 pub struct MockParser {
     lexer: Lexer,
@@ -112,8 +123,8 @@ fn test_read_date_expr() {
     let mut p = MockParser::new(lexer);
 
     let res = p.read_date_expr().unwrap();
-    // This format doesn't print smaller units than seconds
-    assert_eq!(res.to_rfc2822(), now.to_rfc2822());
+    // Allow a small delta since parsing uses the current time.
+    assert_time_close(res, now, 1);
 
     let lexer = Lexer::new("today - 1h".to_string());
     let mut p = MockParser::new(lexer);
@@ -196,11 +207,7 @@ fn test_read_date_expr() {
     let mut p = MockParser::new(lexer);
 
     let res = p.read_date_expr().unwrap();
-    // This format doesn't print smaller units than seconds
-    assert_eq!(
-        res.to_rfc2822(),
-        (now - Duration::try_days(3).unwrap()).to_rfc2822()
-    );
+    assert_time_close(res, now - Duration::try_days(3).unwrap(), 1);
     assert_eq!(p.current_token.token_type, TokenType::Blank);
     p.next_token();
     assert_eq!(p.current_token.token_type, TokenType::WordString);
@@ -221,11 +228,7 @@ fn test_read_date_expr() {
     let mut p = MockParser::new(lexer);
 
     let res = p.read_date_expr().unwrap();
-    // This format doesn't print smaller units than seconds
-    assert_eq!(
-        res.to_rfc2822(),
-        (now - Duration::try_days(365 * 3).unwrap()).to_rfc2822()
-    );
+    assert_time_close(res, now - Duration::try_days(365 * 3).unwrap(), 1);
     p.skip_whitespace();
     assert_eq!(p.current_token.token_type, TokenType::WordString);
     assert_eq!(p.current_token.literal, "today".to_owned());

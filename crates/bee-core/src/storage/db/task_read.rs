@@ -59,7 +59,7 @@ pub(super) async fn load_tasks_impl(
     Ok(task_data)
 }
 
-pub(super) async fn tasks_from_filter(
+async fn tasks_from_filter(
     db: &DatabaseConnection,
     filter: &dyn Filter,
 ) -> Result<Vec<Task>, Box<dyn std::error::Error>> {
@@ -77,7 +77,7 @@ pub(super) async fn tasks_from_filter(
 }
 
 /// Build an in-memory [`Task`] from the persisted database model and its related tables.
-pub(super) async fn task_model_to_object<C>(
+async fn task_model_to_object<C>(
     db: &C,
     task_model: &tasks::Model,
 ) -> Result<Task, Box<dyn std::error::Error>>

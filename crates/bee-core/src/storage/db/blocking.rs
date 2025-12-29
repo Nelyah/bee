@@ -12,7 +12,7 @@ use sea_orm::{
 
 /// Pre-computed uppercase string representations of task statuses used by
 /// `update_blocking_status`.
-pub(super) struct StatusStrings {
+struct StatusStrings {
     pub blocked: String,
     pub pending: String,
     pub active: String,
@@ -22,7 +22,7 @@ pub(super) struct StatusStrings {
 
 impl StatusStrings {
     /// Construct a new cache of uppercase status strings.
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             blocked: TaskStatus::Blocked.to_db_string(),
             pending: TaskStatus::Pending.to_db_string(),
@@ -33,7 +33,7 @@ impl StatusStrings {
     }
 
     /// Return the statuses that participate in dependency tracking queries.
-    pub fn tracked_statuses(&self) -> Vec<String> {
+    fn tracked_statuses(&self) -> Vec<String> {
         vec![
             self.pending.clone(),
             self.active.clone(),
@@ -46,7 +46,7 @@ impl StatusStrings {
 ///
 /// We join through `links::Relation::Tasks1` so that we can filter dependents by their current
 /// status.
-pub(super) async fn fetch_dependency_pairs(
+async fn fetch_dependency_pairs(
     db: &DatabaseTransaction,
     tracked_statuses: &[String],
 ) -> Result<Vec<(i32, i32)>, DbErr> {
@@ -66,7 +66,7 @@ pub(super) async fn fetch_dependency_pairs(
 
 /// Determine which tasks should transition between blocked and pending states
 /// based on dependency information.
-pub(super) fn determine_status_transitions(
+fn determine_status_transitions(
     dependency_pairs: &[(i32, i32)],
     currently_blocked: &HashSet<i32>,
     dependents: &HashSet<i32>,
@@ -90,7 +90,7 @@ pub(super) fn determine_status_transitions(
 
 /// Build the CASE expression used to update task statuses. Returns the existing
 /// status column if no transitions are detected.
-pub(super) fn build_status_case_expr(
+fn build_status_case_expr(
     to_block: &[i32],
     to_unblock: &[i32],
     statuses: &StatusStrings,

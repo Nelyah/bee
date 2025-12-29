@@ -1,7 +1,6 @@
 mod blocking;
 mod connection;
 mod filter_sql;
-mod inserts_update;
 mod sync_relations;
 mod tables;
 mod task_read;

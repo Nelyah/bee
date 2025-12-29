@@ -21,7 +21,7 @@ serde_json.workspace = true
 unicode-segmentation.workspace = true
 uuid.workspace = true
 
-toml = "0.7"
+toml.workspace = true
 
 regex = "1"
 terminal_size = "0.4"

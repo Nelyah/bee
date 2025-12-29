@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "MacOSLauncher",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v14)
     ],
     products: [
         .executable(name: "macos-launcher", targets: ["LauncherApp"])

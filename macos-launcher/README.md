@@ -3,6 +3,7 @@
 Minimal macOS SwiftUI launcher for bee.
 
 ## Prereqs
+- macOS 14+
 - Xcode 15+ (or Swift 5.9 toolchain)
 - `beed` running locally (default: http://127.0.0.1:3000)
 

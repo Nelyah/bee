@@ -73,6 +73,11 @@ struct ContentView: View {
         window.titlebarAppearsTransparent = true
         window.isOpaque = false
         window.backgroundColor = .clear
+        if let contentView = window.contentView {
+            contentView.wantsLayer = true
+            contentView.layer?.cornerRadius = 18
+            contentView.layer?.masksToBounds = true
+        }
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
@@ -90,6 +95,7 @@ struct TaskListView: View {
                 TokenHighlightTextView(
                     text: $viewModel.input,
                     tokens: viewModel.tokens,
+                    actionName: viewModel.actionName,
                     isFocused: true,
                     onSubmit: {
                         viewModel.handleSubmit()
@@ -238,6 +244,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var tasks: [ApiTask] = []
     @Published var selectedIndex: Int?
     @Published var tokens: [TokenSpan] = []
+    @Published var actionName: String = ""
     @Published var mode: LauncherMode = .list
 
     private let apiClient = ApiClient()
@@ -269,12 +276,14 @@ final class LauncherViewModel: ObservableObject {
             guard requestId == requestCounter else { return }
             latestParse = parsed
             tokens = parsed.tokens
+            actionName = parsed.action
             logger.debug("Parse request done. id=\(requestId), action=\(parsed.action)")
             print("[launcher] parse done id=\(requestId) action=\(parsed.action)")
         } catch {
             guard requestId == requestCounter else { return }
             latestParse = nil
             tokens = []
+            actionName = ""
             logger.error("Parse request failed. id=\(requestId), error=\(error.localizedDescription, privacy: .public)")
             print("[launcher] parse failed id=\(requestId) error=\(error)")
         }
@@ -373,6 +382,7 @@ enum LauncherMode {
 struct TokenHighlightTextView: NSViewRepresentable {
     @Binding var text: String
     let tokens: [TokenSpan]
+    let actionName: String
     let isFocused: Bool
     let onSubmit: () -> Void
     let onMoveSelection: (Int) -> Void
@@ -415,7 +425,7 @@ struct TokenHighlightTextView: NSViewRepresentable {
 
         let selectedRange = textView.selectedRange()
         context.coordinator.isUpdating = true
-        let attributed = highlightedText(text: text, tokens: tokens)
+        let attributed = highlightedText(text: text, tokens: tokens, actionName: actionName)
         textView.textStorage?.setAttributedString(attributed)
         textView.setSelectedRange(selectedRange)
         context.coordinator.isUpdating = false
@@ -499,47 +509,109 @@ final class KeyHandlingTextView: NSTextView {
 }
 
 /// Build an attributed string with token highlights.
-private func highlightedText(text: String, tokens: [TokenSpan]) -> NSAttributedString {
+private func highlightedText(text: String, tokens: [TokenSpan], actionName: String) -> NSAttributedString {
     let baseAttributes: [NSAttributedString.Key: Any] = [
         .font: NSFont.systemFont(ofSize: 18, weight: .medium),
         .foregroundColor: NSColor.white
     ]
     let attributed = NSMutableAttributedString(string: text, attributes: baseAttributes)
 
-    for token in tokens {
-        guard let range = nsRange(for: token, in: text) else { continue }
-        let background = tokenColor(for: token.tokenType).withAlphaComponent(0.25)
-        attributed.addAttributes(
-            [.backgroundColor: background],
-            range: range
-        )
+    for span in buildHighlightSpans(tokens: tokens, actionName: actionName) {
+        guard let range = nsRange(start: span.start, end: span.end, in: text) else { continue }
+        let background = highlightColor(for: span.kind).withAlphaComponent(0.25)
+        attributed.addAttributes([.backgroundColor: background], range: range)
     }
     return attributed
 }
 
-/// Convert token spans to UTF-16 ranges for attributed strings.
-private func nsRange(for token: TokenSpan, in text: String) -> NSRange? {
-    guard token.start <= token.end else { return nil }
-    guard let startIndex = text.index(text.startIndex, offsetBy: token.start, limitedBy: text.endIndex),
-          let endIndex = text.index(text.startIndex, offsetBy: token.end, limitedBy: text.endIndex) else {
+/// Convert a span range to UTF-16 ranges for attributed strings.
+private func nsRange(start: Int, end: Int, in text: String) -> NSRange? {
+    guard start <= end else { return nil }
+    guard let startIndex = text.index(text.startIndex, offsetBy: start, limitedBy: text.endIndex),
+          let endIndex = text.index(text.startIndex, offsetBy: end, limitedBy: text.endIndex) else {
         return nil
     }
     return NSRange(startIndex..<endIndex, in: text)
 }
 
-/// Map token types to highlight colors.
-private func tokenColor(for tokenType: String) -> NSColor {
-    switch tokenType.lowercased() {
-    case "action":
+/// Highlight span categories for recognized tokens.
+enum HighlightKind {
+    case action
+    case tag
+    case project
+}
+
+/// Describes a highlighted span in the input text.
+struct HighlightSpan {
+    let start: Int
+    let end: Int
+    let kind: HighlightKind
+}
+
+/// Build highlight spans for action, tag, and project tokens only.
+func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightSpan] {
+    var spans: [HighlightSpan] = []
+    let lowerAction = actionName.lowercased()
+    var index = 0
+
+    while index < tokens.count {
+        let token = tokens[index]
+        let tokenType = token.tokenType
+
+        if tokenType == "TagPlusPrefix" || tokenType == "TagMinusPrefix" {
+            var start = token.start
+            var end = token.end
+            var nextIndex = index + 1
+            while nextIndex < tokens.count,
+                  tokens[nextIndex].tokenType == "WordString",
+                  tokens[nextIndex].start == end {
+                end = tokens[nextIndex].end
+                nextIndex += 1
+            }
+            if end > start {
+                spans.append(HighlightSpan(start: start, end: end, kind: .tag))
+            }
+            index = nextIndex
+            continue
+        }
+
+        if tokenType == "ProjectPrefix" {
+            var start = token.start
+            var end = token.end
+            var nextIndex = index + 1
+            while nextIndex < tokens.count,
+                  tokens[nextIndex].tokenType == "WordString",
+                  tokens[nextIndex].start == end {
+                end = tokens[nextIndex].end
+                nextIndex += 1
+            }
+            if end > start {
+                spans.append(HighlightSpan(start: start, end: end, kind: .project))
+            }
+            index = nextIndex
+            continue
+        }
+
+        if tokenType == "WordString",
+           !lowerAction.isEmpty,
+           token.literal.lowercased() == lowerAction {
+            spans.append(HighlightSpan(start: token.start, end: token.end, kind: .action))
+        }
+
+        index += 1
+    }
+    return spans
+}
+
+/// Map highlight kinds to colors.
+private func highlightColor(for kind: HighlightKind) -> NSColor {
+    switch kind {
+    case .action:
         return NSColor.systemBlue
-    case "tag":
+    case .tag:
         return NSColor.systemOrange
-    case "project":
+    case .project:
         return NSColor.systemPurple
-    case "filter":
-        return NSColor.systemGreen
-    default:
-        return NSColor.systemTeal
     }
 }
 

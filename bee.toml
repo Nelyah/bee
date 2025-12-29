@@ -42,11 +42,11 @@ fg = "#ff99d1"
 field = "depends"
 value = "hello"
 
-[cli.section]
-type = "filters"
-colour_palette = ["#ff99d1", "#33bbff", "#ffd966"]
+# [cli.section]
+# type = "filters"
+# colour_palette = ["#ff99d1", "#33bbff", "#ffd966"]
 
-[cli.section.filters]
-section1 = ["bar"]
-section2 = ["foo or proj:foo"]
-"section with +main tag" = ["+main"]
+# [cli.section.filters]
+# section1 = ["bar"]
+# section2 = ["foo or proj:foo"]
+# "section with +main tag" = ["+main"]

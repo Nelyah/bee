@@ -42,7 +42,17 @@
       "Bash(crates/bee-actions/src/lib.rs )",
       "Bash(crates/bee-actions/src/action_annotate.rs )",
       "Bash(crates/bee-actions/src/action_delete.rs )",
-      "Bash(crates/bee-actions/src/action_done.rs)"
+      "Bash(crates/bee-actions/src/action_done.rs)",
+      "mcp__serena__list_dir",
+      "mcp__serena__list_memories",
+      "mcp__serena__get_symbols_overview",
+      "Bash(swift build:*)",
+      "Bash(swift test:*)",
+      "mcp__serena__find_file",
+      "mcp__serena__find_symbol",
+      "mcp__serena__insert_after_symbol",
+      "mcp__serena__check_onboarding_performed",
+      "mcp__serena__read_memory"
     ]
   }
 }

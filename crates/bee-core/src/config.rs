@@ -79,7 +79,7 @@ impl Default for ReportConfig {
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),
-            column_names: ["ID", "Date reated", "Summary", "Tags", "Urgency"]
+            column_names: ["ID", "Date Created", "Summary", "Tags", "Urgency"]
                 .iter()
                 .map(|&s| s.to_string())
                 .collect(),

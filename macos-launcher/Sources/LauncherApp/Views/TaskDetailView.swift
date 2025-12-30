@@ -439,7 +439,11 @@ private struct ExternalLinkRow: View {
                                 .padding(.vertical, 4)
                                 .background(
                                     RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
-                                        .fill(ThemeManager.current.surface1.opacity(isHoveringBranch ? 0.9 : 0.7))
+                                        .fill(ThemeManager.current.surface2.opacity(isHoveringBranch ? 0.85 : 0.7))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                                        .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
                                 )
                             }
                             .buttonStyle(QuietTextButtonStyle(isHovering: isHoveringBranch))

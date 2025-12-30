@@ -13,15 +13,6 @@
 - The “Refresh” control is appropriately quiet, but lacks hover/click feedback, so clickability isn’t obvious.
 
 ## Prioritised TODO list
-- **ID**: UX-004  
-  **Priority**: P2  
-  **Effort**: S  
-  **Evidence**: External Links rows; branch pill line.  
-  **Problem (rough)**: Branch pill is visually similar to metadata line; it doesn’t clearly read as a code/branch token.  
-  **Fix (rough)**:
-  - Increase contrast or use a slightly brighter pill background.
-  - Add a small branch icon and keep monospaced text for code affordance.  
-  **Success criteria**: Branch line feels like a code token and is distinct from the status line.
 
 ## Nice-to-haves
 - Add per-provider empty states that explain how to add links (e.g., “Use ⌘K to add a GitLab MR”).
@@ -31,6 +22,10 @@
 - Should External Links be the primary focus in detail view? If yes, I would prioritize it in the layout (right column or top section).
 
 ## Done
+- **ID**: UX-004  
+  **Status**: Done  
+  **Evidence**: External Links rows; branch pill line.  
+  **Summary**: Boosted the branch pill contrast with a brighter surface and subtle stroke, keeping the branch icon and monospaced label prominent.
 - **ID**: UX-003  
   **Status**: Done  
   **Evidence**: External Links > GitLab rows; “Open • chat • url” line.  

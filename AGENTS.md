@@ -1,70 +1,81 @@
-This is a rust application. It is a todo application (task maangement software).
-It includes a Rust backend (core + API + CLI) and a macOS SwiftUI launcher app.
+# AGENTS.md
 
-It consists of a couple of crates:
-# bee-core
+Guidance for Codex when working in this repository.
 
-This is where the main objects are defined. This is also where the database is defined. 
+Keep changes minimal and focused. Prefer existing conventions and keep instructions actionable.
 
-## Important traits and structs:
+## Quick start
+```bash
+# Build the workspace
+cargo build
 
-### Printer
+# Run CLI (replace <args> with a subcommand like "list" or "help")
+cargo run -- <args>
 
-Should be implemented to define how we're going to show something.
+# Run API server
+cargo run -p bee-api
+```
 
-### Task (lives in `task.rs`)
+## Test & Dev commands
+```bash
+# Run all tests
+cargo test
 
-This is the base object representing a task. It contains the properties related to it.
+# Run tests for a specific crate
+cargo test -p <crate_name>
 
-### TaskProperties
+# Run tests with output
+cargo test -- --nocapture
 
-This is an object that is used to register changes we want to apply. It is created by parsing
-the command line from the user.
-Its fields are intentionally private. The only way for other crates to instantiate it is by parsing input.
-We can easily apply a TaskProperties to a task to change its fields.
+# Run clippy for lints
+cargo clippy
 
-### TaskData
+# Format code
+cargo fmt
 
-This is an object that contains a set of tasks. Usually the set of tasks that are loaded. 
-It also indexes them to be able to have mappings from id_to_uuid and so on.
+# Generate code coverage report
+./code_coverage.sh
+```
 
-## Database
+## Repo layout (high level)
+- `crates/bee-core`: Core domain logic, task models, filters, storage abstractions
+- `crates/bee-actions`: Action implementations and undo
+- `crates/bee-cli`: CLI entry point and presentation
+- `crates/bee-api`: REST API server
+- `crates/migration`: SeaORM migrations
+- `macos-launcher/`: macOS launcher UI
 
-The database used is defined under `db/`. We are using sqlite for now.
-We are using SeaORM to interface with the actual DB.
+## Key concepts (brief)
+- Task flow: parse args → build filters → load tasks (SQLite) → execute action → persist → log undo.
+- Filters are composable trees; use helpers in `filters::and()` / `filters::or()` / `filters::from()`.
+- Undo is required for any action that mutates tasks.
+- `TaskProperties` are user-facing inputs; they are applied to `Task` with `task.apply_properties(props)`.
 
-# bee-actions
+## Important files
+- `crates/bee-core/src/task.rs`
+- `crates/bee-core/src/filters.rs`
+- `crates/bee-core/src/storage/mod.rs`
+- `crates/bee-actions/src/action_type.rs`
+- `crates/bee-cli/src/bee.rs`
 
-This is where I define actions. Actions are applied to individual tasks and modify them.
-Actions usually take care of creating a "UndoAction". This undo action is useful if you want to
-revert the change. 
+## Adding features (short)
+### New action
+1. Add `crates/bee-actions/src/action_<name>.rs`
+2. Implement `TaskAction` (often via `impl_taskaction_from_base!`)
+3. Register in `action_type.rs` and `lib.rs`
 
-# bee-cli
+### New filter
+1. Add filter struct in `crates/bee-core/src/filters/filters_impl.rs`
+2. Implement `Filter` with `#[typetag::serde]`
+3. Update `FilterKind` and parser
 
-This is the CLI application. It relies on the rest to provide a CLI interface. It implements how things
-will look in the terminal, will take care of writing the main function, retrieving tasks from the database, 
-reading the configuration file.
+## Testing pattern
+Unit tests are colocated with source files using:
+```rust
+#[path = "module_test.rs"]
+#[cfg(test)]
+mod module_test;
+```
 
-# macos-launcher
-
-This is the macOS SwiftUI launcher app. It provides a GUI over the API, with MVVM-style ViewModels.
-It talks to the running API server over HTTP (see `ApiClient`), and surfaces errors from the API
-to the UI (toasts). Mock data is available via `MockApiClient` for previews and local testing.
-
-# Quick navigation
-
-- Start here for backend behavior: `crates/bee-api/src/api.rs`
-- Database connection + pragmas: `crates/bee-core/src/storage/db/connection.rs`
-- Task model and properties: `crates/bee-core/src/task.rs`
-- macOS entry point + window styling: `macos-launcher/Sources/LauncherApp/LauncherApp.swift`
-- macOS navigation flow (list/detail switch, Escape handling): `macos-launcher/Sources/LauncherApp/Views/ContentView.swift`
-- macOS data flow (inputs/actions/toasts): `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift`
-
-# Coding guidelines
-
-New functions should have docstrings.
-New functions should have unit tests.
-
-Always use context7 when I need code generation, setup or configuration steps, or
-library/API documentation. This means you should automatically use the Context7 MCP
-tools to resolve library id and get library docs without me having to explicitly ask.
+## Docs lookup
+Always use Context7 when you need code generation, setup/configuration steps, or library/API documentation.

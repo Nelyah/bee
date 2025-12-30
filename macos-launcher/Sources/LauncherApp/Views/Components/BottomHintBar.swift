@@ -1,25 +1,28 @@
 import SwiftUI
 
-struct BottomHint: Identifiable {
-    let id = UUID()
-    let key: String
-    let label: String
-}
-
 struct BottomHintBar: View {
-    let hints: [BottomHint]
+    let leftHints: [BottomHint]
+    let rightHints: [BottomHint]
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            ForEach(hints) { hint in
-                HintChip(hint: hint)
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                ForEach(leftHints) { hint in
+                    HintChip(hint: hint)
+                }
             }
-            Spacer()
+            Spacer(minLength: DesignTokens.Spacing.lg)
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                ForEach(rightHints) { hint in
+                    HintChip(hint: hint)
+                }
+            }
         }
+        .frame(maxWidth: .infinity)
         .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
         .foregroundColor(ThemeManager.current.subtext0)
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.xs)
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .padding(.vertical, DesignTokens.Spacing.sm)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                 .fill(ThemeManager.current.surface0.opacity(0.6))
@@ -51,10 +54,13 @@ private struct HintChip: View {
 }
 
 #Preview {
-    BottomHintBar(hints: [
-        BottomHint(key: "⌘K", label: "Command menu"),
-        BottomHint(key: "Esc", label: "Back")
-    ])
+    BottomHintBar(
+        leftHints: [BottomHint(key: "Esc", label: "Back")],
+        rightHints: [
+            BottomHint(key: "Enter", label: "Open"),
+            BottomHint(key: "⌘K", label: "Command menu")
+        ]
+    )
     .padding(24)
     .frame(width: 500, height: 120)
     .background(ThemeManager.current.base)

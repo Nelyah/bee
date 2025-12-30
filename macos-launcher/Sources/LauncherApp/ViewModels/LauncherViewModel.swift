@@ -21,6 +21,10 @@ final class LauncherViewModel: ObservableObject {
     @Published var statusMessage: String?
     /// Whether the text input has keyboard focus (insert mode).
     @Published var isInsertMode: Bool = true
+    @Published private(set) var interactionContext: InteractionContext = .list(selection: .none, isInsertMode: true)
+    @Published private(set) var hintModel: BottomHintModel = BottomHintModelBuilder.model(
+        for: .list(selection: .none, isInsertMode: true)
+    )
     @Published var reportConfig: ReportConfig?
     @Published var toasts: [ToastMessage] = []
     let commandPalette: CommandPaletteCoordinator
@@ -85,6 +89,53 @@ final class LauncherViewModel: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+
+        setupInteractionContextUpdates()
+    }
+
+    private func setupInteractionContextUpdates() {
+        let baseContextPublisher = Publishers.CombineLatest4(
+            $mode,
+            $selectedRowIndex,
+            $tasks,
+            $collapsedGroups
+        )
+        .map { [weak self] mode, selectedRowIndex, tasks, collapsedGroups in
+            guard let self else {
+                return BaseInteractionContext.list(selection: .none)
+            }
+            let rows = TaskListCoordinator.groupTasks(
+                tasks,
+                using: self.groupingStrategy,
+                collapsedKeys: collapsedGroups
+            )
+            return InteractionContextCoordinator.baseContext(
+                mode: mode,
+                selectedRowIndex: selectedRowIndex,
+                rows: rows
+            )
+        }
+
+        Publishers.CombineLatest4(
+            baseContextPublisher,
+            completion.$showMenu,
+            commandPalette.$isPresented,
+            $isInsertMode
+        )
+        .map { baseContext, showCompletionMenu, commandPalettePresented, isInsertMode in
+            InteractionContextCoordinator.interactionContext(
+                base: baseContext,
+                showCompletionMenu: showCompletionMenu,
+                commandPalettePresented: commandPalettePresented,
+                isInsertMode: isInsertMode
+            )
+        }
+        .removeDuplicates()
+        .sink { [weak self] context in
+            self?.interactionContext = context
+            self?.hintModel = BottomHintModelBuilder.model(for: context)
+        }
+        .store(in: &cancellables)
     }
 
     /// Fetch the report configuration from the API.

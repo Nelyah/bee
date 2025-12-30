@@ -15,7 +15,6 @@ fileprivate enum TaskListLayout {
     static let headerPaddingHorizontal: CGFloat = 10
     static let listSpacing: CGFloat = 6
     static let listVerticalPadding: CGFloat = 4
-    static let scrollAnimationDuration: Double = 0.12
     static let statusFontSize: CGFloat = 12
     static let completionMenuWidth: CGFloat = 200
     static let completionMenuOffsetX: CGFloat = 34
@@ -159,9 +158,7 @@ struct TaskListView: View {
                         guard let index = newValue,
                               index < viewModel.groupedRows.count else { return }
                         let rowId = viewModel.groupedRows[index].id
-                        withAnimation(.easeInOut(duration: TaskListLayout.scrollAnimationDuration)) {
-                            proxy.scrollTo(rowId, anchor: nil)
-                        }
+                        proxy.scrollTo(rowId, anchor: nil)
                     }
                 }
 

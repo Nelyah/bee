@@ -81,7 +81,7 @@ struct TaskListView: View {
                 .padding(.vertical, TaskListLayout.verticalPadding)
                 .background(
                     RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                        .fill(ThemeManager.current.surface0)
+                        .fill(ThemeManager.current.base)
                         .overlay(
                             RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
                                 .stroke(ThemeManager.current.surface1.opacity(TaskListLayout.strokeOpacity), lineWidth: 1)

@@ -41,7 +41,7 @@ struct TaskRow: View {
         .padding(.horizontal, 10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isSelected ? ThemeManager.current.surface1.opacity(0.6) : ThemeManager.current.surface0.opacity(0.3))
+                .fill(isSelected ? ThemeManager.current.surface1.opacity(0.6) : ThemeManager.current.base)
         )
     }
 
@@ -75,39 +75,7 @@ struct TaskRow: View {
 
     /// Format an ISO date string to a relative or short format.
     private func formatDate(_ isoDate: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: isoDate) {
-            let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
-            if abs(days) < 1 {
-                return "today"
-            } else if days == 1 {
-                return "yesterday"
-            } else if days == -1 {
-                return "tomorrow"
-            } else if days > 0 {
-                return "\(days)d ago"
-            } else {
-                return "in \(abs(days))d"
-            }
-        }
-        // Fallback: try without fractional seconds
-        formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: isoDate) {
-            let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
-            if abs(days) < 1 {
-                return "today"
-            } else if days == 1 {
-                return "yesterday"
-            } else if days == -1 {
-                return "tomorrow"
-            } else if days > 0 {
-                return "\(days)d ago"
-            } else {
-                return "in \(abs(days))d"
-            }
-        }
-        return isoDate
+        RelativeDateFormatter.description(for: isoDate)
     }
 }
 

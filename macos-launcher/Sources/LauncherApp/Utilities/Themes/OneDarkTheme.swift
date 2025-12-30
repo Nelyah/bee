@@ -73,12 +73,12 @@ struct OneDarkTheme: Theme {
     var rosewaterNS: NSColor { Self.rosewaterColorNS }
 
     // MARK: - Base Colors
-    private static let baseColor = Color(hex: "#282c34")
-    private static let baseColorNS = NSColor(hex: "#282c34")
-    private static let mantleColor = Color(hex: "#21252b")
-    private static let mantleColorNS = NSColor(hex: "#21252b")
-    private static let crustColor = Color(hex: "#1b1f27")
-    private static let crustColorNS = NSColor(hex: "#1b1f27")
+    private static let baseColor = Color(hex: "#222222")
+    private static let baseColorNS = NSColor(hex: "#222222")
+    private static let mantleColor = Color(hex: "#222222")
+    private static let mantleColorNS = NSColor(hex: "#222222")
+    private static let crustColor = Color(hex: "#222222")
+    private static let crustColorNS = NSColor(hex: "#222222")
 
     // MARK: - Surface Colors
     private static let surface0Color = Color(hex: "#2c313c")

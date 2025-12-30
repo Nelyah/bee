@@ -50,15 +50,8 @@ struct ContentView: View {
     }
 
     private var launcherBackground: some View {
-        LinearGradient(
-            colors: [
-                ThemeManager.current.base,
-                ThemeManager.current.mantle
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
+        ThemeManager.current.base
+            .ignoresSafeArea()
     }
 
     /// Apply Raycast-style window appearance (no title bar, clear background).

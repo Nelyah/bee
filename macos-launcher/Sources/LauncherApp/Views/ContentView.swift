@@ -26,7 +26,7 @@ struct ContentView: View {
 
             ToastStackView(toasts: viewModel.toasts)
                 .padding(.horizontal, 16)
-                .padding(.bottom, BottomHintBar.height + DesignTokens.Spacing.xl)
+                .padding(.bottom, BottomHintBar.height + DesignTokens.Spacing.xxl)
                 .allowsHitTesting(false)
                 .zIndex(2)
         }
@@ -130,7 +130,14 @@ struct ContentView: View {
     }
 
     private func closeWindow() {
-        NSApplication.shared.keyWindow?.performClose(nil)
+        let app = NSApplication.shared
+        if let window = app.keyWindow ?? app.mainWindow {
+            window.performClose(nil)
+            return
+        }
+        if let window = app.windows.first(where: { $0.isVisible }) ?? app.windows.first {
+            window.performClose(nil)
+        }
     }
 }
 

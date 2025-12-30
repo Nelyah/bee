@@ -1,27 +1,12 @@
 # DEBT TODO
 
 ## Summary
-- External link suggestion state/pipeline values are stringly-typed and mapped directly in the view.
 - Core task domain types are concentrated in a single large module with mixed responsibilities.
 - DB task loading performs per-task queries, risking N+1 patterns and scaling issues.
 - CLI formatting and parser error handling rely on hacks/unwraps instead of explicit behavior.
 - `blocks:` parsing is not implemented despite being supported in task properties.
 
 ## Open Issues
-### DEBT-0013: External link statuses are stringly-typed and mapped in the view
-- Priority: P2
-- Effort: M
-- Area: macos-launcher/Models + Views
-- Evidence: macos-launcher/Sources/LauncherApp/Models/ExternalLinkModels.swift:3-24, macos-launcher/Sources/LauncherApp/Views/CommandPaletteView.swift:177-298
-- Smells: magic-string, duplication, coupling
-- Problem (rough): GitLab MR `state`/`pipelineStatus` are plain strings and the view hard-codes mapping to icons/labels. This duplicates business rules in the UI layer and risks mismatches if the API adds new states.
-- Suggested fix (rough):
-- Introduce enums for MR state and pipeline status with an `unknown(String)` fallback.
-- Decode raw strings into the enums in `ExternalLinkModels`.
-- Move icon/label mapping into model helpers or a dedicated formatter.
-- Update `CommandPaletteView` to consume typed status data.
-- Safety net: Unit tests for enum decoding and mapping; add a UI snapshot/unit test if feasible.
-
 ### DEBT-0015: Task domain logic is concentrated in a monolithic module
 - Priority: P1
 - Effort: M
@@ -88,6 +73,9 @@
 - Safety net: Add unit tests in `task_prop_parser_test.rs` and integration tests for actions that rely on blocking relationships.
 
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0013: External link statuses are stringly-typed and mapped in the view
+- Resolved on: 2025-12-30
+- Note: Added typed GitLab state/pipeline enums with unknown fallback and moved icon/label mapping into model helpers.
 ### DEBT-0023: Selected/hover states risk low contrast in dark theme
 - Resolved on: 2025-12-30
 - Note: Increased contrast for selected/hover states and text in list, headers, detail badge, and completion menu.

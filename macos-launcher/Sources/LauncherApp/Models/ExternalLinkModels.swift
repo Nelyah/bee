@@ -5,11 +5,11 @@ struct GitlabMergeRequestSuggestion: Identifiable, Decodable {
     let title: String
     let webURL: String
     let projectPath: String
-    let state: String
+    let state: GitlabMergeRequestState
     let updatedAt: String
     let notesCount: Int?
     let approved: Bool?
-    let pipelineStatus: String?
+    let pipelineStatus: GitlabPipelineStatus?
 
     enum CodingKeys: String, CodingKey {
         case id = "iid"
@@ -21,6 +21,102 @@ struct GitlabMergeRequestSuggestion: Identifiable, Decodable {
         case notesCount = "user_notes_count"
         case approved
         case pipelineStatus = "pipeline_status"
+    }
+}
+
+enum GitlabMergeRequestState: Equatable, Decodable {
+    case opened
+    case merged
+    case closed
+    case unknown(String)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self).lowercased()
+        switch value {
+        case "opened", "open":
+            self = .opened
+        case "merged":
+            self = .merged
+        case "closed":
+            self = .closed
+        default:
+            self = .unknown(value)
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .merged:
+            return "pr-merged"
+        case .closed:
+            return "pr-closed"
+        case .opened, .unknown:
+            return "pr-open"
+        }
+    }
+}
+
+enum GitlabPipelineStatus: Equatable, Decodable {
+    case success
+    case running
+    case pending
+    case failed
+    case canceled
+    case skipped
+    case unknown(String)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self).lowercased()
+        switch value {
+        case "success":
+            self = .success
+        case "running":
+            self = .running
+        case "pending":
+            self = .pending
+        case "failed":
+            self = .failed
+        case "canceled":
+            self = .canceled
+        case "skipped":
+            self = .skipped
+        default:
+            self = .unknown(value)
+        }
+    }
+
+    var iconName: String? {
+        switch self {
+        case .success:
+            return "gitlab-success"
+        case .running:
+            return "gitlab-running"
+        case .pending, .failed, .canceled, .skipped:
+            return "gitlab-pending"
+        case .unknown:
+            return nil
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .success:
+            return "Passed"
+        case .failed:
+            return "Failed"
+        case .running:
+            return "Running"
+        case .pending:
+            return "Pending"
+        case .canceled:
+            return "Canceled"
+        case .skipped:
+            return "Skipped"
+        case .unknown(let value):
+            return value.capitalized
+        }
     }
 }
 

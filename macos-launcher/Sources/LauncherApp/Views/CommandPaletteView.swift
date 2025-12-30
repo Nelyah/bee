@@ -177,7 +177,7 @@ struct CommandPaletteView: View {
 
     private func gitlabSuggestionRow(mr: GitlabMergeRequestSuggestion, isSelected: Bool) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(mrStateIconName(for: mr.state), bundle: .module)
+            Image(mr.state.iconName, bundle: .module)
                 .resizable()
                 .renderingMode(.original)
                 .frame(width: 14, height: 14)
@@ -216,15 +216,15 @@ struct CommandPaletteView: View {
     }
 
     @ViewBuilder
-    private func pipelineStatusView(status: String?) -> some View {
+    private func pipelineStatusView(status: GitlabPipelineStatus?) -> some View {
         if let status,
-           let iconName = pipelineIconName(for: status) {
+           let iconName = status.iconName {
             HStack(spacing: 4) {
                 Image(iconName, bundle: .module)
                     .resizable()
                     .renderingMode(.original)
                     .frame(width: 12, height: 12)
-                Text(pipelineStatusLabel(for: status))
+                Text(status.label)
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
                     .foregroundColor(ThemeManager.current.subtext0)
             }
@@ -253,49 +253,6 @@ struct CommandPaletteView: View {
             .background(color.opacity(0.2))
             .foregroundColor(color)
             .clipShape(Capsule())
-    }
-
-    private func mrStateIconName(for state: String) -> String {
-        switch state.lowercased() {
-        case "merged":
-            return "pr-merged"
-        case "closed":
-            return "pr-closed"
-        default:
-            return "pr-open"
-        }
-    }
-
-    private func pipelineIconName(for status: String) -> String? {
-        switch status.lowercased() {
-        case "success":
-            return "gitlab-success"
-        case "running":
-            return "gitlab-running"
-        case "pending", "failed", "canceled", "skipped":
-            return "gitlab-pending"
-        default:
-            return nil
-        }
-    }
-
-    private func pipelineStatusLabel(for status: String) -> String {
-        switch status.lowercased() {
-        case "success":
-            return "Passed"
-        case "failed":
-            return "Failed"
-        case "running":
-            return "Running"
-        case "pending":
-            return "Pending"
-        case "canceled":
-            return "Canceled"
-        case "skipped":
-            return "Skipped"
-        default:
-            return status.capitalized
-        }
     }
 
     private func selectionBackground(isSelected: Bool) -> some View {

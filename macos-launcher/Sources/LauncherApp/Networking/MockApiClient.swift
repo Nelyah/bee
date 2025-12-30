@@ -135,22 +135,22 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             title: "Improve task sync",
             webURL: "https://gitlab.example.com/group/project/-/merge_requests/42",
             projectPath: "group/project",
-            state: "opened",
+            state: .opened,
             updatedAt: "2024-09-24T12:00:00Z",
             notesCount: 12,
             approved: false,
-            pipelineStatus: "running"
+            pipelineStatus: .running
         ),
         GitlabMergeRequestSuggestion(
             id: 41,
             title: "Fix launcher bug",
             webURL: "https://gitlab.example.com/group/project/-/merge_requests/41",
             projectPath: "group/project",
-            state: "merged",
+            state: .merged,
             updatedAt: "2024-09-23T18:15:00Z",
             notesCount: 4,
             approved: true,
-            pipelineStatus: "success"
+            pipelineStatus: .success
         )
     ]
 

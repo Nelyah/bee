@@ -1,35 +1,28 @@
 # DEBT TODO
 
 ## Summary
-- LauncherViewModel is a large, multi-responsibility class mixing networking, parsing, completion logic, and UI state, which makes changes risky.
-- API client behavior is largely untested, leaving error handling and env configuration without coverage.
+- LauncherViewModel is still a large orchestrator, and remaining responsibilities (API + navigation) keep change risk high.
+- Core utilities were extracted (completion, toast scheduling, task list coordination), but the view model still owns too many concerns.
+- API client behavior now has tests; remaining debt is localized to view model structure.
 
 ## Open Issues
 ### DEBT-0001: LauncherViewModel is a god object with mixed responsibilities
 - Priority: P1
 - Effort: M
 - Area: macos-launcher ViewModels
-- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`, `macos-launcher/Sources/LauncherApp/Utilities/CompletionEngine.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/ParseErrorToastScheduler.swift:1`
+- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`, `macos-launcher/Sources/LauncherApp/Utilities/CompletionEngine.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/ParseErrorToastScheduler.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/TaskListCoordinator.swift:1`
 - Smells: SRP, complexity, coupling
-- Problem (rough): The view model still handles API requests, parsing, selection logic, and UI navigation in a single large class. Completion and parse-error toast scheduling were extracted, but remaining concerns are still tightly coupled and make change risk high.
+- Problem (rough): The view model still handles API requests, parsing, and UI navigation in a single large class. Completion, parse-error toast scheduling, and task list selection were extracted, but remaining concerns are still tightly coupled and make change risk high.
 - Suggested fix (rough):
-- Extract a `TaskListCoordinator` for selection and sorting behavior.
+- Extract API/parse orchestration into a dedicated service (e.g., `LauncherActionService`).
+- Move navigation state management into a small coordinator to reduce UI coupling.
 - Keep `LauncherViewModel` as a thin orchestrator that composes these components.
 - Safety net: Expand unit tests around completion detection, toast scheduling, and selection logic; add tests for the extracted components.
 
-### DEBT-0004: API client error handling lacks direct tests
-- Priority: P2
-- Effort: S
-- Area: macos-launcher networking
-- Evidence: `macos-launcher/Sources/LauncherApp/Networking/ApiClient.swift:1`, `macos-launcher/Tests/LauncherAppTests/LauncherViewModelTests.swift:1`
-- Smells: missing-tests
-- Problem (rough): The API client’s behavior (base URL selection, non-2xx errors, error payload decoding) is not directly unit tested, leaving key networking behavior unverified.
-- Suggested fix (rough):
-  - Add tests around `decodeErrorMessage` and non-2xx handling using a stubbed URL protocol or injectable session.
-  - Add a small test to confirm environment variable overrides for the base URL.
-- Safety net: Unit tests for API client error cases and base URL configuration.
-
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0004: API client error handling lacks direct tests
+- Resolved on: 2025-12-30
+- Note: Added URLProtocol-backed tests for base URL override and non-2xx error payload handling.
 ### DEBT-0003: Hard-coded key codes and timing constants in input handling
 - Resolved on: 2025-12-30
 - Note: Introduced named key code constants and centralized toast timing constants.

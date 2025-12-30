@@ -156,7 +156,7 @@ final class LauncherViewModel: ObservableObject {
                 filter: filter
             )
             guard requestId == requestCounter else { return }
-            tasks = sortTasksByUrgency(response.tasks)
+            tasks = TaskListCoordinator.sortTasksByUrgency(response.tasks)
             syncSelectionAfterTasksUpdate()
             if updateStatus {
                 statusMessage = buildStatusMessage(from: response.events)
@@ -223,45 +223,21 @@ final class LauncherViewModel: ObservableObject {
 
     /// Move the selection by a delta, wrapping around the list.
     func moveSelection(delta: Int) {
-        guard !tasks.isEmpty else { return }
-        let count = tasks.count
-        if let current = selectedIndex {
-            let next = (current + delta + count) % count
-            selectedIndex = next
-        } else {
-            selectedIndex = delta >= 0 ? 0 : count - 1
-        }
+        selectedIndex = TaskListCoordinator.moveSelection(
+            tasks: tasks,
+            selectedIndex: selectedIndex,
+            delta: delta
+        )
     }
 
     /// Keep selection within bounds after tasks update.
     func syncSelectionAfterTasksUpdate() {
-        guard let current = selectedIndex else { return }
-        if tasks.isEmpty {
-            selectedIndex = nil
-            return
-        }
-        if current >= tasks.count {
-            selectedIndex = tasks.count - 1
-        }
+        selectedIndex = TaskListCoordinator.syncSelection(tasks: tasks, selectedIndex: selectedIndex)
     }
 
     /// Sort tasks by urgency, highest first, keeping nil urgency last.
     func sortTasksByUrgency(_ items: [ApiTask]) -> [ApiTask] {
-        items.sorted { lhs, rhs in
-            switch (lhs.urgency, rhs.urgency) {
-            case let (l?, r?):
-                if l == r {
-                    return lhs.uuid < rhs.uuid
-                }
-                return l > r
-            case (_?, nil):
-                return true
-            case (nil, _?):
-                return false
-            case (nil, nil):
-                return lhs.uuid < rhs.uuid
-            }
-        }
+        TaskListCoordinator.sortTasksByUrgency(items)
     }
 
     /// Open the detail view for the currently selected task.
@@ -277,8 +253,7 @@ final class LauncherViewModel: ObservableObject {
 
     /// Return the currently selected task.
     var selectedTask: ApiTask? {
-        guard let index = selectedIndex, tasks.indices.contains(index) else { return nil }
-        return tasks[index]
+        TaskListCoordinator.selectedTask(tasks: tasks, selectedIndex: selectedIndex)
     }
 
     /// Return true if we should automatically run the list action while typing.

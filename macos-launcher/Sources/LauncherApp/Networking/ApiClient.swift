@@ -3,17 +3,25 @@ import OSLog
 
 final class ApiClient: ApiClientProtocol, Sendable {
     private let baseURL: URL
+    private let session: URLSession
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "api")
 
     /// Initialize the API client, optionally using BEE_API_BASE_URL.
-    init() {
+    init(
+        baseURL: URL? = nil,
+        session: URLSession = .shared,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
         let defaultURL = URL(string: "http://127.0.0.1:3000")!
-        if let env = ProcessInfo.processInfo.environment["BEE_API_BASE_URL"],
-           let url = URL(string: env) {
-            baseURL = url
+        if let baseURL {
+            self.baseURL = baseURL
+        } else if let env = environment["BEE_API_BASE_URL"],
+                  let url = URL(string: env) {
+            self.baseURL = url
         } else {
-            baseURL = defaultURL
+            self.baseURL = defaultURL
         }
+        self.session = session
     }
 
     /// Send input to the parse endpoint and decode the response.
@@ -55,7 +63,7 @@ final class ApiClient: ApiClientProtocol, Sendable {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             logger.error("HTTP error \(path, privacy: .public) (no response)")
             throw ApiClientError.invalidResponse
@@ -85,7 +93,7 @@ final class ApiClient: ApiClientProtocol, Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             logger.error("HTTP error \(path, privacy: .public) (no response)")
             throw ApiClientError.invalidResponse

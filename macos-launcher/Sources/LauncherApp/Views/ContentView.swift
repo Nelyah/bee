@@ -60,6 +60,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             configureWindowAppearance()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            configureWindowAppearance()
+        }
         .onDisappear {
             removeEscapeMonitor()
             removeNormalModeMonitor()
@@ -74,21 +77,24 @@ struct ContentView: View {
 
     /// Apply Raycast-style window appearance (no title bar, clear background).
     private func configureWindowAppearance() {
-        guard let window = NSApplication.shared.windows.first else { return }
-        // Remove title bar completely
-        window.styleMask.remove(.titled)
-        window.styleMask.insert(.fullSizeContentView)
-        window.isMovableByWindowBackground = true
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        if let contentView = window.contentView {
-            contentView.wantsLayer = true
-            contentView.layer?.cornerRadius = 18
-            contentView.layer?.masksToBounds = true
+        let windows = NSApplication.shared.windows
+        guard !windows.isEmpty else { return }
+        for window in windows {
+            // Remove title bar completely
+            window.styleMask.remove(.titled)
+            window.styleMask.insert(.fullSizeContentView)
+            window.isMovableByWindowBackground = true
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            if let contentView = window.contentView {
+                contentView.wantsLayer = true
+                contentView.layer?.cornerRadius = 18
+                contentView.layer?.masksToBounds = true
+            }
+            window.standardWindowButton(.closeButton)?.isHidden = true
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
         }
-        window.standardWindowButton(.closeButton)?.isHidden = true
-        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        window.standardWindowButton(.zoomButton)?.isHidden = true
     }
 
     /// Capture Escape at the window level to close detail view or exit insert mode.

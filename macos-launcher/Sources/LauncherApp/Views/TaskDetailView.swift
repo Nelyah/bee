@@ -85,8 +85,8 @@ struct TaskDetailView: View {
 
             ExternalLinksProviderSection(
                 title: "Jira",
-                icon: Image(systemName: "link"),
-                useOriginalIcon: false,
+                icon: AssetIcon.jira(),
+                useOriginalIcon: true,
                 isRefreshing: externalLinksState.refreshingProviders.contains(.jira),
                 links: externalLinksForTask.filter { $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue },
                 onRefresh: { onRefreshLinks(.jira) }
@@ -245,10 +245,10 @@ struct TaskDetailView: View {
 }
 
 private enum TaskDetailLayout {
-    static let leftColumnFraction: CGFloat = 0.4
-    static let rightColumnFraction: CGFloat = 0.6
+    static let leftColumnFraction: CGFloat = 0.3
+    static let rightColumnFraction: CGFloat = 0.7
     static let columnSpacing: CGFloat = DesignTokens.Spacing.lg
-    static let collapseWidth: CGFloat = 920
+    static let collapseWidth: CGFloat = 760
 }
 
 private struct DetailSection<Content: View>: View {

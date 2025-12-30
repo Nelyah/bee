@@ -1,10 +1,10 @@
 # DEBT TODO
 
 ## Summary
-- `CompletionEngine.detectContext` repeats prefix checks across token- and string-based paths; adding a new prefix requires edits in several branches.
-- Keyboard shortcuts are split between `KeyHandlingDecider` and `ContentView`’s normal-mode monitor, which can drift over time.
-- Collapsed-group persistence keys are private string literals duplicated in tests.
-- Token classification still relies on stringly-typed token names in `TokenClassifier`/`HighlightSpan`, risking silent regressions.
+- Completion context prefixes are centralized and covered by tests.
+- Normal-mode key handling is centralized in `KeyHandlingDecider`.
+- Grouped list persistence keys are shared between production and tests.
+- Token types are now strongly typed with an unknown fallback.
 
 ## Open Issues
 ## Archive (Resolved / No longer reproducible)

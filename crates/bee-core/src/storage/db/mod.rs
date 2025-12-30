@@ -68,9 +68,7 @@ impl DbStore {
         external_key: String,
     ) -> Result<ExternalLink, Box<dyn std::error::Error>> {
         let db = get_database(None).await?;
-        Ok(
-            external_links_db::insert_link(&db, task_uuid, provider, url, external_key).await?,
-        )
+        Ok(external_links_db::insert_link(&db, task_uuid, provider, url, external_key).await?)
     }
 
     pub async fn get_external_link_by_id(
@@ -93,8 +91,10 @@ impl DbStore {
         last_synced_at: chrono::DateTime<chrono::Utc>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let db = get_database(None).await?;
-        Ok(external_links_db::update_cache_success(&db, link_id, cached_response, last_synced_at)
-            .await?)
+        Ok(
+            external_links_db::update_cache_success(&db, link_id, cached_response, last_synced_at)
+                .await?,
+        )
     }
 
     pub async fn update_external_link_sync_error(

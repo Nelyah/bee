@@ -3,6 +3,7 @@
 Guidance for Codex when working in this repository.
 
 Keep changes minimal and focused. Prefer existing conventions and keep instructions actionable.
+Never remove TODO comments unless the TODO has been fully addressed.
 
 ## Quick start
 ```bash

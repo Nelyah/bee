@@ -6,6 +6,7 @@ Keep changes minimal and focused. Prefer existing conventions and keep instructi
 Never remove TODO comments unless the TODO has been fully addressed.
 If you think that what you are being asked is a bad idea, stop and say so. Explain why.
 If you think the user is missing something, let them know.
+If you are looking for the macOS version or Xcode/Swift toolchain, look in the ./macos-launcher/ folder
 
 ## Quick start
 ```bash

@@ -24,7 +24,7 @@ struct CommandPaletteView: View {
                 }
 
             VStack(spacing: 0) {
-                HStack(spacing: 10) {
+                HStack(spacing: DesignTokens.Spacing.md) {
                     searchIcon
                         .foregroundColor(ThemeManager.current.subtext0)
                     TextField("Search", text: $commandPalette.query)
@@ -35,12 +35,12 @@ struct CommandPaletteView: View {
                             viewModel.submitCommandPaletteSelection()
                         }
                 }
-                .padding(10)
+                .padding(DesignTokens.Spacing.md)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
                         .fill(ThemeManager.current.surface0)
                 )
-                .padding(12)
+                .padding(DesignTokens.Spacing.lg)
 
                 Divider()
                     .overlay(ThemeManager.current.surface1.opacity(0.6))
@@ -49,12 +49,12 @@ struct CommandPaletteView: View {
             }
             .frame(width: 520)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl, style: .continuous)
                     .fill(ThemeManager.current.base)
                     .shadow(color: ThemeManager.current.surface2.opacity(0.4), radius: 18, x: 0, y: 10)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl, style: .continuous)
                     .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
             )
         }
@@ -94,10 +94,10 @@ struct CommandPaletteView: View {
                 ProgressView()
                     .progressViewStyle(.circular)
                 Text("Loading…")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
                     .foregroundColor(ThemeManager.current.subtext0)
             }
-            .padding(24)
+            .padding(DesignTokens.Spacing.xxl)
         } else if commandPalette.mode == .root {
             listView(items: actions) { index, action in
                 let isSelected = index == commandPalette.selectionIndex
@@ -109,8 +109,8 @@ struct CommandPaletteView: View {
                             .foregroundColor(ThemeManager.current.text)
                         Spacer()
                     }
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 12)
+                    .padding(.vertical, DesignTokens.Spacing.sm)
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(selectionBackground(isSelected: isSelected))
                 }
@@ -131,11 +131,11 @@ struct CommandPaletteView: View {
                             Text(item.displayTitle)
                                 .foregroundColor(ThemeManager.current.text)
                             Text(item.subtitle)
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
                                 .foregroundColor(ThemeManager.current.subtext0)
                         }
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 12)
+                        .padding(.vertical, DesignTokens.Spacing.sm)
+                        .padding(.horizontal, DesignTokens.Spacing.lg)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(selectionBackground(isSelected: isSelected))
                     case .rawInput:
@@ -143,11 +143,11 @@ struct CommandPaletteView: View {
                             Text(item.displayTitle)
                                 .foregroundColor(ThemeManager.current.text)
                             Text(item.subtitle)
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
                                 .foregroundColor(ThemeManager.current.subtext0)
                         }
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 12)
+                        .padding(.vertical, DesignTokens.Spacing.sm)
+                        .padding(.horizontal, DesignTokens.Spacing.lg)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(selectionBackground(isSelected: isSelected))
                     }
@@ -193,24 +193,24 @@ struct CommandPaletteView: View {
                 }
 
                 Text("MR !\(mr.id) • \(mr.projectPath)")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
                     .foregroundColor(ThemeManager.current.subtext0)
 
                 HStack(spacing: 12) {
                     if let notes = mr.notesCount {
                         Label("\(notes)", systemImage: "bubble.left")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
                             .foregroundColor(ThemeManager.current.subtext0)
                     }
                     Text(RelativeDateFormatter.description(for: mr.updatedAt))
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
                         .foregroundColor(ThemeManager.current.subtext0)
                     Spacer()
                 }
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
+        .padding(.vertical, DesignTokens.Spacing.md)
+        .padding(.horizontal, DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(selectionBackground(isSelected: isSelected))
     }
@@ -225,7 +225,7 @@ struct CommandPaletteView: View {
                     .renderingMode(.original)
                     .frame(width: 12, height: 12)
                 Text(pipelineStatusLabel(for: status))
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
                     .foregroundColor(ThemeManager.current.subtext0)
             }
         }
@@ -247,9 +247,9 @@ struct CommandPaletteView: View {
         }
 
         return Text(text)
-            .font(.system(size: 10, weight: .semibold, design: .rounded))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
             .background(color.opacity(0.2))
             .foregroundColor(color)
             .clipShape(Capsule())
@@ -299,7 +299,7 @@ struct CommandPaletteView: View {
     }
 
     private func selectionBackground(isSelected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
+        RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
             .fill(isSelected ? ThemeManager.current.surface1 : ThemeManager.current.base)
     }
 
@@ -343,7 +343,7 @@ struct CommandPaletteView: View {
                     row(index, item)
                 }
             }
-            .padding(12)
+            .padding(DesignTokens.Spacing.lg)
         }
         .frame(maxHeight: 300)
     }

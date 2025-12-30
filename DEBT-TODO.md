@@ -5,8 +5,7 @@
 - Core task domain types are concentrated in a single large module with mixed responsibilities.
 - DB task loading performs per-task queries, risking N+1 patterns and scaling issues.
 - CLI formatting and parser error handling rely on hacks/unwraps instead of explicit behavior.
-- UI styling tokens (spacing, typography, radii, colors) are inconsistent across launcher views.
-- Detail/list/palette views show inconsistent hierarchy and low-contrast states, making key info hard to scan.
+- `blocks:` parsing is not implemented despite being supported in task properties.
 
 ## Open Issues
 ### DEBT-0013: External link statuses are stringly-typed and mapped in the view
@@ -88,59 +87,19 @@
 - Update any user-facing docs/help if needed.
 - Safety net: Add unit tests in `task_prop_parser_test.rs` and integration tests for actions that rely on blocking relationships.
 
-### DEBT-0020: UI lacks centralized design tokens (spacing, radii, type)
-- Priority: P2
-- Effort: S
-- Area: macos-launcher/Views + Utilities
-- Evidence: macos-launcher/Sources/LauncherApp/Views/TaskListView.swift:3-25, macos-launcher/Sources/LauncherApp/Views/TaskDetailView.swift:9-46, macos-launcher/Sources/LauncherApp/Views/CommandPaletteView.swift:25-58, macos-launcher/Sources/LauncherApp/Views/Components/CompletionMenuView.swift:31-55, macos-launcher/Sources/LauncherApp/Views/Components/ToastView.swift:14-33
-- Smells: duplication, inconsistency
-- Problem (rough): Multiple views define their own font sizes, paddings, and corner radii, leading to uneven rhythm and visual inconsistency across list, detail, palette, and toast surfaces.
-- Suggested fix (rough):
-- Introduce a `DesignTokens` (or expand `TaskListLayout`) with shared spacing, radius, and type scale.
-- Replace ad-hoc values with tokens and align common elements (cards, pills, rows).
-- Document the intended hierarchy for titles/body/metadata.
-- Safety net: Add snapshot/UI tests for core views (list/detail/palette) to catch visual drift.
-
-### DEBT-0021: Search input affordance is weak and vertically cramped
-- Priority: P2
-- Effort: S
-- Area: macos-launcher/Views
-- Evidence: macos-launcher/Sources/LauncherApp/Views/TaskListView.swift:33-94, macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift:24-39
-- Smells: UX, layout
-- Problem (rough): The search field uses a text view with no placeholder and a 22pt height while the font is 18pt, which makes it look tight and less discoverable when empty.
-- Suggested fix (rough):
-- Add placeholder/ghost hint when `input` is empty (e.g., “Search tasks…”).
-- Increase input height and padding to match the text size.
-- Align the magnifying glass with baseline using consistent vertical metrics.
-- Safety net: Add a preview or UI snapshot for empty input and focused input states.
-
-### DEBT-0022: Detail view presents raw values with weak hierarchy
-- Priority: P2
-- Effort: S
-- Area: macos-launcher/Views
-- Evidence: macos-launcher/Sources/LauncherApp/Views/TaskDetailView.swift:14-43, macos-launcher/Sources/LauncherApp/Views/TaskRow.swift:29-79
-- Smells: hierarchy, readability
-- Problem (rough): Detail view shows raw UUIDs and ISO timestamps without formatting while list rows show relative dates. This creates a jarring shift in visual hierarchy and makes details hard to scan.
-- Suggested fix (rough):
-- Format UUIDs and dates consistently with list views (short/relative + tooltip for full values).
-- Increase label/value contrast or spacing to separate metadata from the title.
-- Consider grouping metadata into sections (Timing, Tags, Status).
-- Safety net: Add snapshot/UI tests for detail view with long values.
-
-### DEBT-0023: Selected/hover states risk low contrast in dark theme
-- Priority: P2
-- Effort: S
-- Area: macos-launcher/Views + Themes
-- Evidence: macos-launcher/Sources/LauncherApp/Views/Components/CompletionMenuView.swift:37-63, macos-launcher/Sources/LauncherApp/Views/GroupHeaderRow.swift:10-50, macos-launcher/Sources/LauncherApp/Views/TaskDetailView.swift:18-30, macos-launcher/Sources/LauncherApp/Utilities/Themes/OneDarkTheme.swift:36-78
-- Smells: accessibility, contrast
-- Problem (rough): Selected states use `ThemeManager.current.base` text on blue backgrounds and subtle surface0/surface1 fills, which may not meet contrast expectations for readability, especially at 10–12pt sizes.
-- Suggested fix (rough):
-- Define explicit selected-state text colors per theme (e.g., `onAccent`).
-- Increase contrast for hover/selected surfaces and small metadata text.
-- Add a lightweight contrast check in design review or documentation.
-- Safety net: Add snapshot comparisons for selected/hover states in list and completion menu.
-
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0023: Selected/hover states risk low contrast in dark theme
+- Resolved on: 2025-12-30
+- Note: Increased contrast for selected/hover states and text in list, headers, detail badge, and completion menu.
+### DEBT-0022: Detail view presents raw values with weak hierarchy
+- Resolved on: 2025-12-30
+- Note: Added formatted dates/UUIDs with tooltips and aligned typography/spacing.
+### DEBT-0021: Search input affordance is weak and vertically cramped
+- Resolved on: 2025-12-30
+- Note: Added placeholder and increased input height/spacing to match text size.
+### DEBT-0020: UI lacks centralized design tokens (spacing, radii, type)
+- Resolved on: 2025-12-30
+- Note: Introduced `DesignTokens` and aligned core view spacing/typography/radii.
 ### DEBT-0014: Navigation bindings/keyboard handling are split across panes
 - Resolved on: 2025-12-30
 - Note: Centralized escape/normal-mode handling in `InteractionCoordinator` and delegated view handling with tests.

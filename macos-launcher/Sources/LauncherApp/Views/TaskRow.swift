@@ -17,31 +17,31 @@ struct TaskRow: View {
                 if index == 0 {
                     // First column (usually ID) - small fixed width
                     Text(value(for: column))
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .monospaced))
                         .foregroundColor(ThemeManager.current.subtext0)
                         .frame(width: 30, alignment: .leading)
                 } else if column == "summary" {
                     // Summary column expands
                     Text(value(for: column))
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: DesignTokens.TypeScale.bodyLg, weight: .semibold, design: .rounded))
                         .foregroundColor(ThemeManager.current.text)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     // Other columns
                     Text(value(for: column))
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
                         .foregroundColor(ThemeManager.current.subtext1)
                         .frame(width: 60, alignment: .leading)
                         .lineLimit(1)
                 }
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 10)
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .padding(.horizontal, DesignTokens.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isSelected ? ThemeManager.current.surface1.opacity(0.6) : ThemeManager.current.base)
+                .fill(isSelected ? ThemeManager.current.surface1 : ThemeManager.current.base)
         )
     }
 

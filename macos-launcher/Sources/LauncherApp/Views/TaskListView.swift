@@ -1,25 +1,25 @@
 import SwiftUI
 
 fileprivate enum TaskListLayout {
-    static let searchSpacing: CGFloat = 10
-    static let inputHeight: CGFloat = 22
-    static let horizontalPadding: CGFloat = 14
-    static let verticalPadding: CGFloat = 12
-    static let cornerRadius: CGFloat = 12
+    static let searchSpacing: CGFloat = DesignTokens.Spacing.md
+    static let inputHeight: CGFloat = 30
+    static let horizontalPadding: CGFloat = DesignTokens.Spacing.lg
+    static let verticalPadding: CGFloat = DesignTokens.Spacing.md
+    static let cornerRadius: CGFloat = DesignTokens.Radius.lg
     static let strokeOpacity: Double = 0.5
-    static let headerSpacing: CGFloat = 12
+    static let headerSpacing: CGFloat = DesignTokens.Spacing.md
     static let statusColumnWidth: CGFloat = 8
     static let firstColumnWidth: CGFloat = 30
     static let otherColumnWidth: CGFloat = 60
-    static let headerFontSize: CGFloat = 10
-    static let headerPaddingHorizontal: CGFloat = 10
-    static let listSpacing: CGFloat = 6
-    static let listVerticalPadding: CGFloat = 4
-    static let statusFontSize: CGFloat = 12
+    static let headerFontSize: CGFloat = DesignTokens.TypeScale.caption
+    static let headerPaddingHorizontal: CGFloat = DesignTokens.Spacing.md
+    static let listSpacing: CGFloat = DesignTokens.Spacing.sm
+    static let listVerticalPadding: CGFloat = DesignTokens.Spacing.xs
+    static let statusFontSize: CGFloat = DesignTokens.TypeScale.bodySm
     static let completionMenuWidth: CGFloat = 200
     static let completionMenuOffsetX: CGFloat = 34
     static let completionMenuOffsetY: CGFloat = 50
-    static let previewPadding: CGFloat = 20
+    static let previewPadding: CGFloat = DesignTokens.Spacing.xl
     static let previewWidth: CGFloat = 600
     static let previewHeight: CGFloat = 400
 }
@@ -35,43 +35,51 @@ struct TaskListView: View {
                 HStack(spacing: TaskListLayout.searchSpacing) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(ThemeManager.current.subtext0)
-                    TokenHighlightTextView(
-                        text: $viewModel.input,
-                        tokens: viewModel.tokens,
-                        actionName: viewModel.actionName,
-                        isFocused: viewModel.isInsertMode,
-                        ghostText: completion.ghostText,
-                        cursorPosition: completion.cursorPosition,
-                        showCompletionMenu: completion.showMenu,
-                        onSubmit: {
-                            viewModel.handleSubmit()
-                        },
-                        onEscape: {
-                            if completion.showMenu {
-                                viewModel.clearCompletions()
-                            } else {
-                                viewModel.isInsertMode = false
-                            }
-                        },
-                        onMoveSelection: { delta in
-                            viewModel.moveSelection(delta: delta)
-                        },
-                        onCursorChange: { position in
-                            viewModel.handleCursorChange(position)
-                        },
-                        onToggleMenu: {
-                            viewModel.toggleCompletionMenu()
-                        },
-                        onAcceptGhost: {
-                            viewModel.acceptGhostText()
-                        },
-                        onMenuNavigation: { delta in
-                            viewModel.moveCompletionSelection(delta: delta)
-                        },
-                        onAcceptCompletion: {
-                            viewModel.acceptCompletion()
+                    ZStack(alignment: .leading) {
+                        if viewModel.input.isEmpty {
+                            Text("Search tasks…")
+                                .font(.system(size: DesignTokens.TypeScale.input, weight: .medium, design: .rounded))
+                                .foregroundColor(ThemeManager.current.overlay0)
+                                .padding(.leading, 2)
                         }
-                    )
+                        TokenHighlightTextView(
+                            text: $viewModel.input,
+                            tokens: viewModel.tokens,
+                            actionName: viewModel.actionName,
+                            isFocused: viewModel.isInsertMode,
+                            ghostText: completion.ghostText,
+                            cursorPosition: completion.cursorPosition,
+                            showCompletionMenu: completion.showMenu,
+                            onSubmit: {
+                                viewModel.handleSubmit()
+                            },
+                            onEscape: {
+                                if completion.showMenu {
+                                    viewModel.clearCompletions()
+                                } else {
+                                    viewModel.isInsertMode = false
+                                }
+                            },
+                            onMoveSelection: { delta in
+                                viewModel.moveSelection(delta: delta)
+                            },
+                            onCursorChange: { position in
+                                viewModel.handleCursorChange(position)
+                            },
+                            onToggleMenu: {
+                                viewModel.toggleCompletionMenu()
+                            },
+                            onAcceptGhost: {
+                                viewModel.acceptGhostText()
+                            },
+                            onMenuNavigation: { delta in
+                                viewModel.moveCompletionSelection(delta: delta)
+                            },
+                            onAcceptCompletion: {
+                                viewModel.acceptCompletion()
+                            }
+                        )
+                    }
                     .frame(height: TaskListLayout.inputHeight)
                     .onChange(of: viewModel.input) { _, newValue in
                         viewModel.handleInputChange(newValue)

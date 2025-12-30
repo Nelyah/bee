@@ -10,7 +10,7 @@ struct GroupHeaderRow: View {
         if isSelected {
             return ThemeManager.current.surface1
         } else if isHovered {
-            return ThemeManager.current.surface0.opacity(0.5)
+            return ThemeManager.current.surface0
         } else {
             return Color.clear
         }
@@ -19,24 +19,24 @@ struct GroupHeaderRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: header.isCollapsed ? "chevron.right" : "chevron.down")
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: DesignTokens.TypeScale.caption, weight: .bold))
                 .foregroundColor(ThemeManager.current.subtext0)
                 .frame(width: 12)
 
             Text(header.displayName)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundColor(isSelected ? ThemeManager.current.text : ThemeManager.current.subtext1)
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
+                .foregroundColor(isSelected || isHovered ? ThemeManager.current.text : ThemeManager.current.subtext1)
 
             Spacer()
 
             if isHovered || isSelected {
                 Text("Space to \(header.isCollapsed ? "expand" : "collapse")")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(ThemeManager.current.overlay0)
+                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
+                    .foregroundColor(ThemeManager.current.subtext0)
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 10)
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .padding(.horizontal, DesignTokens.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(backgroundColor)

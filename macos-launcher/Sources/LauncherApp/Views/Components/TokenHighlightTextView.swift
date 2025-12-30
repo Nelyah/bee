@@ -31,7 +31,7 @@ struct TokenHighlightTextView: NSViewRepresentable {
         textView.font = NSFont.systemFont(ofSize: 18, weight: .medium)
         textView.textColor = ThemeManager.current.textNS
         textView.insertionPointColor = ThemeManager.current.textNS
-        textView.textContainerInset = NSSize(width: 0, height: 2)
+        textView.textContainerInset = NSSize(width: 0, height: 4)
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false

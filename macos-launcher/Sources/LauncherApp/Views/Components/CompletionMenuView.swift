@@ -26,11 +26,11 @@ struct CompletionMenuView: View {
             }
         }
         .frame(maxHeight: 8 * 30)
-        .padding(.vertical, 4)
+        .padding(.vertical, DesignTokens.Spacing.xs)
         .background(ThemeManager.current.surface0)
-        .cornerRadius(8)
+        .cornerRadius(DesignTokens.Radius.sm)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
                 .stroke(ThemeManager.current.surface1, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
@@ -45,19 +45,19 @@ struct CompletionRow: View {
     var body: some View {
         HStack {
             Text(item.value)
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
-                .foregroundColor(isSelected ? ThemeManager.current.base : ThemeManager.current.text)
+                .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .monospaced))
+                .foregroundColor(isSelected ? ThemeManager.current.text : ThemeManager.current.text)
 
             Spacer()
 
             if let count = item.count {
                 Text("\(count)")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundColor(isSelected ? ThemeManager.current.surface0 : ThemeManager.current.overlay0)
+                    .font(.system(size: DesignTokens.TypeScale.label, weight: .regular))
+                    .foregroundColor(isSelected ? ThemeManager.current.text : ThemeManager.current.overlay0)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.sm)
         .background(isSelected ? ThemeManager.current.blue : Color.clear)
     }
 }

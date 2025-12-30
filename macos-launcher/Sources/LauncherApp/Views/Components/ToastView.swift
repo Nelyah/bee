@@ -8,18 +8,18 @@ struct ToastView: View {
         HStack(spacing: 10) {
             toastIcon
             Text(toast.message)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
                 .foregroundStyle(ThemeManager.current.text)
                 .multilineTextAlignment(.leading)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, DesignTokens.Spacing.md)
+        .padding(.horizontal, DesignTokens.Spacing.lg)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                 .fill(ThemeManager.current.surface0.opacity(0.95))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                 .stroke(ThemeManager.current.surface2.opacity(0.6), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 4)

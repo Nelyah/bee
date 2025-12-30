@@ -8,36 +8,26 @@ struct TaskDetailView: View {
     let onClose: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                header
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                    header
 
-                DetailSection(title: "Overview") {
-                    DetailRow(label: "UUID", value: shortUUID(task.uuid), helpText: task.uuid)
-                    DetailRow(label: "Project", value: task.project ?? "None", helpText: nil)
-                    DetailRow(label: "Tags", value: task.tags.isEmpty ? "None" : task.tags.joined(separator: ", "), helpText: nil)
-                    DetailRow(label: "Urgency", value: task.urgency.map(String.init) ?? "None", helpText: nil)
+                    if isSingleColumn(for: proxy.size.width) {
+                        metadataColumn
+                        externalLinksSection
+                    } else {
+                        twoColumnLayout(totalWidth: proxy.size.width)
+                    }
+
+                    annotationsSection
+                    historySection
                 }
-
-                DetailSection(title: "Dates") {
-                    let created = formattedDate(task.dateCreated)
-                    DetailRow(label: "Created", value: created.display, helpText: created.help)
-
-                    let completed = formattedOptionalDate(task.dateCompleted, emptyLabel: "Not completed")
-                    DetailRow(label: "Completed", value: completed.display, helpText: completed.help)
-
-                    let due = formattedOptionalDate(task.dateDue, emptyLabel: "Not set")
-                    DetailRow(label: "Due", value: due.display, helpText: due.help)
-                }
-
-                externalLinksSection
-                annotationsSection
-                historySection
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .onExitCommand {
-            onClose()
+            .onExitCommand {
+                onClose()
+            }
         }
     }
 
@@ -102,6 +92,46 @@ struct TaskDetailView: View {
                 onRefresh: { onRefreshLinks(.jira) }
             )
         }
+    }
+
+    private var metadataColumn: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+            DetailSection(title: "Overview") {
+                DetailRow(label: "UUID", value: shortUUID(task.uuid), helpText: task.uuid)
+                DetailRow(label: "Project", value: task.project ?? "None", helpText: nil)
+                DetailRow(label: "Tags", value: task.tags.isEmpty ? "None" : task.tags.joined(separator: ", "), helpText: nil)
+                DetailRow(label: "Urgency", value: task.urgency.map(String.init) ?? "None", helpText: nil)
+            }
+
+            DetailSection(title: "Dates") {
+                let created = formattedDate(task.dateCreated)
+                DetailRow(label: "Created", value: created.display, helpText: created.help)
+
+                let completed = formattedOptionalDate(task.dateCompleted, emptyLabel: "Not completed")
+                DetailRow(label: "Completed", value: completed.display, helpText: completed.help)
+
+                let due = formattedOptionalDate(task.dateDue, emptyLabel: "Not set")
+                DetailRow(label: "Due", value: due.display, helpText: due.help)
+            }
+        }
+    }
+
+    private func twoColumnLayout(totalWidth: CGFloat) -> some View {
+        let availableWidth = max(0, totalWidth - TaskDetailLayout.columnSpacing)
+        let leftWidth = availableWidth * TaskDetailLayout.leftColumnFraction
+        let rightWidth = availableWidth * TaskDetailLayout.rightColumnFraction
+
+        return HStack(alignment: .top, spacing: TaskDetailLayout.columnSpacing) {
+            metadataColumn
+                .frame(width: leftWidth, alignment: .leading)
+
+            externalLinksSection
+                .frame(width: rightWidth, alignment: .leading)
+        }
+    }
+
+    private func isSingleColumn(for width: CGFloat) -> Bool {
+        width < TaskDetailLayout.collapseWidth
     }
 
     private var annotationsSection: some View {
@@ -212,6 +242,13 @@ struct TaskDetailView: View {
         guard externalLinksState.taskUUID == task.uuid else { return nil }
         return externalLinksState.errorMessage
     }
+}
+
+private enum TaskDetailLayout {
+    static let leftColumnFraction: CGFloat = 0.4
+    static let rightColumnFraction: CGFloat = 0.6
+    static let columnSpacing: CGFloat = DesignTokens.Spacing.lg
+    static let collapseWidth: CGFloat = 920
 }
 
 private struct DetailSection<Content: View>: View {

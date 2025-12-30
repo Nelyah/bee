@@ -27,11 +27,11 @@ struct CompletionMenuView: View {
         }
         .frame(maxHeight: 8 * 30)
         .padding(.vertical, 4)
-        .background(CatppuccinTheme.surface0)
+        .background(ThemeManager.current.surface0)
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(CatppuccinTheme.surface1, lineWidth: 1)
+                .stroke(ThemeManager.current.surface1, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
@@ -46,19 +46,19 @@ struct CompletionRow: View {
         HStack {
             Text(item.value)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
-                .foregroundColor(isSelected ? CatppuccinTheme.base : CatppuccinTheme.text)
+                .foregroundColor(isSelected ? ThemeManager.current.base : ThemeManager.current.text)
 
             Spacer()
 
             if let count = item.count {
                 Text("\(count)")
                     .font(.system(size: 11, weight: .regular))
-                    .foregroundColor(isSelected ? CatppuccinTheme.surface0 : CatppuccinTheme.overlay0)
+                    .foregroundColor(isSelected ? ThemeManager.current.surface0 : ThemeManager.current.overlay0)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(isSelected ? CatppuccinTheme.blue : Color.clear)
+        .background(isSelected ? ThemeManager.current.blue : Color.clear)
     }
 }
 
@@ -74,5 +74,5 @@ struct CompletionRow: View {
     )
     .frame(width: 200)
     .padding()
-    .background(CatppuccinTheme.base)
+    .background(ThemeManager.current.base)
 }

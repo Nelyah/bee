@@ -33,7 +33,7 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(CatppuccinTheme.surface1.opacity(0.5), lineWidth: 1)
+                .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
         )
         .frame(minWidth: 680, minHeight: 440)
         .onAppear {
@@ -52,8 +52,8 @@ struct ContentView: View {
     private var launcherBackground: some View {
         LinearGradient(
             colors: [
-                CatppuccinTheme.base,
-                CatppuccinTheme.mantle
+                ThemeManager.current.base,
+                ThemeManager.current.mantle
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing

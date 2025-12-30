@@ -29,8 +29,8 @@ struct TokenHighlightTextView: NSViewRepresentable {
         textView.usesAdaptiveColorMappingForDarkAppearance = false
         textView.drawsBackground = false
         textView.font = NSFont.systemFont(ofSize: 18, weight: .medium)
-        textView.textColor = CatppuccinTheme.textNS
-        textView.insertionPointColor = CatppuccinTheme.textNS
+        textView.textColor = ThemeManager.current.textNS
+        textView.insertionPointColor = ThemeManager.current.textNS
         textView.textContainerInset = NSSize(width: 0, height: 2)
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isAutomaticQuoteSubstitutionEnabled = false
@@ -113,7 +113,7 @@ struct TokenHighlightTextView: NSViewRepresentable {
 func ghostTextAttributes(font: NSFont?) -> [NSAttributedString.Key: Any] {
     [
         .font: font ?? NSFont.systemFont(ofSize: 18, weight: .medium),
-        .foregroundColor: CatppuccinTheme.overlay0NS
+        .foregroundColor: ThemeManager.current.overlay0NS
     ]
 }
 

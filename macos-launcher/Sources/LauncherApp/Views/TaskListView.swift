@@ -34,7 +34,7 @@ struct TaskListView: View {
                 // Search input field
                 HStack(spacing: TaskListLayout.searchSpacing) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(CatppuccinTheme.subtext0)
+                        .foregroundColor(ThemeManager.current.subtext0)
                     TokenHighlightTextView(
                         text: $viewModel.input,
                         tokens: viewModel.tokens,
@@ -81,10 +81,10 @@ struct TaskListView: View {
                 .padding(.vertical, TaskListLayout.verticalPadding)
                 .background(
                     RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                        .fill(CatppuccinTheme.surface0)
+                        .fill(ThemeManager.current.surface0)
                         .overlay(
                             RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                                .stroke(CatppuccinTheme.surface1.opacity(TaskListLayout.strokeOpacity), lineWidth: 1)
+                                .stroke(ThemeManager.current.surface1.opacity(TaskListLayout.strokeOpacity), lineWidth: 1)
                         )
                 )
 
@@ -112,7 +112,7 @@ struct TaskListView: View {
                         }
                     }
                     .font(.system(size: TaskListLayout.headerFontSize, weight: .bold, design: .rounded))
-                    .foregroundColor(CatppuccinTheme.subtext0)
+                    .foregroundColor(ThemeManager.current.subtext0)
                     .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
                 }
 
@@ -144,7 +144,7 @@ struct TaskListView: View {
                 if let status = viewModel.statusMessage {
                     Text(status)
                         .font(.system(size: TaskListLayout.statusFontSize, weight: .medium, design: .rounded))
-                        .foregroundColor(CatppuccinTheme.subtext1)
+                        .foregroundColor(ThemeManager.current.subtext1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -176,7 +176,7 @@ struct TaskListView: View {
     TaskListView(viewModel: makePreviewViewModel())
         .padding(TaskListLayout.previewPadding)
         .frame(width: TaskListLayout.previewWidth, height: TaskListLayout.previewHeight)
-        .background(CatppuccinTheme.base)
+        .background(ThemeManager.current.base)
 }
 
 @MainActor

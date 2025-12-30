@@ -9,17 +9,17 @@ struct TaskDetailView: View {
             HStack {
                 Text(task.summary)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(CatppuccinTheme.text)
+                    .foregroundColor(ThemeManager.current.text)
                     .lineLimit(2)
                 Spacer()
                 Text(task.status.uppercased())
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(CatppuccinTheme.subtext1)
+                    .foregroundColor(ThemeManager.current.subtext1)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(CatppuccinTheme.surface0)
+                            .fill(ThemeManager.current.surface0)
                     )
             }
 
@@ -35,7 +35,7 @@ struct TaskDetailView: View {
 
             Text("Press Esc to go back")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundColor(CatppuccinTheme.subtext0)
+                .foregroundColor(ThemeManager.current.subtext0)
         }
         .onExitCommand {
             onClose()
@@ -47,5 +47,5 @@ struct TaskDetailView: View {
     TaskDetailView(task: MockApiClient.sampleTasks[0], onClose: {})
         .padding(24)
         .frame(width: 600, height: 400)
-        .background(CatppuccinTheme.base)
+        .background(ThemeManager.current.base)
 }

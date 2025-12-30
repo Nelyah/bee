@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// Return a Catppuccin Mocha color based on task status.
+/// Return a One Dark color based on task status.
 func statusColor(_ status: String) -> Color {
     switch status.lowercased() {
     case "active":
-        return CatppuccinTheme.green
+        return ThemeManager.current.green
     case "completed":
-        return CatppuccinTheme.blue
+        return ThemeManager.current.blue
     case "deleted":
-        return CatppuccinTheme.red
+        return ThemeManager.current.red
     case "blocked":
-        return CatppuccinTheme.mauve
+        return ThemeManager.current.mauve
     default:
-        return CatppuccinTheme.yellow
+        return ThemeManager.current.yellow
     }
 }

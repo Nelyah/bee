@@ -7,21 +7,21 @@ struct ToastView: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(CatppuccinTheme.red)
+                .foregroundStyle(ThemeManager.current.red)
             Text(toast.message)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(CatppuccinTheme.text)
+                .foregroundStyle(ThemeManager.current.text)
                 .multilineTextAlignment(.leading)
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(CatppuccinTheme.surface0.opacity(0.95))
+                .fill(ThemeManager.current.surface0.opacity(0.95))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(CatppuccinTheme.surface2.opacity(0.6), lineWidth: 1)
+                .stroke(ThemeManager.current.surface2.opacity(0.6), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 4)
     }

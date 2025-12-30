@@ -8,11 +8,11 @@ struct DetailRow: View {
         HStack(alignment: .top, spacing: 16) {
             Text(label.uppercased())
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundColor(CatppuccinTheme.subtext0)
+                .foregroundColor(ThemeManager.current.subtext0)
                 .frame(width: 90, alignment: .leading)
             Text(value)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundColor(CatppuccinTheme.text)
+                .foregroundColor(ThemeManager.current.text)
         }
     }
 }
@@ -24,5 +24,5 @@ struct DetailRow: View {
         DetailRow(label: "Status", value: "active")
     }
     .padding()
-    .background(CatppuccinTheme.base)
+    .background(ThemeManager.current.base)
 }

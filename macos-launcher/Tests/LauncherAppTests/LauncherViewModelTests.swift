@@ -121,7 +121,7 @@ final class LauncherViewModelTests: XCTestCase {
         let font = NSFont.systemFont(ofSize: 14, weight: .medium)
         let attributes = ghostTextAttributes(font: font)
 
-        XCTAssertEqual(attributes[.foregroundColor] as? NSColor, CatppuccinTheme.overlay0NS)
+        XCTAssertEqual(attributes[.foregroundColor] as? NSColor, ThemeManager.current.overlay0NS)
         XCTAssertEqual(attributes[.font] as? NSFont, font)
     }
 

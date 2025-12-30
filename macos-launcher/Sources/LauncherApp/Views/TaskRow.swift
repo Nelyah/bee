@@ -18,20 +18,20 @@ struct TaskRow: View {
                     // First column (usually ID) - small fixed width
                     Text(value(for: column))
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundColor(CatppuccinTheme.subtext0)
+                        .foregroundColor(ThemeManager.current.subtext0)
                         .frame(width: 30, alignment: .leading)
                 } else if column == "summary" {
                     // Summary column expands
                     Text(value(for: column))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(CatppuccinTheme.text)
+                        .foregroundColor(ThemeManager.current.text)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     // Other columns
                     Text(value(for: column))
                         .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(CatppuccinTheme.subtext1)
+                        .foregroundColor(ThemeManager.current.subtext1)
                         .frame(width: 60, alignment: .leading)
                         .lineLimit(1)
                 }
@@ -41,7 +41,7 @@ struct TaskRow: View {
         .padding(.horizontal, 10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isSelected ? CatppuccinTheme.surface1.opacity(0.6) : CatppuccinTheme.surface0.opacity(0.3))
+                .fill(isSelected ? ThemeManager.current.surface1.opacity(0.6) : ThemeManager.current.surface0.opacity(0.3))
         )
     }
 
@@ -118,7 +118,7 @@ struct TaskRow: View {
         isSelected: true
     )
     .padding()
-    .background(CatppuccinTheme.base)
+    .background(ThemeManager.current.base)
 }
 
 #Preview("Unselected") {
@@ -128,5 +128,5 @@ struct TaskRow: View {
         isSelected: false
     )
     .padding()
-    .background(CatppuccinTheme.base)
+    .background(ThemeManager.current.base)
 }

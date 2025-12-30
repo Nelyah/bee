@@ -148,35 +148,35 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
     return spans
 }
 
-/// Map highlight kinds to Catppuccin Mocha colors.
+/// Map highlight kinds to One Dark colors.
 func highlightColor(for kind: HighlightKind) -> NSColor {
     switch kind {
     case .action:
-        return CatppuccinTheme.blueNS
+        return ThemeManager.current.blueNS
     case .tag:
-        return CatppuccinTheme.peachNS
+        return ThemeManager.current.peachNS
     case .project:
-        return CatppuccinTheme.mauveNS
+        return ThemeManager.current.mauveNS
     case .dateFilter:
-        return CatppuccinTheme.tealNS
+        return ThemeManager.current.tealNS
     case .status:
-        return CatppuccinTheme.pinkNS
+        return ThemeManager.current.pinkNS
     case .dependency:
-        return CatppuccinTheme.lavenderNS
+        return ThemeManager.current.lavenderNS
     case .logicalOp:
-        return CatppuccinTheme.skyNS
+        return ThemeManager.current.skyNS
     case .parenthesis:
-        return CatppuccinTheme.flamingoNS
+        return ThemeManager.current.flamingoNS
     case .identifier:
-        return CatppuccinTheme.rosewaterNS
+        return ThemeManager.current.rosewaterNS
     }
 }
 
-/// Build an attributed string with token highlights using Catppuccin theme.
+/// Build an attributed string with token highlights using One Dark theme.
 func highlightedText(text: String, tokens: [TokenSpan], actionName: String) -> NSAttributedString {
     let baseAttributes: [NSAttributedString.Key: Any] = [
         .font: NSFont.systemFont(ofSize: 18, weight: .medium),
-        .foregroundColor: CatppuccinTheme.textNS
+        .foregroundColor: ThemeManager.current.textNS
     ]
     let attributed = NSMutableAttributedString(string: text, attributes: baseAttributes)
 

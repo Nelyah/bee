@@ -25,6 +25,19 @@ struct CompletionEngine {
         "end.after:"
     ]
     private static let dependencyPrefixes = ["depends:"]
+    private static let filterKeywords = [
+        "status:",
+        "project:",
+        "proj:",
+        "due:",
+        "due.before:",
+        "due.after:",
+        "created.before:",
+        "created.after:",
+        "end.before:",
+        "end.after:",
+        "depends:"
+    ]
 
     static func detectContext(input: String, cursorPosition: Int, tokens: [TokenSpan]) -> CompletionContext {
         let pos = min(cursorPosition, input.count)
@@ -94,6 +107,15 @@ struct CompletionEngine {
         candidates.contains { text.hasPrefix($0) }
     }
 
+    private static func mergedActions(_ actions: [CompletionItem]) -> [CompletionItem] {
+        var merged = actions
+        let existing = Set(actions.map { $0.value })
+        for keyword in filterKeywords where !existing.contains(keyword) {
+            merged.append(CompletionItem(value: keyword, count: nil))
+        }
+        return merged
+    }
+
     static func currentPrefix(input: String, cursorPosition: Int) -> String {
         let pos = min(cursorPosition, input.count)
         let beforeCursor = String(input.prefix(pos))
@@ -121,7 +143,7 @@ struct CompletionEngine {
         let source: [CompletionItem]
         switch context {
         case .action:
-            source = cache.actions
+            source = mergedActions(cache.actions)
         case .tag:
             source = cache.tags
         case .project:
@@ -144,9 +166,13 @@ struct CompletionEngine {
         }
 
         let ghostText: String?
-        if let first = items.first, !prefix.isEmpty {
-            let suffix = String(first.value.dropFirst(prefix.count))
-            ghostText = suffix.isEmpty ? nil : suffix
+        if let first = items.first, (!prefix.isEmpty || context != .action) {
+            if prefix.isEmpty {
+                ghostText = first.value
+            } else {
+                let suffix = String(first.value.dropFirst(prefix.count))
+                ghostText = suffix.isEmpty ? nil : suffix
+            }
         } else {
             ghostText = nil
         }

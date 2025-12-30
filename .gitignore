@@ -3,3 +3,6 @@ data.json
 tarpaulin-report.html
 .env
 *.sqlite
+
+# macOS
+.DS_Store

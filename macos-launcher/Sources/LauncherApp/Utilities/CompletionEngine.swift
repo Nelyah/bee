@@ -12,6 +12,20 @@ struct CompletionResult {
 }
 
 struct CompletionEngine {
+    private static let tagSuffixes = ["+", "-"]
+    private static let projectPrefixes = ["project:", "proj:"]
+    private static let statusPrefixes = ["status:"]
+    private static let datePrefixes = [
+        "due:",
+        "due.before:",
+        "due.after:",
+        "created.before:",
+        "created.after:",
+        "end.before:",
+        "end.after:"
+    ]
+    private static let dependencyPrefixes = ["depends:"]
+
     static func detectContext(input: String, cursorPosition: Int, tokens: [TokenSpan]) -> CompletionContext {
         let pos = min(cursorPosition, input.count)
         let beforeCursor = String(input.prefix(pos))
@@ -36,38 +50,32 @@ struct CompletionEngine {
             }
         }
 
-        if beforeCursor.hasSuffix("+") || beforeCursor.hasSuffix("-") {
+        if hasSuffix(beforeCursor, in: tagSuffixes) {
             return .tag
         }
-        if beforeCursor.hasSuffix("project:") || beforeCursor.hasSuffix("proj:") {
+        if hasSuffix(beforeCursor, in: projectPrefixes) {
             return .project
         }
-        if beforeCursor.hasSuffix("status:") {
+        if hasSuffix(beforeCursor, in: statusPrefixes) {
             return .status
         }
-        if beforeCursor.hasSuffix("due:") || beforeCursor.hasSuffix("due.before:") ||
-           beforeCursor.hasSuffix("due.after:") || beforeCursor.hasSuffix("created.before:") ||
-           beforeCursor.hasSuffix("created.after:") || beforeCursor.hasSuffix("end.before:") ||
-           beforeCursor.hasSuffix("end.after:") {
+        if hasSuffix(beforeCursor, in: datePrefixes) {
             return .date
         }
-        if beforeCursor.hasSuffix("depends:") {
+        if hasSuffix(beforeCursor, in: dependencyPrefixes) {
             return .taskRef
         }
 
-        if lastWord.hasPrefix("project:") || lastWord.hasPrefix("proj:") {
+        if hasPrefix(lastWord, in: projectPrefixes) {
             return .project
         }
-        if lastWord.hasPrefix("status:") {
+        if hasPrefix(lastWord, in: statusPrefixes) {
             return .status
         }
-        if lastWord.hasPrefix("due:") || lastWord.hasPrefix("due.before:") ||
-            lastWord.hasPrefix("due.after:") || lastWord.hasPrefix("created.before:") ||
-            lastWord.hasPrefix("created.after:") || lastWord.hasPrefix("end.before:") ||
-            lastWord.hasPrefix("end.after:") {
+        if hasPrefix(lastWord, in: datePrefixes) {
             return .date
         }
-        if lastWord.hasPrefix("depends:") {
+        if hasPrefix(lastWord, in: dependencyPrefixes) {
             return .taskRef
         }
 
@@ -76,6 +84,14 @@ struct CompletionEngine {
         }
 
         return .none
+    }
+
+    private static func hasSuffix(_ text: String, in candidates: [String]) -> Bool {
+        candidates.contains { text.hasSuffix($0) }
+    }
+
+    private static func hasPrefix(_ text: String, in candidates: [String]) -> Bool {
+        candidates.contains { text.hasPrefix($0) }
     }
 
     static func currentPrefix(input: String, cursorPosition: Int) -> String {

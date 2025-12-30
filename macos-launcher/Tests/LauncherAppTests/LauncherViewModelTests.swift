@@ -213,6 +213,30 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.detectCompletionContext(), .date)
     }
 
+    func testDetectCompletionContextDetectsProjectPrefix() {
+        let viewModel = LauncherViewModel()
+        viewModel.input = "proj:work"
+        viewModel.cursorPosition = viewModel.input.count
+
+        XCTAssertEqual(viewModel.detectCompletionContext(), .project)
+    }
+
+    func testDetectCompletionContextDetectsStatusPrefix() {
+        let viewModel = LauncherViewModel()
+        viewModel.input = "status:pen"
+        viewModel.cursorPosition = viewModel.input.count
+
+        XCTAssertEqual(viewModel.detectCompletionContext(), .status)
+    }
+
+    func testDetectCompletionContextDetectsDependsPrefix() {
+        let viewModel = LauncherViewModel()
+        viewModel.input = "depends:abcd"
+        viewModel.cursorPosition = viewModel.input.count
+
+        XCTAssertEqual(viewModel.detectCompletionContext(), .taskRef)
+    }
+
     func testSortTasksByUrgencyOrdersHighFirstAndNilLast() {
         let viewModel = LauncherViewModel()
         let tasks = [

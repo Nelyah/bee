@@ -338,6 +338,10 @@ impl Task {
         &self.date_due
     }
 
+    pub fn get_urgency(&self) -> &Option<i64> {
+        &self.urgency
+    }
+
     pub fn get_uuid(&self) -> &Uuid {
         &self.uuid
     }

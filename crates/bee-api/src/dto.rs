@@ -81,8 +81,8 @@ impl ApiTask {
     /// Build a trimmed API task payload from a domain task.
     pub fn from_task(task: &Task) -> Self {
         let urgency = {
-            let mut task = task.clone();
-            task.get_urgency().ok()
+            let task = task.clone();
+            *task.get_urgency()
         };
         Self {
             id: task.get_id(),
@@ -115,9 +115,7 @@ pub struct ExternalLinkDto {
 
 impl ExternalLinkDto {
     pub fn from_link(link: bee_core::external_links::ExternalLink) -> Self {
-        let last_synced_at = link
-            .last_synced_at
-            .map(|dt| dt.with_timezone(&Local));
+        let last_synced_at = link.last_synced_at.map(|dt| dt.with_timezone(&Local));
         Self {
             id: link.id,
             provider: link.provider,

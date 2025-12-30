@@ -6,6 +6,7 @@ final class LauncherActionService {
     private let apiClient: ApiClientProtocol
     private let logger: Logger
     private(set) var reportConfig: ReportConfig?
+    private let actionQueue = SerialTaskQueue()
 
     init(
         apiClient: ApiClientProtocol,
@@ -49,12 +50,14 @@ final class LauncherActionService {
     }
 
     func runAction(parsed: ParseResponse, actionName: String) async throws -> ActionResponse {
-        let filter = await resolveDefaultFilterIfNeeded(parsed: parsed, actionName: actionName)
-        return try await apiClient.runAction(
-            action: actionName,
-            properties: parsed.properties,
-            filter: filter
-        )
+        try await actionQueue.run {
+            let filter = await self.resolveDefaultFilterIfNeeded(parsed: parsed, actionName: actionName)
+            return try await self.apiClient.runAction(
+                action: actionName,
+                properties: parsed.properties,
+                filter: filter
+            )
+        }
     }
 
     func fetchCompletions() async throws -> CompletionCache {

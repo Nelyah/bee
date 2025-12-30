@@ -38,7 +38,21 @@ final class ApiClient: ApiClientProtocol, Sendable {
     /// Execute an action with optional properties and filter.
     func runAction(action: String, properties: JSONValue?, filter: JSONValue?) async throws -> ActionResponse {
         let request = ActionRequest(action: action, properties: properties, filter: filter)
-        return try await send(request, path: "/v1/action")
+        var attempt = 0
+        while true {
+            do {
+                return try await send(request, path: "/v1/action")
+            } catch let ApiClientError.api(message) {
+                if message.lowercased().contains("database is locked"), attempt < 2 {
+                    attempt += 1
+                    let delay = UInt64(150_000_000 * attempt)
+                    logger.warning("Retrying action after database lock. attempt=\(attempt)")
+                    try await Task.sleep(nanoseconds: delay)
+                    continue
+                }
+                throw ApiClientError.api(message: message)
+            }
+        }
     }
 
     /// Fetch the current configuration from the API.

@@ -370,6 +370,7 @@ private struct ExternalLinkRow: View {
     @State private var isHoveringTitle = false
     @State private var isHoveringBranch = false
     @State private var isHoveringLinkCopy = false
+    @State private var isHoveringLink = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -505,9 +506,13 @@ private struct ExternalLinkRow: View {
                 Link(destination: url) {
                     Text(link.url)
                         .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
-                        .foregroundColor(ThemeManager.current.subtext0)
+                        .foregroundColor(isHoveringLink ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
+                        .underline(isHoveringLink)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                }
+                .onHover { hovering in
+                    isHoveringLink = hovering
                 }
             } else {
                 Text(link.url)

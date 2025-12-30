@@ -13,16 +13,6 @@
 - The “Refresh” control is appropriately quiet, but lacks hover/click feedback, so clickability isn’t obvious.
 
 ## Prioritised TODO list
-- **ID**: UX-003  
-  **Priority**: P1  
-  **Effort**: S  
-  **Evidence**: External Links > GitLab rows; “Open • chat • url” line.  
-  **Problem (rough)**: Secondary metadata line has low contrast, making state + link harder to read.  
-  **Fix (rough)**:
-  - Increase text contrast slightly for the metadata line (e.g., subtext0 → subtext1).
-  - Consider truncating URL earlier or styling it as a subdued link pill.  
-  **Success criteria**: Secondary line is readable at a glance without straining; URL remains discoverable.
-
 - **ID**: UX-004  
   **Priority**: P2  
   **Effort**: S  
@@ -41,6 +31,10 @@
 - Should External Links be the primary focus in detail view? If yes, I would prioritize it in the layout (right column or top section).
 
 ## Done
+- **ID**: UX-003  
+  **Status**: Done  
+  **Evidence**: External Links > GitLab rows; “Open • chat • url” line.  
+  **Summary**: Added hover highlight for the URL (underline + slightly brighter text) to improve discoverability and legibility.
 - **ID**: UX-002  
   **Status**: Done  
   **Evidence**: External Links > GitLab rows; mixed icon/badge sizes across the row.  

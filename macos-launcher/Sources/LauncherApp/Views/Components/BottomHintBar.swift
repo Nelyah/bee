@@ -3,6 +3,7 @@ import SwiftUI
 struct BottomHintBar: View {
     let leftHints: [BottomHint]
     let rightHints: [BottomHint]
+    static let height: CGFloat = 34
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {

@@ -109,7 +109,7 @@ impl UserFacingError for ApiError {
 
     fn user_message(&self) -> String {
         match self {
-            ApiError::BadRequest { .. } => "Invalid request.".to_string(),
+            ApiError::BadRequest { message } => message.to_string(),
             ApiError::NotFound { .. } => "The requested item was not found.".to_string(),
             ApiError::Config { .. } => "Configuration could not be loaded.".to_string(),
             ApiError::ExternalLink { .. } => "External link operation failed.".to_string(),

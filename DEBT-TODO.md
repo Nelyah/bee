@@ -7,19 +7,6 @@
 - Token classification still relies on stringly-typed token names in `TokenClassifier`/`HighlightSpan`, risking silent regressions.
 
 ## Open Issues
-### DEBT-0009: Collapsed-group persistence uses stringly-typed keys across tests
-- Priority: P2
-- Effort: S
-- Area: macos-launcher grouping persistence
-- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:collapsedGroupsKey`, `macos-launcher/Tests/LauncherAppTests/LauncherViewModelTests.swift:collapsedGroupsKey`
-- Smells: magic-string, coupling
-- Problem (rough): Persistence keys are duplicated as string literals in tests because the production keys are private. Renaming keys requires updating multiple locations and can silently break tests.
-- Suggested fix (rough):
-- Expose keys via an internal `UserDefaultsKeys` or `SettingsStore` helper.
-- Update tests to reference shared keys instead of local literals.
-- Consider injecting a `UserDefaults` wrapper for easier future refactors.
-- Safety net: Existing persistence tests should continue to pass after refactor.
-
 ### DEBT-0010: Token types are stringly-typed across highlighting and classification
 - Priority: P2
 - Effort: M
@@ -34,6 +21,9 @@
 - Safety net: Add tests for decoding unknown token types and for classification/highlighting on expected tokens.
 
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0009: Collapsed-group persistence uses stringly-typed keys across tests
+- Resolved on: 2025-12-30
+- Note: Added `UserDefaultsKeys` helper and switched production/tests to shared keys.
 ### DEBT-0008: Keyboard shortcut mappings split across view layers
 - Resolved on: 2025-12-30
 - Note: Centralized normal-mode key mapping in `KeyHandlingDecider` and added tests.

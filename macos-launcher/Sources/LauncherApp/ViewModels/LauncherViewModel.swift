@@ -293,20 +293,15 @@ final class LauncherViewModel: ObservableObject {
         return true
     }
 
-    // MARK: - Grouping Persistence
-
-    private static let collapsedGroupsKey = "collapsedGroups"
-    private static let collapsedNilGroupKey = "collapsedNilGroup"
-
     private func saveCollapsedState() {
         let keys = collapsedGroups.compactMap { $0 }
-        UserDefaults.standard.set(keys, forKey: Self.collapsedGroupsKey)
-        UserDefaults.standard.set(collapsedGroups.contains(nil), forKey: Self.collapsedNilGroupKey)
+        UserDefaults.standard.set(keys, forKey: UserDefaultsKeys.collapsedGroups)
+        UserDefaults.standard.set(collapsedGroups.contains(nil), forKey: UserDefaultsKeys.collapsedNilGroup)
     }
 
     func loadCollapsedState() {
-        let keys = UserDefaults.standard.stringArray(forKey: Self.collapsedGroupsKey) ?? []
-        let includesNil = UserDefaults.standard.bool(forKey: Self.collapsedNilGroupKey)
+        let keys = UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.collapsedGroups) ?? []
+        let includesNil = UserDefaults.standard.bool(forKey: UserDefaultsKeys.collapsedNilGroup)
         collapsedGroups = Set(keys.map { Optional($0) })
         if includesNil { collapsedGroups.insert(nil) }
     }

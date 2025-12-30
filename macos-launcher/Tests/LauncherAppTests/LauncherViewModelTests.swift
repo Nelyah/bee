@@ -79,8 +79,8 @@ final class LauncherViewModelTests: XCTestCase {
 
     func testLoadCollapsedStateRestoresKeys() {
         let defaults = UserDefaults.standard
-        defaults.set(["work", "personal"], forKey: collapsedGroupsKey)
-        defaults.set(true, forKey: collapsedNilGroupKey)
+        defaults.set(["work", "personal"], forKey: UserDefaultsKeys.collapsedGroups)
+        defaults.set(true, forKey: UserDefaultsKeys.collapsedNilGroup)
         defer { clearCollapsedDefaults() }
 
         let viewModel = LauncherViewModel()
@@ -96,12 +96,12 @@ final class LauncherViewModelTests: XCTestCase {
         let viewModel = LauncherViewModel()
 
         viewModel.toggleGroupCollapse("work")
-        let saved = Set(UserDefaults.standard.stringArray(forKey: collapsedGroupsKey) ?? [])
+        let saved = Set(UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.collapsedGroups) ?? [])
         XCTAssertEqual(saved, ["work"])
-        XCTAssertFalse(UserDefaults.standard.bool(forKey: collapsedNilGroupKey))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: UserDefaultsKeys.collapsedNilGroup))
 
         viewModel.toggleGroupCollapse(nil)
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: collapsedNilGroupKey))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: UserDefaultsKeys.collapsedNilGroup))
     }
 
     func testBuildHighlightSpansActionProjectTag() {
@@ -282,13 +282,10 @@ final class LauncherViewModelTests: XCTestCase {
     }
 }
 
-private let collapsedGroupsKey = "collapsedGroups"
-private let collapsedNilGroupKey = "collapsedNilGroup"
-
 private func clearCollapsedDefaults() {
     let defaults = UserDefaults.standard
-    defaults.removeObject(forKey: collapsedGroupsKey)
-    defaults.removeObject(forKey: collapsedNilGroupKey)
+    defaults.removeObject(forKey: UserDefaultsKeys.collapsedGroups)
+    defaults.removeObject(forKey: UserDefaultsKeys.collapsedNilGroup)
 }
 
 /// Simple error for testing toast messaging.

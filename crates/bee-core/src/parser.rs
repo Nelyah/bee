@@ -33,8 +33,20 @@ fn matches_second_string(input: &str) -> bool {
     input == "s" || input == "second" || input == "seconds"
 }
 
-fn get_day_duration_from_string(number: i64, value: &str) -> TimeDelta {
-    Duration::try_days(number * value.parse::<i64>().unwrap().to_owned()).unwrap()
+fn get_day_duration_from_string(number: i64, value: &str) -> Result<TimeDelta, String> {
+    let parsed = value
+        .parse::<i64>()
+        .map_err(|err| format!("invalid duration value '{}': {}", value, err))?;
+    Duration::try_days(number * parsed).ok_or_else(|| "invalid day duration".to_string())
+}
+
+fn empty_token() -> Token {
+    Token {
+        token_type: TokenType::Eof,
+        literal: String::new(),
+        start: 0,
+        end: 0,
+    }
 }
 
 pub trait BaseParser: Debug {
@@ -54,21 +66,21 @@ pub trait BaseParser: Debug {
 
     fn back_token(&mut self) {
         if self.get_buffer_index() == 0 {
-            panic!("Error: Trying to call 'back_token' too many times!");
+            debug!("Ignoring back_token call at buffer start");
+            return;
         }
-        self.set_buffer_index(self.get_buffer_index() - 1);
-        self.set_current_token(
-            self.get_buffer_tokens()
-                .get(self.get_buffer_index())
-                .unwrap()
-                .to_owned(),
-        );
-        self.set_peek_token(
-            self.get_buffer_tokens()
-                .get(self.get_buffer_index() + 1)
-                .unwrap()
-                .to_owned(),
-        );
+        let new_index = self.get_buffer_index() - 1;
+        self.set_buffer_index(new_index);
+        if let Some(token) = self.get_buffer_tokens().get(new_index) {
+            self.set_current_token(token.to_owned());
+        } else {
+            self.set_current_token(empty_token());
+        }
+        if let Some(token) = self.get_buffer_tokens().get(new_index + 1) {
+            self.set_peek_token(token.to_owned());
+        } else {
+            self.set_peek_token(empty_token());
+        }
     }
 
     fn back_n_tokens(&mut self, n: usize) {
@@ -84,12 +96,12 @@ pub trait BaseParser: Debug {
             && self.get_buffer_index() < self.get_buffer_tokens().len() - 2
         {
             self.set_current_token(self.get_peek_token().to_owned());
-            self.set_peek_token(
-                self.get_buffer_tokens()
-                    .get(self.get_buffer_index() + 2)
-                    .unwrap()
-                    .to_owned(),
-            );
+            let next_peek = self
+                .get_buffer_tokens()
+                .get(self.get_buffer_index() + 2)
+                .cloned()
+                .unwrap_or_else(empty_token);
+            self.set_peek_token(next_peek);
             self.set_buffer_index(self.get_buffer_index() + 1);
             return;
         }
@@ -97,7 +109,13 @@ pub trait BaseParser: Debug {
         // We're up to date with the lexer
         self.set_current_token(self.get_peek_token().to_owned());
 
-        let next_lexer_tok = self.get_mut_lexer().next_token().unwrap();
+        let next_lexer_tok = match self.get_mut_lexer().next_token() {
+            Ok(token) => token,
+            Err(err) => {
+                debug!("Lexer error while reading token: {}", err);
+                empty_token()
+            }
+        };
         self.set_peek_token(next_lexer_tok);
 
         let next_peek_tok = self.get_peek_token().to_owned();
@@ -144,36 +162,48 @@ pub trait BaseParser: Debug {
                     backtrace_tokens += self.skip_whitespace();
                     let unit_token = self.get_current_token().to_owned();
                     // expect a duration here
-                    let duration = match unit_token.literal {
-                        _ if matches_year_string(unit_token.literal.as_str()) => {
-                            get_day_duration_from_string(365, number_token.literal.as_str())
+                    let duration = match unit_token.literal.as_str() {
+                        value if matches_year_string(value) => {
+                            get_day_duration_from_string(365, number_token.literal.as_str())?
                         }
-                        _ if matches_month_string(unit_token.literal.as_str()) => {
-                            get_day_duration_from_string(30, number_token.literal.as_str())
+                        value if matches_month_string(value) => {
+                            get_day_duration_from_string(30, number_token.literal.as_str())?
                         }
-                        _ if matches_week_string(unit_token.literal.as_str()) => {
-                            get_day_duration_from_string(7, number_token.literal.as_str())
+                        value if matches_week_string(value) => {
+                            get_day_duration_from_string(7, number_token.literal.as_str())?
                         }
-                        _ if matches_day_string(unit_token.literal.as_str()) => {
-                            get_day_duration_from_string(1, number_token.literal.as_str())
+                        value if matches_day_string(value) => {
+                            get_day_duration_from_string(1, number_token.literal.as_str())?
                         }
-                        _ if matches_hour_string(unit_token.literal.as_str()) => {
-                            Duration::try_hours(
-                                number_token.literal.parse::<i64>().unwrap().to_owned(),
-                            )
-                            .unwrap()
+                        value if matches_hour_string(value) => {
+                            let parsed = number_token.literal.parse::<i64>().map_err(|err| {
+                                format!(
+                                    "invalid hour duration value '{}': {}",
+                                    number_token.literal, err
+                                )
+                            })?;
+                            Duration::try_hours(parsed)
+                                .ok_or_else(|| "invalid hour duration".to_string())?
                         }
-                        _ if matches_minute_string(unit_token.literal.as_str()) => {
-                            Duration::try_minutes(
-                                number_token.literal.parse::<i64>().unwrap().to_owned(),
-                            )
-                            .unwrap()
+                        value if matches_minute_string(value) => {
+                            let parsed = number_token.literal.parse::<i64>().map_err(|err| {
+                                format!(
+                                    "invalid minute duration value '{}': {}",
+                                    number_token.literal, err
+                                )
+                            })?;
+                            Duration::try_minutes(parsed)
+                                .ok_or_else(|| "invalid minute duration".to_string())?
                         }
-                        _ if matches_second_string(unit_token.literal.as_str()) => {
-                            Duration::try_seconds(
-                                number_token.literal.parse::<i64>().unwrap().to_owned(),
-                            )
-                            .unwrap()
+                        value if matches_second_string(value) => {
+                            let parsed = number_token.literal.parse::<i64>().map_err(|err| {
+                                format!(
+                                    "invalid second duration value '{}': {}",
+                                    number_token.literal, err
+                                )
+                            })?;
+                            Duration::try_seconds(parsed)
+                                .ok_or_else(|| "invalid second duration".to_string())?
                         }
                         _ => {
                             break;
@@ -249,11 +279,13 @@ pub trait BaseParser: Debug {
                     let now = Local::now();
                     let today_start = Local
                         .from_local_datetime(
-                            &now.date_naive()
-                                .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+                            &now.date_naive().and_time(
+                                NaiveTime::from_hms_opt(0, 0, 0)
+                                    .ok_or_else(|| "invalid time for day start".to_string())?,
+                            ),
                         )
                         .single()
-                        .unwrap();
+                        .ok_or_else(|| "unable to resolve local date start".to_string())?;
                     match self.get_current_token().literal.as_str() {
                         "now" => {
                             try_time = now;
@@ -262,13 +294,19 @@ pub trait BaseParser: Debug {
                             try_time = today_start;
                         }
                         "tomorrow" => {
-                            try_time = today_start + Duration::try_days(1).unwrap();
+                            try_time = today_start
+                                + Duration::try_days(1)
+                                    .ok_or_else(|| "invalid day duration".to_string())?;
                         }
                         "yesterday" => {
-                            try_time = today_start - Duration::try_days(1).unwrap();
+                            try_time = today_start
+                                - Duration::try_days(1)
+                                    .ok_or_else(|| "invalid day duration".to_string())?;
                         }
                         "eod" => {
-                            try_time = today_start + Duration::try_hours(18).unwrap();
+                            try_time = today_start
+                                + Duration::try_hours(18)
+                                    .ok_or_else(|| "invalid hour duration".to_string())?;
                         }
                         "in" => {
                             expect_duration = true;
@@ -301,11 +339,8 @@ pub trait BaseParser: Debug {
             backtrace_tokens += self.skip_whitespace();
         }
         self.back_n_tokens(backtrace_tokens);
-        if time.is_none() {
-            return Err("invalid date expression".to_string());
-        }
         debug!("Parsed date expression. Time: {:?}", time);
-        Ok(time.unwrap())
+        time.ok_or_else(|| "invalid date expression".to_string())
     }
 }
 

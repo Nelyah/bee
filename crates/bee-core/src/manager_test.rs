@@ -1,5 +1,7 @@
 use all_asserts::assert_true;
 use chrono::{Duration, Local};
+use std::collections::HashMap;
+use uuid::Uuid;
 
 use crate::filters;
 
@@ -24,11 +26,10 @@ fn test_task_data_serialize() {
     tasks.insert(task1.uuid, task1.clone());
     tasks.insert(task2.uuid, task2.clone());
 
-    let task_data = TaskData {
-        tasks,
-        max_id: 0,
-        ..TaskData::default()
-    };
+    let mut task_data = TaskData::default();
+    for task in tasks.values() {
+        task_data.set_task(task.clone());
+    }
 
     let serialized = serde_json::to_string(&task_data).unwrap();
     let expected = format!(
@@ -70,20 +71,20 @@ fn test_task_data_deserialize() {
 
     let task_data: TaskData = serde_json::from_str(json).unwrap();
 
-    assert_eq!(task_data.tasks.len(), 3);
+    assert_eq!(task_data.get_task_map().len(), 3);
     assert_true!(
         task_data
-            .tasks
+            .get_task_map()
             .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap())
     );
     assert_true!(
         task_data
-            .tasks
+            .get_task_map()
             .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap())
     );
     assert_true!(
         task_data
-            .tasks
+            .get_task_map()
             .contains_key(&Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap())
     );
 }
@@ -178,8 +179,8 @@ fn test_filter_taskdata() {
         }],
         ..Task::default()
     };
-    data.tasks.insert(task1.uuid.to_owned(), task1.clone());
-    data.tasks.insert(task2.uuid.to_owned(), task2.clone());
+    data.set_task(task1.clone());
+    data.set_task(task2.clone());
 
     let filter = filters::from(&[task1_uuid.to_string()]).unwrap();
     let new_data = data.filter(filter.as_ref());

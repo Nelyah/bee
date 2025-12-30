@@ -13,6 +13,7 @@ pub enum TokenType {
     FilterTokDateEndBefore,
     FilterTokDateEndAfter,
     DependsOn,
+    Blocks,
     String,
     WordString,
     TagPlusPrefix,
@@ -37,6 +38,7 @@ impl std::fmt::Display for TokenType {
             TokenType::FilterTokDateDueBefore => "FilterTokDateDueBefore",
             TokenType::FilterTokDateDueAfter => "FilterTokDateDueAfter",
             TokenType::DependsOn => "DependsOn",
+            TokenType::Blocks => "Blocks",
             TokenType::String => "String",
             TokenType::ProjectPrefix => "ProjectPrefix",
             TokenType::WordString => "WordString",
@@ -376,6 +378,9 @@ impl Lexer {
                 }
                 _ if self.match_keyword("depends:") => {
                     (TokenType::DependsOn, self.read_word("depends:"))
+                }
+                _ if self.match_keyword("blocks:") => {
+                    (TokenType::Blocks, self.read_word("blocks:"))
                 }
                 _ if ch == ")" => {
                     self.read_char();

@@ -1,7 +1,7 @@
 use colored::{ColoredString, Colorize, Styles};
 use log::{debug, trace};
 use regex::Regex;
-use std::{cmp::max, io::Write};
+use std::io::Write;
 use terminal_size::{Width, terminal_size};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -467,65 +467,66 @@ fn wrap_text(text: &str, width: usize) -> String {
     trace!("Starting to wrap '{}' with width {}", text, width);
     trace!("Original text has .len() {}", text.len());
     trace!("Original text has {} graphemes", get_str_len(text));
-    let date_regex = Regex::new(r"\d{4}-\d{2}-\d{2}").unwrap();
 
     if get_max_width_of_cell(text) <= width {
         trace!("Text fits in the width of the cell");
         return text.to_string();
     }
 
+    let continuation_indent = if needs_hanging_indent(text) {
+        "              "
+    } else {
+        ""
+    };
+
+    wrap_text_with_indent(text, width, continuation_indent)
+}
+
+fn needs_hanging_indent(text: &str) -> bool {
+    let date_regex = Regex::new(r"^\d{4}-\d{2}-\d{2}").unwrap();
+    text.lines()
+        .any(|line| date_regex.is_match(line.trim_start()))
+}
+
+fn wrap_text_with_indent(text: &str, width: usize, continuation_indent: &str) -> String {
     let mut wrapped_text = String::new();
     let mut line_length = 0;
-    let mut newline_str = "\n";
 
     // Go over every word split on space, not \n
     for outer_word in split_most_whitespaces(text) {
         trace!("outer_word is {}", outer_word);
-        let mut first = true;
 
         // If there is a word that contains one (or more) newline(s), go over each
-        for word in outer_word.split('\n') {
-            // HACK: If we notice a date, the following lines (but not this one) will be indented
-            // The reason is that for most (all?) cases, this happens with annotations
-            // and having the rest of the annotation indent is nicer. Not sure whether this
-            // can have more side effects.
-            // This also assumes that there are only annotations coming below the first annotation
-            if date_regex.is_match(word) {
-                newline_str = "\n";
+        for (index, word) in outer_word.split('\n').enumerate() {
+            if index > 0 {
+                insert_newline(&mut wrapped_text, &mut line_length, continuation_indent);
             }
 
-            // The word that comes after a \n
-            if !first {
-                wrapped_text.push_str(newline_str);
-                line_length = 0;
-                trace!("We inserted newline before the word");
+            if word.is_empty() {
+                continue;
             }
-            first = false;
 
-            // If this goes over width
-            if line_length + get_str_len(word) + 1 > width {
-                wrapped_text.push_str(newline_str);
-                trace!(
-                    "We inserted newline before the word because line_length {} \
-                    and word is '{}' and word grapheme len is {}",
-                    line_length,
-                    word,
-                    get_str_len(word)
-                );
-                line_length = max(0, newline_str.len());
+            let word_len = get_str_len(word);
+            if line_length + word_len + 1 > width {
+                insert_newline(&mut wrapped_text, &mut line_length, continuation_indent);
             }
             wrapped_text.push_str(word);
             wrapped_text.push(' ');
-            line_length += get_str_len(word) + 1;
-
-            // Set the indent after we've seen a date
-            if date_regex.is_match(word) {
-                newline_str = "\n              ";
-            }
+            line_length += word_len + 1;
         }
     }
 
     wrapped_text.trim().to_string()
+}
+
+fn insert_newline(wrapped_text: &mut String, line_length: &mut usize, continuation_indent: &str) {
+    wrapped_text.push('\n');
+    if continuation_indent.is_empty() {
+        *line_length = 0;
+    } else {
+        wrapped_text.push_str(continuation_indent);
+        *line_length = get_str_len(continuation_indent);
+    }
 }
 
 #[path = "table_test.rs"]

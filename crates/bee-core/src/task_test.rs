@@ -1,5 +1,6 @@
 use all_asserts::{assert_false, assert_true};
 use chrono::{Local, NaiveTime, TimeZone};
+use uuid::Uuid;
 
 use super::*;
 

@@ -308,7 +308,7 @@ impl FilterParser {
 
                     self.next_token();
                 }
-                TokenType::String | TokenType::WordString => {
+                TokenType::String | TokenType::WordString | TokenType::Blocks => {
                     *has_only_ids = false;
                     filter = add_to_current_filter(
                         filter,

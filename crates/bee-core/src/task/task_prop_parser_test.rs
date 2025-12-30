@@ -1,5 +1,9 @@
 use all_asserts::assert_true;
 use chrono::{Local, NaiveTime, TimeZone};
+use uuid::Uuid;
+
+use crate::lexer::Lexer;
+use crate::task::task_prop_parser::TaskPropertyParser;
 
 use super::*;
 
@@ -145,6 +149,36 @@ fn test_task_properties_parser() {
             DependsOnIdentifier::Id(6),
             DependsOnIdentifier::Uuid(uuid1),
         ]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let tp = from_string("blocks:6");
+    let props = TaskProperties {
+        blocks: Some(vec![DependsOnIdentifier::Id(6)]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let tp = from_string("blocks:6 blocks:7");
+    let props = TaskProperties {
+        blocks: Some(vec![DependsOnIdentifier::Id(6), DependsOnIdentifier::Id(7)]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let tp = from_string("blocks:none");
+    let props = TaskProperties {
+        blocks: Some(vec![]),
+        ..TaskProperties::default()
+    };
+    assert_eq!(tp, props);
+
+    let uuid2 = Uuid::new_v4();
+    let tp = from_string(format!("depends:6 blocks:{}", uuid2).as_str());
+    let props = TaskProperties {
+        depends_on: Some(vec![DependsOnIdentifier::Id(6)]),
+        blocks: Some(vec![DependsOnIdentifier::Uuid(uuid2)]),
         ..TaskProperties::default()
     };
     assert_eq!(tp, props);

@@ -13,7 +13,7 @@ use crate::{
 use tables::{annotations, history, links, projects, tags, tasks, tasks_tags};
 
 use chrono::{DateTime, Local};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 use sea_orm::{
@@ -117,208 +117,263 @@ async fn tasks_from_filter(
         )))
         .all(db)
         .await?;
-    let mut tasks_obj = Vec::new();
-    for model in models {
-        tasks_obj.push(task_model_to_object(db, &model).await?);
-    }
-    Ok(tasks_obj)
+    task_models_to_objects(db, models).await
 }
 
-/// Build an in-memory [`Task`] from the persisted database model and its related tables.
-async fn task_model_to_object<C>(
+fn parse_datetime(value: &str) -> Result<DateTime<Local>, chrono::ParseError> {
+    DateTime::parse_from_rfc3339(value).map(|dt| dt.with_timezone(&Local))
+}
+
+async fn task_models_to_objects<C>(
     db: &C,
-    task_model: &tasks::Model,
-) -> Result<Task, Box<dyn std::error::Error>>
+    models: Vec<tasks::Model>,
+) -> Result<Vec<Task>, Box<dyn std::error::Error>>
 where
     C: ConnectionTrait,
 {
-    let parse_datetime = |value: &str| -> Result<DateTime<Local>, chrono::ParseError> {
-        DateTime::parse_from_rfc3339(value).map(|dt| dt.with_timezone(&Local))
-    };
+    if models.is_empty() {
+        return Ok(Vec::new());
+    }
 
-    let uuid = Uuid::parse_str(&task_model.uuid)?;
-    let status = TaskStatus::from_string(&task_model.status)
-        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
-    let date_created = parse_datetime(&task_model.date_created)?;
-    let date_completed = task_model
-        .date_completed
-        .as_ref()
-        .map(|value| parse_datetime(value))
-        .transpose()?;
-    let date_due = task_model
-        .date_due
-        .as_ref()
-        .map(|value| parse_datetime(value))
-        .transpose()?;
-    let urgency = task_model.urgency.map(|value| value as i64);
+    let task_ids: Vec<i32> = models.iter().map(|model| model.db_id).collect();
 
-    let project = match task_model.project_id {
-        Some(project_id) => {
-            let project_model = projects::Entity::find_by_id(project_id).one(db).await?;
-            project_model.map(|model| Project {
-                id: Some(model.id),
-                name: model.name,
-            })
-        }
-        None => None,
-    };
+    let mut uuid_map: HashMap<i32, Uuid> = HashMap::new();
+    for model in &models {
+        uuid_map.insert(model.db_id, Uuid::parse_str(&model.uuid)?);
+    }
 
-    let tag_links = tasks_tags::Entity::find()
-        .filter(tasks_tags::Column::TaskId.eq(task_model.db_id))
-        .all(db)
-        .await?;
-    let tag_ids: Vec<i32> = tag_links.iter().map(|link| link.tag_id).collect();
-    let tags = if tag_ids.is_empty() {
-        Vec::new()
+    let project_ids: Vec<i32> = models.iter().filter_map(|model| model.project_id).collect();
+    let projects_map: HashMap<i32, Project> = if project_ids.is_empty() {
+        HashMap::new()
     } else {
-        tags::Entity::find()
-            .filter(tags::Column::Id.is_in(tag_ids))
-            .order_by_asc(tags::Column::Name)
+        projects::Entity::find()
+            .filter(projects::Column::Id.is_in(project_ids))
             .all(db)
             .await?
             .into_iter()
-            .map(|model| model.name)
+            .map(|model| {
+                (
+                    model.id,
+                    Project {
+                        id: Some(model.id),
+                        name: model.name,
+                    },
+                )
+            })
             .collect()
     };
 
+    let tag_links = tasks_tags::Entity::find()
+        .filter(tasks_tags::Column::TaskId.is_in(task_ids.clone()))
+        .all(db)
+        .await?;
+    let tag_ids: Vec<i32> = tag_links.iter().map(|link| link.tag_id).collect();
+    let tag_name_map: HashMap<i32, String> = if tag_ids.is_empty() {
+        HashMap::new()
+    } else {
+        tags::Entity::find()
+            .filter(tags::Column::Id.is_in(tag_ids))
+            .all(db)
+            .await?
+            .into_iter()
+            .map(|model| (model.id, model.name))
+            .collect()
+    };
+    let mut tags_by_task: HashMap<i32, Vec<String>> = HashMap::new();
+    for link in tag_links {
+        if let Some(name) = tag_name_map.get(&link.tag_id) {
+            tags_by_task
+                .entry(link.task_id)
+                .or_default()
+                .push(name.to_owned());
+        }
+    }
+    for tags in tags_by_task.values_mut() {
+        tags.sort();
+    }
+
     let annotation_models = annotations::Entity::find()
-        .filter(annotations::Column::TaskId.eq(task_model.db_id))
+        .filter(annotations::Column::TaskId.is_in(task_ids.clone()))
         .order_by_asc(annotations::Column::Datetime)
         .all(db)
         .await?;
-
-    let mut annotations_vec = Vec::with_capacity(annotation_models.len());
+    let mut annotations_by_task: HashMap<i32, Vec<TaskAnnotation>> = HashMap::new();
     for model in annotation_models {
-        annotations_vec.push(TaskAnnotation {
-            id: Some(model.id),
-            value: model.value,
-            time: parse_datetime(&model.datetime)?,
-        });
+        annotations_by_task
+            .entry(model.task_id)
+            .or_default()
+            .push(TaskAnnotation {
+                id: Some(model.id),
+                value: model.value,
+                time: parse_datetime(&model.datetime)?,
+            });
     }
 
     let history_models = history::Entity::find()
-        .filter(history::Column::TaskId.eq(task_model.db_id))
+        .filter(history::Column::TaskId.is_in(task_ids.clone()))
         .order_by_asc(history::Column::Datetime)
         .all(db)
         .await?;
-    let mut history_vec = Vec::with_capacity(history_models.len());
+    let mut history_by_task: HashMap<i32, Vec<TaskHistory>> = HashMap::new();
     for model in history_models {
-        history_vec.push(TaskHistory {
-            id: Some(model.id),
-            value: model.value,
-            datetime: parse_datetime(&model.datetime)?,
-        });
+        history_by_task
+            .entry(model.task_id)
+            .or_default()
+            .push(TaskHistory {
+                id: Some(model.id),
+                value: model.value,
+                datetime: parse_datetime(&model.datetime)?,
+            });
     }
 
-    // Load outgoing DependsOn links (this task depends on others)
-    let outgoing_link_models = links::Entity::find()
-        .filter(links::Column::FromTaskId.eq(task_model.db_id))
+    let outgoing_links = links::Entity::find()
+        .filter(links::Column::FromTaskId.is_in(task_ids.clone()))
+        .filter(links::Column::Type.eq(LinkType::DependsOn.to_string()))
+        .all(db)
+        .await?;
+    let incoming_links = links::Entity::find()
+        .filter(links::Column::ToTaskId.is_in(task_ids.clone()))
         .filter(links::Column::Type.eq(LinkType::DependsOn.to_string()))
         .all(db)
         .await?;
 
-    // Load incoming DependsOn links (other tasks depend on this one)
-    // These will be converted to Blocking links from this task's perspective
-    let incoming_link_models = links::Entity::find()
-        .filter(links::Column::ToTaskId.eq(task_model.db_id))
-        .filter(links::Column::Type.eq(LinkType::DependsOn.to_string()))
-        .all(db)
-        .await?;
+    let mut referenced_ids: HashSet<i32> = HashSet::new();
+    referenced_ids.extend(outgoing_links.iter().map(|link| link.to_task_id));
+    referenced_ids.extend(incoming_links.iter().map(|link| link.from_task_id));
 
-    let mut links_vec = Vec::with_capacity(outgoing_link_models.len() + incoming_link_models.len());
-
-    // Process outgoing DependsOn links
-    if !outgoing_link_models.is_empty() {
-        let to_ids: Vec<i32> = outgoing_link_models
-            .iter()
-            .map(|link| link.to_task_id)
-            .collect();
-        let target_models = tasks::Entity::find()
-            .filter(tasks::Column::DbId.is_in(to_ids))
+    let missing_ids: Vec<i32> = referenced_ids
+        .into_iter()
+        .filter(|id| !uuid_map.contains_key(id))
+        .collect();
+    if !missing_ids.is_empty() {
+        let missing_models = tasks::Entity::find()
+            .filter(tasks::Column::DbId.is_in(missing_ids))
             .all(db)
             .await?;
-
-        let mut to_uuid_map: HashMap<i32, Uuid> = HashMap::new();
-        for model in target_models {
-            let target_uuid = Uuid::parse_str(&model.uuid)?;
-            to_uuid_map.insert(model.db_id, target_uuid);
+        for model in missing_models {
+            uuid_map.insert(model.db_id, Uuid::parse_str(&model.uuid)?);
         }
+    }
 
-        for link in outgoing_link_models {
-            let to_uuid = *to_uuid_map.get(&link.to_task_id).ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    format!(
-                        "Could not resolve linked task id {} to a UUID",
-                        link.to_task_id
-                    ),
-                )
-            })?;
-
-            links_vec.push(Link {
+    let mut links_by_task: HashMap<i32, Vec<Link>> = HashMap::new();
+    for link in outgoing_links {
+        let from_uuid = *uuid_map.get(&link.from_task_id).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "Could not resolve linked task id {} to a UUID",
+                    link.from_task_id
+                ),
+            )
+        })?;
+        let to_uuid = *uuid_map.get(&link.to_task_id).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "Could not resolve linked task id {} to a UUID",
+                    link.to_task_id
+                ),
+            )
+        })?;
+        links_by_task
+            .entry(link.from_task_id)
+            .or_default()
+            .push(Link {
                 id: Some(link.id),
-                from: uuid,
+                from: from_uuid,
                 to: to_uuid,
                 link_type: LinkType::DependsOn,
             });
-        }
     }
 
-    // Process incoming DependsOn links -> convert to Blocking links
-    // If task A depends on this task (B), then B blocks A
-    if !incoming_link_models.is_empty() {
-        let from_ids: Vec<i32> = incoming_link_models
-            .iter()
-            .map(|link| link.from_task_id)
-            .collect();
-        let source_models = tasks::Entity::find()
-            .filter(tasks::Column::DbId.is_in(from_ids))
-            .all(db)
-            .await?;
-
-        let mut from_uuid_map: HashMap<i32, Uuid> = HashMap::new();
-        for model in source_models {
-            let source_uuid = Uuid::parse_str(&model.uuid)?;
-            from_uuid_map.insert(model.db_id, source_uuid);
-        }
-
-        for link in incoming_link_models {
-            let blocked_task_uuid = *from_uuid_map.get(&link.from_task_id).ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    format!(
-                        "Could not resolve linked task id {} to a UUID",
-                        link.from_task_id
-                    ),
-                )
-            })?;
-
-            // Create a virtual Blocking link (id: None since it's not directly stored)
-            links_vec.push(Link {
-                id: None, // Virtual link, reconstructed from incoming DependsOn
-                from: uuid,
-                to: blocked_task_uuid,
+    for link in incoming_links {
+        let current_uuid = *uuid_map.get(&link.to_task_id).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "Could not resolve linked task id {} to a UUID",
+                    link.to_task_id
+                ),
+            )
+        })?;
+        let blocked_uuid = *uuid_map.get(&link.from_task_id).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "Could not resolve linked task id {} to a UUID",
+                    link.from_task_id
+                ),
+            )
+        })?;
+        links_by_task
+            .entry(link.to_task_id)
+            .or_default()
+            .push(Link {
+                id: None,
+                from: current_uuid,
+                to: blocked_uuid,
                 link_type: LinkType::Blocking,
             });
-        }
     }
 
-    Ok(Task {
-        db_id: Some(task_model.db_id),
-        id: task_model.id,
-        status,
-        uuid,
-        summary: task_model.summary.to_owned(),
-        annotations: annotations_vec,
-        tags,
-        date_created,
-        date_completed,
-        links: links_vec,
-        project,
-        date_due,
-        urgency,
-        history: history_vec,
-    })
+    let mut tasks_obj = Vec::with_capacity(models.len());
+    for task_model in models {
+        let uuid = *uuid_map.get(&task_model.db_id).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "Could not resolve linked task id {} to a UUID",
+                    task_model.db_id
+                ),
+            )
+        })?;
+        let status = TaskStatus::from_string(&task_model.status)
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+        let date_created = parse_datetime(&task_model.date_created)?;
+        let date_completed = task_model
+            .date_completed
+            .as_ref()
+            .map(|value| parse_datetime(value))
+            .transpose()?;
+        let date_due = task_model
+            .date_due
+            .as_ref()
+            .map(|value| parse_datetime(value))
+            .transpose()?;
+        let urgency = task_model.urgency.map(|value| value as i64);
+
+        let project = task_model
+            .project_id
+            .and_then(|project_id| projects_map.get(&project_id).cloned());
+
+        let tags = tags_by_task.remove(&task_model.db_id).unwrap_or_default();
+        let annotations = annotations_by_task
+            .remove(&task_model.db_id)
+            .unwrap_or_default();
+        let history = history_by_task
+            .remove(&task_model.db_id)
+            .unwrap_or_default();
+        let links = links_by_task.remove(&task_model.db_id).unwrap_or_default();
+
+        tasks_obj.push(Task {
+            db_id: Some(task_model.db_id),
+            id: task_model.id,
+            status,
+            uuid,
+            summary: task_model.summary.to_owned(),
+            annotations,
+            tags,
+            date_created,
+            date_completed,
+            links,
+            project,
+            date_due,
+            urgency,
+            history,
+        });
+    }
+
+    Ok(tasks_obj)
 }
 
 #[cfg(test)]

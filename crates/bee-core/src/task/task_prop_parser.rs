@@ -18,8 +18,6 @@ pub struct TaskPropertyParser {
     buffer_index: usize,
 }
 
-// TODO: Be able to parse a blocks: property
-
 impl BaseParser for TaskPropertyParser {
     fn get_buffer_index(&self) -> usize {
         self.buffer_index
@@ -198,40 +196,84 @@ impl TaskPropertyParser {
                 TokenType::TagMinusPrefix => {
                     process_tag_prefix!(self, props, tags_remove);
                 }
-                TokenType::DependsOn => {
+                TokenType::DependsOn | TokenType::Blocks => {
+                    let is_blocks = self.current_token.token_type == TokenType::Blocks;
                     self.next_token();
                     self.skip_whitespace();
 
-                    let mut new_depends_on = match &props.depends_on {
+                    let mut new_depends_on = match if is_blocks {
+                        &props.blocks
+                    } else {
+                        &props.depends_on
+                    } {
                         None => Vec::default(),
                         Some(values) => values.to_owned(),
                     };
                     match self.current_token.token_type {
                         TokenType::Uuid => {
-                            new_depends_on.push(DependsOnIdentifier::Uuid(
-                                Uuid::parse_str(&self.current_token.literal).unwrap(),
-                            ));
+                            let parsed = Uuid::parse_str(&self.current_token.literal)
+                                .map_err(|err| {
+                                    format!(
+                                        "Expected a UUID following {}, but could not parse '{}' ({})",
+                                        if is_blocks {
+                                            "TokenTypeBlocks"
+                                        } else {
+                                            "TokenTypeDependsOn"
+                                        },
+                                        self.current_token.literal,
+                                        err
+                                    )
+                                })?;
+                            new_depends_on.push(DependsOnIdentifier::Uuid(parsed));
                         }
                         TokenType::Int => {
-                            new_depends_on.push(DependsOnIdentifier::Id(
-                                self.current_token.literal.parse::<i32>().unwrap(),
-                            ));
+                            let parsed = self
+                                .current_token
+                                .literal
+                                .parse::<i32>()
+                                .map_err(|err| {
+                                    format!(
+                                        "Expected an integer following {}, but could not parse '{}' ({})",
+                                        if is_blocks {
+                                            "TokenTypeBlocks"
+                                        } else {
+                                            "TokenTypeDependsOn"
+                                        },
+                                        self.current_token.literal,
+                                        err
+                                    )
+                                })?;
+                            new_depends_on.push(DependsOnIdentifier::Id(parsed));
                         }
                         _ if self.current_token.token_type == TokenType::WordString
                             && self.current_token.literal == *"none" =>
                         {
-                            props.depends_on = Some(Vec::new());
+                            if is_blocks {
+                                props.blocks = Some(Vec::new());
+                            } else {
+                                props.depends_on = Some(Vec::new());
+                            }
                         }
                         _ => {
                             return Err(err_msg_prefix
                                 + &format!(
-                                    "Expected a token of type Uuid or Int following a TokenTypeDependsOn, found '{}' (value: '{}')",
-                                    self.current_token.token_type, self.current_token.literal
+                                    "Expected a token of type Uuid or Int following a {}, found '{}' (value: '{}')",
+                                    if is_blocks {
+                                        "TokenTypeBlocks"
+                                    } else {
+                                        "TokenTypeDependsOn"
+                                    },
+                                    self.current_token.token_type,
+                                    self.current_token.literal
                                 ));
                         }
                     }
                     if !new_depends_on.is_empty() {
-                        props.depends_on = Some(new_depends_on);
+                        if is_blocks {
+                            props.blocks = Some(new_depends_on);
+                        } else {
+                            props.depends_on = Some(new_depends_on);
+                        }
                     }
                     self.next_token();
                 }
@@ -253,7 +295,12 @@ impl TaskPropertyParser {
                     props.date_due = Some(time);
                     self.next_token();
                 }
-                TokenType::Eof => unreachable!("We should not be trying to read EOF"),
+                TokenType::Eof => {
+                    return Err(
+                        "unexpected end of input while parsing task property expression"
+                            .to_string(),
+                    );
+                }
             }
         }
         if let Some(summary) = &mut props.summary {

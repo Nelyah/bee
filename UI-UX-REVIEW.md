@@ -10,6 +10,7 @@
 - External Links cards are readable but the hierarchy is flattened: key MR identifiers (status/state, link, branch) compete for attention and there’s no clear primary line of action or emphasis.
 - Link rows have mixed visual weight (big badge at right, large MR icon at left, and dense metadata line), which makes scanning slower.
 - Contrast for secondary metadata (state + url line) is borderline low against the dark card background, risking legibility on some displays.
+- The “Refresh” control is appropriately quiet, but lacks hover/click feedback, so clickability isn’t obvious.
 
 ## Prioritised TODO list
 - **ID**: UX-001  
@@ -60,3 +61,9 @@
 
 ## Open questions
 - Should External Links be the primary focus in detail view? If yes, I would prioritize it in the layout (right column or top section).
+
+## Done
+- **ID**: UX-005  
+  **Status**: Done  
+  **Evidence**: External Links header; “Refresh” top-right.  
+  **Summary**: Added subtle hover (underline + slight color shift) and pressed feedback to clarify clickability without increasing visual noise at rest.

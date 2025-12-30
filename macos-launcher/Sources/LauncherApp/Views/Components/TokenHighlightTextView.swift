@@ -117,17 +117,152 @@ func ghostTextAttributes(font: NSFont?) -> [NSAttributedString.Key: Any] {
     ]
 }
 
-final class KeyHandlingTextView: NSTextView {
-    private enum KeyCode {
-        static let space: UInt16 = 49
-        static let tab: UInt16 = 48
-        static let arrowUp: UInt16 = 126
-        static let arrowDown: UInt16 = 125
-        static let returnKey: UInt16 = 36
-        static let keypadEnter: UInt16 = 76
-        static let escape: UInt16 = 53
+struct KeyInput {
+    let keyCode: UInt16
+    let charactersIgnoringModifiers: String?
+    let modifierFlags: NSEvent.ModifierFlags
+
+    init(event: NSEvent) {
+        keyCode = event.keyCode
+        charactersIgnoringModifiers = event.charactersIgnoringModifiers
+        modifierFlags = event.modifierFlags
     }
 
+    init(keyCode: UInt16, charactersIgnoringModifiers: String?, modifierFlags: NSEvent.ModifierFlags) {
+        self.keyCode = keyCode
+        self.charactersIgnoringModifiers = charactersIgnoringModifiers
+        self.modifierFlags = modifierFlags
+    }
+}
+
+enum KeyHandlingAction: Equatable {
+    case toggleMenu
+    case acceptGhost
+    case menuNavigate(Int)
+    case acceptCompletion
+    case escape
+    case moveWordForward
+    case moveWordBackward
+    case deleteWordBackward
+    case moveSelection(Int)
+    case submit
+}
+
+struct KeyHandlingDecider {
+    static func action(for input: KeyInput, showCompletionMenu: Bool) -> KeyHandlingAction? {
+        if input.modifierFlags.contains(.control),
+           input.keyCode == KeyCode.space {
+            return .toggleMenu
+        }
+
+        if input.modifierFlags.contains(.command),
+           !input.modifierFlags.contains(.control),
+           !input.modifierFlags.contains(.option),
+           input.charactersIgnoringModifiers?.lowercased() == "i" {
+            return .toggleMenu
+        }
+
+        if input.keyCode == KeyCode.tab {
+            return .acceptGhost
+        }
+
+        if showCompletionMenu {
+            if input.keyCode == KeyCode.arrowUp {
+                return .menuNavigate(-1)
+            }
+            if input.keyCode == KeyCode.arrowDown {
+                return .menuNavigate(1)
+            }
+            if input.modifierFlags.contains(.control) {
+                if input.charactersIgnoringModifiers == "p" {
+                    return .menuNavigate(-1)
+                }
+                if input.charactersIgnoringModifiers == "n" {
+                    return .menuNavigate(1)
+                }
+            }
+            if isSubmit(input) {
+                return .acceptCompletion
+            }
+            if isEscape(input) {
+                return .escape
+            }
+        }
+
+        if input.modifierFlags.contains(.option) {
+            if input.charactersIgnoringModifiers == "f" {
+                return .moveWordForward
+            }
+            if input.charactersIgnoringModifiers == "b" {
+                return .moveWordBackward
+            }
+        }
+
+        if input.modifierFlags.contains(.control),
+           input.charactersIgnoringModifiers == "w" {
+            return .deleteWordBackward
+        }
+
+        if !showCompletionMenu, let delta = selectionDelta(for: input) {
+            return .moveSelection(delta)
+        }
+
+        if isSubmit(input) {
+            return .submit
+        }
+
+        if isEscape(input) {
+            return .escape
+        }
+
+        return nil
+    }
+
+    private static func selectionDelta(for input: KeyInput) -> Int? {
+        if input.modifierFlags.contains(.control) {
+            if input.charactersIgnoringModifiers == "p" {
+                return -1
+            }
+            if input.charactersIgnoringModifiers == "n" {
+                return 1
+            }
+        }
+
+        switch input.keyCode {
+        case KeyCode.arrowUp:
+            return -1
+        case KeyCode.arrowDown:
+            return 1
+        default:
+            return nil
+        }
+    }
+
+    private static func isSubmit(_ input: KeyInput) -> Bool {
+        switch input.keyCode {
+        case KeyCode.returnKey, KeyCode.keypadEnter:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func isEscape(_ input: KeyInput) -> Bool {
+        input.keyCode == KeyCode.escape
+    }
+}
+
+fileprivate enum KeyCode {
+    static let space: UInt16 = 49
+    static let tab: UInt16 = 48
+    static let arrowUp: UInt16 = 126
+    static let arrowDown: UInt16 = 125
+    static let returnKey: UInt16 = 36
+    static let keypadEnter: UInt16 = 76
+    static let escape: UInt16 = 53
+}
+
+final class KeyHandlingTextView: NSTextView {
     var onSubmit: (() -> Void)?
     var onEscape: (() -> Void)?
     var onMoveSelection: ((Int) -> Void)?
@@ -141,94 +276,11 @@ final class KeyHandlingTextView: NSTextView {
 
     /// Handle key presses for navigation and submit.
     override func keyDown(with event: NSEvent) {
-        // Ctrl-Space: Toggle completion menu
-        if event.modifierFlags.contains(.control),
-           event.keyCode == KeyCode.space {
-            onToggleMenu?()
-            return
-        }
-
-        // Cmd-I: Alternate toggle for completion menu
-        if event.modifierFlags.contains(.command),
-           !event.modifierFlags.contains(.control),
-           !event.modifierFlags.contains(.option),
-           event.charactersIgnoringModifiers?.lowercased() == "i" {
-            onToggleMenu?()
-            return
-        }
-
-        // Tab: Accept ghost text or open menu
-        if event.keyCode == KeyCode.tab {
-            onAcceptGhost?()
-            return
-        }
-
-        // When completion menu is open, handle navigation differently
-        if showCompletionMenu {
-            // Arrow keys navigate menu
-            if event.keyCode == KeyCode.arrowUp {
-                onMenuNavigation?(-1)
-                return
-            }
-            if event.keyCode == KeyCode.arrowDown {
-                onMenuNavigation?(1)
-                return
-            }
-            // Ctrl-P/N also navigate menu
-            if event.modifierFlags.contains(.control) {
-                if event.charactersIgnoringModifiers == "p" {
-                    onMenuNavigation?(-1)
-                    return
-                }
-                if event.charactersIgnoringModifiers == "n" {
-                    onMenuNavigation?(1)
-                    return
-                }
-            }
-            // Enter accepts completion when menu is open
-            if isSubmitEvent(event) {
-                onAcceptCompletion?()
-                return
-            }
-            // Escape closes menu
-            if isEscapeEvent(event) {
-                onEscape?()
-                return
-            }
-        }
-
-        // Readline-style word navigation: Alt-F (forward), Alt-B (backward)
-        if event.modifierFlags.contains(.option) {
-            if event.charactersIgnoringModifiers == "f" {
-                moveWordForward()
-                return
-            }
-            if event.charactersIgnoringModifiers == "b" {
-                moveWordBackward()
-                return
-            }
-        }
-
-        // Ctrl-W: Delete previous word (readline binding)
-        if event.modifierFlags.contains(.control),
-           event.charactersIgnoringModifiers == "w" {
-            deleteWordBackward(nil)
-            return
-        }
-
-        // Normal task list navigation (when menu is closed)
-        if !showCompletionMenu, let delta = selectionDelta(for: event) {
-            onMoveSelection?(delta)
-            return
-        }
-
-        if isSubmitEvent(event) {
-            onSubmit?()
-            return
-        }
-
-        if isEscapeEvent(event) {
-            onEscape?()
+        if let action = KeyHandlingDecider.action(
+            for: KeyInput(event: event),
+            showCompletionMenu: showCompletionMenu
+        ) {
+            handleAction(action)
             return
         }
 
@@ -274,44 +326,28 @@ final class KeyHandlingTextView: NSTextView {
         moveWordBackward(nil)
     }
 
-    /// Return selection delta for keyboard navigation shortcuts.
-    private func selectionDelta(for event: NSEvent) -> Int? {
-        if event.modifierFlags.contains(.control) {
-            if event.charactersIgnoringModifiers == "p" {
-                return -1
-            }
-            if event.charactersIgnoringModifiers == "n" {
-                return 1
-            }
-        }
-
-        switch event.keyCode {
-        case KeyCode.arrowUp:
-            return -1
-        case KeyCode.arrowDown:
-            return 1
-        default:
-            return nil
-        }
-    }
-
-    /// Return true when the event should submit the current input.
-    private func isSubmitEvent(_ event: NSEvent) -> Bool {
-        switch event.keyCode {
-        case KeyCode.returnKey, KeyCode.keypadEnter:
-            return true
-        default:
-            return false
-        }
-    }
-
-    /// Return true when the event should close the detail view.
-    private func isEscapeEvent(_ event: NSEvent) -> Bool {
-        switch event.keyCode {
-        case KeyCode.escape:
-            return true
-        default:
-            return false
+    private func handleAction(_ action: KeyHandlingAction) {
+        switch action {
+        case .toggleMenu:
+            onToggleMenu?()
+        case .acceptGhost:
+            onAcceptGhost?()
+        case .menuNavigate(let delta):
+            onMenuNavigation?(delta)
+        case .acceptCompletion:
+            onAcceptCompletion?()
+        case .escape:
+            onEscape?()
+        case .moveWordForward:
+            moveWordForward()
+        case .moveWordBackward:
+            moveWordBackward()
+        case .deleteWordBackward:
+            deleteWordBackward(nil)
+        case .moveSelection(let delta):
+            onMoveSelection?(delta)
+        case .submit:
+            onSubmit?()
         }
     }
 }

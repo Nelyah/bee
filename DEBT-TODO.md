@@ -2,12 +2,19 @@
 
 ## Summary
 - Extracted action, completion, toast, task list, and navigation helpers; `LauncherViewModel` now primarily orchestrates state.
-- Networking behavior and coordinator logic are covered with focused tests.
+- Input handling decision logic is testable, with coverage for key bindings.
+- Task list layout constants are centralized for easier UI iteration.
 - No remaining high-priority debt items in `macos-launcher/` after this pass.
 
 ## Open Issues
 
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0006: TaskListView layout constants are hard-coded
+- Resolved on: 2025-12-30
+- Note: Centralized layout constants in `TaskListView` for padding, spacing, and column widths.
+### DEBT-0005: KeyHandlingTextView mixes input handling and rendering without tests
+- Resolved on: 2025-12-30
+- Note: Extracted key handling decisions into `KeyHandlingDecider` with unit tests for key bindings.
 ### DEBT-0001: LauncherViewModel is a god object with mixed responsibilities
 - Resolved on: 2025-12-30
 - Note: Extracted action service, completion engine, toast scheduler, task list coordinator, and navigation coordinator; `LauncherViewModel` now orchestrates these helpers with tests in place.

@@ -21,6 +21,21 @@ columns = ["id", "date_created", "summary", "date_due", "tags", "urgency"]
 default = true
 filters = ['status:pending or status:active']
 
+# [core.external_links.jira]
+#   base_url = "https://jira.example.com"
+#   token = "your-jira-token"
+#   min_delay_ms = 250
+
+  [core.external_links.gitlab]
+base_url = "https://gitlab.com"
+token = {env = "GITLAB_API_TOKEN"}
+min_delay_ms = 250
+
+[api.external_links.sync]
+stale_after_hours = 24
+batch_size = 10
+
+
 [cli]
 
 [[colours]]

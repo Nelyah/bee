@@ -9,7 +9,7 @@ use chrono::{DateTime, Duration, Local, Utc};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
-use std::fmt;
+use std::{env, fmt};
 use tokio::time::{Duration as TokioDuration, sleep};
 use url::Url;
 use uuid::Uuid;
@@ -200,11 +200,12 @@ pub async fn fetch_recent_gitlab_merge_requests(
         .as_ref()
         .ok_or_else(|| "GitLab is not configured".to_string())?;
     let base = normalize_base_url(&cfg.base_url)?;
+    let token = resolve_token(cfg)?;
 
     let user_url = format!("{base}/api/v4/user");
     let user_response = client
         .get(user_url)
-        .header("PRIVATE-TOKEN", &cfg.token)
+        .header("PRIVATE-TOKEN", token.as_str())
         .header("Accept", "application/json")
         .send()
         .await
@@ -228,7 +229,7 @@ pub async fn fetch_recent_gitlab_merge_requests(
     );
     let response = client
         .get(url)
-        .header("PRIVATE-TOKEN", &cfg.token)
+        .header("PRIVATE-TOKEN", token.as_str())
         .header("Accept", "application/json")
         .send()
         .await
@@ -273,6 +274,7 @@ pub async fn fetch_recent_jira_issues(
         .as_ref()
         .ok_or_else(|| "Jira is not configured".to_string())?;
     let base = normalize_base_url(&cfg.base_url)?;
+    let token = resolve_token(cfg)?;
 
     let jql = match scope {
         JiraIssueScope::Assigned => "assignee = currentUser()",
@@ -287,7 +289,7 @@ pub async fn fetch_recent_jira_issues(
 
     let response = client
         .get(query)
-        .bearer_auth(&cfg.token)
+        .bearer_auth(token)
         .header("Accept", "application/json")
         .send()
         .await
@@ -484,6 +486,20 @@ fn provider_delay_ms(config: &ExternalLinksConfig, provider: ProviderKind) -> Op
     }
 }
 
+fn resolve_token(cfg: &ProviderConfig) -> Result<String, String> {
+    if let Some(value) = cfg.token.value.as_ref().filter(|v| !v.trim().is_empty()) {
+        return Ok(value.to_string());
+    }
+
+    if let Some(env_key) = cfg.token.env.as_ref().filter(|v| !v.trim().is_empty()) {
+        return env::var(env_key).map_err(|_| {
+            format!("Environment variable '{}' is not set for provider token", env_key)
+        });
+    }
+
+    Err("Provider token must specify value or env".to_string())
+}
+
 async fn fetch_and_cache_link(
     client: &Client,
     config: &ExternalLinksConfig,
@@ -529,13 +545,14 @@ async fn fetch_jira_issue(
     issue_key: &str,
 ) -> Result<String, String> {
     let base = normalize_base_url(&cfg.base_url)?;
+    let token = resolve_token(cfg)?;
     let url = format!(
         "{base}/rest/api/3/issue/{issue_key}?fields=summary,status,assignee,updated"
     );
 
     let response = client
         .get(url)
-        .bearer_auth(&cfg.token)
+        .bearer_auth(token)
         .header("Accept", "application/json")
         .send()
         .await
@@ -560,6 +577,7 @@ async fn fetch_gitlab_item(
 ) -> Result<String, String> {
     let (kind, project_path, iid) = parse_gitlab_external_key(external_key)?;
     let base = normalize_base_url(&cfg.base_url)?;
+    let token = resolve_token(cfg)?;
     let encoded_project = url::form_urlencoded::byte_serialize(project_path.as_bytes()).collect::<String>();
 
     let url = match kind {
@@ -573,7 +591,7 @@ async fn fetch_gitlab_item(
 
     let response = client
         .get(url)
-        .header("PRIVATE-TOKEN", &cfg.token)
+        .header("PRIVATE-TOKEN", token.as_str())
         .header("Accept", "application/json")
         .send()
         .await
@@ -593,7 +611,7 @@ async fn fetch_gitlab_item(
         );
         let approvals_resp = client
             .get(approvals_url)
-            .header("PRIVATE-TOKEN", &cfg.token)
+            .header("PRIVATE-TOKEN", token.as_str())
             .header("Accept", "application/json")
             .send()
             .await
@@ -706,12 +724,18 @@ mod tests {
         ExternalLinksConfig {
             jira: Some(ProviderConfig {
                 base_url: jira_base.to_string(),
-                token: "jira-token".to_string(),
+                token: bee_core::config::TokenConfig {
+                    value: Some("jira-token".to_string()),
+                    env: None,
+                },
                 min_delay_ms: 0,
             }),
             gitlab: Some(ProviderConfig {
                 base_url: gitlab_base.to_string(),
-                token: "gitlab-token".to_string(),
+                token: bee_core::config::TokenConfig {
+                    value: Some("gitlab-token".to_string()),
+                    env: None,
+                },
                 min_delay_ms: 0,
             }),
         }

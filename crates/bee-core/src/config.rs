@@ -85,9 +85,15 @@ pub struct ExternalLinksConfig {
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 pub struct ProviderConfig {
     pub base_url: String,
-    pub token: String,
+    pub token: TokenConfig,
     #[serde(default = "default_min_delay_ms")]
     pub min_delay_ms: u64,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone, Default)]
+pub struct TokenConfig {
+    pub value: Option<String>,
+    pub env: Option<String>,
 }
 
 fn default_min_delay_ms() -> u64 {

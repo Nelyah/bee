@@ -2,40 +2,35 @@ import XCTest
 @testable import LauncherApp
 
 final class InteractionCoordinatorTests: XCTestCase {
-    func testEscapeActionPrefersCommandPalette() {
-        let action = InteractionCoordinator.escapeAction(
-            isCommandPalettePresented: true,
-            showCompletionMenu: true,
-            mode: .detail
-        )
+    func testEscapeActionForCommandPalette() {
+        let action = InteractionCoordinator.escapeAction(for: .commandPalette)
         XCTAssertEqual(action, .closeCommandPalette)
     }
 
-    func testEscapeActionFallsBackToCompletion() {
+    func testEscapeActionForCompletionMenu() {
         let action = InteractionCoordinator.escapeAction(
-            isCommandPalettePresented: false,
-            showCompletionMenu: true,
-            mode: .detail
+            for: .completionMenu(selection: .task, isInsertMode: true)
         )
         XCTAssertEqual(action, .clearCompletions)
     }
 
-    func testEscapeActionFallsBackToDetail() {
-        let action = InteractionCoordinator.escapeAction(
-            isCommandPalettePresented: false,
-            showCompletionMenu: false,
-            mode: .detail
-        )
+    func testEscapeActionForDetail() {
+        let action = InteractionCoordinator.escapeAction(for: .detail)
         XCTAssertEqual(action, .closeDetail)
     }
 
-    func testEscapeActionExitsInsertModeByDefault() {
+    func testEscapeActionForInsertModeList() {
         let action = InteractionCoordinator.escapeAction(
-            isCommandPalettePresented: false,
-            showCompletionMenu: false,
-            mode: .list
+            for: .list(selection: .none, isInsertMode: true)
         )
         XCTAssertEqual(action, .exitInsertMode)
+    }
+
+    func testEscapeActionForNormalModeList() {
+        let action = InteractionCoordinator.escapeAction(
+            for: .list(selection: .none, isInsertMode: false)
+        )
+        XCTAssertEqual(action, .closeWindow)
     }
 
     func testNormalModeEffectActivatesPrimaryUsesToggleWhenAvailable() {

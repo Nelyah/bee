@@ -41,6 +41,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var hoveredRowIndex: Int?
     /// Currently selected row index in grouped view.
     @Published var selectedRowIndex: Int?
+    private var lastSelectedRowIndex: Int?
 
     private let actionService: LauncherActionService
     private let apiClient: ApiClientProtocol
@@ -51,6 +52,7 @@ final class LauncherViewModel: ObservableObject {
     private var configLoaded = false
     private let unexpectedTokenToastDelay: TimeInterval
     private var cancellables: Set<AnyCancellable> = []
+    let windowClose = PassthroughSubject<Void, Never>()
     private lazy var parseErrorToastScheduler = ParseErrorToastScheduler(
         delay: unexpectedTokenToastDelay,
         shouldDefer: { [weak self] in
@@ -292,49 +294,78 @@ final class LauncherViewModel: ObservableObject {
     /// Move the selection by a delta, clamping at list boundaries (skipping group headers).
     /// Also exits insert mode when navigating.
     func moveSelection(delta: Int) {
-        if isInsertMode {
-            isInsertMode = false
-        }
-        // Use grouped selection to skip headers
+        exitInsertMode(restoreSelection: false)
         let rows = groupedRows
-        selectedRowIndex = TaskListCoordinator.moveGroupedSelection(
+        let nextIndex = TaskListCoordinator.moveGroupedSelection(
             rows: rows,
             currentRowIndex: selectedRowIndex,
             delta: delta
         )
-        // Also update flat selectedIndex for compatibility with detail view
-        if let rowIdx = selectedRowIndex, case .task(let item) = rows[rowIdx] {
-            selectedIndex = item.flatIndex
-        }
+        updateSelection(rowIndex: nextIndex, rows: rows)
     }
 
     /// Select the first row in the list.
     func selectFirstRow() {
         let rows = groupedRows
         guard !rows.isEmpty else { return }
-        if isInsertMode { isInsertMode = false }
-        selectedRowIndex = 0
-        // Sync flat selectedIndex if this is a task row
-        if case .task(let item) = rows[0] {
-            selectedIndex = item.flatIndex
-        }
+        exitInsertMode(restoreSelection: false)
+        updateSelection(rowIndex: 0, rows: rows)
     }
 
     /// Select the last row in the list.
     func selectLastRow() {
         let rows = groupedRows
         guard !rows.isEmpty else { return }
-        if isInsertMode { isInsertMode = false }
-        selectedRowIndex = rows.count - 1
-        // Sync flat selectedIndex if this is a task row
-        if case .task(let item) = rows[rows.count - 1] {
-            selectedIndex = item.flatIndex
-        }
+        exitInsertMode(restoreSelection: false)
+        updateSelection(rowIndex: rows.count - 1, rows: rows)
     }
 
     /// Enter insert mode, focusing the text input.
     func enterInsertMode() {
+        lastSelectedRowIndex = selectedRowIndex
         isInsertMode = true
+        updateSelection(rowIndex: nil)
+    }
+
+    func exitInsertMode(restoreSelection: Bool = true) {
+        guard isInsertMode else { return }
+        isInsertMode = false
+        if restoreSelection, selectedRowIndex == nil, let lastSelectedRowIndex {
+            updateSelection(rowIndex: lastSelectedRowIndex)
+        }
+    }
+
+    func selectRow(_ rowIndex: Int) {
+        exitInsertMode(restoreSelection: false)
+        updateSelection(rowIndex: rowIndex)
+    }
+
+    func activatePrimary(at rowIndex: Int) {
+        let rows = groupedRows
+        guard rowIndex >= 0, rowIndex < rows.count else { return }
+        exitInsertMode(restoreSelection: false)
+        updateSelection(rowIndex: rowIndex, rows: rows)
+        switch rows[rowIndex] {
+        case .header(let header):
+            toggleGroupCollapse(header.key)
+        case .task:
+            openDetail()
+        }
+    }
+
+    private func updateSelection(rowIndex: Int?, rows: [GroupedListRow]? = nil) {
+        let currentRows = rows ?? groupedRows
+        selectedRowIndex = rowIndex
+        if let rowIndex, rowIndex < currentRows.count {
+            if case .task(let item) = currentRows[rowIndex] {
+                selectedIndex = item.flatIndex
+            }
+        } else {
+            selectedIndex = nil
+        }
+        if !isInsertMode {
+            lastSelectedRowIndex = rowIndex
+        }
     }
 
     // MARK: - Grouping Methods
@@ -396,14 +427,15 @@ final class LauncherViewModel: ObservableObject {
         selectedIndex = TaskListCoordinator.syncSelection(tasks: tasks, selectedIndex: selectedIndex)
         if let selectedIndex {
             let rows = groupedRows
-            selectedRowIndex = rows.firstIndex { row in
+            let rowIndex = rows.firstIndex { row in
                 if case .task(let item) = row {
                     return item.flatIndex == selectedIndex
                 }
                 return false
             }
+            updateSelection(rowIndex: rowIndex, rows: rows)
         } else {
-            selectedRowIndex = nil
+            updateSelection(rowIndex: nil)
         }
     }
 
@@ -626,11 +658,7 @@ final class LauncherViewModel: ObservableObject {
 
     @discardableResult
     func handleEscape() -> Bool {
-        let action = InteractionCoordinator.escapeAction(
-            isCommandPalettePresented: commandPalette.isPresented,
-            showCompletionMenu: completion.showMenu,
-            mode: mode
-        )
+        let action = InteractionCoordinator.escapeAction(for: interactionContext)
         switch action {
         case .closeCommandPalette:
             closeCommandPalette()
@@ -642,7 +670,10 @@ final class LauncherViewModel: ObservableObject {
             closeDetail()
             return true
         case .exitInsertMode:
-            isInsertMode = false
+            exitInsertMode()
+            return true
+        case .closeWindow:
+            windowClose.send()
             return true
         case .none:
             return false

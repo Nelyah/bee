@@ -100,6 +100,8 @@ struct TaskListView: View {
                                 )
                         )
                 )
+                .contentShape(Rectangle())
+                .onTapGesture { viewModel.enterInsertMode() }
 
                 // Column headers
                 if let config = viewModel.reportConfig {
@@ -139,24 +141,28 @@ struct TaskListView: View {
                                     GroupHeaderRow(
                                         header: header,
                                         isHovered: viewModel.hoveredRowIndex == rowIndex,
-                                        isSelected: viewModel.selectedRowIndex == rowIndex,
-                                        onToggle: { viewModel.toggleGroupCollapse(header.key) }
-                                    )
-                                    .id(row.id)
-                                    .onHover { hovering in
-                                        viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                    }
-
-                                case .task(let item):
-                                    TaskRow(
-                                        task: item.task,
-                                        columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
                                         isSelected: viewModel.selectedRowIndex == rowIndex
                                     )
                                     .id(row.id)
                                     .onHover { hovering in
                                         viewModel.hoveredRowIndex = hovering ? rowIndex : nil
                                     }
+                                    .onTapGesture { viewModel.selectRow(rowIndex) }
+                                    .onTapGesture(count: 2) { viewModel.activatePrimary(at: rowIndex) }
+
+                                case .task(let item):
+                                    TaskRow(
+                                        task: item.task,
+                                        columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
+                                        isSelected: viewModel.selectedRowIndex == rowIndex,
+                                        isHovered: viewModel.hoveredRowIndex == rowIndex
+                                    )
+                                    .id(row.id)
+                                    .onHover { hovering in
+                                        viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                    }
+                                    .onTapGesture { viewModel.selectRow(rowIndex) }
+                                    .onTapGesture(count: 2) { viewModel.activatePrimary(at: rowIndex) }
                                 }
                             }
                         }

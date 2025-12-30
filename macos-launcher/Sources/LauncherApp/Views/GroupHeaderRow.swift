@@ -4,7 +4,6 @@ struct GroupHeaderRow: View {
     let header: GroupHeader
     let isHovered: Bool
     let isSelected: Bool
-    let onToggle: () -> Void
 
     private var backgroundColor: Color {
         if isSelected {
@@ -42,7 +41,6 @@ struct GroupHeaderRow: View {
                 .fill(backgroundColor)
         )
         .contentShape(Rectangle())
-        .onTapGesture { onToggle() }
     }
 }
 
@@ -51,20 +49,17 @@ struct GroupHeaderRow: View {
         GroupHeaderRow(
             header: GroupHeader(key: "work", displayName: "Work", isCollapsed: false),
             isHovered: false,
-            isSelected: false,
-            onToggle: {}
+            isSelected: false
         )
         GroupHeaderRow(
             header: GroupHeader(key: "personal", displayName: "Personal", isCollapsed: true),
             isHovered: true,
-            isSelected: false,
-            onToggle: {}
+            isSelected: false
         )
         GroupHeaderRow(
             header: GroupHeader(key: nil, displayName: "No Project", isCollapsed: false),
             isHovered: false,
-            isSelected: true,
-            onToggle: {}
+            isSelected: true
         )
     }
     .padding()

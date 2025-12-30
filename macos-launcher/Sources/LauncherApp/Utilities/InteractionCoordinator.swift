@@ -4,6 +4,7 @@ struct InteractionCoordinator {
         case clearCompletions
         case closeDetail
         case exitInsertMode
+        case closeWindow
         case none
     }
 
@@ -17,21 +18,17 @@ struct InteractionCoordinator {
         case none
     }
 
-    static func escapeAction(
-        isCommandPalettePresented: Bool,
-        showCompletionMenu: Bool,
-        mode: LauncherMode
-    ) -> EscapeAction {
-        if isCommandPalettePresented {
+    static func escapeAction(for context: InteractionContext) -> EscapeAction {
+        switch context {
+        case .commandPalette:
             return .closeCommandPalette
-        }
-        if showCompletionMenu {
+        case .completionMenu:
             return .clearCompletions
-        }
-        if mode == .detail {
+        case .detail:
             return .closeDetail
+        case .list(_, let isInsertMode):
+            return isInsertMode ? .exitInsertMode : .closeWindow
         }
-        return .exitInsertMode
     }
 
     static func normalModeEffect(

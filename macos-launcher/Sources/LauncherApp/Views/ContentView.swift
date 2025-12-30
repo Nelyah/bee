@@ -38,6 +38,9 @@ struct ContentView: View {
         .onExitCommand {
             viewModel.handleEscape()
         }
+        .onReceive(viewModel.windowClose) { _ in
+            closeWindow()
+        }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -123,6 +126,10 @@ struct ContentView: View {
             NSEvent.removeMonitor(monitor)
             normalModeMonitor = nil
         }
+    }
+
+    private func closeWindow() {
+        NSApplication.shared.keyWindow?.performClose(nil)
     }
 }
 

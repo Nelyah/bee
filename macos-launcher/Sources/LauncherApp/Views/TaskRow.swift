@@ -4,6 +4,7 @@ struct TaskRow: View {
     let task: ApiTask
     let columns: [String]
     let isSelected: Bool
+    let isHovered: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -41,8 +42,18 @@ struct TaskRow: View {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isSelected ? ThemeManager.current.surface1 : ThemeManager.current.base)
+                .fill(backgroundColor)
         )
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return ThemeManager.current.surface1
+        }
+        if isHovered {
+            return ThemeManager.current.surface0
+        }
+        return ThemeManager.current.base
     }
 
     /// Get the value for a column from the task.
@@ -83,7 +94,8 @@ struct TaskRow: View {
     TaskRow(
         task: MockApiClient.sampleTasks[0],
         columns: ["id", "summary", "tags", "status"],
-        isSelected: true
+        isSelected: true,
+        isHovered: false
     )
     .padding()
     .background(ThemeManager.current.base)
@@ -93,7 +105,8 @@ struct TaskRow: View {
     TaskRow(
         task: MockApiClient.sampleTasks[1],
         columns: ["id", "summary", "tags", "status"],
-        isSelected: false
+        isSelected: false,
+        isHovered: true
     )
     .padding()
     .background(ThemeManager.current.base)

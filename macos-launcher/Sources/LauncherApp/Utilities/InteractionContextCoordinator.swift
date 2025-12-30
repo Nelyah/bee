@@ -77,9 +77,17 @@ struct InteractionContextCoordinator {
 
 struct BottomHintModelBuilder {
     static func model(for context: InteractionContext) -> BottomHintModel {
-        let left = [BottomHint(key: "Esc", label: escapeLabel(for: context))]
+        let left = leftHints(for: context)
         let right = rightHints(for: context)
         return BottomHintModel(left: left, right: right)
+    }
+
+    private static func leftHints(for context: InteractionContext) -> [BottomHint] {
+        var hints = [BottomHint(key: "Esc", label: escapeLabel(for: context))]
+        if case .list(_, let isInsertMode) = context, !isInsertMode {
+            hints.append(BottomHint(key: "i", label: "Insert"))
+        }
+        return hints
     }
 
     private static func rightHints(for context: InteractionContext) -> [BottomHint] {
@@ -100,7 +108,7 @@ struct BottomHintModelBuilder {
         case .detail:
             return "Back"
         case .list(_, let isInsertMode):
-            return isInsertMode ? "Exit insert" : "Exit insert"
+            return isInsertMode ? "Exit insert" : "Close"
         }
     }
 

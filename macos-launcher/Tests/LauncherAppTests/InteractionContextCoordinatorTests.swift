@@ -72,6 +72,30 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         XCTAssertEqual(enterLabel(in: context), "Select")
     }
 
+    func testLeftHintsForNormalModeIncludeInsert() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .list(selection: .task),
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertEqual(model.left.first?.label, "Close")
+        XCTAssertTrue(model.left.contains { $0.key == "i" && $0.label == "Insert" })
+    }
+
+    func testLeftHintsForInsertModeExcludeInsert() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .list(selection: .task),
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: true
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertEqual(model.left.first?.label, "Exit insert")
+        XCTAssertFalse(model.left.contains { $0.key == "i" })
+    }
+
     private func enterLabel(in context: InteractionContext) -> String? {
         let model = BottomHintModelBuilder.model(for: context)
         return model.right.first(where: { $0.key == "Enter" })?.label

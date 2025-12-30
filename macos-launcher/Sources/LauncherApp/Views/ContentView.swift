@@ -23,9 +23,15 @@ struct ContentView: View {
             ToastStackView(toasts: viewModel.toasts)
                 .padding(16)
                 .allowsHitTesting(false)
+
+            if viewModel.isCommandPalettePresented {
+                CommandPaletteView(viewModel: viewModel)
+            }
         }
         .onExitCommand {
-            if viewModel.showCompletionMenu {
+            if viewModel.isCommandPalettePresented {
+                viewModel.closeCommandPalette()
+            } else if viewModel.showCompletionMenu {
                 viewModel.clearCompletions()
             } else if viewModel.mode == .detail {
                 viewModel.closeDetail()
@@ -83,7 +89,9 @@ struct ContentView: View {
         guard escapeMonitor == nil else { return }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == KeyCode.escape {
-                if viewModel.showCompletionMenu {
+                if viewModel.isCommandPalettePresented {
+                    viewModel.closeCommandPalette()
+                } else if viewModel.showCompletionMenu {
                     viewModel.clearCompletions()
                 } else if viewModel.mode == .detail {
                     viewModel.closeDetail()

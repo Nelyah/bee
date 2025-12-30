@@ -22,6 +22,13 @@ final class LauncherViewModel: ObservableObject {
     @Published var isInsertMode: Bool = true
     @Published var reportConfig: ReportConfig?
     @Published var toasts: [ToastMessage] = []
+    @Published var isCommandPalettePresented: Bool = false
+    @Published var commandPaletteMode: CommandPaletteMode = .root
+    @Published var commandPaletteQuery: String = ""
+    @Published var commandPaletteSelectionIndex: Int = 0
+    @Published var commandPaletteIsLoading: Bool = false
+    @Published private(set) var gitlabSuggestions: [GitlabMergeRequestSuggestion] = []
+    @Published private(set) var jiraSuggestions: [JiraIssueSuggestion] = []
 
     // MARK: - Completion State
     @Published var completions: [CompletionItem] = []
@@ -42,6 +49,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var selectedRowIndex: Int?
 
     private let actionService: LauncherActionService
+    private let apiClient: ApiClientProtocol
     private var requestCounter: Int = 0
     private var latestParse: ParseResponse?
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "view-model")
@@ -71,6 +79,7 @@ final class LauncherViewModel: ObservableObject {
         actionService: LauncherActionService? = nil,
         unexpectedTokenToastDelay: TimeInterval = Constants.defaultUnexpectedTokenToastDelay
     ) {
+        self.apiClient = apiClient
         self.actionService = actionService ?? LauncherActionService(apiClient: apiClient)
         self.unexpectedTokenToastDelay = unexpectedTokenToastDelay
     }
@@ -377,6 +386,155 @@ final class LauncherViewModel: ObservableObject {
         selectedIndex = nil
         clearCompletions()
         suppressInputHandling = false
+    }
+
+    // MARK: - Command Palette
+
+    func openCommandPalette() {
+        guard selectedTask != nil else {
+            showToast(message: "Select a task to add a link.")
+            return
+        }
+        commandPaletteMode = .root
+        commandPaletteQuery = ""
+        commandPaletteSelectionIndex = 0
+        isCommandPalettePresented = true
+    }
+
+    func closeCommandPalette() {
+        isCommandPalettePresented = false
+        commandPaletteMode = .root
+        commandPaletteQuery = ""
+        commandPaletteSelectionIndex = 0
+    }
+
+    var filteredCommandPaletteActions: [CommandPaletteAction] {
+        let query = commandPaletteQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return CommandPaletteAction.allCases }
+        return CommandPaletteAction.allCases.filter { $0.rawValue.lowercased().contains(query) }
+    }
+
+    var filteredCommandPaletteSuggestions: [CommandPaletteSuggestion] {
+        let query = commandPaletteQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = query.lowercased()
+        var items: [CommandPaletteSuggestion]
+
+        switch commandPaletteMode {
+        case .addGitlab:
+            items = gitlabSuggestions
+                .filter { lower.isEmpty || $0.title.lowercased().contains(lower) || "\($0.id)".contains(lower) }
+                .map { .gitlab($0) }
+        case .addJira:
+            items = jiraSuggestions
+                .filter { lower.isEmpty || $0.summary.lowercased().contains(lower) || $0.key.lowercased().contains(lower) }
+                .map { .jira($0) }
+        case .root:
+            items = []
+        }
+
+        if !query.isEmpty && commandPaletteMode != .root {
+            items.insert(.rawInput(query), at: 0)
+        }
+
+        return items
+    }
+
+    func loadCommandPaletteSuggestions() {
+        guard commandPaletteMode != .root else { return }
+        commandPaletteIsLoading = true
+
+        Task {
+            do {
+                switch commandPaletteMode {
+                case .addGitlab:
+                    let items = try await apiClient.fetchRecentGitlabMergeRequests(limit: 20)
+                    gitlabSuggestions = items
+                case .addJira:
+                    let items = try await apiClient.fetchRecentJiraIssues(limit: 20, scope: .both)
+                    jiraSuggestions = items
+                case .root:
+                    break
+                }
+                commandPaletteIsLoading = false
+            } catch {
+                commandPaletteIsLoading = false
+                showToast(message: error.localizedDescription)
+            }
+        }
+    }
+
+    func selectCommandPaletteAction(_ action: CommandPaletteAction) {
+        switch action {
+        case .addGitlab:
+            commandPaletteMode = .addGitlab
+        case .addJira:
+            commandPaletteMode = .addJira
+        }
+        commandPaletteQuery = ""
+        commandPaletteSelectionIndex = 0
+        loadCommandPaletteSuggestions()
+    }
+
+    func submitCommandPaletteSelection() {
+        guard let task = selectedTask else {
+            showToast(message: "Select a task to add a link.")
+            closeCommandPalette()
+            return
+        }
+
+        switch commandPaletteMode {
+        case .root:
+            let actions = filteredCommandPaletteActions
+            guard let action = actions[safe: commandPaletteSelectionIndex] else { return }
+            selectCommandPaletteAction(action)
+        case .addGitlab:
+            let items = filteredCommandPaletteSuggestions
+            guard let item = items[safe: commandPaletteSelectionIndex] else { return }
+            handleCommandPaletteSelection(item: item, provider: .gitlab, taskUUID: task.uuid)
+        case .addJira:
+            let items = filteredCommandPaletteSuggestions
+            guard let item = items[safe: commandPaletteSelectionIndex] else { return }
+            handleCommandPaletteSelection(item: item, provider: .jira, taskUUID: task.uuid)
+        }
+    }
+
+    func moveCommandPaletteSelection(delta: Int, maxCount: Int) {
+        guard maxCount > 0 else {
+            commandPaletteSelectionIndex = 0
+            return
+        }
+        let next = max(0, min(commandPaletteSelectionIndex + delta, maxCount - 1))
+        commandPaletteSelectionIndex = next
+    }
+
+    private func handleCommandPaletteSelection(
+        item: CommandPaletteSuggestion,
+        provider: ExternalLinkProvider,
+        taskUUID: String
+    ) {
+        commandPaletteIsLoading = true
+        Task {
+            do {
+                let url: String
+                switch item {
+                case .gitlab(let mr):
+                    url = mr.webURL
+                case .jira(let issue):
+                    url = issue.webURL
+                case .rawInput(let value):
+                    let resolved = try await apiClient.resolveExternalLink(provider: provider, input: value)
+                    url = resolved.url
+                }
+
+                _ = try await apiClient.addExternalLink(taskUUID: taskUUID, url: url)
+                commandPaletteIsLoading = false
+                showToast(message: "Link added.")
+                closeCommandPalette()
+            } catch {
+                commandPaletteIsLoading = false
+                showToast(message: error.localizedDescription)
+            }
+        }
     }
 
     // MARK: - Completion Methods

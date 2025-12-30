@@ -1,9 +1,6 @@
 use bee_core::config::ReportConfig;
 use serde::Deserialize;
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::PathBuf};
 
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:3000";
 
@@ -18,6 +15,8 @@ pub struct ApiConfig {
     pub allowed_actions: Vec<String>,
     #[serde(default)]
     pub report: ReportConfig,
+    #[serde(default)]
+    pub external_links: ExternalLinksApiConfig,
 }
 
 impl Default for ApiConfig {
@@ -27,6 +26,30 @@ impl Default for ApiConfig {
             undo_count: default_undo_count(),
             allowed_actions: default_allowed_actions(),
             report: ReportConfig::default(),
+            external_links: ExternalLinksApiConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ExternalLinksApiConfig {
+    #[serde(default)]
+    pub sync: SyncConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct SyncConfig {
+    #[serde(default = "default_stale_after_hours")]
+    pub stale_after_hours: i64,
+    #[serde(default = "default_batch_size")]
+    pub batch_size: usize,
+}
+
+impl Default for SyncConfig {
+    fn default() -> Self {
+        Self {
+            stale_after_hours: default_stale_after_hours(),
+            batch_size: default_batch_size(),
         }
     }
 }
@@ -46,51 +69,18 @@ pub fn load_config() -> Result<ApiConfig, String> {
 fn load_config_from_string(content: &str) -> Result<ApiConfig, String> {
     let toml_value: toml::Value =
         toml::from_str(content).map_err(|err| format!("Invalid API config: {err}"))?;
-    let api_section = toml_value
-        .get("api")
-        .ok_or_else(|| "API config is missing [api] section".to_string())?;
+    let api_section = match toml_value.get("api") {
+        Some(section) => section.clone(),
+        None => return Ok(ApiConfig::default()),
+    };
     let api: ApiConfig = api_section
-        .clone()
         .try_into()
         .map_err(|err| format!("Invalid [api] config: {err}"))?;
     Ok(api)
 }
 
 fn find_config_file() -> Option<PathBuf> {
-    if let Ok(path) = env::var("BEE_API_CONFIG") {
-        return canonicalize_if_exists(path);
-    }
-
-    let home_dir = env::var("HOME").ok();
-    let xdg_config_home = env::var("XDG_CONFIG_HOME").ok();
-
-    let mut candidates = Vec::new();
-    candidates.push("bee-api.toml".to_string());
-
-    if let Some(xdg) = xdg_config_home {
-        candidates.push(format!("{}/bee-api/config.toml", xdg));
-    }
-
-    if let Some(home) = home_dir {
-        candidates.push(format!("{}/.config/bee-api/config.toml", home));
-        candidates.push(format!("{}/.bee-api.toml", home));
-    }
-
-    for path in candidates {
-        if let Some(p) = canonicalize_if_exists(path) {
-            return Some(p);
-        }
-    }
-
-    None
-}
-
-fn canonicalize_if_exists<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
-    let path = Path::new(path.as_ref());
-    if !path.exists() {
-        return None;
-    }
-    path.canonicalize().ok()
+    bee_core::config::find_config_file()
 }
 
 fn default_bind_addr() -> String {
@@ -114,6 +104,14 @@ fn default_allowed_actions() -> Vec<String> {
     ]
 }
 
+fn default_stale_after_hours() -> i64 {
+    24
+}
+
+fn default_batch_size() -> usize {
+    10
+}
+
 #[cfg(test)]
 mod tests {
     use super::{ApiConfig, default_allowed_actions, load_config_from_string};
@@ -133,6 +131,10 @@ filters = ["status:pending"]
 columns = ["id", "summary"]
 column_names = ["ID", "Summary"]
 default = true
+
+[api.external_links.sync]
+stale_after_hours = 12
+batch_size = 5
 "#,
         )
         .expect("config should parse");
@@ -143,6 +145,8 @@ default = true
         assert_eq!(config.report.filters, vec!["status:pending"]);
         assert_eq!(config.report.columns, vec!["id", "summary"]);
         assert_eq!(config.report.column_names, vec!["ID", "Summary"]);
+        assert_eq!(config.external_links.sync.stale_after_hours, 12);
+        assert_eq!(config.external_links.sync.batch_size, 5);
     }
 
     #[test]
@@ -151,5 +155,7 @@ default = true
         assert_eq!(config.undo_count, 1);
         assert_eq!(config.allowed_actions, default_allowed_actions());
         assert_eq!(config.report, ReportConfig::default());
+        assert_eq!(config.external_links.sync.stale_after_hours, 24);
+        assert_eq!(config.external_links.sync.batch_size, 10);
     }
 }

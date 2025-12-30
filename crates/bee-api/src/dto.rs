@@ -99,6 +99,97 @@ impl ApiTask {
     }
 }
 
+/// External link response payload.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ExternalLinkDto {
+    pub id: i32,
+    #[schema(value_type = String)]
+    pub provider: String,
+    pub url: String,
+    pub external_key: String,
+    pub cached_response: Option<String>,
+    #[schema(value_type = String, format = DateTime)]
+    pub last_synced_at: Option<DateTime<Local>>,
+    pub sync_error: Option<String>,
+}
+
+impl ExternalLinkDto {
+    pub fn from_link(link: bee_core::external_links::ExternalLink) -> Self {
+        let last_synced_at = link
+            .last_synced_at
+            .map(|dt| dt.with_timezone(&Local));
+        Self {
+            id: link.id,
+            provider: link.provider,
+            url: link.url,
+            external_key: link.external_key,
+            cached_response: link.cached_response,
+            last_synced_at,
+            sync_error: link.sync_error,
+        }
+    }
+}
+
+/// Create external link request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ExternalLinkCreateRequest {
+    pub url: String,
+}
+
+/// Batch sync request for external links.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ExternalLinkSyncRequest {
+    pub provider: Option<String>,
+    #[schema(value_type = String, format = "uuid")]
+    pub task_uuid: Option<Uuid>,
+    pub force: Option<bool>,
+}
+
+/// Sync response payload.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ExternalLinkSyncResponse {
+    pub attempted: usize,
+    pub succeeded: usize,
+    pub failed: usize,
+    pub errors: Vec<String>,
+}
+
+/// Recent GitLab merge request suggestion.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct GitlabMergeRequestDto {
+    pub iid: i64,
+    pub title: String,
+    pub web_url: String,
+    pub project_path: String,
+    pub state: String,
+    #[schema(value_type = String, format = DateTime)]
+    pub updated_at: DateTime<Local>,
+}
+
+/// Recent Jira issue suggestion.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct JiraIssueDto {
+    pub key: String,
+    pub summary: String,
+    pub status: String,
+    pub web_url: String,
+    #[schema(value_type = String, format = DateTime)]
+    pub updated_at: DateTime<Local>,
+}
+
+/// External link resolve request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ExternalLinkResolveRequest {
+    pub provider: String,
+    pub input: String,
+}
+
+/// External link resolve response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ExternalLinkResolveResponse {
+    pub url: String,
+}
+
 /// Token span emitted by the lexer for UI highlighting.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct TokenSpan {

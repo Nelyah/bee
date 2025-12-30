@@ -20,6 +20,9 @@ pub struct Config {
     #[serde(default)]
     #[serde(rename = "coefficients")]
     pub coefficients: Vec<CoeffientField>,
+
+    #[serde(default)]
+    pub external_links: ExternalLinksConfig,
 }
 
 fn default_report_map() -> HashMap<String, ReportConfig> {
@@ -36,6 +39,7 @@ impl Default for Config {
             default_report: default_report_name(),
             report_map: default_report_map(),
             coefficients: Vec::new(),
+            external_links: ExternalLinksConfig::default(),
         }
     }
 }
@@ -68,6 +72,26 @@ pub struct ReportConfig {
     pub columns: Vec<String>,
     pub column_names: Vec<String>,
     pub default: bool,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone, Default)]
+pub struct ExternalLinksConfig {
+    #[serde(default)]
+    pub jira: Option<ProviderConfig>,
+    #[serde(default)]
+    pub gitlab: Option<ProviderConfig>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub struct ProviderConfig {
+    pub base_url: String,
+    pub token: String,
+    #[serde(default = "default_min_delay_ms")]
+    pub min_delay_ms: u64,
+}
+
+fn default_min_delay_ms() -> u64 {
+    0
 }
 
 impl Default for ReportConfig {

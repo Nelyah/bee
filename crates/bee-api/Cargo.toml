@@ -17,6 +17,9 @@ log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+url = "2.5"
+urlencoding = "2.1"
 
 tokio = { version = "1", features = ["full"] }
 axum = "0.7"

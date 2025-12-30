@@ -2,17 +2,20 @@ use crate::{
     config::ApiConfig,
     dto::{
         ActionRequest, ActionResponse, ApiEvent, ApiTask, CompletionItem, CompletionsResponse,
-        ConfigResponse, ParseRequest, ParseResponse, ReportConfigDto, TokenSpan,
+        ConfigResponse, ExternalLinkCreateRequest, ExternalLinkDto, ExternalLinkResolveRequest,
+        ExternalLinkResolveResponse, ExternalLinkSyncRequest, ExternalLinkSyncResponse,
+        GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse, ReportConfigDto,
+        TokenSpan,
     },
     parse::{parse_input, tokenize_with_spans},
     printer::JsonPrinter,
 };
 use axum::{
     Json, Router,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use bee_actions::{ActionRegistry, command_parser::ParsedCommand};
 use bee_core::{
@@ -23,10 +26,12 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use std::{collections::HashSet, time::Duration};
+use uuid::Uuid;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
+use crate::external_links;
 
 /// Shared application state for request handlers.
 #[derive(Clone)]
@@ -34,6 +39,9 @@ pub struct AppState {
     undo_count: usize,
     report: ReportConfig,
     allowed_actions: HashSet<String>,
+    external_links: bee_core::config::ExternalLinksConfig,
+    external_links_sync: crate::config::SyncConfig,
+    http_client: reqwest::Client,
 }
 
 impl AppState {
@@ -43,6 +51,9 @@ impl AppState {
             undo_count: config.undo_count,
             report: config.report,
             allowed_actions: config.allowed_actions.into_iter().collect(),
+            external_links: bee_core::config::get_config().external_links.clone(),
+            external_links_sync: config.external_links.sync,
+            http_client: reqwest::Client::new(),
         }
     }
 }
@@ -94,6 +105,28 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/completions", get(completions_handler))
         .route("/v1/action", post(action_handler))
         .route("/v1/parse", post(parse_handler))
+        .route(
+            "/v1/tasks/:task_uuid/external-links",
+            get(list_external_links_handler).post(create_external_link_handler),
+        )
+        .route(
+            "/v1/external-links/:link_id",
+            delete(delete_external_link_handler),
+        )
+        .route(
+            "/v1/external-links/:link_id/sync",
+            post(sync_external_link_handler),
+        )
+        .route("/v1/external-links/sync", post(sync_external_links_handler))
+        .route(
+            "/v1/external-links/gitlab/merge-requests/recent",
+            get(recent_gitlab_merge_requests_handler),
+        )
+        .route(
+            "/v1/external-links/jira/issues/recent",
+            get(recent_jira_issues_handler),
+        )
+        .route("/v1/external-links/resolve", post(resolve_external_link_handler))
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
         .layer(
             TraceLayer::new_for_http()
@@ -271,6 +304,242 @@ async fn completions_handler(
 }
 
 #[utoipa::path(
+    get,
+    path = "/v1/tasks/{task_uuid}/external-links",
+    params(
+        ("task_uuid" = String, Path, description = "Task UUID")
+    ),
+    responses(
+        (status = 200, description = "External links for a task", body = [ExternalLinkDto])
+    )
+)]
+async fn list_external_links_handler(
+    Path(task_uuid): Path<Uuid>,
+) -> Result<Json<Vec<ExternalLinkDto>>, ApiError> {
+    let links = DbStore::list_external_links_by_task(task_uuid)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to load external links: {e}")))?;
+
+    Ok(Json(
+        links
+            .into_iter()
+            .map(ExternalLinkDto::from_link)
+            .collect(),
+    ))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/tasks/{task_uuid}/external-links",
+    request_body = ExternalLinkCreateRequest,
+    params(
+        ("task_uuid" = String, Path, description = "Task UUID")
+    ),
+    responses(
+        (status = 200, description = "External link created", body = ExternalLinkDto),
+        (status = 400, description = "Invalid link", body = ErrorResponse)
+    )
+)]
+async fn create_external_link_handler(
+    State(state): State<AppState>,
+    Path(task_uuid): Path<Uuid>,
+    Json(payload): Json<ExternalLinkCreateRequest>,
+) -> Result<Json<ExternalLinkDto>, ApiError> {
+    let parsed = external_links::parse_external_link(&payload.url, &state.external_links)
+        .map_err(ApiError::bad_request)?;
+
+    let link = DbStore::insert_external_link(
+        task_uuid,
+        parsed.provider.to_string(),
+        payload.url,
+        parsed.external_key,
+    )
+    .await
+    .map_err(|e| ApiError::internal(format!("Failed to insert external link: {e}")))?;
+
+    Ok(Json(ExternalLinkDto::from_link(link)))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/external-links/{link_id}",
+    params(
+        ("link_id" = i32, Path, description = "External link id")
+    ),
+    responses(
+        (status = 200, description = "External link deleted")
+    )
+)]
+async fn delete_external_link_handler(Path(link_id): Path<i32>) -> Result<StatusCode, ApiError> {
+    DbStore::delete_external_link_by_id(link_id)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to delete external link: {e}")))?;
+    Ok(StatusCode::OK)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/external-links/{link_id}/sync",
+    params(
+        ("link_id" = i32, Path, description = "External link id"),
+        ("force" = bool, Query, description = "Force sync")
+    ),
+    responses(
+        (status = 200, description = "Sync result", body = ExternalLinkSyncResponse),
+        (status = 400, description = "Sync error", body = ErrorResponse)
+    )
+)]
+async fn sync_external_link_handler(
+    State(state): State<AppState>,
+    Path(link_id): Path<i32>,
+    Query(query): Query<external_links::SyncQuery>,
+) -> Result<Json<ExternalLinkSyncResponse>, ApiError> {
+    let Some(link) = DbStore::get_external_link_by_id(link_id)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to load link: {e}")))? else {
+        return Err(ApiError::bad_request("External link not found"));
+    };
+
+    let result = external_links::sync_single_link(
+        &state.http_client,
+        &state.external_links,
+        &state.external_links_sync,
+        link,
+        query.force.unwrap_or(false),
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+
+    Ok(Json(result))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/external-links/sync",
+    request_body = ExternalLinkSyncRequest,
+    responses(
+        (status = 200, description = "Batch sync result", body = ExternalLinkSyncResponse),
+        (status = 400, description = "Sync error", body = ErrorResponse)
+    )
+)]
+async fn sync_external_links_handler(
+    State(state): State<AppState>,
+    Json(payload): Json<ExternalLinkSyncRequest>,
+) -> Result<Json<ExternalLinkSyncResponse>, ApiError> {
+    let result = external_links::sync_links_batch(
+        &state.http_client,
+        &state.external_links,
+        &state.external_links_sync,
+        payload.provider.as_deref(),
+        payload.task_uuid,
+        payload.force.unwrap_or(false),
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+
+    Ok(Json(result))
+}
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+struct RecentGitlabQuery {
+    /// Max number of merge requests
+    pub limit: Option<usize>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/external-links/gitlab/merge-requests/recent",
+    params(RecentGitlabQuery),
+    responses(
+        (status = 200, description = "Recent merge requests", body = [GitlabMergeRequestDto]),
+        (status = 400, description = "GitLab error", body = ErrorResponse)
+    )
+)]
+async fn recent_gitlab_merge_requests_handler(
+    State(state): State<AppState>,
+    Query(query): Query<RecentGitlabQuery>,
+) -> Result<Json<Vec<GitlabMergeRequestDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(20);
+    let items = external_links::fetch_recent_gitlab_merge_requests(
+        &state.http_client,
+        &state.external_links,
+        limit,
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+    Ok(Json(items))
+}
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+struct RecentJiraQuery {
+    /// Max number of issues
+    pub limit: Option<usize>,
+    /// Scope: assigned, created, or both
+    pub scope: Option<String>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/external-links/jira/issues/recent",
+    params(RecentJiraQuery),
+    responses(
+        (status = 200, description = "Recent Jira issues", body = [JiraIssueDto]),
+        (status = 400, description = "Jira error", body = ErrorResponse)
+    )
+)]
+async fn recent_jira_issues_handler(
+    State(state): State<AppState>,
+    Query(query): Query<RecentJiraQuery>,
+) -> Result<Json<Vec<JiraIssueDto>>, ApiError> {
+    let limit = query.limit.unwrap_or(20);
+    let scope = match query.scope.as_deref() {
+        Some("assigned") => external_links::JiraIssueScope::Assigned,
+        Some("created") => external_links::JiraIssueScope::Created,
+        _ => external_links::JiraIssueScope::Both,
+    };
+    let items = external_links::fetch_recent_jira_issues(
+        &state.http_client,
+        &state.external_links,
+        limit,
+        scope,
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+    Ok(Json(items))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/external-links/resolve",
+    request_body = ExternalLinkResolveRequest,
+    responses(
+        (status = 200, description = "Resolved link", body = ExternalLinkResolveResponse),
+        (status = 400, description = "Resolve error", body = ErrorResponse)
+    )
+)]
+async fn resolve_external_link_handler(
+    State(state): State<AppState>,
+    Json(payload): Json<ExternalLinkResolveRequest>,
+) -> Result<Json<ExternalLinkResolveResponse>, ApiError> {
+    let provider = match payload.provider.as_str() {
+        "jira" => external_links::ProviderKind::Jira,
+        "gitlab" => external_links::ProviderKind::Gitlab,
+        _ => return Err(ApiError::bad_request("Unknown provider")),
+    };
+
+    let resolved = external_links::resolve_external_link(
+        &state.http_client,
+        &state.external_links,
+        provider,
+        &payload.input,
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+
+    Ok(Json(resolved))
+}
+
+#[utoipa::path(
     post,
     path = "/v1/parse",
     request_body = ParseRequest,
@@ -427,13 +696,35 @@ fn serialize_properties(properties: Option<TaskProperties>) -> Result<Option<Val
 /// OpenAPI document for the bee-api service.
 #[derive(OpenApi)]
 #[openapi(
-    paths(health_handler, config_handler, completions_handler, parse_handler, action_handler),
+    paths(
+        health_handler,
+        config_handler,
+        completions_handler,
+        parse_handler,
+        action_handler,
+        list_external_links_handler,
+        create_external_link_handler,
+        delete_external_link_handler,
+        sync_external_link_handler,
+        sync_external_links_handler,
+        recent_gitlab_merge_requests_handler,
+        recent_jira_issues_handler,
+        resolve_external_link_handler
+    ),
     components(schemas(
         ActionRequest,
         ActionResponse,
         ParseRequest,
         ParseResponse,
         ConfigResponse,
+        ExternalLinkCreateRequest,
+        ExternalLinkDto,
+        ExternalLinkResolveRequest,
+        ExternalLinkResolveResponse,
+        ExternalLinkSyncRequest,
+        ExternalLinkSyncResponse,
+        GitlabMergeRequestDto,
+        JiraIssueDto,
         ReportConfigDto,
         CompletionsResponse,
         CompletionItem,

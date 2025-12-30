@@ -16,6 +16,11 @@ struct LauncherApp: App {
                     viewModel.closeDetail()
                 }
                 .keyboardShortcut(.escape, modifiers: [])
+
+                Button("Command Palette") {
+                    viewModel.openCommandPalette()
+                }
+                .keyboardShortcut("k", modifiers: [.command])
             }
         }
     }

@@ -51,6 +51,33 @@ final class ApiClient: ApiClientProtocol, Sendable {
         try await get(path: "/v1/completions", queryItems: [URLQueryItem(name: "type", value: type)])
     }
 
+    func fetchRecentGitlabMergeRequests(limit: Int) async throws -> [GitlabMergeRequestSuggestion] {
+        try await get(
+            path: "/v1/external-links/gitlab/merge-requests/recent",
+            queryItems: [URLQueryItem(name: "limit", value: String(limit))]
+        )
+    }
+
+    func fetchRecentJiraIssues(limit: Int, scope: JiraIssueScope) async throws -> [JiraIssueSuggestion] {
+        try await get(
+            path: "/v1/external-links/jira/issues/recent",
+            queryItems: [
+                URLQueryItem(name: "limit", value: String(limit)),
+                URLQueryItem(name: "scope", value: scope.rawValue)
+            ]
+        )
+    }
+
+    func resolveExternalLink(provider: ExternalLinkProvider, input: String) async throws -> ExternalLinkResolveResponse {
+        let request = ExternalLinkResolveRequest(provider: provider.rawValue, input: input)
+        return try await send(request, path: "/v1/external-links/resolve")
+    }
+
+    func addExternalLink(taskUUID: String, url: String) async throws -> ExternalLinkDto {
+        let request = ExternalLinkCreateRequest(url: url)
+        return try await send(request, path: "/v1/tasks/\(taskUUID)/external-links")
+    }
+
     /// Send a JSON POST request to the API and decode the response type.
     private func send<Request: Encodable, Response: Decodable>(
         _ body: Request,

@@ -17,6 +17,22 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     var configResult: Result<ConfigResponse, Error> = .success(MockApiClient.sampleConfig)
     var completionsResult: Result<CompletionsResponse, Error> = .success(MockApiClient.sampleCompletions)
+    var gitlabMergeRequestsResult: Result<[GitlabMergeRequestSuggestion], Error> = .success(MockApiClient.sampleMergeRequests)
+    var jiraIssuesResult: Result<[JiraIssueSuggestion], Error> = .success(MockApiClient.sampleJiraIssues)
+    var resolveResult: Result<ExternalLinkResolveResponse, Error> = .success(
+        ExternalLinkResolveResponse(url: "https://gitlab.example.com/group/project/-/merge_requests/42")
+    )
+    var addExternalLinkResult: Result<ExternalLinkDto, Error> = .success(
+        ExternalLinkDto(
+            id: 1,
+            provider: "gitlab",
+            url: "https://gitlab.example.com/group/project/-/merge_requests/42",
+            externalKey: "mr:group/project:42",
+            cachedResponse: nil,
+            lastSyncedAt: nil,
+            syncError: nil
+        )
+    )
     var lastParseInput: String?
     var lastRunActionFilter: JSONValue?
 
@@ -36,6 +52,22 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func fetchCompletions(type: String) async throws -> CompletionsResponse {
         try completionsResult.get()
+    }
+
+    func fetchRecentGitlabMergeRequests(limit: Int) async throws -> [GitlabMergeRequestSuggestion] {
+        try gitlabMergeRequestsResult.get()
+    }
+
+    func fetchRecentJiraIssues(limit: Int, scope: JiraIssueScope) async throws -> [JiraIssueSuggestion] {
+        try jiraIssuesResult.get()
+    }
+
+    func resolveExternalLink(provider: ExternalLinkProvider, input: String) async throws -> ExternalLinkResolveResponse {
+        try resolveResult.get()
+    }
+
+    func addExternalLink(taskUUID: String, url: String) async throws -> ExternalLinkDto {
+        try addExternalLinkResult.get()
     }
 
     func emptyParse() -> ParseResponse {
@@ -94,6 +126,42 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             dateCompleted: "2024-01-12T16:00:00Z",
             dateDue: nil,
             urgency: nil
+        )
+    ]
+
+    static let sampleMergeRequests: [GitlabMergeRequestSuggestion] = [
+        GitlabMergeRequestSuggestion(
+            id: 42,
+            title: "Improve task sync",
+            webURL: "https://gitlab.example.com/group/project/-/merge_requests/42",
+            projectPath: "group/project",
+            state: "opened",
+            updatedAt: "2024-09-24T12:00:00Z"
+        ),
+        GitlabMergeRequestSuggestion(
+            id: 41,
+            title: "Fix launcher bug",
+            webURL: "https://gitlab.example.com/group/project/-/merge_requests/41",
+            projectPath: "group/project",
+            state: "merged",
+            updatedAt: "2024-09-23T18:15:00Z"
+        )
+    ]
+
+    static let sampleJiraIssues: [JiraIssueSuggestion] = [
+        JiraIssueSuggestion(
+            key: "BEE-101",
+            summary: "Add command palette",
+            status: "In Progress",
+            webURL: "https://jira.example.com/browse/BEE-101",
+            updatedAt: "2024-09-22T09:30:00Z"
+        ),
+        JiraIssueSuggestion(
+            key: "BEE-102",
+            summary: "Polish UI",
+            status: "To Do",
+            webURL: "https://jira.example.com/browse/BEE-102",
+            updatedAt: "2024-09-21T14:05:00Z"
         )
     ]
 }

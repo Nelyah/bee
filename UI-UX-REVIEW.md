@@ -13,28 +13,6 @@
 - The “Refresh” control is appropriately quiet, but lacks hover/click feedback, so clickability isn’t obvious.
 
 ## Prioritised TODO list
-- **ID**: UX-001  
-  **Priority**: P1  
-  **Effort**: M  
-  **Evidence**: Task Detail screen: large empty center area; cards clustered left.  
-  **Problem (rough)**: Layout feels unbalanced; focal point is unclear, wasting space and reducing scan efficiency.  
-  **Fix (rough)**:
-  - Reflow into a two-column layout: left column for metadata cards, right column for External Links list.
-  - Constrain cards to consistent widths and align their left edges.
-  - Consider reducing vertical gaps between metadata cards.  
-  **Success criteria**: User’s eye naturally moves from title → metadata → links without a large empty gap; list reads as the primary content block.
-
-- **ID**: UX-002  
-  **Priority**: P1  
-  **Effort**: S  
-  **Evidence**: External Links > GitLab rows; mixed icon/badge sizes across the row.  
-  **Problem (rough)**: The large status badge on the right and large MR icon on the left compete, making the row feel busy.  
-  **Fix (rough)**:
-  - Reduce the right sync badge size or move it to the metadata line.
-  - Align MR icon and title baseline; keep icons consistent size across rows.
-  - Make the title line the single strongest typographic element.  
-  **Success criteria**: At a glance, the title line is clearly primary, with metadata as secondary.
-
 - **ID**: UX-003  
   **Priority**: P1  
   **Effort**: S  
@@ -63,6 +41,14 @@
 - Should External Links be the primary focus in detail view? If yes, I would prioritize it in the layout (right column or top section).
 
 ## Done
+- **ID**: UX-002  
+  **Status**: Done  
+  **Evidence**: External Links > GitLab rows; mixed icon/badge sizes across the row.  
+  **Summary**: Moved sync badge to the metadata line in a compact style and aligned the MR icon with the title baseline, letting the title be the primary focus.
+- **ID**: UX-001  
+  **Status**: Done  
+  **Evidence**: Task Detail screen: large empty center area; cards clustered left.  
+  **Summary**: Reflowed to a two-column layout (metadata left, links right) with a responsive single-column fallback, reducing empty space and clarifying focus.
 - **ID**: UX-005  
   **Status**: Done  
   **Evidence**: External Links header; “Refresh” top-right.  

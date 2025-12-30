@@ -355,21 +355,26 @@ private struct ExternalLinkRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
                 if let statusIconName = gitlabStatusIconName {
                     statusIconView(name: statusIconName)
+                        .alignmentGuide(.firstTextBaseline) { dimensions in
+                            dimensions[.bottom] - 6
+                        }
                 } else if gitlabSummary != nil {
                     statusIconView(name: "pr-open")
+                        .alignmentGuide(.firstTextBaseline) { dimensions in
+                            dimensions[.bottom] - 6
+                        }
                 }
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     if isGitlabRow {
-                        HStack(spacing: DesignTokens.Spacing.sm) {
+                        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
                             Text(gitlabTitleLine)
                                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
                                 .foregroundColor(ThemeManager.current.text)
                             Spacer()
-                            LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt)
                         }
 
                         HStack(spacing: DesignTokens.Spacing.sm) {
@@ -396,6 +401,8 @@ private struct ExternalLinkRow: View {
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                             }
+                            Spacer()
+                            LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt, compact: true)
                         }
 
                         if let branch = gitlabBranchLine {
@@ -423,18 +430,21 @@ private struct ExternalLinkRow: View {
                             )
                         }
                     } else {
-                        HStack(spacing: DesignTokens.Spacing.sm) {
+                        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
                             Text(titleText)
                                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
                                 .foregroundColor(ThemeManager.current.text)
                             Spacer()
-                            LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt)
                         }
 
-                        if !detailText.isEmpty {
-                            Text(detailText)
-                                .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
-                                .foregroundColor(ThemeManager.current.subtext0)
+                        HStack(spacing: DesignTokens.Spacing.sm) {
+                            if !detailText.isEmpty {
+                                Text(detailText)
+                                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
+                                    .foregroundColor(ThemeManager.current.subtext0)
+                            }
+                            Spacer()
+                            LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt, compact: true)
                         }
                     }
                 }
@@ -621,12 +631,13 @@ private struct ExternalLinkRow: View {
 private struct LinkStatusBadge: View {
     let state: ExternalLinkSyncState
     let timestamp: String?
+    var compact: Bool = false
 
     var body: some View {
         Text(label)
             .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, 4)
+            .padding(.horizontal, compact ? DesignTokens.Spacing.xs : DesignTokens.Spacing.sm)
+            .padding(.vertical, compact ? 2 : 4)
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
                     .fill(color.opacity(0.2))

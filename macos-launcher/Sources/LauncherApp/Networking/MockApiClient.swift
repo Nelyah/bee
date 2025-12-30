@@ -17,6 +17,11 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     var configResult: Result<ConfigResponse, Error> = .success(MockApiClient.sampleConfig)
     var completionsResult: Result<CompletionsResponse, Error> = .success(MockApiClient.sampleCompletions)
+    var taskDetailResult: Result<ApiTaskDetail, Error> = .success(MockApiClient.sampleTaskDetail)
+    var externalLinksResult: Result<[ExternalLinkDto], Error> = .success(MockApiClient.sampleExternalLinks)
+    var syncExternalLinkResult: Result<ExternalLinkSyncResponse, Error> = .success(
+        ExternalLinkSyncResponse(attempted: 1, succeeded: 1, failed: 0, errors: [])
+    )
     var gitlabMergeRequestsResult: Result<[GitlabMergeRequestSuggestion], Error> = .success(MockApiClient.sampleMergeRequests)
     var jiraIssuesResult: Result<[JiraIssueSuggestion], Error> = .success(MockApiClient.sampleJiraIssues)
     var resolveResult: Result<ExternalLinkResolveResponse, Error> = .success(
@@ -52,6 +57,18 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func fetchCompletions(type: String) async throws -> CompletionsResponse {
         try completionsResult.get()
+    }
+
+    func fetchTaskDetail(taskUUID: String) async throws -> ApiTaskDetail {
+        try taskDetailResult.get()
+    }
+
+    func fetchExternalLinks(taskUUID: String) async throws -> [ExternalLinkDto] {
+        try externalLinksResult.get()
+    }
+
+    func syncExternalLink(linkId: Int, force: Bool) async throws -> ExternalLinkSyncResponse {
+        try syncExternalLinkResult.get()
     }
 
     func fetchRecentGitlabMergeRequests(limit: Int) async throws -> [GitlabMergeRequestSuggestion] {
@@ -126,6 +143,51 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             dateCompleted: "2024-01-12T16:00:00Z",
             dateDue: nil,
             urgency: nil
+        )
+    ]
+
+    static let sampleTaskDetail = ApiTaskDetail(
+        dbId: 1,
+        uuid: "a1b2c3d4",
+        status: "active",
+        summary: "Review pull request",
+        project: "bee",
+        tags: ["code", "review"],
+        dateCreated: "2024-01-15T10:00:00Z",
+        dateCompleted: nil,
+        dateDue: "2024-01-20T17:00:00Z",
+        urgency: 8,
+        annotations: [
+            TaskAnnotationDto(value: "Follow up with QA", time: "2024-01-18T09:00:00Z")
+        ],
+        history: [
+            TaskHistoryDto(value: "Status changed from 'PENDING' to 'ACTIVE'", datetime: "2024-01-16T12:30:00Z"),
+            TaskHistoryDto(value: "Added a UUID to depend on: 'deadbeef'", datetime: "2024-01-15T11:00:00Z")
+        ]
+    )
+
+    static let sampleExternalLinks: [ExternalLinkDto] = [
+        ExternalLinkDto(
+            id: 1,
+            provider: "gitlab",
+            url: "https://gitlab.example.com/group/project/-/merge_requests/42",
+            externalKey: "mr:group/project:42",
+            cachedResponse: """
+            {"merge_request":{"title":"Improve task sync","state":"opened","user_notes_count":12,"head_pipeline":{"status":"running"}},"approvals":{"approved":false}}
+            """,
+            lastSyncedAt: "2024-09-24T12:00:00Z",
+            syncError: nil
+        ),
+        ExternalLinkDto(
+            id: 2,
+            provider: "jira",
+            url: "https://jira.example.com/browse/BEE-101",
+            externalKey: "BEE-101",
+            cachedResponse: """
+            {"fields":{"summary":"Add command palette","status":{"name":"In Progress"}}}
+            """,
+            lastSyncedAt: "2024-09-22T09:30:00Z",
+            syncError: nil
         )
     ]
 

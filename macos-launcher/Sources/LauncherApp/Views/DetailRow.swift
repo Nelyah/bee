@@ -15,6 +15,8 @@ struct DetailRow: View {
                 .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .rounded))
                 .foregroundColor(ThemeManager.current.text)
                 .help(helpText ?? value)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

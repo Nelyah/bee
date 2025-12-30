@@ -97,6 +97,31 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
         CompletionsResponse(items: [])
     }
 
+    func fetchTaskDetail(taskUUID: String) async throws -> ApiTaskDetail {
+        ApiTaskDetail(
+            dbId: nil,
+            uuid: taskUUID,
+            status: "pending",
+            summary: "Detail",
+            project: nil,
+            tags: [],
+            dateCreated: "2024-01-01T00:00:00Z",
+            dateCompleted: nil,
+            dateDue: nil,
+            urgency: nil,
+            annotations: [],
+            history: []
+        )
+    }
+
+    func fetchExternalLinks(taskUUID: String) async throws -> [ExternalLinkDto] {
+        []
+    }
+
+    func syncExternalLink(linkId: Int, force: Bool) async throws -> ExternalLinkSyncResponse {
+        ExternalLinkSyncResponse(attempted: 1, succeeded: 1, failed: 0, errors: [])
+    }
+
     func fetchRecentGitlabMergeRequests(limit: Int) async throws -> [GitlabMergeRequestSuggestion] {
         []
     }

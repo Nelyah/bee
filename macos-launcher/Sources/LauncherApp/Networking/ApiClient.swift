@@ -74,6 +74,19 @@ final class ApiClient: ApiClientProtocol, Sendable {
         try await get(path: "/v1/completions", queryItems: [URLQueryItem(name: "type", value: type)])
     }
 
+    func fetchTaskDetail(taskUUID: String) async throws -> ApiTaskDetail {
+        try await get(path: "/v1/tasks/\(taskUUID)")
+    }
+
+    func fetchExternalLinks(taskUUID: String) async throws -> [ExternalLinkDto] {
+        try await get(path: "/v1/tasks/\(taskUUID)/external-links")
+    }
+
+    func syncExternalLink(linkId: Int, force: Bool) async throws -> ExternalLinkSyncResponse {
+        let query = force ? [URLQueryItem(name: "force", value: "true")] : []
+        return try await post(path: "/v1/external-links/\(linkId)/sync", queryItems: query)
+    }
+
     func fetchRecentGitlabMergeRequests(limit: Int) async throws -> [GitlabMergeRequestSuggestion] {
         try await get(
             path: "/v1/external-links/gitlab/merge-requests/recent",
@@ -150,6 +163,44 @@ final class ApiClient: ApiClientProtocol, Sendable {
         logger.info("HTTP GET \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            logger.error("HTTP error \(path, privacy: .public) (no response)")
+            throw ApiClientError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let payload = decodeErrorPayload(from: data)
+            let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
+            logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
+            if let payload {
+                logger.error("API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)")
+            }
+            throw ApiClientError.api(
+                message: message,
+                code: payload?.code,
+                developerMessage: payload?.developerMessage
+            )
+        }
+        logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
+        return try JSONDecoder().decode(Response.self, from: data)
+    }
+
+    /// Send a POST request without a JSON body and decode the response type.
+    private func post<Response: Decodable>(
+        path: String,
+        queryItems: [URLQueryItem] = []
+    ) async throws -> Response {
+        var urlComponents = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !queryItems.isEmpty {
+            urlComponents.queryItems = queryItems
+        }
+        guard let url = urlComponents.url else {
+            throw ApiClientError.invalidResponse
+        }
+        logger.info("HTTP POST \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {

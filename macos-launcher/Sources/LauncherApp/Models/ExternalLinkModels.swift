@@ -7,6 +7,9 @@ struct GitlabMergeRequestSuggestion: Identifiable, Decodable {
     let projectPath: String
     let state: String
     let updatedAt: String
+    let notesCount: Int?
+    let approved: Bool?
+    let pipelineStatus: String?
 
     enum CodingKeys: String, CodingKey {
         case id = "iid"
@@ -15,6 +18,9 @@ struct GitlabMergeRequestSuggestion: Identifiable, Decodable {
         case projectPath = "project_path"
         case state
         case updatedAt = "updated_at"
+        case notesCount = "user_notes_count"
+        case approved
+        case pipelineStatus = "pipeline_status"
     }
 }
 

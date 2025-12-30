@@ -11,7 +11,10 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "LauncherApp"
+            name: "LauncherApp",
+            resources: [
+                .process("Assets")
+            ]
         ),
         .testTarget(
             name: "LauncherAppTests",

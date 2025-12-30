@@ -6,8 +6,7 @@ struct ToastView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(ThemeManager.current.red)
+            toastIcon
             Text(toast.message)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(ThemeManager.current.text)
@@ -24,6 +23,25 @@ struct ToastView: View {
                 .stroke(ThemeManager.current.surface2.opacity(0.6), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 4)
+    }
+
+    @ViewBuilder
+    private var toastIcon: some View {
+        switch toast.icon {
+        case .warning:
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(ThemeManager.current.red)
+        case .gitlab:
+            if let icon = AssetIcon.gitlab() {
+                icon
+                    .resizable()
+                    .renderingMode(.original)
+                    .frame(width: 14, height: 14)
+            } else {
+                Image(systemName: "link")
+                    .foregroundStyle(ThemeManager.current.subtext0)
+            }
+        }
     }
 }
 

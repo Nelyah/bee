@@ -193,8 +193,13 @@ final class LauncherViewModel: ObservableObject {
 
     /// Apply default report filters to list actions when no filter was provided.
     /// Present a toast message that auto-dismisses after a duration.
-    func showToast(message: String, duration: TimeInterval = Constants.defaultToastDuration) {
-        let toast = ToastMessage(message: message)
+    @discardableResult
+    func showToast(
+        message: String,
+        icon: ToastIcon = .warning,
+        duration: TimeInterval = Constants.defaultToastDuration
+    ) -> UUID {
+        let toast = ToastMessage(message: message, icon: icon)
         withAnimation(.easeInOut(duration: Constants.toastAnimationDuration)) {
             toasts.append(toast)
         }
@@ -205,6 +210,13 @@ final class LauncherViewModel: ObservableObject {
                     toasts.removeAll { $0.id == toast.id }
                 }
             }
+        }
+        return toast.id
+    }
+
+    func removeToast(id: UUID) {
+        withAnimation(.easeInOut(duration: Constants.toastAnimationDuration)) {
+            toasts.removeAll { $0.id == id }
         }
     }
 
@@ -411,7 +423,7 @@ final class LauncherViewModel: ObservableObject {
     var filteredCommandPaletteActions: [CommandPaletteAction] {
         let query = commandPaletteQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return CommandPaletteAction.allCases }
-        return CommandPaletteAction.allCases.filter { $0.rawValue.lowercased().contains(query) }
+        return CommandPaletteAction.allCases.filter { fuzzyMatches(query, in: $0.rawValue.lowercased()) }
     }
 
     var filteredCommandPaletteSuggestions: [CommandPaletteSuggestion] {
@@ -422,11 +434,19 @@ final class LauncherViewModel: ObservableObject {
         switch commandPaletteMode {
         case .addGitlab:
             items = gitlabSuggestions
-                .filter { lower.isEmpty || $0.title.lowercased().contains(lower) || "\($0.id)".contains(lower) }
+                .filter {
+                    lower.isEmpty
+                        || fuzzyMatches(lower, in: $0.title.lowercased())
+                        || fuzzyMatches(lower, in: "\($0.id)")
+                }
                 .map { .gitlab($0) }
         case .addJira:
             items = jiraSuggestions
-                .filter { lower.isEmpty || $0.summary.lowercased().contains(lower) || $0.key.lowercased().contains(lower) }
+                .filter {
+                    lower.isEmpty
+                        || fuzzyMatches(lower, in: $0.summary.lowercased())
+                        || fuzzyMatches(lower, in: $0.key.lowercased())
+                }
                 .map { .jira($0) }
         case .root:
             items = []
@@ -437,6 +457,18 @@ final class LauncherViewModel: ObservableObject {
         }
 
         return items
+    }
+
+    private func fuzzyMatches(_ query: String, in value: String) -> Bool {
+        guard !query.isEmpty else { return true }
+        var remaining = value[...]
+        for char in query {
+            guard let idx = remaining.firstIndex(of: char) else {
+                return false
+            }
+            remaining = remaining[remaining.index(after: idx)...]
+        }
+        return true
     }
 
     func loadCommandPaletteSuggestions() {
@@ -512,7 +544,11 @@ final class LauncherViewModel: ObservableObject {
         provider: ExternalLinkProvider,
         taskUUID: String
     ) {
-        commandPaletteIsLoading = true
+        let pendingToastId = showToast(
+            message: provider == .gitlab ? "Adding Gitlab link…" : "Adding link…",
+            icon: provider == .gitlab ? .gitlab : .warning,
+            duration: Constants.defaultToastDuration
+        )
         Task {
             do {
                 let url: String
@@ -527,11 +563,15 @@ final class LauncherViewModel: ObservableObject {
                 }
 
                 _ = try await apiClient.addExternalLink(taskUUID: taskUUID, url: url)
-                commandPaletteIsLoading = false
-                showToast(message: "Link added.")
+                removeToast(id: pendingToastId)
+                if provider == .gitlab {
+                    showToast(message: "Gitlab link added", icon: .gitlab)
+                } else {
+                    showToast(message: "Link added.")
+                }
                 closeCommandPalette()
             } catch {
-                commandPaletteIsLoading = false
+                removeToast(id: pendingToastId)
                 showToast(message: error.localizedDescription)
             }
         }

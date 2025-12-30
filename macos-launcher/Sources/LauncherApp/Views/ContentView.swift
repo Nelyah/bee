@@ -20,13 +20,14 @@ struct ContentView: View {
                     .padding(20)
             }
 
-            ToastStackView(toasts: viewModel.toasts)
-                .padding(16)
-                .allowsHitTesting(false)
-
             if viewModel.isCommandPalettePresented {
                 CommandPaletteView(viewModel: viewModel)
             }
+
+            ToastStackView(toasts: viewModel.toasts)
+                .padding(16)
+                .allowsHitTesting(false)
+                .zIndex(2)
         }
         .onExitCommand {
             if viewModel.isCommandPalettePresented {

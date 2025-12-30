@@ -162,6 +162,9 @@ pub struct GitlabMergeRequestDto {
     pub web_url: String,
     pub project_path: String,
     pub state: String,
+    pub user_notes_count: Option<i64>,
+    pub approved: Option<bool>,
+    pub pipeline_status: Option<String>,
     #[schema(value_type = String, format = DateTime)]
     pub updated_at: DateTime<Local>,
 }

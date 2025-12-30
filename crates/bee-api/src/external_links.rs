@@ -246,21 +246,78 @@ pub async fn fetch_recent_gitlab_merge_requests(
     let raw: Vec<GitlabMergeRequestRaw> = serde_json::from_str(&body)
         .map_err(|e| format!("Invalid GitLab merge request JSON: {e}"))?;
 
-    Ok(raw
-        .into_iter()
-        .filter_map(|item| {
-            let updated = DateTime::parse_from_rfc3339(&item.updated_at).ok()?;
-            let project_path = extract_gitlab_project_path(&item.web_url).unwrap_or_default();
-            Some(GitlabMergeRequestDto {
-                iid: item.iid,
-                title: item.title,
-                web_url: item.web_url,
-                project_path,
-                state: item.state,
-                updated_at: updated.with_timezone(&Local),
-            })
-        })
-        .collect())
+    let mut results = Vec::with_capacity(raw.len());
+    for item in raw {
+        let updated = match DateTime::parse_from_rfc3339(&item.updated_at) {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
+        let project_path = extract_gitlab_project_path(&item.web_url).unwrap_or_default();
+        let pipeline_status = item
+            .head_pipeline
+            .as_ref()
+            .and_then(|pipeline| pipeline.status.clone())
+            .or_else(|| item.pipeline.as_ref().and_then(|pipeline| pipeline.status.clone()));
+        let approved = if project_path.is_empty() {
+            None
+        } else {
+            match fetch_gitlab_approval_status(client, &base, token.as_str(), &project_path, item.iid).await
+            {
+                Ok(value) => value,
+                Err(_) => None,
+            }
+        };
+
+        if cfg.min_delay_ms > 0 {
+            sleep(TokioDuration::from_millis(cfg.min_delay_ms)).await;
+        }
+
+        results.push(GitlabMergeRequestDto {
+            iid: item.iid,
+            title: item.title,
+            web_url: item.web_url,
+            project_path,
+            state: item.state,
+            user_notes_count: item.user_notes_count,
+            approved,
+            pipeline_status,
+            updated_at: updated.with_timezone(&Local),
+        });
+    }
+
+    Ok(results)
+}
+
+async fn fetch_gitlab_approval_status(
+    client: &Client,
+    base_url: &str,
+    token: &str,
+    project_path: &str,
+    iid: i64,
+) -> Result<Option<bool>, String> {
+    let encoded_project = urlencoding::encode(project_path);
+    let url = format!(
+        "{base_url}/api/v4/projects/{encoded_project}/merge_requests/{iid}/approvals"
+    );
+    let response = client
+        .get(url)
+        .header("PRIVATE-TOKEN", token)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to call GitLab approval API: {e}"))?;
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read GitLab approval response: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("GitLab approval API error {status}: {body}"));
+    }
+
+    let payload: GitlabApprovalRaw =
+        serde_json::from_str(&body).map_err(|e| format!("Invalid GitLab approval JSON: {e}"))?;
+    Ok(payload.approved)
 }
 
 pub async fn fetch_recent_jira_issues(
@@ -678,6 +735,19 @@ struct GitlabMergeRequestRaw {
     web_url: String,
     state: String,
     updated_at: String,
+    user_notes_count: Option<i64>,
+    pipeline: Option<GitlabPipelineRaw>,
+    head_pipeline: Option<GitlabPipelineRaw>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitlabPipelineRaw {
+    status: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitlabApprovalRaw {
+    approved: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -24,10 +24,22 @@ enum RelativeDateFormatter {
             return "yesterday"
         } else if days == -1 {
             return "tomorrow"
+        }
+
+        let absDays = abs(days)
+        if absDays >= 365 {
+            let years = absDays / 365
+            return days > 0 ? "\(years)y ago" : "in \(years)y"
+        } else if absDays >= 30 {
+            let months = absDays / 30
+            return days > 0 ? "\(months)mo ago" : "in \(months)mo"
+        } else if absDays >= 7 {
+            let weeks = absDays / 7
+            return days > 0 ? "\(weeks)w ago" : "in \(weeks)w"
         } else if days > 0 {
             return "\(days)d ago"
         } else {
-            return "in \(abs(days))d"
+            return "in \(absDays)d"
         }
     }
 }

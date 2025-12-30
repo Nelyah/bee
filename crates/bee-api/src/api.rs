@@ -348,9 +348,24 @@ async fn create_external_link_handler(
     let parsed = external_links::parse_external_link(&payload.url, &state.external_links)
         .map_err(ApiError::bad_request)?;
 
+    let existing = DbStore::list_external_links_by_task(task_uuid)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to load external links: {e}")))?;
+    let provider = parsed.provider.to_string();
+    if existing.iter().any(|link| {
+        link.provider == provider && link.external_key == parsed.external_key
+    }) {
+        let message = if parsed.provider == external_links::ProviderKind::Gitlab {
+            "Merge Request is already linked to this task"
+        } else {
+            "Link is already linked to this task"
+        };
+        return Err(ApiError::bad_request(message));
+    }
+
     let link = DbStore::insert_external_link(
         task_uuid,
-        parsed.provider.to_string(),
+        provider,
         payload.url,
         parsed.external_key,
     )

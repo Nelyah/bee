@@ -5,6 +5,7 @@ pub use sea_orm_migration::{async_trait, MigrationTrait, MigratorTrait};
 
 mod m20250329_212639_create_task_schema;
 mod m20251230_000001_create_external_links;
+mod m20251230_000002_update_external_links_unique;
 
 pub struct Migrator;
 
@@ -14,6 +15,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20250329_212639_create_task_schema::Migration),
             Box::new(m20251230_000001_create_external_links::Migration),
+            Box::new(m20251230_000002_update_external_links_unique::Migration),
         ]
     }
 }

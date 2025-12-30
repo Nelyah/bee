@@ -2,7 +2,6 @@
 
 ## Summary
 - LauncherViewModel is a large, multi-responsibility class mixing networking, parsing, completion logic, and UI state, which makes changes risky.
-- Keyboard handling relies on hard-coded key codes and timing constants, which are opaque and hard to maintain.
 - API client behavior is largely untested, leaving error handling and env configuration without coverage.
 
 ## Open Issues
@@ -10,28 +9,14 @@
 - Priority: P1
 - Effort: M
 - Area: macos-launcher ViewModels
-- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`
+- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`, `macos-launcher/Sources/LauncherApp/Utilities/CompletionEngine.swift:1`
 - Smells: SRP, complexity, coupling
-- Problem (rough): The view model handles API requests, parsing, completion caching, selection logic, toast scheduling, and UI navigation in a single 500+ line class. This increases cognitive load and makes changes to one concern more likely to affect unrelated behavior.
+- Problem (rough): The view model still handles API requests, parsing, selection logic, toast scheduling, and UI navigation in a single large class. Completion logic was extracted, but the remaining concerns are still tightly coupled and make change risk high.
 - Suggested fix (rough):
-  - Extract a `CompletionEngine` that owns context detection, prefix parsing, and filtering.
-  - Extract a `ToastScheduler` (or similar) to own delayed error toasts.
-  - Extract a `TaskListCoordinator` for selection and sorting behavior.
-  - Keep `LauncherViewModel` as a thin orchestrator that composes these components.
+- Extract a `ToastScheduler` (or similar) to own delayed error toasts.
+- Extract a `TaskListCoordinator` for selection and sorting behavior.
+- Keep `LauncherViewModel` as a thin orchestrator that composes these components.
 - Safety net: Expand unit tests around completion detection, toast scheduling, and selection logic; add tests for the extracted components.
-
-### DEBT-0003: Hard-coded key codes and timing constants in input handling
-- Priority: P2
-- Effort: S
-- Area: macos-launcher text input
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift:133`, `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:45`
-- Smells: magic-number, docs
-- Problem (rough): Keyboard shortcuts and timing values (key codes, toast delays, animation durations) are embedded as literal numbers, which makes intent opaque and complicates changes or platform adjustments.
-- Suggested fix (rough):
-  - Replace key codes with named constants or helper enums (and add comments for non-obvious values).
-  - Lift timing constants (toast delay, animation durations) into a configuration struct or static constants.
-  - Document the bindings in one place to avoid drift.
-- Safety net: Lightweight tests for key handling paths (or snapshot tests where feasible) and validation that configured constants are applied.
 
 ### DEBT-0004: API client error handling lacks direct tests
 - Priority: P2
@@ -46,6 +31,9 @@
 - Safety net: Unit tests for API client error cases and base URL configuration.
 
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0003: Hard-coded key codes and timing constants in input handling
+- Resolved on: 2025-12-30
+- Note: Introduced named key code constants and centralized toast timing constants.
 ### DEBT-0002: Token classification is duplicated and stringly-typed
 - Resolved on: 2025-12-30
 - Note: Centralized token type checks in `TokenClassifier` and added tests; highlight and completion paths now share the same classification helpers.

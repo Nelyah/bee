@@ -118,6 +118,16 @@ func ghostTextAttributes(font: NSFont?) -> [NSAttributedString.Key: Any] {
 }
 
 final class KeyHandlingTextView: NSTextView {
+    private enum KeyCode {
+        static let space: UInt16 = 49
+        static let tab: UInt16 = 48
+        static let arrowUp: UInt16 = 126
+        static let arrowDown: UInt16 = 125
+        static let returnKey: UInt16 = 36
+        static let keypadEnter: UInt16 = 76
+        static let escape: UInt16 = 53
+    }
+
     var onSubmit: (() -> Void)?
     var onEscape: (() -> Void)?
     var onMoveSelection: ((Int) -> Void)?
@@ -133,7 +143,7 @@ final class KeyHandlingTextView: NSTextView {
     override func keyDown(with event: NSEvent) {
         // Ctrl-Space: Toggle completion menu
         if event.modifierFlags.contains(.control),
-           event.keyCode == 49 {
+           event.keyCode == KeyCode.space {
             onToggleMenu?()
             return
         }
@@ -148,7 +158,7 @@ final class KeyHandlingTextView: NSTextView {
         }
 
         // Tab: Accept ghost text or open menu
-        if event.keyCode == 48 { // Tab key
+        if event.keyCode == KeyCode.tab {
             onAcceptGhost?()
             return
         }
@@ -156,11 +166,11 @@ final class KeyHandlingTextView: NSTextView {
         // When completion menu is open, handle navigation differently
         if showCompletionMenu {
             // Arrow keys navigate menu
-            if event.keyCode == 126 { // Up
+            if event.keyCode == KeyCode.arrowUp {
                 onMenuNavigation?(-1)
                 return
             }
-            if event.keyCode == 125 { // Down
+            if event.keyCode == KeyCode.arrowDown {
                 onMenuNavigation?(1)
                 return
             }
@@ -276,9 +286,9 @@ final class KeyHandlingTextView: NSTextView {
         }
 
         switch event.keyCode {
-        case 126:
+        case KeyCode.arrowUp:
             return -1
-        case 125:
+        case KeyCode.arrowDown:
             return 1
         default:
             return nil
@@ -288,7 +298,7 @@ final class KeyHandlingTextView: NSTextView {
     /// Return true when the event should submit the current input.
     private func isSubmitEvent(_ event: NSEvent) -> Bool {
         switch event.keyCode {
-        case 36, 76:
+        case KeyCode.returnKey, KeyCode.keypadEnter:
             return true
         default:
             return false
@@ -298,7 +308,7 @@ final class KeyHandlingTextView: NSTextView {
     /// Return true when the event should close the detail view.
     private func isEscapeEvent(_ event: NSEvent) -> Bool {
         switch event.keyCode {
-        case 53:
+        case KeyCode.escape:
             return true
         default:
             return false

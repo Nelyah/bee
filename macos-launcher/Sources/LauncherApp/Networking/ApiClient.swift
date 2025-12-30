@@ -127,24 +127,7 @@ final class ApiClient: ApiClientProtocol, Sendable {
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            logger.error("HTTP error \(path, privacy: .public) (no response)")
-            throw ApiClientError.invalidResponse
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let payload = decodeErrorPayload(from: data)
-            let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
-            logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
-            if let payload {
-                logger.error("API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)")
-            }
-            throw ApiClientError.api(
-                message: message,
-                code: payload?.code,
-                developerMessage: payload?.developerMessage
-            )
-        }
-        logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
+        try validateResponse(response, data: data, path: path)
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
@@ -165,24 +148,7 @@ final class ApiClient: ApiClientProtocol, Sendable {
         request.httpMethod = "GET"
 
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            logger.error("HTTP error \(path, privacy: .public) (no response)")
-            throw ApiClientError.invalidResponse
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let payload = decodeErrorPayload(from: data)
-            let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
-            logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
-            if let payload {
-                logger.error("API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)")
-            }
-            throw ApiClientError.api(
-                message: message,
-                code: payload?.code,
-                developerMessage: payload?.developerMessage
-            )
-        }
-        logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
+        try validateResponse(response, data: data, path: path)
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
@@ -203,6 +169,12 @@ final class ApiClient: ApiClientProtocol, Sendable {
         request.httpMethod = "POST"
 
         let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data, path: path)
+        return try JSONDecoder().decode(Response.self, from: data)
+    }
+
+    /// Validate HTTP response and throw on non-2xx status codes.
+    private func validateResponse(_ response: URLResponse, data: Data, path: String) throws {
         guard let http = response as? HTTPURLResponse else {
             logger.error("HTTP error \(path, privacy: .public) (no response)")
             throw ApiClientError.invalidResponse
@@ -221,7 +193,6 @@ final class ApiClient: ApiClientProtocol, Sendable {
             )
         }
         logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
-        return try JSONDecoder().decode(Response.self, from: data)
     }
 
     /// Decode an API error payload from non-2xx responses.

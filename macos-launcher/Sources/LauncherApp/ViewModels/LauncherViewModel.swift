@@ -94,7 +94,7 @@ final class LauncherViewModel: ObservableObject {
 
         logger.debug("Input change -> parse only. id=\(requestId), text=\(newValue, privacy: .private)")
         selectedIndex = nil
-        mode = .list
+        mode = NavigationCoordinator.modeForInputChange()
         statusMessage = nil
 
         Task {
@@ -223,13 +223,14 @@ final class LauncherViewModel: ObservableObject {
 
     /// Open the detail view for the currently selected task.
     func openDetail() {
-        guard selectedIndex != nil else { return }
-        mode = .detail
+        if let newMode = NavigationCoordinator.modeForOpenDetail(selectedIndex: selectedIndex) {
+            mode = newMode
+        }
     }
 
     /// Close the detail view and return to the list.
     func closeDetail() {
-        mode = .list
+        mode = NavigationCoordinator.modeForCloseDetail()
     }
 
     /// Return the currently selected task.

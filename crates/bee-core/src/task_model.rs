@@ -309,7 +309,7 @@ impl Task {
         &self.summary
     }
 
-    // TODO: To remove, only used in tests
+    #[cfg(test)]
     pub fn set_summary(&mut self, value: &str) {
         self.summary = value.to_owned();
     }

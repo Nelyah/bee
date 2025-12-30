@@ -42,10 +42,7 @@ mod tests {
             ..Default::default()
         };
 
-        tables::tasks::Entity::insert(task)
-            .exec(&db)
-            .await
-            .unwrap();
+        tables::tasks::Entity::insert(task).exec(&db).await.unwrap();
 
         let inserted = insert_link(
             &db,

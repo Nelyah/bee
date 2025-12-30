@@ -18,14 +18,14 @@ impl MigrationTrait for Migration {
                             .primary_key()
                             .auto_increment(),
                     )
-                    .col(
-                        ColumnDef::new(ExternalLinks::TaskId)
-                            .unsigned()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(ExternalLinks::TaskId).unsigned().not_null())
                     .col(ColumnDef::new(ExternalLinks::Provider).string().not_null())
                     .col(ColumnDef::new(ExternalLinks::Url).string().not_null())
-                    .col(ColumnDef::new(ExternalLinks::ExternalKey).string().not_null())
+                    .col(
+                        ColumnDef::new(ExternalLinks::ExternalKey)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ExternalLinks::CachedResponse).text().null())
                     .col(ColumnDef::new(ExternalLinks::LastSyncedAt).string().null())
                     .col(ColumnDef::new(ExternalLinks::SyncError).string().null())

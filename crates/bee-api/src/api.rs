@@ -1,3 +1,4 @@
+use crate::external_links;
 use crate::{
     config::ApiConfig,
     dto::{
@@ -26,12 +27,11 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use std::{collections::HashSet, time::Duration};
-use uuid::Uuid;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
-use crate::external_links;
+use uuid::Uuid;
 
 /// Shared application state for request handlers.
 #[derive(Clone)]
@@ -126,7 +126,10 @@ pub fn router(state: AppState) -> Router {
             "/v1/external-links/jira/issues/recent",
             get(recent_jira_issues_handler),
         )
-        .route("/v1/external-links/resolve", post(resolve_external_link_handler))
+        .route(
+            "/v1/external-links/resolve",
+            post(resolve_external_link_handler),
+        )
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
         .layer(
             TraceLayer::new_for_http()
@@ -321,10 +324,7 @@ async fn list_external_links_handler(
         .map_err(|e| ApiError::internal(format!("Failed to load external links: {e}")))?;
 
     Ok(Json(
-        links
-            .into_iter()
-            .map(ExternalLinkDto::from_link)
-            .collect(),
+        links.into_iter().map(ExternalLinkDto::from_link).collect(),
     ))
 }
 
@@ -352,9 +352,10 @@ async fn create_external_link_handler(
         .await
         .map_err(|e| ApiError::internal(format!("Failed to load external links: {e}")))?;
     let provider = parsed.provider.to_string();
-    if existing.iter().any(|link| {
-        link.provider == provider && link.external_key == parsed.external_key
-    }) {
+    if existing
+        .iter()
+        .any(|link| link.provider == provider && link.external_key == parsed.external_key)
+    {
         let message = if parsed.provider == external_links::ProviderKind::Gitlab {
             "Merge Request is already linked to this task"
         } else {
@@ -363,14 +364,9 @@ async fn create_external_link_handler(
         return Err(ApiError::bad_request(message));
     }
 
-    let link = DbStore::insert_external_link(
-        task_uuid,
-        provider,
-        payload.url,
-        parsed.external_key,
-    )
-    .await
-    .map_err(|e| ApiError::internal(format!("Failed to insert external link: {e}")))?;
+    let link = DbStore::insert_external_link(task_uuid, provider, payload.url, parsed.external_key)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to insert external link: {e}")))?;
 
     Ok(Json(ExternalLinkDto::from_link(link)))
 }
@@ -411,7 +407,8 @@ async fn sync_external_link_handler(
 ) -> Result<Json<ExternalLinkSyncResponse>, ApiError> {
     let Some(link) = DbStore::get_external_link_by_id(link_id)
         .await
-        .map_err(|e| ApiError::internal(format!("Failed to load link: {e}")))? else {
+        .map_err(|e| ApiError::internal(format!("Failed to load link: {e}")))?
+    else {
         return Err(ApiError::bad_request("External link not found"));
     };
 

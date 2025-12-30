@@ -257,11 +257,22 @@ pub async fn fetch_recent_gitlab_merge_requests(
             .head_pipeline
             .as_ref()
             .and_then(|pipeline| pipeline.status.clone())
-            .or_else(|| item.pipeline.as_ref().and_then(|pipeline| pipeline.status.clone()));
+            .or_else(|| {
+                item.pipeline
+                    .as_ref()
+                    .and_then(|pipeline| pipeline.status.clone())
+            });
         let approved = if project_path.is_empty() {
             None
         } else {
-            match fetch_gitlab_approval_status(client, &base, token.as_str(), &project_path, item.iid).await
+            match fetch_gitlab_approval_status(
+                client,
+                &base,
+                token.as_str(),
+                &project_path,
+                item.iid,
+            )
+            .await
             {
                 Ok(value) => value,
                 Err(_) => None,
@@ -296,9 +307,8 @@ async fn fetch_gitlab_approval_status(
     iid: i64,
 ) -> Result<Option<bool>, String> {
     let encoded_project = urlencoding::encode(project_path);
-    let url = format!(
-        "{base_url}/api/v4/projects/{encoded_project}/merge_requests/{iid}/approvals"
-    );
+    let url =
+        format!("{base_url}/api/v4/projects/{encoded_project}/merge_requests/{iid}/approvals");
     let response = client
         .get(url)
         .header("PRIVATE-TOKEN", token)
@@ -550,7 +560,10 @@ fn resolve_token(cfg: &ProviderConfig) -> Result<String, String> {
 
     if let Some(env_key) = cfg.token.env.as_ref().filter(|v| !v.trim().is_empty()) {
         return env::var(env_key).map_err(|_| {
-            format!("Environment variable '{}' is not set for provider token", env_key)
+            format!(
+                "Environment variable '{}' is not set for provider token",
+                env_key
+            )
         });
     }
 
@@ -603,9 +616,7 @@ async fn fetch_jira_issue(
 ) -> Result<String, String> {
     let base = normalize_base_url(&cfg.base_url)?;
     let token = resolve_token(cfg)?;
-    let url = format!(
-        "{base}/rest/api/3/issue/{issue_key}?fields=summary,status,assignee,updated"
-    );
+    let url = format!("{base}/rest/api/3/issue/{issue_key}?fields=summary,status,assignee,updated");
 
     let response = client
         .get(url)
@@ -635,7 +646,8 @@ async fn fetch_gitlab_item(
     let (kind, project_path, iid) = parse_gitlab_external_key(external_key)?;
     let base = normalize_base_url(&cfg.base_url)?;
     let token = resolve_token(cfg)?;
-    let encoded_project = url::form_urlencoded::byte_serialize(project_path.as_bytes()).collect::<String>();
+    let encoded_project =
+        url::form_urlencoded::byte_serialize(project_path.as_bytes()).collect::<String>();
 
     let url = match kind {
         GitlabLinkKind::Issue => {
@@ -663,9 +675,8 @@ async fn fetch_gitlab_item(
     }
 
     if matches!(kind, GitlabLinkKind::MergeRequest) {
-        let approvals_url = format!(
-            "{base}/api/v4/projects/{encoded_project}/merge_requests/{iid}/approvals"
-        );
+        let approvals_url =
+            format!("{base}/api/v4/projects/{encoded_project}/merge_requests/{iid}/approvals");
         let approvals_resp = client
             .get(approvals_url)
             .header("PRIVATE-TOKEN", token.as_str())
@@ -693,7 +704,7 @@ async fn fetch_gitlab_item(
             "approvals": approvals_json
         });
         return Ok(
-            serde_json::to_string(&combined).map_err(|e| format!("Serialize JSON failed: {e}"))?,
+            serde_json::to_string(&combined).map_err(|e| format!("Serialize JSON failed: {e}"))?
         );
     }
 
@@ -718,7 +729,11 @@ fn parse_gitlab_external_key(key: &str) -> Result<(GitlabLinkKind, String, Strin
 
     match kind {
         "issue" => Ok((GitlabLinkKind::Issue, project.to_string(), iid.to_string())),
-        "mr" => Ok((GitlabLinkKind::MergeRequest, project.to_string(), iid.to_string())),
+        "mr" => Ok((
+            GitlabLinkKind::MergeRequest,
+            project.to_string(),
+            iid.to_string(),
+        )),
         _ => Err("Unknown GitLab external key type".to_string()),
     }
 }
@@ -813,19 +828,18 @@ mod tests {
 
     #[test]
     fn parse_jira_link() {
-        let config = config_with_base_urls("https://jira.example.com", "https://gitlab.example.com");
-        let parsed = parse_external_link(
-            "https://jira.example.com/browse/ABC-123",
-            &config,
-        )
-        .expect("jira link parses");
+        let config =
+            config_with_base_urls("https://jira.example.com", "https://gitlab.example.com");
+        let parsed = parse_external_link("https://jira.example.com/browse/ABC-123", &config)
+            .expect("jira link parses");
         assert_eq!(parsed.provider, ProviderKind::Jira);
         assert_eq!(parsed.external_key, "ABC-123");
     }
 
     #[test]
     fn parse_gitlab_issue_link() {
-        let config = config_with_base_urls("https://jira.example.com", "https://gitlab.example.com");
+        let config =
+            config_with_base_urls("https://jira.example.com", "https://gitlab.example.com");
         let parsed = parse_external_link(
             "https://gitlab.example.com/group/project/-/issues/42",
             &config,
@@ -837,7 +851,8 @@ mod tests {
 
     #[test]
     fn parse_gitlab_mr_link() {
-        let config = config_with_base_urls("https://jira.example.com", "https://gitlab.example.com");
+        let config =
+            config_with_base_urls("https://jira.example.com", "https://gitlab.example.com");
         let parsed = parse_external_link(
             "https://gitlab.example.com/group/project/-/merge_requests/99",
             &config,

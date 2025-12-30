@@ -374,17 +374,11 @@ private struct ExternalLinkRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                 if let statusIconName = gitlabStatusIconName {
                     statusIconView(name: statusIconName)
-                        .alignmentGuide(.firstTextBaseline) { dimensions in
-                            dimensions[.bottom] - 6
-                        }
                 } else if gitlabSummary != nil {
                     statusIconView(name: "pr-open")
-                        .alignmentGuide(.firstTextBaseline) { dimensions in
-                            dimensions[.bottom] - 6
-                        }
                 }
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -490,7 +484,7 @@ private struct ExternalLinkRow: View {
                 }
             }
         }
-        .padding(.top, DesignTokens.Spacing.xs)
+        .padding(.top, DesignTokens.Spacing.sm)
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.bottom, DesignTokens.Spacing.sm)
         .background(

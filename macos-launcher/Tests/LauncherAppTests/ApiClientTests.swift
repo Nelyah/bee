@@ -110,7 +110,8 @@ private extension ApiClientTests {
             "filters": [],
             "columns": ["id"],
             "column_names": ["ID"]
-          }
+          },
+          "reports": []
         }
         """
         return Data(json.utf8)

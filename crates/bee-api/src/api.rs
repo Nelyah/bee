@@ -6,7 +6,7 @@ use crate::{
         CompletionsResponse, ConfigResponse, ExternalLinkCreateRequest, ExternalLinkDto,
         ExternalLinkResolveRequest, ExternalLinkResolveResponse, ExternalLinkSyncRequest,
         ExternalLinkSyncResponse, GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse,
-        ReportConfigDto, TaskAnnotationDto, TaskHistoryDto, TokenSpan,
+        ReportConfigDto, ReportSummary, TaskAnnotationDto, TaskHistoryDto, TokenSpan,
     },
     error_type::{ApiError, ApiErrorResponse, ApiResult},
     parse::{parse_input, tokenize_with_spans},
@@ -127,12 +127,27 @@ async fn health_handler() -> &'static str {
     responses((status = 200, description = "Current report configuration", body = ConfigResponse))
 )]
 async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
+    let core_config = bee_core::config::get_config();
+    let default_report_name = &core_config.default_report;
+
+    let reports: Vec<ReportSummary> = core_config
+        .get_all_reports()
+        .map(|(name, report)| ReportSummary {
+            name: name.to_string(),
+            filters: report.filters.clone(),
+            columns: report.columns.clone(),
+            column_names: report.column_names.clone(),
+            is_default: name == default_report_name,
+        })
+        .collect();
+
     Json(ConfigResponse {
         report: ReportConfigDto {
             filters: state.report.filters.clone(),
             columns: state.report.columns.clone(),
             column_names: state.report.column_names.clone(),
         },
+        reports,
     })
 }
 
@@ -691,6 +706,7 @@ fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<
         GitlabMergeRequestDto,
         JiraIssueDto,
         ReportConfigDto,
+        ReportSummary,
         CompletionsResponse,
         CompletionItem,
         ApiTask,

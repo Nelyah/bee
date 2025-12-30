@@ -1,21 +1,21 @@
 [core]
 
-[[coefficients]]
+[[core.coefficients]]
 coefficient = -10
 field = "tag"
 value = "main"
 
-[[coefficients]]
+[[core.coefficients]]
 coefficient = -1
 field = "depends"
 
-[report.all]
+[core.report.all]
 column_names = ["Status", "UUID", "Date Created", "Date Completed", "Summary", "Tags"]
 columns = ["status", "uuid", "date_created", "date_completed", "summary", "tags"]
 default = false
 filters = []
 
-[report.default]
+[core.report.default]
 column_names = ["ID", "Date", "Summary", "Due", "Tags", "Urgency"]
 columns = ["id", "date_created", "summary", "date_due", "tags", "urgency"]
 default = true
@@ -26,7 +26,7 @@ filters = ['status:pending or status:active']
 #   token = "your-jira-token"
 #   min_delay_ms = 250
 
-  [core.external_links.gitlab]
+[core.external_links.gitlab]
 base_url = "https://gitlab.com"
 token = {env = "GITLAB_API_TOKEN"}
 min_delay_ms = 250

@@ -21,7 +21,3 @@ mod task_test;
 #[cfg(test)]
 #[path = "manager_test.rs"]
 mod manager_test;
-
-#[cfg(test)]
-#[path = "task/task_prop_parser_test.rs"]
-mod task_prop_parser_test;

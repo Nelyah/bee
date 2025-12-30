@@ -8,7 +8,7 @@ struct CommandPaletteView: View {
     @State private var commandPaletteMonitor: Any?
 
     private var actions: [CommandPaletteAction] {
-        commandPalette.filteredActions
+        viewModel.filteredCommandPaletteActions
     }
 
     private var suggestions: [CommandPaletteSuggestion] {
@@ -150,11 +150,36 @@ struct CommandPaletteView: View {
                         .padding(.horizontal, DesignTokens.Spacing.lg)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(selectionBackground(isSelected: isSelected))
+                    case .report(let summary):
+                        reportSuggestionRow(summary: summary, isSelected: isSelected)
                     }
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func reportSuggestionRow(summary: ReportSummary, isSelected: Bool) -> some View {
+        let isCurrent = summary.name == viewModel.selectedReportName
+        return HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(summary.name)
+                    .foregroundColor(ThemeManager.current.text)
+                Text(summary.filters.isEmpty ? "No filters" : summary.filters.joined(separator: " • "))
+                    .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
+                    .foregroundColor(ThemeManager.current.subtext0)
+                    .lineLimit(1)
+            }
+            Spacer()
+            if isCurrent {
+                Image(systemName: "checkmark")
+                    .foregroundColor(ThemeManager.current.green)
+            }
+        }
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(selectionBackground(isSelected: isSelected))
     }
 
     @ViewBuilder

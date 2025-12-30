@@ -16,51 +16,6 @@ fn parse_rfc3339(value: &Option<String>) -> Option<DateTime<Utc>> {
         .map(|dt| dt.with_timezone(&Utc))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::storage::db::connection::get_database;
-    use chrono::Local;
-    use sea_orm::ActiveValue::Set;
-    use uuid::Uuid;
-
-    #[tokio::test]
-    async fn insert_and_list_external_links() {
-        let db = get_database(Some("sqlite::memory:")).await.unwrap();
-        let task_uuid = Uuid::new_v4();
-
-        let task = tables::tasks::ActiveModel {
-            id: Set(None),
-            status: Set("PENDING".to_string()),
-            uuid: Set(task_uuid.to_string()),
-            summary: Set("demo".to_string()),
-            date_created: Set(Local::now().to_rfc3339()),
-            date_completed: Set(None),
-            date_due: Set(None),
-            urgency: Set(None),
-            project_id: Set(None),
-            ..Default::default()
-        };
-
-        tables::tasks::Entity::insert(task).exec(&db).await.unwrap();
-
-        let inserted = insert_link(
-            &db,
-            task_uuid,
-            "jira".to_string(),
-            "https://jira.example.com/browse/ABC-1".to_string(),
-            "ABC-1".to_string(),
-        )
-        .await
-        .unwrap();
-
-        let links = list_by_task_uuid(&db, task_uuid).await.unwrap();
-        assert_eq!(links.len(), 1);
-        assert_eq!(links[0].id, inserted.id);
-        assert_eq!(links[0].provider, "jira");
-    }
-}
-
 async fn load_task_uuid_map(
     db: &DatabaseConnection,
     task_ids: &[i32],
@@ -256,4 +211,49 @@ pub(super) async fn update_sync_error(
     active.sync_error = Set(Some(sync_error));
     active.save(db).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::db::connection::get_database;
+    use chrono::Local;
+    use sea_orm::ActiveValue::Set;
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn insert_and_list_external_links() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+        let task_uuid = Uuid::new_v4();
+
+        let task = tables::tasks::ActiveModel {
+            id: Set(None),
+            status: Set("PENDING".to_string()),
+            uuid: Set(task_uuid.to_string()),
+            summary: Set("demo".to_string()),
+            date_created: Set(Local::now().to_rfc3339()),
+            date_completed: Set(None),
+            date_due: Set(None),
+            urgency: Set(None),
+            project_id: Set(None),
+            ..Default::default()
+        };
+
+        tables::tasks::Entity::insert(task).exec(&db).await.unwrap();
+
+        let inserted = insert_link(
+            &db,
+            task_uuid,
+            "jira".to_string(),
+            "https://jira.example.com/browse/ABC-1".to_string(),
+            "ABC-1".to_string(),
+        )
+        .await
+        .unwrap();
+
+        let links = list_by_task_uuid(&db, task_uuid).await.unwrap();
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].id, inserted.id);
+        assert_eq!(links[0].provider, "jira");
+    }
 }

@@ -3,11 +3,25 @@ import XCTest
 
 @MainActor
 final class CommandPaletteCoordinatorTests: XCTestCase {
-    func testOpenRequiresSelectedTask() {
+    func testOpenAlwaysSucceeds() {
         let coordinator = CommandPaletteCoordinator()
         let message = coordinator.open(hasSelectedTask: false)
-        XCTAssertEqual(message, "Select a task to add a link.")
-        XCTAssertFalse(coordinator.isPresented)
+        XCTAssertNil(message)
+        XCTAssertTrue(coordinator.isPresented)
+    }
+
+    func testFilteredActionsWithoutSelectedTask() {
+        let coordinator = CommandPaletteCoordinator()
+        let actions = coordinator.filteredActions(hasSelectedTask: false)
+        // Only selectReport should be available without a selected task
+        XCTAssertEqual(actions, [.selectReport])
+    }
+
+    func testFilteredActionsWithSelectedTask() {
+        let coordinator = CommandPaletteCoordinator()
+        let actions = coordinator.filteredActions(hasSelectedTask: true)
+        // All actions should be available with a selected task
+        XCTAssertEqual(actions, CommandPaletteAction.allCases)
     }
 
     func testOpenResetsState() {

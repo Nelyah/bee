@@ -965,8 +965,10 @@ mod tests {
 
         let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: target_uuid });
 
-        let mut task_props = TaskProperties::default();
-        task_props.depends_on = Some(vec![DependsOnIdentifier::Uuid(dependent_uuid.to_owned())]);
+        let task_props = TaskProperties {
+            depends_on: Some(vec![DependsOnIdentifier::Uuid(dependent_uuid.to_owned())]),
+            ..TaskProperties::default()
+        };
         let results_data = load_tasks_impl(&db, Some(filter.clone()), Some(task_props))
             .await
             .unwrap();
@@ -980,10 +982,12 @@ mod tests {
                 .is_some()
         );
 
-        let mut task_props = TaskProperties::default();
-        task_props.depends_on = Some(vec![DependsOnIdentifier::Id(
-            dependent_task.id.unwrap().to_owned(),
-        )]);
+        let task_props = TaskProperties {
+            depends_on: Some(vec![DependsOnIdentifier::Id(
+                dependent_task.id.unwrap().to_owned(),
+            )]),
+            ..TaskProperties::default()
+        };
         let results_data = load_tasks_impl(&db, Some(filter.clone()), Some(task_props))
             .await
             .unwrap();

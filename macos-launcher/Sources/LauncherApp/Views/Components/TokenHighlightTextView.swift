@@ -158,6 +158,7 @@ enum NormalModeAction: Equatable {
     case selectLast
     case activatePrimary
     case toggleGroupCollapse
+    case openCommandPalette
 }
 
 struct KeyHandlingDecider {
@@ -231,6 +232,14 @@ struct KeyHandlingDecider {
     }
 
     static func normalModeAction(for input: KeyInput) -> NormalModeAction? {
+        // cmd+K opens command palette
+        if input.modifierFlags.contains(.command),
+           !input.modifierFlags.contains(.control),
+           !input.modifierFlags.contains(.option),
+           input.keyCode == KeyCode.k {
+            return .openCommandPalette
+        }
+
         if input.modifierFlags.contains(.control) {
             if input.charactersIgnoringModifiers == "n" {
                 return .moveSelection(1)

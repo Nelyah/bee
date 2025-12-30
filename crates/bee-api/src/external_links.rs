@@ -65,24 +65,24 @@ pub fn parse_external_link(
     let url = Url::parse(url).map_err(|e| ApiError::bad_request(format!("Invalid URL: {e}")))?;
     let url_str = url.as_str();
 
-    if let Some(jira) = &config.jira {
-        if url_str.starts_with(&normalize_base_url(&jira.base_url)?) {
-            let key = parse_jira_key(&url)?;
-            return Ok(ParsedExternalLink {
-                provider: ProviderKind::Jira,
-                external_key: key,
-            });
-        }
+    if let Some(jira) = &config.jira
+        && url_str.starts_with(&normalize_base_url(&jira.base_url)?)
+    {
+        let key = parse_jira_key(&url)?;
+        return Ok(ParsedExternalLink {
+            provider: ProviderKind::Jira,
+            external_key: key,
+        });
     }
 
-    if let Some(gitlab) = &config.gitlab {
-        if url_str.starts_with(&normalize_base_url(&gitlab.base_url)?) {
-            let key = parse_gitlab_key(&url)?;
-            return Ok(ParsedExternalLink {
-                provider: ProviderKind::Gitlab,
-                external_key: key,
-            });
-        }
+    if let Some(gitlab) = &config.gitlab
+        && url_str.starts_with(&normalize_base_url(&gitlab.base_url)?)
+    {
+        let key = parse_gitlab_key(&url)?;
+        return Ok(ParsedExternalLink {
+            provider: ProviderKind::Gitlab,
+            external_key: key,
+        });
     }
 
     Err(ApiError::bad_request(
@@ -174,10 +174,10 @@ pub async fn sync_links_batch(
                 }
             }
 
-            if let Some(delay) = provider_delay_ms(config, provider) {
-                if delay > 0 {
-                    sleep(TokioDuration::from_millis(delay)).await;
-                }
+            if let Some(delay) = provider_delay_ms(config, provider)
+                && delay > 0
+            {
+                sleep(TokioDuration::from_millis(delay)).await;
             }
         }
 
@@ -270,18 +270,9 @@ pub async fn fetch_recent_gitlab_merge_requests(
         let approved = if project_path.is_empty() {
             None
         } else {
-            match fetch_gitlab_approval_status(
-                client,
-                &base,
-                token.as_str(),
-                &project_path,
-                item.iid,
-            )
-            .await
-            {
-                Ok(value) => value,
-                Err(_) => None,
-            }
+            (fetch_gitlab_approval_status(client, &base, token.as_str(), &project_path, item.iid)
+                .await)
+                .unwrap_or_default()
         };
 
         if cfg.min_delay_ms > 0 {
@@ -442,12 +433,12 @@ pub async fn resolve_external_link(
             let base = normalize_base_url(&cfg.base_url)?;
 
             let mrs = fetch_recent_gitlab_merge_requests(client, config, 20).await?;
-            if let Ok(iid) = input.parse::<i64>() {
-                if let Some(mr) = mrs.iter().find(|mr| mr.iid == iid) {
-                    return Ok(ExternalLinkResolveResponse {
-                        url: mr.web_url.clone(),
-                    });
-                }
+            if let Ok(iid) = input.parse::<i64>()
+                && let Some(mr) = mrs.iter().find(|mr| mr.iid == iid)
+            {
+                return Ok(ExternalLinkResolveResponse {
+                    url: mr.web_url.clone(),
+                });
             }
 
             if let Some(mr) = mrs
@@ -483,12 +474,11 @@ fn parse_jira_key(url: &Url) -> ApiResult<String> {
         .unwrap_or_default();
 
     for (idx, segment) in segments.iter().enumerate() {
-        if *segment == "browse" {
-            if let Some(key) = segments.get(idx + 1) {
-                if is_jira_key(key) {
-                    return Ok((*key).to_string());
-                }
-            }
+        if *segment == "browse"
+            && let Some(key) = segments.get(idx + 1)
+            && is_jira_key(key)
+        {
+            return Ok((*key).to_string());
         }
         if is_jira_key(segment) {
             return Ok((*segment).to_string());
@@ -716,8 +706,8 @@ async fn fetch_gitlab_item(
             "merge_request": mr_json,
             "approvals": approvals_json
         });
-        return Ok(serde_json::to_string(&combined)
-            .map_err(|e| ApiError::external_link(format!("Serialize JSON failed: {e}")))?);
+        return serde_json::to_string(&combined)
+            .map_err(|e| ApiError::external_link(format!("Serialize JSON failed: {e}")));
     }
 
     Ok(body)

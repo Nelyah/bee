@@ -9,11 +9,10 @@ final class CommandPaletteCoordinator: ObservableObject {
     @Published var isLoading: Bool = false
     @Published private(set) var gitlabSuggestions: [GitlabMergeRequestSuggestion] = []
     @Published private(set) var jiraSuggestions: [JiraIssueSuggestion] = []
+    @Published var availableReports: [ReportSummary] = []
 
+    /// Opens the command palette. Returns an error message if it cannot be opened.
     func open(hasSelectedTask: Bool) -> String? {
-        guard hasSelectedTask else {
-            return "Select a task to add a link."
-        }
         resetForOpen()
         isPresented = true
         return nil
@@ -34,10 +33,19 @@ final class CommandPaletteCoordinator: ObservableObject {
         selectionIndex = 0
     }
 
-    var filteredActions: [CommandPaletteAction] {
+    /// Returns filtered actions based on query and task selection.
+    func filteredActions(hasSelectedTask: Bool) -> [CommandPaletteAction] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !trimmed.isEmpty else { return CommandPaletteAction.allCases }
-        return CommandPaletteAction.allCases.filter { fuzzyMatches(trimmed, in: $0.rawValue.lowercased()) }
+        let available = CommandPaletteAction.allCases.filter { action in
+            !action.requiresSelectedTask || hasSelectedTask
+        }
+        guard !trimmed.isEmpty else { return available }
+        return available.filter { fuzzyMatches(trimmed, in: $0.rawValue.lowercased()) }
+    }
+
+    /// Backwards compatible property for tests.
+    var filteredActions: [CommandPaletteAction] {
+        filteredActions(hasSelectedTask: true)
     }
 
     var filteredSuggestions: [CommandPaletteSuggestion] {
@@ -62,11 +70,17 @@ final class CommandPaletteCoordinator: ObservableObject {
                         || fuzzyMatches(lower, in: $0.key.lowercased())
                 }
                 .map { .jira($0) }
+        case .selectReport:
+            items = availableReports
+                .filter {
+                    lower.isEmpty || fuzzyMatches(lower, in: $0.name.lowercased())
+                }
+                .map { .report($0) }
         case .root:
             items = []
         }
 
-        if !trimmed.isEmpty && mode != .root {
+        if !trimmed.isEmpty && mode != .root && mode != .selectReport {
             items.insert(.rawInput(trimmed), at: 0)
         }
 
@@ -79,13 +93,15 @@ final class CommandPaletteCoordinator: ObservableObject {
             mode = .addGitlab
         case .addJira:
             mode = .addJira
+        case .selectReport:
+            mode = .selectReport
         }
         query = ""
         selectionIndex = 0
     }
 
     func loadSuggestions(apiClient: ApiClientProtocol) async -> String? {
-        guard mode != .root else { return nil }
+        guard mode != .root && mode != .selectReport else { return nil }
         isLoading = true
         defer { isLoading = false }
 
@@ -97,7 +113,7 @@ final class CommandPaletteCoordinator: ObservableObject {
             case .addJira:
                 let items = try await apiClient.fetchRecentJiraIssues(limit: 20, scope: .both)
                 setJiraSuggestions(items)
-            case .root:
+            case .root, .selectReport:
                 break
             }
             return nil

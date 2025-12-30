@@ -98,7 +98,23 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             filters: ["status:pending or status:active"],
             columns: ["id", "summary", "tags", "status", "urgency"],
             columnNames: ["ID", "Summary", "Tags", "Status", "Urgency"]
-        )
+        ),
+        reports: [
+            ReportSummary(
+                name: "default",
+                filters: ["status:pending or status:active"],
+                columns: ["id", "summary", "tags", "status", "urgency"],
+                columnNames: ["ID", "Summary", "Tags", "Status", "Urgency"],
+                isDefault: true
+            ),
+            ReportSummary(
+                name: "all",
+                filters: [],
+                columns: ["id", "summary", "status"],
+                columnNames: ["ID", "Summary", "Status"],
+                isDefault: false
+            )
+        ]
     )
 
     static let sampleCompletions = CompletionsResponse(items: [

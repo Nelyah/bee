@@ -4,19 +4,32 @@ enum CommandPaletteMode: String {
     case root
     case addGitlab
     case addJira
+    case selectReport
 }
 
 enum CommandPaletteAction: String, CaseIterable, Identifiable {
+    case selectReport = "Select Report"
     case addGitlab = "Add GitLab link"
     case addJira = "Add Jira link"
 
     var id: String { rawValue }
+
+    /// Whether this action requires a task to be selected.
+    var requiresSelectedTask: Bool {
+        switch self {
+        case .selectReport:
+            return false
+        case .addGitlab, .addJira:
+            return true
+        }
+    }
 }
 
 enum CommandPaletteSuggestion: Identifiable {
     case gitlab(GitlabMergeRequestSuggestion)
     case jira(JiraIssueSuggestion)
     case rawInput(String)
+    case report(ReportSummary)
 
     var id: String {
         switch self {
@@ -26,6 +39,8 @@ enum CommandPaletteSuggestion: Identifiable {
             return "jira-\(issue.key)"
         case .rawInput(let value):
             return "raw-\(value)"
+        case .report(let summary):
+            return "report-\(summary.name)"
         }
     }
 
@@ -37,6 +52,8 @@ enum CommandPaletteSuggestion: Identifiable {
             return issue.summary
         case .rawInput(let value):
             return "Use \(value)"
+        case .report(let summary):
+            return summary.name
         }
     }
 
@@ -48,6 +65,9 @@ enum CommandPaletteSuggestion: Identifiable {
             return "\(issue.key) • \(issue.status)"
         case .rawInput:
             return "Paste or resolve input"
+        case .report(let summary):
+            let filterText = summary.filters.isEmpty ? "No filters" : summary.filters.joined(separator: " • ")
+            return filterText
         }
     }
 }

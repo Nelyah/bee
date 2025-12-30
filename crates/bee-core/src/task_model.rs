@@ -233,7 +233,7 @@ impl Task {
     }
 
     pub fn depends_on(&self, uuid: &Uuid) -> bool {
-        self.get_depends_on().iter().any(|&id| id == uuid)
+        self.get_depends_on().contains(&uuid)
     }
 
     pub fn get_blocking(&self) -> Vec<&Uuid> {
@@ -244,7 +244,7 @@ impl Task {
             .collect()
     }
 
-    pub fn has_property(&self, prop: &String) -> bool {
+    pub fn has_property(&self, prop: &str) -> bool {
         let p = prop.to_lowercase();
         match p.as_str() {
             "active" => self.status == TaskStatus::Active,

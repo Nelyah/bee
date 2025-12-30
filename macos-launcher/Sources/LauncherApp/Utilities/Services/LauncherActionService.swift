@@ -26,6 +26,12 @@ final class LauncherActionService {
         return config.report
     }
 
+    func loadFullConfig() async throws -> ConfigResponse {
+        let config = try await apiClient.fetchConfig()
+        reportConfig = config.report
+        return config
+    }
+
     func parse(input: String) async throws -> ParseResponse {
         try await apiClient.parse(input: input)
     }

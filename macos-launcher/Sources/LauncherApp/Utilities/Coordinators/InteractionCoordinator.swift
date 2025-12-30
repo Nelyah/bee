@@ -15,6 +15,7 @@ struct InteractionCoordinator {
         case selectLast
         case toggleGroupCollapse
         case openDetail
+        case openCommandPalette
         case none
     }
 
@@ -48,6 +49,8 @@ struct InteractionCoordinator {
             return .toggleGroupCollapse
         case .activatePrimary:
             return canToggleGroupCollapse ? .toggleGroupCollapse : .openDetail
+        case .openCommandPalette:
+            return .openCommandPalette
         }
     }
 }

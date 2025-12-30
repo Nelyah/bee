@@ -134,8 +134,10 @@ struct ContentView: View {
     private func installNormalModeMonitor() {
         guard normalModeMonitor == nil else { return }
         normalModeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // Only handle keys in normal mode (not insert mode) and in list mode (not detail)
-            guard !viewModel.isInsertMode, viewModel.mode == .list else { return event }
+            // Only handle keys in normal mode (not insert mode), in list mode (not detail), and when command palette is closed
+            guard !viewModel.isInsertMode,
+                  viewModel.mode == .list,
+                  !viewModel.commandPalette.isPresented else { return event }
             guard let action = KeyHandlingDecider.normalModeAction(for: KeyInput(event: event)) else {
                 return event
             }

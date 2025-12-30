@@ -90,7 +90,7 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
     }
 
     func fetchConfig() async throws -> ConfigResponse {
-        ConfigResponse(report: ReportConfig(filters: [], columns: [], columnNames: []))
+        ConfigResponse(report: ReportConfig(filters: [], columns: [], columnNames: []), reports: [])
     }
 
     func fetchCompletions(type: String) async throws -> CompletionsResponse {

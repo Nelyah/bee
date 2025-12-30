@@ -27,6 +27,8 @@ final class LauncherViewModel: ObservableObject {
         for: .list(selection: .none, isInsertMode: true)
     )
     @Published var reportConfig: ReportConfig?
+    @Published var availableReports: [ReportSummary] = []
+    @Published var selectedReportName: String = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedReportName) ?? ""
     @Published private(set) var taskDetailState = TaskDetailState()
     @Published private(set) var externalLinksState = ExternalLinksState()
     @Published var toasts: [ToastMessage] = []
@@ -149,9 +151,28 @@ final class LauncherViewModel: ObservableObject {
         guard !configLoaded else { return }
         configLoaded = true
         do {
-            let config = try await actionService.loadConfig()
-            reportConfig = config
-            logger.info("Config loaded: \(config.columns.count) columns")
+            let configResponse = try await actionService.loadFullConfig()
+            availableReports = configResponse.reports
+            commandPalette.availableReports = configResponse.reports
+
+            // Determine which report to use
+            let reportName = selectedReportName.isEmpty
+                ? configResponse.reports.first(where: { $0.isDefault })?.name ?? ""
+                : selectedReportName
+
+            if let selected = configResponse.reports.first(where: { $0.name == reportName }) {
+                reportConfig = ReportConfig(
+                    filters: selected.filters,
+                    columns: selected.columns,
+                    columnNames: selected.columnNames
+                )
+                selectedReportName = reportName
+            } else {
+                reportConfig = configResponse.report
+            }
+
+            actionService.setReportConfig(reportConfig)
+            logger.info("Config loaded: \(self.reportConfig?.columns.count ?? 0) columns, \(self.availableReports.count) reports")
         } catch {
             logger.error("Failed to load config: \(error.localizedDescription, privacy: .public)")
             showToast(message: error.localizedDescription)
@@ -491,6 +512,29 @@ final class LauncherViewModel: ObservableObject {
         TaskListCoordinator.selectedTask(tasks: tasks, selectedIndex: selectedIndex)
     }
 
+    /// Display name for the current report.
+    var currentReportDisplayName: String {
+        if selectedReportName.isEmpty {
+            return availableReports.first(where: { $0.isDefault })?.name ?? "default"
+        }
+        return selectedReportName
+    }
+
+    /// Select a report by name and refresh the task list.
+    func selectReport(_ name: String) {
+        guard let report = availableReports.first(where: { $0.name == name }) else { return }
+        selectedReportName = name
+        UserDefaults.standard.set(name, forKey: UserDefaultsKeys.selectedReportName)
+        reportConfig = ReportConfig(
+            filters: report.filters,
+            columns: report.columns,
+            columnNames: report.columnNames
+        )
+        actionService.setReportConfig(reportConfig)
+        // Refresh task list with new report filters
+        handleInputChange(input)
+    }
+
     func loadTaskDetail(taskUUID: String) {
         if taskDetailState.isLoading, taskDetailState.detail?.uuid == taskUUID {
             return
@@ -622,7 +666,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     var filteredCommandPaletteActions: [CommandPaletteAction] {
-        commandPalette.filteredActions
+        commandPalette.filteredActions(hasSelectedTask: selectedTask != nil)
     }
 
     var filteredCommandPaletteSuggestions: [CommandPaletteSuggestion] {
@@ -645,25 +689,27 @@ final class LauncherViewModel: ObservableObject {
     }
 
     func submitCommandPaletteSelection() {
-        guard let task = selectedTask else {
-            showToast(message: "Select a task to add a link.")
-            closeCommandPalette()
-            return
-        }
-
         switch commandPalette.mode {
         case .root:
             let actions = filteredCommandPaletteActions
             guard let action = actions[safe: commandPalette.selectionIndex] else { return }
             selectCommandPaletteAction(action)
-        case .addGitlab:
+        case .selectReport:
+            let items = filteredCommandPaletteSuggestions
+            guard let item = items[safe: commandPalette.selectionIndex],
+                  case .report(let summary) = item else { return }
+            selectReport(summary.name)
+            closeCommandPalette()
+        case .addGitlab, .addJira:
+            guard let task = selectedTask else {
+                showToast(message: "Select a task to add a link.")
+                closeCommandPalette()
+                return
+            }
             let items = filteredCommandPaletteSuggestions
             guard let item = items[safe: commandPalette.selectionIndex] else { return }
-            handleCommandPaletteSelection(item: item, provider: .gitlab, taskUUID: task.uuid)
-        case .addJira:
-            let items = filteredCommandPaletteSuggestions
-            guard let item = items[safe: commandPalette.selectionIndex] else { return }
-            handleCommandPaletteSelection(item: item, provider: .jira, taskUUID: task.uuid)
+            let provider: ExternalLinkProvider = commandPalette.mode == .addGitlab ? .gitlab : .jira
+            handleCommandPaletteSelection(item: item, provider: provider, taskUUID: task.uuid)
         }
     }
 
@@ -692,6 +738,9 @@ final class LauncherViewModel: ObservableObject {
                 case .rawInput(let value):
                     let resolved = try await apiClient.resolveExternalLink(provider: provider, input: value)
                     url = resolved.url
+                case .report:
+                    // Reports are handled in submitCommandPaletteSelection, not here
+                    return
                 }
 
                 _ = try await apiClient.addExternalLink(taskUUID: taskUUID, url: url)
@@ -819,6 +868,9 @@ final class LauncherViewModel: ObservableObject {
             return toggleSelectedOrHoveredGroupCollapse()
         case .openDetail:
             openDetail()
+            return true
+        case .openCommandPalette:
+            openCommandPalette()
             return true
         case .none:
             return false

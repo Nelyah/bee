@@ -59,6 +59,11 @@ impl Config {
                 .unwrap_or_else(|| panic!("'{}' report not found.", DEFAULT_REPORT_NAME))
         }
     }
+
+    /// Returns all reports as (name, config) pairs.
+    pub fn get_all_reports(&self) -> impl Iterator<Item = (&str, &ReportConfig)> {
+        self.report_map.iter().map(|(k, v)| (k.as_str(), v))
+    }
 }
 
 #[derive(Deserialize, Debug, PartialEq, Default)]

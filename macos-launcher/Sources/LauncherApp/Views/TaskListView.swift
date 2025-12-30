@@ -46,7 +46,7 @@ struct TaskListView: View {
                             text: $viewModel.input,
                             tokens: viewModel.tokens,
                             actionName: viewModel.actionName,
-                            isFocused: viewModel.isInsertMode,
+                            isFocused: viewModel.isInsertMode && !viewModel.commandPalette.isPresented,
                             ghostText: completion.ghostText,
                             cursorPosition: completion.cursorPosition,
                             showCompletionMenu: completion.showMenu,
@@ -102,6 +102,14 @@ struct TaskListView: View {
                 )
                 .contentShape(Rectangle())
                 .onTapGesture { viewModel.enterInsertMode() }
+
+                // Report indicator
+                if !viewModel.availableReports.isEmpty {
+                    Text("Report: \(viewModel.currentReportDisplayName)")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(ThemeManager.current.subtext0)
+                        .padding(.horizontal, TaskListLayout.horizontalPadding)
+                }
 
                 // Column headers
                 if let config = viewModel.reportConfig {

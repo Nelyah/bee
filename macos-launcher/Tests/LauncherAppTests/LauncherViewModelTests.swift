@@ -219,6 +219,7 @@ final class LauncherViewModelTests: XCTestCase {
     func testSubmitCommandPaletteSelectionWithoutTaskShowsToast() {
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
         viewModel.commandPalette.isPresented = true
+        viewModel.commandPalette.mode = .addGitlab
 
         viewModel.submitCommandPaletteSelection()
 

@@ -290,7 +290,10 @@ pub struct TokenSpan {
 /// Response payload for the config endpoint.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ConfigResponse {
+    /// Default report configuration (for backwards compatibility).
     pub report: ReportConfigDto,
+    /// All available reports.
+    pub reports: Vec<ReportSummary>,
 }
 
 /// Report configuration for display in the UI.
@@ -302,6 +305,21 @@ pub struct ReportConfigDto {
     pub columns: Vec<String>,
     /// Display names for columns (human-readable like "ID", "Summary").
     pub column_names: Vec<String>,
+}
+
+/// Summary of a report for selection in the UI.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ReportSummary {
+    /// Report name (identifier).
+    pub name: String,
+    /// Filter expressions to apply by default.
+    pub filters: Vec<String>,
+    /// Field names to display (technical names like "id", "summary").
+    pub columns: Vec<String>,
+    /// Display names for columns (human-readable like "ID", "Summary").
+    pub column_names: Vec<String>,
+    /// Whether this is the default report.
+    pub is_default: bool,
 }
 
 /// Response payload for completions endpoint.

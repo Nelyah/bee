@@ -4,15 +4,11 @@
 - `cargo build`
 - `cargo run -- help`
 - `cargo run -- list`
-- `cargo install --path crates/bee-cli`
 
 ## Formatting / linting / tests
 - `cargo fmt`
 - `cargo clippy --all-targets --all-features`
 - `cargo test`
-- `cargo test -p bee-core`
-- `cargo test -p bee-actions`
-- `cargo test -p bee-cli`
 - `cargo test -- --nocapture`
 
 ## Migrations

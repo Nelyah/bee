@@ -39,10 +39,6 @@ struct TaskDetailView: View {
             DetailRow(label: "Urgency", value: task.urgency.map(String.init) ?? "None", helpText: nil)
 
             Spacer()
-
-            Text("Press Esc to go back")
-                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
-                .foregroundColor(ThemeManager.current.subtext0)
         }
         .onExitCommand {
             onClose()

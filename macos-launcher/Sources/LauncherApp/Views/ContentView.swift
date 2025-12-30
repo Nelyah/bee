@@ -29,6 +29,12 @@ struct ContentView: View {
                 .allowsHitTesting(false)
                 .zIndex(2)
         }
+        .overlay(alignment: .bottomLeading) {
+            BottomHintBar(hints: bottomHints)
+                .padding(.leading, 20)
+                .padding(.bottom, 16)
+                .zIndex(1)
+        }
         .onExitCommand {
             viewModel.handleEscape()
         }
@@ -56,6 +62,18 @@ struct ContentView: View {
     private var launcherBackground: some View {
         ThemeManager.current.base
             .ignoresSafeArea()
+    }
+
+    private var bottomHints: [BottomHint] {
+        var hints = [BottomHint(key: "⌘K", label: "Command menu")]
+        if viewModel.mode == .detail {
+            hints.append(BottomHint(key: "Esc", label: "Back"))
+        } else if viewModel.commandPalette.isPresented {
+            hints.append(BottomHint(key: "Esc", label: "Close menu"))
+        } else if viewModel.isInsertMode {
+            hints.append(BottomHint(key: "Esc", label: "Exit insert"))
+        }
+        return hints
     }
 
     /// Apply Raycast-style window appearance (no title bar, clear background).

@@ -25,7 +25,8 @@ struct ContentView: View {
             }
 
             ToastStackView(toasts: viewModel.toasts)
-                .padding(16)
+                .padding(.horizontal, 16)
+                .padding(.bottom, DesignTokens.Spacing.xxl + DesignTokens.Spacing.lg + DesignTokens.Spacing.sm)
                 .allowsHitTesting(false)
                 .zIndex(2)
         }

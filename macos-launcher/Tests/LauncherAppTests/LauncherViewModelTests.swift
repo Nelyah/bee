@@ -192,7 +192,7 @@ final class LauncherViewModelTests: XCTestCase {
     func testParseErrorToastWaitsUntilMenuCloses() async {
         let mock = MockApiClient()
         let viewModel = LauncherViewModel(apiClient: mock, unexpectedTokenToastDelay: 0.05)
-        viewModel.showCompletionMenu = true
+        viewModel.completion.showMenu = true
 
         mock.parseResult = .failure(SampleError(message: "parse error"))
         viewModel.handleInputChange("a")
@@ -205,36 +205,50 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.toasts.first?.message, "parse error")
     }
 
+    func testSubmitCommandPaletteSelectionWithoutTaskShowsToast() {
+        let viewModel = LauncherViewModel(apiClient: MockApiClient())
+        viewModel.commandPalette.isPresented = true
+
+        viewModel.submitCommandPaletteSelection()
+
+        XCTAssertEqual(viewModel.toasts.first?.message, "Select a task to add a link.")
+        XCTAssertFalse(viewModel.commandPalette.isPresented)
+    }
+
     func testDetectCompletionContextDetectsDatePrefixWithValue() {
         let viewModel = LauncherViewModel()
         viewModel.input = "due:tom"
-        viewModel.cursorPosition = viewModel.input.count
+        viewModel.completion.cursorPosition = viewModel.input.count
+        viewModel.updateCompletions()
 
-        XCTAssertEqual(viewModel.detectCompletionContext(), .date)
+        XCTAssertEqual(viewModel.completion.context, .date)
     }
 
     func testDetectCompletionContextDetectsProjectPrefix() {
         let viewModel = LauncherViewModel()
         viewModel.input = "proj:work"
-        viewModel.cursorPosition = viewModel.input.count
+        viewModel.completion.cursorPosition = viewModel.input.count
+        viewModel.updateCompletions()
 
-        XCTAssertEqual(viewModel.detectCompletionContext(), .project)
+        XCTAssertEqual(viewModel.completion.context, .project)
     }
 
     func testDetectCompletionContextDetectsStatusPrefix() {
         let viewModel = LauncherViewModel()
         viewModel.input = "status:pen"
-        viewModel.cursorPosition = viewModel.input.count
+        viewModel.completion.cursorPosition = viewModel.input.count
+        viewModel.updateCompletions()
 
-        XCTAssertEqual(viewModel.detectCompletionContext(), .status)
+        XCTAssertEqual(viewModel.completion.context, .status)
     }
 
     func testDetectCompletionContextDetectsDependsPrefix() {
         let viewModel = LauncherViewModel()
         viewModel.input = "depends:abcd"
-        viewModel.cursorPosition = viewModel.input.count
+        viewModel.completion.cursorPosition = viewModel.input.count
+        viewModel.updateCompletions()
 
-        XCTAssertEqual(viewModel.detectCompletionContext(), .taskRef)
+        XCTAssertEqual(viewModel.completion.context, .taskRef)
     }
 
     func testSortTasksByUrgencyOrdersHighFirstAndNilLast() {

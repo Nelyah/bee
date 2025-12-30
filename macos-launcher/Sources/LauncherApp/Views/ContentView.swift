@@ -16,12 +16,12 @@ struct ContentView: View {
                 })
                     .padding(24)
             } else {
-                TaskListView(viewModel: viewModel)
+                TaskListView(viewModel: viewModel, completion: viewModel.completion)
                     .padding(20)
             }
 
-            if viewModel.isCommandPalettePresented {
-                CommandPaletteView(viewModel: viewModel)
+            if viewModel.commandPalette.isPresented {
+                CommandPaletteView(viewModel: viewModel, commandPalette: viewModel.commandPalette)
             }
 
             ToastStackView(toasts: viewModel.toasts)
@@ -30,15 +30,7 @@ struct ContentView: View {
                 .zIndex(2)
         }
         .onExitCommand {
-            if viewModel.isCommandPalettePresented {
-                viewModel.closeCommandPalette()
-            } else if viewModel.showCompletionMenu {
-                viewModel.clearCompletions()
-            } else if viewModel.mode == .detail {
-                viewModel.closeDetail()
-            } else {
-                viewModel.isInsertMode = false
-            }
+            viewModel.handleEscape()
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
@@ -90,16 +82,7 @@ struct ContentView: View {
         guard escapeMonitor == nil else { return }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == KeyCode.escape {
-                if viewModel.isCommandPalettePresented {
-                    viewModel.closeCommandPalette()
-                } else if viewModel.showCompletionMenu {
-                    viewModel.clearCompletions()
-                } else if viewModel.mode == .detail {
-                    viewModel.closeDetail()
-                } else {
-                    viewModel.isInsertMode = false
-                }
-                return nil
+                return viewModel.handleEscape() ? nil : event
             }
             return event
         }
@@ -123,27 +106,7 @@ struct ContentView: View {
                 return event
             }
 
-            switch action {
-            case .enterInsertMode:
-                viewModel.enterInsertMode()
-                return nil
-            case .moveSelection(let delta):
-                viewModel.moveSelection(delta: delta)
-                return nil
-            case .selectFirst:
-                viewModel.selectFirstRow()
-                return nil
-            case .selectLast:
-                viewModel.selectLastRow()
-                return nil
-            case .activatePrimary:
-                if !viewModel.toggleSelectedOrHoveredGroupCollapse() {
-                    viewModel.openDetail()
-                }
-                return nil
-            case .toggleGroupCollapse:
-                return viewModel.toggleSelectedOrHoveredGroupCollapse() ? nil : event
-            }
+            return viewModel.handleNormalModeAction(action) ? nil : event
         }
     }
 

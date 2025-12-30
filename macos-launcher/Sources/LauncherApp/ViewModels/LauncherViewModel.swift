@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import OSLog
 
@@ -22,21 +23,10 @@ final class LauncherViewModel: ObservableObject {
     @Published var isInsertMode: Bool = true
     @Published var reportConfig: ReportConfig?
     @Published var toasts: [ToastMessage] = []
-    @Published var isCommandPalettePresented: Bool = false
-    @Published var commandPaletteMode: CommandPaletteMode = .root
-    @Published var commandPaletteQuery: String = ""
-    @Published var commandPaletteSelectionIndex: Int = 0
-    @Published var commandPaletteIsLoading: Bool = false
-    @Published private(set) var gitlabSuggestions: [GitlabMergeRequestSuggestion] = []
-    @Published private(set) var jiraSuggestions: [JiraIssueSuggestion] = []
+    let commandPalette: CommandPaletteCoordinator
 
     // MARK: - Completion State
-    @Published var completions: [CompletionItem] = []
-    @Published var selectedCompletionIndex: Int = 0
-    @Published var showCompletionMenu: Bool = false
-    @Published var ghostText: String?
-    @Published var completionContext: CompletionContext = .none
-    @Published var cursorPosition: Int = 0
+    let completion: CompletionCoordinator
 
     // MARK: - Grouping State
     /// The current grouping strategy.
@@ -56,10 +46,11 @@ final class LauncherViewModel: ObservableObject {
     private var suppressInputHandling = false
     private var configLoaded = false
     private let unexpectedTokenToastDelay: TimeInterval
+    private var cancellables: Set<AnyCancellable> = []
     private lazy var parseErrorToastScheduler = ParseErrorToastScheduler(
         delay: unexpectedTokenToastDelay,
         shouldDefer: { [weak self] in
-            self?.showCompletionMenu ?? false
+            self?.completion.showMenu ?? false
         },
         isRequestCurrent: { [weak self] requestId in
             guard let self else { return false }
@@ -71,8 +62,6 @@ final class LauncherViewModel: ObservableObject {
     )
 
     // Cached completion data
-    private var completionCache = CompletionCache()
-    private var completionsLoaded = false
 
     init(
         apiClient: ApiClientProtocol = ApiClient(),
@@ -82,6 +71,20 @@ final class LauncherViewModel: ObservableObject {
         self.apiClient = apiClient
         self.actionService = actionService ?? LauncherActionService(apiClient: apiClient)
         self.unexpectedTokenToastDelay = unexpectedTokenToastDelay
+        self.commandPalette = CommandPaletteCoordinator()
+        self.completion = CompletionCoordinator()
+
+        commandPalette.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        completion.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     /// Fetch the report configuration from the API.
@@ -314,6 +317,16 @@ final class LauncherViewModel: ObservableObject {
         return true
     }
 
+    func canToggleSelectedOrHoveredGroupCollapse() -> Bool {
+        let rows = groupedRows
+        let idx = selectedRowIndex ?? hoveredRowIndex
+        guard let idx = idx, idx < rows.count else { return false }
+        if case .header = rows[idx] {
+            return true
+        }
+        return false
+    }
+
     private func saveCollapsedState() {
         let keys = collapsedGroups.compactMap { $0 }
         UserDefaults.standard.set(keys, forKey: UserDefaultsKeys.collapsedGroups)
@@ -403,107 +416,35 @@ final class LauncherViewModel: ObservableObject {
     // MARK: - Command Palette
 
     func openCommandPalette() {
-        guard selectedTask != nil else {
-            showToast(message: "Select a task to add a link.")
-            return
+        if let message = commandPalette.open(hasSelectedTask: selectedTask != nil) {
+            showToast(message: message)
         }
-        commandPaletteMode = .root
-        commandPaletteQuery = ""
-        commandPaletteSelectionIndex = 0
-        isCommandPalettePresented = true
     }
 
     func closeCommandPalette() {
-        isCommandPalettePresented = false
-        commandPaletteMode = .root
-        commandPaletteQuery = ""
-        commandPaletteSelectionIndex = 0
+        commandPalette.close()
     }
 
     var filteredCommandPaletteActions: [CommandPaletteAction] {
-        let query = commandPaletteQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else { return CommandPaletteAction.allCases }
-        return CommandPaletteAction.allCases.filter { fuzzyMatches(query, in: $0.rawValue.lowercased()) }
+        commandPalette.filteredActions
     }
 
     var filteredCommandPaletteSuggestions: [CommandPaletteSuggestion] {
-        let query = commandPaletteQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lower = query.lowercased()
-        var items: [CommandPaletteSuggestion]
-
-        switch commandPaletteMode {
-        case .addGitlab:
-            items = gitlabSuggestions
-                .filter {
-                    lower.isEmpty
-                        || fuzzyMatches(lower, in: $0.title.lowercased())
-                        || fuzzyMatches(lower, in: "\($0.id)")
-                }
-                .map { .gitlab($0) }
-        case .addJira:
-            items = jiraSuggestions
-                .filter {
-                    lower.isEmpty
-                        || fuzzyMatches(lower, in: $0.summary.lowercased())
-                        || fuzzyMatches(lower, in: $0.key.lowercased())
-                }
-                .map { .jira($0) }
-        case .root:
-            items = []
-        }
-
-        if !query.isEmpty && commandPaletteMode != .root {
-            items.insert(.rawInput(query), at: 0)
-        }
-
-        return items
-    }
-
-    private func fuzzyMatches(_ query: String, in value: String) -> Bool {
-        guard !query.isEmpty else { return true }
-        var remaining = value[...]
-        for char in query {
-            guard let idx = remaining.firstIndex(of: char) else {
-                return false
-            }
-            remaining = remaining[remaining.index(after: idx)...]
-        }
-        return true
+        commandPalette.filteredSuggestions
     }
 
     func loadCommandPaletteSuggestions() {
-        guard commandPaletteMode != .root else { return }
-        commandPaletteIsLoading = true
+        guard commandPalette.mode != .root else { return }
 
         Task {
-            do {
-                switch commandPaletteMode {
-                case .addGitlab:
-                    let items = try await apiClient.fetchRecentGitlabMergeRequests(limit: 20)
-                    gitlabSuggestions = items
-                case .addJira:
-                    let items = try await apiClient.fetchRecentJiraIssues(limit: 20, scope: .both)
-                    jiraSuggestions = items
-                case .root:
-                    break
-                }
-                commandPaletteIsLoading = false
-            } catch {
-                commandPaletteIsLoading = false
-                showToast(message: error.localizedDescription)
+            if let errorMessage = await commandPalette.loadSuggestions(apiClient: apiClient) {
+                showToast(message: errorMessage)
             }
         }
     }
 
     func selectCommandPaletteAction(_ action: CommandPaletteAction) {
-        switch action {
-        case .addGitlab:
-            commandPaletteMode = .addGitlab
-        case .addJira:
-            commandPaletteMode = .addJira
-        }
-        commandPaletteQuery = ""
-        commandPaletteSelectionIndex = 0
+        commandPalette.selectAction(action)
         loadCommandPaletteSuggestions()
     }
 
@@ -514,29 +455,24 @@ final class LauncherViewModel: ObservableObject {
             return
         }
 
-        switch commandPaletteMode {
+        switch commandPalette.mode {
         case .root:
             let actions = filteredCommandPaletteActions
-            guard let action = actions[safe: commandPaletteSelectionIndex] else { return }
+            guard let action = actions[safe: commandPalette.selectionIndex] else { return }
             selectCommandPaletteAction(action)
         case .addGitlab:
             let items = filteredCommandPaletteSuggestions
-            guard let item = items[safe: commandPaletteSelectionIndex] else { return }
+            guard let item = items[safe: commandPalette.selectionIndex] else { return }
             handleCommandPaletteSelection(item: item, provider: .gitlab, taskUUID: task.uuid)
         case .addJira:
             let items = filteredCommandPaletteSuggestions
-            guard let item = items[safe: commandPaletteSelectionIndex] else { return }
+            guard let item = items[safe: commandPalette.selectionIndex] else { return }
             handleCommandPaletteSelection(item: item, provider: .jira, taskUUID: task.uuid)
         }
     }
 
     func moveCommandPaletteSelection(delta: Int, maxCount: Int) {
-        guard maxCount > 0 else {
-            commandPaletteSelectionIndex = 0
-            return
-        }
-        let next = max(0, min(commandPaletteSelectionIndex + delta, maxCount - 1))
-        commandPaletteSelectionIndex = next
+        commandPalette.moveSelection(delta: delta, maxCount: maxCount)
     }
 
     private func handleCommandPaletteSelection(
@@ -581,58 +517,26 @@ final class LauncherViewModel: ObservableObject {
 
     /// Load all completion data from the API at startup.
     func loadCompletionData() async {
-        guard !completionsLoaded else { return }
-
-        do {
-            completionCache = try await actionService.fetchCompletions()
-            completionsLoaded = true
-            updateCompletions()
-            logger.info("Completions loaded: \(self.completionCache.projects.count) projects, \(self.completionCache.tags.count) tags, \(self.completionCache.actions.count) actions")
-        } catch {
-            logger.error("Failed to load completions: \(error.localizedDescription, privacy: .public)")
+        if let errorMessage = await completion.loadData(actionService: actionService) {
+            logger.error("Failed to load completions: \(errorMessage, privacy: .public)")
+            return
         }
-    }
-
-    /// Detect the completion context based on the current input and cursor position.
-    func detectCompletionContext() -> CompletionContext {
-        CompletionEngine.detectContext(input: input, cursorPosition: cursorPosition, tokens: tokens)
+        completion.update(input: input, tokens: tokens, tasks: tasks)
+        let counts = completion.cacheCounts
+        logger.info("Completions loaded: \(counts.projects) projects, \(counts.tags) tags, \(counts.actions) actions")
     }
 
     /// Update completions based on the current context and prefix.
     func updateCompletions() {
-        let context = detectCompletionContext()
-        completionContext = context
-        let prefix = CompletionEngine.currentPrefix(
-            input: input,
-            cursorPosition: cursorPosition
-        ).lowercased()
-        let result = CompletionEngine.buildCompletions(
-            context: context,
-            prefix: prefix,
-            cache: completionCache,
-            tasks: tasks
-        )
-        completions = result.items
-        ghostText = result.ghostText
-        if context == .none {
-            return
-        }
-        selectedCompletionIndex = 0
+        completion.update(input: input, tokens: tokens, tasks: tasks)
     }
 
     /// Accept the currently selected completion.
     func acceptCompletion(_ item: CompletionItem? = nil) {
-        let completionItem = item ?? completions[safe: selectedCompletionIndex]
-        guard let completion = completionItem else { return }
-
-        let result = CompletionEngine.applyCompletion(
-            input: input,
-            cursorPosition: cursorPosition,
-            completion: completion
-        )
+        guard let result = completion.applyCompletion(item, input: input) else { return }
         suppressInputHandling = true
         input = result.text
-        cursorPosition = result.cursorPosition
+        completion.cursorPosition = result.cursorPosition
         suppressInputHandling = false
 
         clearCompletions()
@@ -643,42 +547,84 @@ final class LauncherViewModel: ObservableObject {
 
     /// Accept the ghost text completion (Tab key).
     func acceptGhostText() {
-        if let _ = ghostText, !completions.isEmpty {
-            acceptCompletion(completions.first)
+        if let item = completion.acceptGhostText() {
+            acceptCompletion(item)
         }
     }
 
     /// Toggle the completion menu visibility.
     func toggleCompletionMenu() {
-        if showCompletionMenu {
-            showCompletionMenu = false
-        } else {
-            updateCompletions()
-            showCompletionMenu = !completions.isEmpty
-        }
+        completion.toggleMenu(input: input, tokens: tokens, tasks: tasks)
     }
 
     /// Move completion selection up/down.
     func moveCompletionSelection(delta: Int) {
-        guard !completions.isEmpty else { return }
-        let count = completions.count
-        selectedCompletionIndex = (selectedCompletionIndex + delta + count) % count
+        completion.moveSelection(delta: delta)
     }
 
     /// Clear all completion state.
     func clearCompletions() {
-        completions = []
-        ghostText = nil
-        showCompletionMenu = false
-        selectedCompletionIndex = 0
-        completionContext = .none
+        completion.clear()
         schedulePendingParseErrorAfterMenuClose()
     }
 
     /// Handle cursor position changes from the text view.
     func handleCursorChange(_ position: Int) {
-        cursorPosition = position
-        updateCompletions()
+        completion.updateCursorPosition(position, input: input, tokens: tokens, tasks: tasks)
+    }
+
+    @discardableResult
+    func handleEscape() -> Bool {
+        let action = InteractionCoordinator.escapeAction(
+            isCommandPalettePresented: commandPalette.isPresented,
+            showCompletionMenu: completion.showMenu,
+            mode: mode
+        )
+        switch action {
+        case .closeCommandPalette:
+            closeCommandPalette()
+            return true
+        case .clearCompletions:
+            clearCompletions()
+            return true
+        case .closeDetail:
+            closeDetail()
+            return true
+        case .exitInsertMode:
+            isInsertMode = false
+            return true
+        case .none:
+            return false
+        }
+    }
+
+    @discardableResult
+    func handleNormalModeAction(_ action: NormalModeAction) -> Bool {
+        let effect = InteractionCoordinator.normalModeEffect(
+            action: action,
+            canToggleGroupCollapse: canToggleSelectedOrHoveredGroupCollapse()
+        )
+        switch effect {
+        case .enterInsertMode:
+            enterInsertMode()
+            return true
+        case .moveSelection(let delta):
+            moveSelection(delta: delta)
+            return true
+        case .selectFirst:
+            selectFirstRow()
+            return true
+        case .selectLast:
+            selectLastRow()
+            return true
+        case .toggleGroupCollapse:
+            return toggleSelectedOrHoveredGroupCollapse()
+        case .openDetail:
+            openDetail()
+            return true
+        case .none:
+            return false
+        }
     }
 }
 

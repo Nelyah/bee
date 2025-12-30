@@ -26,6 +26,7 @@ fileprivate enum TaskListLayout {
 
 struct TaskListView: View {
     @ObservedObject var viewModel: LauncherViewModel
+    @ObservedObject var completion: CompletionCoordinator
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -39,14 +40,14 @@ struct TaskListView: View {
                         tokens: viewModel.tokens,
                         actionName: viewModel.actionName,
                         isFocused: viewModel.isInsertMode,
-                        ghostText: viewModel.ghostText,
-                        cursorPosition: viewModel.cursorPosition,
-                        showCompletionMenu: viewModel.showCompletionMenu,
+                        ghostText: completion.ghostText,
+                        cursorPosition: completion.cursorPosition,
+                        showCompletionMenu: completion.showMenu,
                         onSubmit: {
                             viewModel.handleSubmit()
                         },
                         onEscape: {
-                            if viewModel.showCompletionMenu {
+                            if completion.showMenu {
                                 viewModel.clearCompletions()
                             } else {
                                 viewModel.isInsertMode = false
@@ -171,14 +172,14 @@ struct TaskListView: View {
                 }
             }
 
-            if viewModel.showCompletionMenu && !viewModel.completions.isEmpty {
-                CompletionMenuView(
-                    items: viewModel.completions,
-                    selectedIndex: viewModel.selectedCompletionIndex,
-                    onSelect: { item in
-                        viewModel.acceptCompletion(item)
-                    }
-                )
+            if completion.showMenu && !completion.items.isEmpty {
+                    CompletionMenuView(
+                        items: completion.items,
+                        selectedIndex: completion.selectedIndex,
+                        onSelect: { item in
+                            viewModel.acceptCompletion(item)
+                        }
+                    )
                 .frame(width: TaskListLayout.completionMenuWidth)
                 .offset(x: TaskListLayout.completionMenuOffsetX, y: TaskListLayout.completionMenuOffsetY)
                 .zIndex(1)
@@ -196,7 +197,8 @@ struct TaskListView: View {
 }
 
 #Preview {
-    TaskListView(viewModel: makePreviewViewModel())
+    let viewModel = makePreviewViewModel()
+    TaskListView(viewModel: viewModel, completion: viewModel.completion)
         .padding(TaskListLayout.previewPadding)
         .frame(width: TaskListLayout.previewWidth, height: TaskListLayout.previewHeight)
         .background(ThemeManager.current.base)

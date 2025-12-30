@@ -3,15 +3,16 @@ import SwiftUI
 
 struct CommandPaletteView: View {
     @ObservedObject var viewModel: LauncherViewModel
+    @ObservedObject var commandPalette: CommandPaletteCoordinator
     @FocusState private var isSearchFocused: Bool
     @State private var commandPaletteMonitor: Any?
 
     private var actions: [CommandPaletteAction] {
-        viewModel.filteredCommandPaletteActions
+        commandPalette.filteredActions
     }
 
     private var suggestions: [CommandPaletteSuggestion] {
-        viewModel.filteredCommandPaletteSuggestions
+        commandPalette.filteredSuggestions
     }
 
     var body: some View {
@@ -26,7 +27,7 @@ struct CommandPaletteView: View {
                 HStack(spacing: 10) {
                     searchIcon
                         .foregroundColor(ThemeManager.current.subtext0)
-                    TextField("Search", text: $viewModel.commandPaletteQuery)
+                    TextField("Search", text: $commandPalette.query)
                         .textFieldStyle(.plain)
                         .foregroundColor(ThemeManager.current.text)
                         .focused($isSearchFocused)
@@ -59,7 +60,7 @@ struct CommandPaletteView: View {
         }
         .onAppear {
             isSearchFocused = true
-            if viewModel.commandPaletteMode != .root {
+            if commandPalette.mode != .root {
                 viewModel.loadCommandPaletteSuggestions()
             }
             installCommandPaletteMonitor()
@@ -67,14 +68,14 @@ struct CommandPaletteView: View {
         .onDisappear {
             removeCommandPaletteMonitor()
         }
-        .onChange(of: viewModel.commandPaletteQuery) { _, _ in
-            viewModel.commandPaletteSelectionIndex = 0
+        .onChange(of: commandPalette.query) { _, _ in
+            commandPalette.resetSelection()
         }
         .onExitCommand {
             viewModel.closeCommandPalette()
         }
         .onMoveCommand { direction in
-            let maxCount = viewModel.commandPaletteMode == .root ? actions.count : suggestions.count
+            let maxCount = commandPalette.mode == .root ? actions.count : suggestions.count
             switch direction {
             case .down:
                 viewModel.moveCommandPaletteSelection(delta: 1, maxCount: maxCount)
@@ -88,7 +89,7 @@ struct CommandPaletteView: View {
 
     @ViewBuilder
     private var contentList: some View {
-        if viewModel.commandPaletteIsLoading {
+        if commandPalette.isLoading {
             VStack {
                 ProgressView()
                     .progressViewStyle(.circular)
@@ -97,9 +98,9 @@ struct CommandPaletteView: View {
                     .foregroundColor(ThemeManager.current.subtext0)
             }
             .padding(24)
-        } else if viewModel.commandPaletteMode == .root {
+        } else if commandPalette.mode == .root {
             listView(items: actions) { index, action in
-                let isSelected = index == viewModel.commandPaletteSelectionIndex
+                let isSelected = index == commandPalette.selectionIndex
                 return Button {
                     viewModel.selectCommandPaletteAction(action)
                 } label: {
@@ -117,9 +118,9 @@ struct CommandPaletteView: View {
             }
         } else {
             listView(items: suggestions) { index, item in
-                let isSelected = index == viewModel.commandPaletteSelectionIndex
+                let isSelected = index == commandPalette.selectionIndex
                 return Button {
-                    viewModel.commandPaletteSelectionIndex = index
+                    commandPalette.selectionIndex = index
                     viewModel.submitCommandPaletteSelection()
                 } label: {
                     switch item {
@@ -158,7 +159,7 @@ struct CommandPaletteView: View {
 
     @ViewBuilder
     private var searchIcon: some View {
-        if viewModel.commandPaletteMode == .addGitlab {
+        if commandPalette.mode == .addGitlab {
             if let icon = AssetIcon.gitlab() {
                 icon
                     .resizable()
@@ -306,11 +307,11 @@ struct CommandPaletteView: View {
     private func installCommandPaletteMonitor() {
         guard commandPaletteMonitor == nil else { return }
         commandPaletteMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard viewModel.isCommandPalettePresented else { return event }
+            guard commandPalette.isPresented else { return event }
             guard event.modifierFlags.contains(.control) else { return event }
-            let maxCount = viewModel.commandPaletteMode == .root
-                ? viewModel.filteredCommandPaletteActions.count
-                : viewModel.filteredCommandPaletteSuggestions.count
+            let maxCount = commandPalette.mode == .root
+                ? commandPalette.filteredActions.count
+                : commandPalette.filteredSuggestions.count
             switch event.keyCode {
             case KeyCode.n:
                 viewModel.moveCommandPaletteSelection(delta: 1, maxCount: maxCount)
@@ -350,8 +351,8 @@ struct CommandPaletteView: View {
 
 #Preview {
     let viewModel = LauncherViewModel(apiClient: MockApiClient())
-    viewModel.isCommandPalettePresented = true
-    viewModel.commandPaletteMode = .root
-    return CommandPaletteView(viewModel: viewModel)
+    viewModel.commandPalette.isPresented = true
+    viewModel.commandPalette.mode = .root
+    return CommandPaletteView(viewModel: viewModel, commandPalette: viewModel.commandPalette)
         .frame(width: 680, height: 440)
 }

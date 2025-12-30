@@ -1,0 +1,26 @@
+import SwiftUI
+
+/// Displays a timestamp and value in a horizontal row for timeline/history views.
+struct TimelineRow: View {
+    let timestamp: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
+            Text(RelativeDateFormatter.description(for: timestamp))
+                .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
+                .foregroundColor(ThemeManager.current.subtext0)
+                .frame(width: 90, alignment: .leading)
+                .help(timestamp)
+            Text(value)
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
+                .foregroundColor(ThemeManager.current.text)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                .fill(ThemeManager.current.surface1.opacity(0.6))
+        )
+    }
+}

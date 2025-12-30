@@ -132,12 +132,14 @@ struct ContentView: View {
     private func closeWindow() {
         let app = NSApplication.shared
         if let window = app.keyWindow ?? app.mainWindow {
-            window.performClose(nil)
+            window.close()
             return
         }
         if let window = app.windows.first(where: { $0.isVisible }) ?? app.windows.first {
-            window.performClose(nil)
+            window.close()
+            return
         }
+        _ = app.sendAction(#selector(NSWindow.performClose(_:)), to: nil, from: nil)
     }
 }
 

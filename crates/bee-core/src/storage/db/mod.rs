@@ -11,7 +11,7 @@ mod undo;
 use crate::{
     CoreResult,
     external_links::ExternalLink,
-    filters::Filter,
+    filters::{Filter, filters_impl::UuidFilter},
     storage::{
         AsyncStore,
         db::{
@@ -22,7 +22,7 @@ use crate::{
             undo::{append_undo_action_impl, load_undos_impl},
         },
     },
-    task::{ActionUndo, TaskData, TaskProperties},
+    task::{ActionUndo, Task, TaskData, TaskProperties},
 };
 
 pub use task_read::CompletionRow;
@@ -45,6 +45,14 @@ impl DbStore {
     pub async fn get_tags() -> CoreResult<Vec<CompletionRow>> {
         let db = get_database(None).await?;
         get_tags_with_counts(&db).await
+    }
+
+    /// Load a single task by UUID, including annotations and history.
+    pub async fn get_task_by_uuid(task_uuid: uuid::Uuid) -> CoreResult<Option<Task>> {
+        let db = get_database(None).await?;
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: task_uuid });
+        let data = load_tasks_impl(&db, Some(filter), None).await?;
+        Ok(data.get_owned(&task_uuid))
     }
 
     pub async fn list_external_links_by_task(

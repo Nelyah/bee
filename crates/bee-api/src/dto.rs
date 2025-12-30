@@ -1,4 +1,4 @@
-use bee_core::task::{Task, TaskStatus};
+use bee_core::task::{Task, TaskAnnotation, TaskHistory, TaskStatus};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -95,6 +95,93 @@ impl ApiTask {
             date_completed: task.get_date_completed().to_owned(),
             date_due: task.get_date_due().to_owned(),
             urgency,
+        }
+    }
+}
+
+/// Task annotation payload.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct TaskAnnotationDto {
+    pub value: String,
+    #[schema(value_type = String, format = DateTime)]
+    pub time: DateTime<Local>,
+}
+
+impl TaskAnnotationDto {
+    pub fn from_annotation(annotation: &TaskAnnotation) -> Self {
+        Self {
+            value: annotation.get_value().to_owned(),
+            time: annotation.get_time().to_owned(),
+        }
+    }
+}
+
+/// Task history payload.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct TaskHistoryDto {
+    pub value: String,
+    #[schema(value_type = String, format = DateTime)]
+    pub datetime: DateTime<Local>,
+}
+
+impl TaskHistoryDto {
+    pub fn from_history(history: &TaskHistory) -> Self {
+        Self {
+            value: history.get_value().to_owned(),
+            datetime: history.get_datetime().to_owned(),
+        }
+    }
+}
+
+/// Full task payload including annotations and history.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ApiTaskDetail {
+    pub id: Option<i32>,
+    #[schema(value_type = String, format = "uuid")]
+    pub uuid: Uuid,
+    #[schema(value_type = String)]
+    pub status: TaskStatus,
+    pub summary: String,
+    pub project: Option<String>,
+    pub tags: Vec<String>,
+    #[schema(value_type = String, format = DateTime)]
+    pub date_created: DateTime<Local>,
+    #[schema(value_type = String, format = DateTime)]
+    pub date_completed: Option<DateTime<Local>>,
+    #[schema(value_type = String, format = DateTime)]
+    pub date_due: Option<DateTime<Local>>,
+    pub urgency: Option<i64>,
+    pub annotations: Vec<TaskAnnotationDto>,
+    pub history: Vec<TaskHistoryDto>,
+}
+
+impl ApiTaskDetail {
+    pub fn from_task(task: &Task) -> Self {
+        let urgency = {
+            let task = task.clone();
+            *task.get_urgency()
+        };
+        Self {
+            id: task.get_id(),
+            uuid: *task.get_uuid(),
+            status: task.get_status().clone(),
+            summary: task.get_summary().to_owned(),
+            project: task.get_project().as_ref().map(|p| p.get_name().to_owned()),
+            tags: task.get_tags().to_vec(),
+            date_created: task.get_date_created().to_owned(),
+            date_completed: task.get_date_completed().to_owned(),
+            date_due: task.get_date_due().to_owned(),
+            urgency,
+            annotations: task
+                .get_annotations()
+                .iter()
+                .map(TaskAnnotationDto::from_annotation)
+                .collect(),
+            history: task
+                .get_history()
+                .iter()
+                .map(TaskHistoryDto::from_history)
+                .collect(),
         }
     }
 }

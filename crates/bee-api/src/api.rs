@@ -2,11 +2,11 @@ use crate::external_links;
 use crate::{
     config::ApiConfig,
     dto::{
-        ActionRequest, ActionResponse, ApiEvent, ApiTask, CompletionItem, CompletionsResponse,
-        ConfigResponse, ExternalLinkCreateRequest, ExternalLinkDto, ExternalLinkResolveRequest,
-        ExternalLinkResolveResponse, ExternalLinkSyncRequest, ExternalLinkSyncResponse,
-        GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse, ReportConfigDto,
-        TokenSpan,
+        ActionRequest, ActionResponse, ApiEvent, ApiTask, ApiTaskDetail, CompletionItem,
+        CompletionsResponse, ConfigResponse, ExternalLinkCreateRequest, ExternalLinkDto,
+        ExternalLinkResolveRequest, ExternalLinkResolveResponse, ExternalLinkSyncRequest,
+        ExternalLinkSyncResponse, GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse,
+        ReportConfigDto, TaskAnnotationDto, TaskHistoryDto, TokenSpan,
     },
     error_type::{ApiError, ApiErrorResponse, ApiResult},
     parse::{parse_input, tokenize_with_spans},
@@ -66,6 +66,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/completions", get(completions_handler))
         .route("/v1/action", post(action_handler))
         .route("/v1/parse", post(parse_handler))
+        .route("/v1/tasks/:task_uuid", get(task_detail_handler))
         .route(
             "/v1/tasks/:task_uuid/external-links",
             get(list_external_links_handler).post(create_external_link_handler),
@@ -133,6 +134,24 @@ async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
             column_names: state.report.column_names.clone(),
         },
     })
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/tasks/{task_uuid}",
+    params(
+        ("task_uuid" = String, Path, description = "Task UUID")
+    ),
+    responses(
+        (status = 200, description = "Task detail payload", body = ApiTaskDetail),
+        (status = 404, description = "Task not found", body = ApiErrorResponse)
+    )
+)]
+async fn task_detail_handler(Path(task_uuid): Path<Uuid>) -> ApiResult<Json<ApiTaskDetail>> {
+    let Some(task) = DbStore::get_task_by_uuid(task_uuid).await? else {
+        return Err(ApiError::not_found("Task not found"));
+    };
+    Ok(Json(ApiTaskDetail::from_task(&task)))
 }
 
 /// Query parameters for the completions endpoint.
@@ -647,6 +666,7 @@ fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<
         completions_handler,
         parse_handler,
         action_handler,
+        task_detail_handler,
         list_external_links_handler,
         create_external_link_handler,
         delete_external_link_handler,
@@ -674,7 +694,10 @@ fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<
         CompletionsResponse,
         CompletionItem,
         ApiTask,
+        ApiTaskDetail,
         ApiEvent,
+        TaskAnnotationDto,
+        TaskHistoryDto,
         TokenSpan,
         ApiErrorResponse
     )),

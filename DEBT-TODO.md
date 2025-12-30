@@ -9,11 +9,10 @@
 - Priority: P1
 - Effort: M
 - Area: macos-launcher ViewModels
-- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`, `macos-launcher/Sources/LauncherApp/Utilities/CompletionEngine.swift:1`
+- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`, `macos-launcher/Sources/LauncherApp/Utilities/CompletionEngine.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/ParseErrorToastScheduler.swift:1`
 - Smells: SRP, complexity, coupling
-- Problem (rough): The view model still handles API requests, parsing, selection logic, toast scheduling, and UI navigation in a single large class. Completion logic was extracted, but the remaining concerns are still tightly coupled and make change risk high.
+- Problem (rough): The view model still handles API requests, parsing, selection logic, and UI navigation in a single large class. Completion and parse-error toast scheduling were extracted, but remaining concerns are still tightly coupled and make change risk high.
 - Suggested fix (rough):
-- Extract a `ToastScheduler` (or similar) to own delayed error toasts.
 - Extract a `TaskListCoordinator` for selection and sorting behavior.
 - Keep `LauncherViewModel` as a thin orchestrator that composes these components.
 - Safety net: Expand unit tests around completion detection, toast scheduling, and selection logic; add tests for the extracted components.

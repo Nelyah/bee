@@ -35,10 +35,20 @@ final class LauncherViewModel: ObservableObject {
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "view-model")
     private var suppressInputHandling = false
     private var configLoaded = false
-    private var pendingUnexpectedTokenToast: Task<Void, Never>?
-    private var pendingUnexpectedTokenMessage: String?
-    private var pendingUnexpectedTokenRequestId: Int?
     private let unexpectedTokenToastDelay: TimeInterval
+    private lazy var parseErrorToastScheduler = ParseErrorToastScheduler(
+        delay: unexpectedTokenToastDelay,
+        shouldDefer: { [weak self] in
+            self?.showCompletionMenu ?? false
+        },
+        isRequestCurrent: { [weak self] requestId in
+            guard let self else { return false }
+            return requestId == self.requestCounter
+        },
+        showToast: { [weak self] message in
+            self?.showToast(message: message)
+        }
+    )
 
     // Cached completion data
     private var completionCache = CompletionCache()
@@ -198,38 +208,17 @@ final class LauncherViewModel: ObservableObject {
 
     /// Cancel any pending delayed toast for parse errors.
     private func cancelPendingParseErrorToast() {
-        pendingUnexpectedTokenToast?.cancel()
-        pendingUnexpectedTokenToast = nil
-        pendingUnexpectedTokenMessage = nil
-        pendingUnexpectedTokenRequestId = nil
+        parseErrorToastScheduler.cancel()
     }
 
     /// Schedule a delayed toast for parse errors if typing has paused.
     private func scheduleParseErrorToast(message: String, requestId: Int) {
-        pendingUnexpectedTokenToast?.cancel()
-        pendingUnexpectedTokenMessage = message
-        pendingUnexpectedTokenRequestId = requestId
-        if showCompletionMenu {
-            return
-        }
-        pendingUnexpectedTokenToast = Task { [weak self] in
-            guard let self else { return }
-            try? await Task.sleep(for: .seconds(self.unexpectedTokenToastDelay))
-            guard requestId == self.requestCounter else { return }
-            guard let latest = self.pendingUnexpectedTokenMessage else { return }
-            self.pendingUnexpectedTokenToast = nil
-            self.pendingUnexpectedTokenMessage = nil
-            self.pendingUnexpectedTokenRequestId = nil
-            self.showToast(message: latest)
-        }
+        parseErrorToastScheduler.schedule(message: message, requestId: requestId)
     }
 
     /// If a parse error is pending, schedule it once the menu closes.
     private func schedulePendingParseErrorAfterMenuClose() {
-        guard !showCompletionMenu else { return }
-        guard let message = pendingUnexpectedTokenMessage,
-              let requestId = pendingUnexpectedTokenRequestId else { return }
-        scheduleParseErrorToast(message: message, requestId: requestId)
+        parseErrorToastScheduler.scheduleAfterMenuClose()
     }
 
     /// Move the selection by a delta, wrapping around the list.

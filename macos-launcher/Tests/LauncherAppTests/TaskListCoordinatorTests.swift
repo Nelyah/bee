@@ -55,15 +55,153 @@ final class TaskListCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(ids, ["a", "e", "b", "c", "d"])
     }
+
+    // MARK: - Grouped Selection Tests
+
+    func testMoveGroupedSelectionClampsAtEnd() {
+        let rows: [GroupedListRow] = [
+            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0)),
+            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1))
+        ]
+
+        // At last row, moving forward should stay at last row (clamp)
+        let selection = TaskListCoordinator.moveGroupedSelection(
+            rows: rows,
+            currentRowIndex: 2,
+            delta: 1
+        )
+        XCTAssertEqual(selection, 2) // Clamped, not wrapped to 0
+    }
+
+    func testMoveGroupedSelectionClampsAtStart() {
+        let rows: [GroupedListRow] = [
+            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0))
+        ]
+
+        // At first row, moving backward should stay at first row (clamp)
+        let selection = TaskListCoordinator.moveGroupedSelection(
+            rows: rows,
+            currentRowIndex: 0,
+            delta: -1
+        )
+        XCTAssertEqual(selection, 0) // Clamped, not wrapped to last
+    }
+
+    func testMoveGroupedSelectionNavigatesNormally() {
+        let rows: [GroupedListRow] = [
+            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0)),
+            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1))
+        ]
+
+        var selection = TaskListCoordinator.moveGroupedSelection(
+            rows: rows,
+            currentRowIndex: 0,
+            delta: 1
+        )
+        XCTAssertEqual(selection, 1)
+
+        selection = TaskListCoordinator.moveGroupedSelection(
+            rows: rows,
+            currentRowIndex: selection,
+            delta: 1
+        )
+        XCTAssertEqual(selection, 2)
+    }
+
+    func testMoveGroupedSelectionInitialSelection() {
+        let rows: [GroupedListRow] = [
+            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0))
+        ]
+
+        // Initial selection when moving down
+        var selection = TaskListCoordinator.moveGroupedSelection(
+            rows: rows,
+            currentRowIndex: nil,
+            delta: 1
+        )
+        XCTAssertEqual(selection, 0)
+
+        // Initial selection when moving up
+        selection = TaskListCoordinator.moveGroupedSelection(
+            rows: rows,
+            currentRowIndex: nil,
+            delta: -1
+        )
+        XCTAssertEqual(selection, 1)
+    }
+
+    // MARK: - Grouped Rows Tests
+
+    func testGroupTasksOrdersGroupsAndTasks() {
+        let tasks = [
+            makeTask(id: "a", urgency: 1, project: "beta"),
+            makeTask(id: "b", urgency: 5, project: nil),
+            makeTask(id: "c", urgency: 3, project: "alpha"),
+            makeTask(id: "d", urgency: 2, project: "alpha")
+        ]
+
+        let rows = TaskListCoordinator.groupTasks(
+            tasks,
+            using: ProjectGroupingStrategy(),
+            collapsedKeys: []
+        )
+
+        let rowDescriptions = rows.map { row in
+            switch row {
+            case .header(let header): return "header:\(header.displayName)"
+            case .task(let item): return "task:\(item.task.uuid)"
+            }
+        }
+
+        XCTAssertEqual(
+            rowDescriptions,
+            [
+                "header:No Project",
+                "task:b",
+                "header:alpha",
+                "task:c",
+                "task:d",
+                "header:beta",
+                "task:a"
+            ]
+        )
+    }
+
+    func testGroupTasksSkipsCollapsedParentGroups() {
+        let tasks = [
+            makeTask(id: "a", project: "work.client1"),
+            makeTask(id: "b", project: "work.client2"),
+            makeTask(id: "c", project: "personal")
+        ]
+
+        let rows = TaskListCoordinator.groupTasks(
+            tasks,
+            using: ProjectGroupingStrategy(),
+            collapsedKeys: ["work"]
+        )
+
+        XCTAssertEqual(rows.count, 2)
+        guard case .header(let header) = rows[0],
+              case .task(let item) = rows[1] else {
+            XCTFail("Expected header and task rows")
+            return
+        }
+        XCTAssertEqual(header.displayName, "personal")
+        XCTAssertEqual(item.task.uuid, "c")
+    }
 }
 
-private func makeTask(id: String, urgency: Int? = nil) -> ApiTask {
+private func makeTask(id: String, urgency: Int? = nil, project: String? = nil) -> ApiTask {
     ApiTask(
         dbId: nil,
         uuid: id,
         status: "pending",
         summary: "Task \(id)",
-        project: nil,
+        project: project,
         tags: [],
         dateCreated: "2024-01-01T00:00:00Z",
         dateCompleted: nil,

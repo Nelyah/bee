@@ -21,25 +21,92 @@ struct TaskListCoordinator {
     }
 
     static func sortTasksByUrgency(_ items: [ApiTask]) -> [ApiTask] {
-        items.sorted { lhs, rhs in
-            switch (lhs.urgency, rhs.urgency) {
-            case let (l?, r?):
-                if l == r {
-                    return lhs.uuid < rhs.uuid
-                }
-                return l > r
-            case (_?, nil):
-                return true
-            case (nil, _?):
-                return false
-            case (nil, nil):
+        items.sorted { compareByUrgency($0, $1) }
+    }
+
+    /// Compare two tasks by urgency (higher first, nil last), with UUID as tiebreaker.
+    private static func compareByUrgency(_ lhs: ApiTask, _ rhs: ApiTask) -> Bool {
+        switch (lhs.urgency, rhs.urgency) {
+        case let (l?, r?):
+            if l == r {
                 return lhs.uuid < rhs.uuid
             }
+            return l > r
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        case (nil, nil):
+            return lhs.uuid < rhs.uuid
         }
     }
 
     static func selectedTask(tasks: [ApiTask], selectedIndex: Int?) -> ApiTask? {
         guard let index = selectedIndex, tasks.indices.contains(index) else { return nil }
         return tasks[index]
+    }
+
+    // MARK: - Grouped List Support
+
+    /// Group tasks using the provided strategy.
+    static func groupTasks(
+        _ tasks: [ApiTask],
+        using strategy: TaskGroupingStrategy,
+        collapsedKeys: Set<String?>
+    ) -> [GroupedListRow] {
+        // Group tasks by key
+        var groups: [String?: [(Int, ApiTask)]] = [:]
+        for (index, task) in tasks.enumerated() {
+            let key = strategy.groupKey(for: task)
+            groups[key, default: []].append((index, task))
+        }
+
+        // Sort group keys using the strategy
+        let sortedKeys = groups.keys.sorted { strategy.compare($0, $1) < 0 }
+
+        // Build rows, sorting tasks within each group by urgency
+        var rows: [GroupedListRow] = []
+        for key in sortedKeys {
+            // Skip entire group (header + tasks) if a parent is collapsed
+            if strategy.isParentCollapsed(key, collapsedKeys: collapsedKeys) {
+                continue
+            }
+
+            // Check if this group itself is directly collapsed
+            let isCollapsed = collapsedKeys.contains(key)
+            rows.append(.header(GroupHeader(
+                key: key,
+                displayName: strategy.displayName(for: key),
+                isCollapsed: isCollapsed
+            )))
+            if !isCollapsed {
+                // Sort tasks within this group by urgency
+                let sortedGroupTasks = groups[key]!.sorted { lhs, rhs in
+                    compareByUrgency(lhs.1, rhs.1)
+                }
+                for (flatIndex, task) in sortedGroupTasks {
+                    rows.append(.task(GroupedTask(task: task, flatIndex: flatIndex)))
+                }
+            }
+        }
+        return rows
+    }
+
+    /// Move selection in grouped view, including headers.
+    /// Clamps to bounds (no wrap-around).
+    static func moveGroupedSelection(
+        rows: [GroupedListRow],
+        currentRowIndex: Int?,
+        delta: Int
+    ) -> Int? {
+        guard !rows.isEmpty else { return nil }
+
+        if let current = currentRowIndex {
+            let next = current + delta
+            // Clamp to bounds instead of wrapping
+            return max(0, min(next, rows.count - 1))
+        }
+        // Initial selection: first row if moving down, last row if moving up
+        return delta >= 0 ? 0 : rows.count - 1
     }
 }

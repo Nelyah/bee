@@ -52,7 +52,10 @@
       "mcp__serena__find_symbol",
       "mcp__serena__insert_after_symbol",
       "mcp__serena__check_onboarding_performed",
-      "mcp__serena__read_memory"
+      "mcp__serena__read_memory",
+      "mcp__serena__initial_instructions",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__think_about_collected_information"
     ]
   },
   "outputStyle": "default"

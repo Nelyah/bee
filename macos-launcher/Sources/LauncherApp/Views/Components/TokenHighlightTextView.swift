@@ -74,6 +74,9 @@ struct TokenHighlightTextView: NSViewRepresentable {
 
         if isFocused, let window = textView.window, window.firstResponder !== textView {
             window.makeFirstResponder(textView)
+        } else if !isFocused, let window = textView.window, window.firstResponder === textView {
+            // Resign first responder in normal mode
+            window.makeFirstResponder(nil)
         }
     }
 
@@ -250,16 +253,6 @@ struct KeyHandlingDecider {
     private static func isEscape(_ input: KeyInput) -> Bool {
         input.keyCode == KeyCode.escape
     }
-}
-
-fileprivate enum KeyCode {
-    static let space: UInt16 = 49
-    static let tab: UInt16 = 48
-    static let arrowUp: UInt16 = 126
-    static let arrowDown: UInt16 = 125
-    static let returnKey: UInt16 = 36
-    static let keypadEnter: UInt16 = 76
-    static let escape: UInt16 = 53
 }
 
 final class KeyHandlingTextView: NSTextView {

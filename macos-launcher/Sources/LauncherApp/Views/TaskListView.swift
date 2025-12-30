@@ -39,7 +39,7 @@ struct TaskListView: View {
                         text: $viewModel.input,
                         tokens: viewModel.tokens,
                         actionName: viewModel.actionName,
-                        isFocused: true,
+                        isFocused: viewModel.isInsertMode,
                         ghostText: viewModel.ghostText,
                         cursorPosition: viewModel.cursorPosition,
                         showCompletionMenu: viewModel.showCompletionMenu,
@@ -50,7 +50,7 @@ struct TaskListView: View {
                             if viewModel.showCompletionMenu {
                                 viewModel.clearCompletions()
                             } else {
-                                viewModel.closeDetail()
+                                viewModel.isInsertMode = false
                             }
                         },
                         onMoveSelection: { delta in
@@ -84,7 +84,12 @@ struct TaskListView: View {
                         .fill(ThemeManager.current.base)
                         .overlay(
                             RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                                .stroke(ThemeManager.current.surface1.opacity(TaskListLayout.strokeOpacity), lineWidth: 1)
+                                .stroke(
+                                    viewModel.isInsertMode
+                                        ? ThemeManager.current.blue
+                                        : ThemeManager.current.surface1.opacity(TaskListLayout.strokeOpacity),
+                                    lineWidth: viewModel.isInsertMode ? 2 : 1
+                                )
                         )
                 )
 
@@ -116,26 +121,46 @@ struct TaskListView: View {
                     .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
                 }
 
-                // Task list
+                // Task list (grouped by project)
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: TaskListLayout.listSpacing) {
-                            ForEach(Array(viewModel.tasks.enumerated()), id: \.offset) { index, task in
-                                TaskRow(
-                                    task: task,
-                                    columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
-                                    isSelected: viewModel.selectedIndex == index
-                                )
-                                .id(index)
+                            ForEach(Array(viewModel.groupedRows.enumerated()), id: \.element.id) { rowIndex, row in
+                                switch row {
+                                case .header(let header):
+                                    GroupHeaderRow(
+                                        header: header,
+                                        isHovered: viewModel.hoveredRowIndex == rowIndex,
+                                        isSelected: viewModel.selectedRowIndex == rowIndex,
+                                        onToggle: { viewModel.toggleGroupCollapse(header.key) }
+                                    )
+                                    .id(row.id)
+                                    .onHover { hovering in
+                                        viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                    }
+
+                                case .task(let item):
+                                    TaskRow(
+                                        task: item.task,
+                                        columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
+                                        isSelected: viewModel.selectedRowIndex == rowIndex
+                                    )
+                                    .id(row.id)
+                                    .onHover { hovering in
+                                        viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                    }
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, TaskListLayout.listVerticalPadding)
                     }
-                    .onChange(of: viewModel.selectedIndex) { _, newValue in
-                        guard let index = newValue else { return }
+                    .onChange(of: viewModel.selectedRowIndex) { _, newValue in
+                        guard let index = newValue,
+                              index < viewModel.groupedRows.count else { return }
+                        let rowId = viewModel.groupedRows[index].id
                         withAnimation(.easeInOut(duration: TaskListLayout.scrollAnimationDuration)) {
-                            proxy.scrollTo(index, anchor: .center)
+                            proxy.scrollTo(rowId, anchor: nil)
                         }
                     }
                 }
@@ -164,6 +189,7 @@ struct TaskListView: View {
         }
         .onAppear {
             Task {
+                viewModel.loadCollapsedState()
                 await viewModel.loadConfig()
                 await viewModel.loadCompletionData()
                 viewModel.loadInitialListIfNeeded()

@@ -4,39 +4,60 @@ import XCTest
 
 @MainActor
 final class LauncherViewModelTests: XCTestCase {
-    func testMoveSelectionWrapsForward() {
+    func testMoveSelectionClampsAtEnd() {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [
             makeTask(id: "a"),
             makeTask(id: "b"),
             makeTask(id: "c")
         ]
+        // Grouped rows: [header("No Project"), task(a,0), task(b,1), task(c,2)]
+        // Navigation now includes headers
 
         viewModel.moveSelection(delta: 1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 0) // header
+        XCTAssertNil(viewModel.selectedIndex) // no task selected yet
+
+        viewModel.moveSelection(delta: 1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 1) // task a
         XCTAssertEqual(viewModel.selectedIndex, 0)
 
         viewModel.moveSelection(delta: 1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 2) // task b
         XCTAssertEqual(viewModel.selectedIndex, 1)
 
         viewModel.moveSelection(delta: 1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 3) // task c
         XCTAssertEqual(viewModel.selectedIndex, 2)
 
         viewModel.moveSelection(delta: 1)
-        XCTAssertEqual(viewModel.selectedIndex, 0)
+        XCTAssertEqual(viewModel.selectedRowIndex, 3) // clamped at last row
+        XCTAssertEqual(viewModel.selectedIndex, 2) // stays at last task
     }
 
-    func testMoveSelectionWrapsBackward() {
+    func testMoveSelectionClampsAtStart() {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [
             makeTask(id: "a"),
             makeTask(id: "b")
         ]
+        // Grouped rows: [header("No Project"), task(a,0), task(b,1)]
 
         viewModel.moveSelection(delta: -1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 2) // last row (task b)
         XCTAssertEqual(viewModel.selectedIndex, 1)
 
         viewModel.moveSelection(delta: -1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 1) // task a
         XCTAssertEqual(viewModel.selectedIndex, 0)
+
+        viewModel.moveSelection(delta: -1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 0) // header
+        XCTAssertEqual(viewModel.selectedIndex, 0) // stays at task a
+
+        viewModel.moveSelection(delta: -1)
+        XCTAssertEqual(viewModel.selectedRowIndex, 0) // clamped at first row
+        XCTAssertEqual(viewModel.selectedIndex, 0) // stays at task a
     }
 
     func testSyncSelectionAfterTasksUpdate() {
@@ -54,6 +75,33 @@ final class LauncherViewModelTests: XCTestCase {
         viewModel.tasks = []
         viewModel.syncSelectionAfterTasksUpdate()
         XCTAssertNil(viewModel.selectedIndex)
+    }
+
+    func testLoadCollapsedStateRestoresKeys() {
+        let defaults = UserDefaults.standard
+        defaults.set(["work", "personal"], forKey: collapsedGroupsKey)
+        defaults.set(true, forKey: collapsedNilGroupKey)
+        defer { clearCollapsedDefaults() }
+
+        let viewModel = LauncherViewModel()
+        viewModel.loadCollapsedState()
+
+        XCTAssertTrue(viewModel.collapsedGroups.contains("work"))
+        XCTAssertTrue(viewModel.collapsedGroups.contains("personal"))
+        XCTAssertTrue(viewModel.collapsedGroups.contains(nil))
+    }
+
+    func testToggleGroupCollapsePersistsKeys() {
+        defer { clearCollapsedDefaults() }
+        let viewModel = LauncherViewModel()
+
+        viewModel.toggleGroupCollapse("work")
+        let saved = Set(UserDefaults.standard.stringArray(forKey: collapsedGroupsKey) ?? [])
+        XCTAssertEqual(saved, ["work"])
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: collapsedNilGroupKey))
+
+        viewModel.toggleGroupCollapse(nil)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: collapsedNilGroupKey))
     }
 
     func testBuildHighlightSpansActionProjectTag() {
@@ -208,6 +256,15 @@ final class LauncherViewModelTests: XCTestCase {
             XCTFail("Expected default filter to be passed to runAction")
         }
     }
+}
+
+private let collapsedGroupsKey = "collapsedGroups"
+private let collapsedNilGroupKey = "collapsedNilGroup"
+
+private func clearCollapsedDefaults() {
+    let defaults = UserDefaults.standard
+    defaults.removeObject(forKey: collapsedGroupsKey)
+    defaults.removeObject(forKey: collapsedNilGroupKey)
 }
 
 /// Simple error for testing toast messaging.

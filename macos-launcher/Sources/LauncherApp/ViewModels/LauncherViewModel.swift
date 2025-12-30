@@ -18,6 +18,8 @@ final class LauncherViewModel: ObservableObject {
     @Published var actionName: String = ""
     @Published var mode: LauncherMode = .list
     @Published var statusMessage: String?
+    /// Whether the text input has keyboard focus (insert mode).
+    @Published var isInsertMode: Bool = true
     @Published var reportConfig: ReportConfig?
     @Published var toasts: [ToastMessage] = []
 
@@ -28,6 +30,16 @@ final class LauncherViewModel: ObservableObject {
     @Published var ghostText: String?
     @Published var completionContext: CompletionContext = .none
     @Published var cursorPosition: Int = 0
+
+    // MARK: - Grouping State
+    /// The current grouping strategy.
+    let groupingStrategy: TaskGroupingStrategy = ProjectGroupingStrategy()
+    /// Set of collapsed group keys.
+    @Published var collapsedGroups: Set<String?> = []
+    /// Currently hovered row index (for collapse toggle).
+    @Published var hoveredRowIndex: Int?
+    /// Currently selected row index in grouped view.
+    @Published var selectedRowIndex: Int?
 
     private let actionService: LauncherActionService
     private var requestCounter: Int = 0
@@ -152,7 +164,7 @@ final class LauncherViewModel: ObservableObject {
             logger.debug("Action request start. id=\(requestId), action=\(actionName)")
             let response = try await actionService.runAction(parsed: parsed, actionName: actionName)
             guard requestId == requestCounter else { return }
-            tasks = TaskListCoordinator.sortTasksByUrgency(response.tasks)
+            tasks = response.tasks
             syncSelectionAfterTasksUpdate()
             if updateStatus {
                 statusMessage = buildStatusMessage(from: response.events)
@@ -202,18 +214,117 @@ final class LauncherViewModel: ObservableObject {
         parseErrorToastScheduler.scheduleAfterMenuClose()
     }
 
-    /// Move the selection by a delta, wrapping around the list.
+    /// Move the selection by a delta, clamping at list boundaries (skipping group headers).
+    /// Also exits insert mode when navigating.
     func moveSelection(delta: Int) {
-        selectedIndex = TaskListCoordinator.moveSelection(
-            tasks: tasks,
-            selectedIndex: selectedIndex,
+        if isInsertMode {
+            isInsertMode = false
+        }
+        // Use grouped selection to skip headers
+        let rows = groupedRows
+        selectedRowIndex = TaskListCoordinator.moveGroupedSelection(
+            rows: rows,
+            currentRowIndex: selectedRowIndex,
             delta: delta
         )
+        // Also update flat selectedIndex for compatibility with detail view
+        if let rowIdx = selectedRowIndex, case .task(let item) = rows[rowIdx] {
+            selectedIndex = item.flatIndex
+        }
+    }
+
+    /// Select the first row in the list.
+    func selectFirstRow() {
+        let rows = groupedRows
+        guard !rows.isEmpty else { return }
+        if isInsertMode { isInsertMode = false }
+        selectedRowIndex = 0
+        // Sync flat selectedIndex if this is a task row
+        if case .task(let item) = rows[0] {
+            selectedIndex = item.flatIndex
+        }
+    }
+
+    /// Select the last row in the list.
+    func selectLastRow() {
+        let rows = groupedRows
+        guard !rows.isEmpty else { return }
+        if isInsertMode { isInsertMode = false }
+        selectedRowIndex = rows.count - 1
+        // Sync flat selectedIndex if this is a task row
+        if case .task(let item) = rows[rows.count - 1] {
+            selectedIndex = item.flatIndex
+        }
+    }
+
+    /// Enter insert mode, focusing the text input.
+    func enterInsertMode() {
+        isInsertMode = true
+    }
+
+    // MARK: - Grouping Methods
+
+    /// Computed grouped rows for display.
+    var groupedRows: [GroupedListRow] {
+        TaskListCoordinator.groupTasks(tasks, using: groupingStrategy, collapsedKeys: collapsedGroups)
+    }
+
+    /// Toggle collapse for a group.
+    func toggleGroupCollapse(_ key: String?) {
+        if collapsedGroups.contains(key) {
+            collapsedGroups.remove(key)
+        } else {
+            collapsedGroups.insert(key)
+        }
+        saveCollapsedState()
+    }
+
+    /// Toggle collapse for the currently selected or hovered header. Returns true if toggled.
+    func toggleSelectedOrHoveredGroupCollapse() -> Bool {
+        let rows = groupedRows
+        // Prefer selected row (keyboard navigation), fall back to hovered (mouse)
+        let idx = selectedRowIndex ?? hoveredRowIndex
+        guard let idx = idx,
+              idx < rows.count,
+              case .header(let h) = rows[idx] else {
+            return false
+        }
+        toggleGroupCollapse(h.key)
+        return true
+    }
+
+    // MARK: - Grouping Persistence
+
+    private static let collapsedGroupsKey = "collapsedGroups"
+    private static let collapsedNilGroupKey = "collapsedNilGroup"
+
+    private func saveCollapsedState() {
+        let keys = collapsedGroups.compactMap { $0 }
+        UserDefaults.standard.set(keys, forKey: Self.collapsedGroupsKey)
+        UserDefaults.standard.set(collapsedGroups.contains(nil), forKey: Self.collapsedNilGroupKey)
+    }
+
+    func loadCollapsedState() {
+        let keys = UserDefaults.standard.stringArray(forKey: Self.collapsedGroupsKey) ?? []
+        let includesNil = UserDefaults.standard.bool(forKey: Self.collapsedNilGroupKey)
+        collapsedGroups = Set(keys.map { Optional($0) })
+        if includesNil { collapsedGroups.insert(nil) }
     }
 
     /// Keep selection within bounds after tasks update.
     func syncSelectionAfterTasksUpdate() {
         selectedIndex = TaskListCoordinator.syncSelection(tasks: tasks, selectedIndex: selectedIndex)
+        if let selectedIndex {
+            let rows = groupedRows
+            selectedRowIndex = rows.firstIndex { row in
+                if case .task(let item) = row {
+                    return item.flatIndex == selectedIndex
+                }
+                return false
+            }
+        } else {
+            selectedRowIndex = nil
+        }
     }
 
     /// Sort tasks by urgency, highest first, keeping nil urgency last.

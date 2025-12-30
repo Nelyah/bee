@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @State private var escapeMonitor: Any?
+    @State private var normalModeMonitor: Any?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -26,8 +27,10 @@ struct ContentView: View {
         .onExitCommand {
             if viewModel.showCompletionMenu {
                 viewModel.clearCompletions()
-            } else {
+            } else if viewModel.mode == .detail {
                 viewModel.closeDetail()
+            } else {
+                viewModel.isInsertMode = false
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -42,10 +45,12 @@ struct ContentView: View {
                 NSApplication.shared.activate(ignoringOtherApps: true)
                 configureWindowAppearance()
                 installEscapeMonitor()
+                installNormalModeMonitor()
             }
         }
         .onDisappear {
             removeEscapeMonitor()
+            removeNormalModeMonitor()
         }
     }
 
@@ -73,15 +78,17 @@ struct ContentView: View {
         window.standardWindowButton(.zoomButton)?.isHidden = true
     }
 
-    /// Capture Escape at the window level to close detail view.
+    /// Capture Escape at the window level to close detail view or exit insert mode.
     private func installEscapeMonitor() {
         guard escapeMonitor == nil else { return }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if event.keyCode == 53 {
+            if event.keyCode == KeyCode.escape {
                 if viewModel.showCompletionMenu {
                     viewModel.clearCompletions()
-                } else {
+                } else if viewModel.mode == .detail {
                     viewModel.closeDetail()
+                } else {
+                    viewModel.isInsertMode = false
                 }
                 return nil
             }
@@ -94,6 +101,67 @@ struct ContentView: View {
         if let monitor = escapeMonitor {
             NSEvent.removeMonitor(monitor)
             escapeMonitor = nil
+        }
+    }
+
+    /// Handle keys in normal mode (when text input is not focused).
+    private func installNormalModeMonitor() {
+        guard normalModeMonitor == nil else { return }
+        normalModeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // Only handle keys in normal mode (not insert mode) and in list mode (not detail)
+            guard !viewModel.isInsertMode, viewModel.mode == .list else { return event }
+
+            // Handle Ctrl+N/P for navigation (same as j/k)
+            if event.modifierFlags.contains(.control) {
+                if event.charactersIgnoringModifiers == "n" {
+                    viewModel.moveSelection(delta: 1)
+                    return nil
+                }
+                if event.charactersIgnoringModifiers == "p" {
+                    viewModel.moveSelection(delta: -1)
+                    return nil
+                }
+            }
+
+            switch event.keyCode {
+            case KeyCode.i:
+                viewModel.enterInsertMode()
+                return nil
+            case KeyCode.j:
+                viewModel.moveSelection(delta: 1)
+                return nil
+            case KeyCode.k:
+                viewModel.moveSelection(delta: -1)
+                return nil
+            case KeyCode.g:
+                if event.modifierFlags.contains(.shift) {
+                    viewModel.selectLastRow()
+                } else {
+                    viewModel.selectFirstRow()
+                }
+                return nil
+            case KeyCode.returnKey, KeyCode.keypadEnter:
+                // Toggle collapse if on a header, otherwise open detail
+                if !viewModel.toggleSelectedOrHoveredGroupCollapse() {
+                    viewModel.openDetail()
+                }
+                return nil
+            case KeyCode.space:
+                if viewModel.toggleSelectedOrHoveredGroupCollapse() {
+                    return nil
+                }
+                return event
+            default:
+                return event
+            }
+        }
+    }
+
+    /// Remove the normal mode key monitor.
+    private func removeNormalModeMonitor() {
+        if let monitor = normalModeMonitor {
+            NSEvent.removeMonitor(monitor)
+            normalModeMonitor = nil
         }
     }
 }

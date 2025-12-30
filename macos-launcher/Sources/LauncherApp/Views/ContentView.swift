@@ -110,49 +110,30 @@ struct ContentView: View {
         normalModeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // Only handle keys in normal mode (not insert mode) and in list mode (not detail)
             guard !viewModel.isInsertMode, viewModel.mode == .list else { return event }
-
-            // Handle Ctrl+N/P for navigation (same as j/k)
-            if event.modifierFlags.contains(.control) {
-                if event.charactersIgnoringModifiers == "n" {
-                    viewModel.moveSelection(delta: 1)
-                    return nil
-                }
-                if event.charactersIgnoringModifiers == "p" {
-                    viewModel.moveSelection(delta: -1)
-                    return nil
-                }
+            guard let action = KeyHandlingDecider.normalModeAction(for: KeyInput(event: event)) else {
+                return event
             }
 
-            switch event.keyCode {
-            case KeyCode.i:
+            switch action {
+            case .enterInsertMode:
                 viewModel.enterInsertMode()
                 return nil
-            case KeyCode.j:
-                viewModel.moveSelection(delta: 1)
+            case .moveSelection(let delta):
+                viewModel.moveSelection(delta: delta)
                 return nil
-            case KeyCode.k:
-                viewModel.moveSelection(delta: -1)
+            case .selectFirst:
+                viewModel.selectFirstRow()
                 return nil
-            case KeyCode.g:
-                if event.modifierFlags.contains(.shift) {
-                    viewModel.selectLastRow()
-                } else {
-                    viewModel.selectFirstRow()
-                }
+            case .selectLast:
+                viewModel.selectLastRow()
                 return nil
-            case KeyCode.returnKey, KeyCode.keypadEnter:
-                // Toggle collapse if on a header, otherwise open detail
+            case .activatePrimary:
                 if !viewModel.toggleSelectedOrHoveredGroupCollapse() {
                     viewModel.openDetail()
                 }
                 return nil
-            case KeyCode.space:
-                if viewModel.toggleSelectedOrHoveredGroupCollapse() {
-                    return nil
-                }
-                return event
-            default:
-                return event
+            case .toggleGroupCollapse:
+                return viewModel.toggleSelectedOrHoveredGroupCollapse() ? nil : event
             }
         }
     }

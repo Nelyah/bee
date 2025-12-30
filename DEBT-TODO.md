@@ -7,19 +7,6 @@
 - Token classification still relies on stringly-typed token names in `TokenClassifier`/`HighlightSpan`, risking silent regressions.
 
 ## Open Issues
-### DEBT-0008: Keyboard shortcut mappings split across view layers
-- Priority: P1
-- Effort: M
-- Area: macos-launcher input handling
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift:KeyHandlingDecider.action`, `macos-launcher/Sources/LauncherApp/Views/ContentView.swift:installNormalModeMonitor`
-- Smells: duplication, coupling, hidden-side-effects
-- Problem (rough): Shortcut definitions live in two locations (NSTextView handling vs window-level monitor). There is no shared mapping for mode-specific behavior, so new shortcuts can be added in only one layer or conflict.
-- Suggested fix (rough):
-- Centralize key mapping in a shared `KeyBinding`/`KeyHandlingDecider` that can evaluate mode.
-- Route both NSTextView and NSEvent monitors through the same decision layer.
-- Add tests for normal-mode bindings alongside existing key handling tests.
-- Safety net: Add unit tests for normal-mode key handling or a small wrapper around the shared mapping.
-
 ### DEBT-0009: Collapsed-group persistence uses stringly-typed keys across tests
 - Priority: P2
 - Effort: S
@@ -47,6 +34,9 @@
 - Safety net: Add tests for decoding unknown token types and for classification/highlighting on expected tokens.
 
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0008: Keyboard shortcut mappings split across view layers
+- Resolved on: 2025-12-30
+- Note: Centralized normal-mode key mapping in `KeyHandlingDecider` and added tests.
 ### DEBT-0007: Duplicated prefix logic in completion context detection
 - Resolved on: 2025-12-30
 - Note: Consolidated prefix checks into shared helper lists in `CompletionEngine` and expanded context tests.

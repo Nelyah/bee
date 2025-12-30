@@ -151,6 +151,15 @@ enum KeyHandlingAction: Equatable {
     case submit
 }
 
+enum NormalModeAction: Equatable {
+    case enterInsertMode
+    case moveSelection(Int)
+    case selectFirst
+    case selectLast
+    case activatePrimary
+    case toggleGroupCollapse
+}
+
 struct KeyHandlingDecider {
     static func action(for input: KeyInput, showCompletionMenu: Bool) -> KeyHandlingAction? {
         if input.modifierFlags.contains(.control),
@@ -219,6 +228,34 @@ struct KeyHandlingDecider {
         }
 
         return nil
+    }
+
+    static func normalModeAction(for input: KeyInput) -> NormalModeAction? {
+        if input.modifierFlags.contains(.control) {
+            if input.charactersIgnoringModifiers == "n" {
+                return .moveSelection(1)
+            }
+            if input.charactersIgnoringModifiers == "p" {
+                return .moveSelection(-1)
+            }
+        }
+
+        switch input.keyCode {
+        case KeyCode.i:
+            return .enterInsertMode
+        case KeyCode.j:
+            return .moveSelection(1)
+        case KeyCode.k:
+            return .moveSelection(-1)
+        case KeyCode.g:
+            return input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
+        case KeyCode.returnKey, KeyCode.keypadEnter:
+            return .activatePrimary
+        case KeyCode.space:
+            return .toggleGroupCollapse
+        default:
+            return nil
+        }
     }
 
     private static func selectionDelta(for input: KeyInput) -> Int? {

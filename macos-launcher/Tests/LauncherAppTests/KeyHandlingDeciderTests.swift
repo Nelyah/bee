@@ -71,4 +71,33 @@ final class KeyHandlingDeciderTests: XCTestCase {
         let enter = KeyInput(keyCode: 36, charactersIgnoringModifiers: "\r", modifierFlags: [])
         XCTAssertEqual(KeyHandlingDecider.action(for: enter, showCompletionMenu: false), .submit)
     }
+
+    func testNormalModeActions() {
+        let enterInsert = KeyInput(keyCode: KeyCode.i, charactersIgnoringModifiers: "i", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: enterInsert), .enterInsertMode)
+
+        let down = KeyInput(keyCode: KeyCode.j, charactersIgnoringModifiers: "j", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: down), .moveSelection(1))
+
+        let up = KeyInput(keyCode: KeyCode.k, charactersIgnoringModifiers: "k", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: up), .moveSelection(-1))
+
+        let ctrlN = KeyInput(keyCode: KeyCode.j, charactersIgnoringModifiers: "n", modifierFlags: [.control])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: ctrlN), .moveSelection(1))
+
+        let ctrlP = KeyInput(keyCode: KeyCode.k, charactersIgnoringModifiers: "p", modifierFlags: [.control])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: ctrlP), .moveSelection(-1))
+
+        let first = KeyInput(keyCode: KeyCode.g, charactersIgnoringModifiers: "g", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: first), .selectFirst)
+
+        let last = KeyInput(keyCode: KeyCode.g, charactersIgnoringModifiers: "G", modifierFlags: [.shift])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: last), .selectLast)
+
+        let activate = KeyInput(keyCode: KeyCode.returnKey, charactersIgnoringModifiers: "\r", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: activate), .activatePrimary)
+
+        let toggle = KeyInput(keyCode: KeyCode.space, charactersIgnoringModifiers: " ", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: toggle), .toggleGroupCollapse)
+    }
 }

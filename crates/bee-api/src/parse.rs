@@ -60,6 +60,10 @@ pub fn parse_input(input: &str) -> ApiResult<ParsedInput> {
     };
     let properties = if arguments.is_empty() {
         None
+    } else if action == "annotate" {
+        let mut props = TaskProperties::default();
+        props.set_annotate(arguments.join(" "));
+        Some(props)
     } else {
         Some(TaskProperties::from(&arguments)?)
     };
@@ -118,6 +122,15 @@ mod tests {
         assert_eq!(parsed.action, "list");
         assert!(parsed.filter.is_some());
         assert!(parsed.properties.is_none());
+    }
+
+    #[test]
+    fn test_parse_input_with_annotate_action() {
+        let parsed = parse_input("annotate add note here").unwrap();
+        assert_eq!(parsed.action, "annotate");
+        let props = parsed.properties.expect("expected properties for annotate");
+        let json = serde_json::to_value(&props).unwrap();
+        assert_eq!(json["annotation"], "add note here");
     }
 
     #[test]

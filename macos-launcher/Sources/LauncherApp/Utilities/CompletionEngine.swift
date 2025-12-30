@@ -92,7 +92,7 @@ struct CompletionEngine {
             return .taskRef
         }
 
-        if !beforeCursor.contains(" ") && !beforeCursor.isEmpty {
+        if !lastWord.isEmpty && !lastWord.contains(":") {
             return .action
         }
 

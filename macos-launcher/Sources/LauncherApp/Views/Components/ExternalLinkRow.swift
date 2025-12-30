@@ -39,7 +39,7 @@ struct ExternalLinkRow: View {
                             middleDot
                             mrLinkLine
                             Spacer()
-                            LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt, compact: true)
+                            approvalBadge
                         }
 
                         if let branch = gitlabBranchLine {
@@ -87,7 +87,6 @@ struct ExternalLinkRow: View {
                                     .foregroundColor(ThemeManager.current.subtext0)
                             }
                             Spacer()
-                            LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt, compact: true)
                         }
                     }
                 }
@@ -114,6 +113,11 @@ struct ExternalLinkRow: View {
         .padding(.top, DesignTokens.Spacing.sm)
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.bottom, DesignTokens.Spacing.sm)
+        .overlay(alignment: .topTrailing) {
+            LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt, compact: true)
+                .padding(.top, DesignTokens.Spacing.xs)
+                .padding(.trailing, DesignTokens.Spacing.xs)
+        }
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
                 .fill(ThemeManager.current.surface1.opacity(0.7))
@@ -299,6 +303,32 @@ struct ExternalLinkRow: View {
 
     private var gitlabBranchLine: String? {
         gitlabSummary?.sourceBranch
+    }
+
+    private var approvalBadge: some View {
+        let text: String
+        let color: Color
+        switch gitlabSummary?.approved {
+        case .some(true):
+            text = "Approved"
+            color = ThemeManager.current.green
+        case .some(false):
+            text = "Needs approval"
+            color = ThemeManager.current.yellow
+        case .none:
+            text = "Approval unknown"
+            color = ThemeManager.current.subtext0
+        }
+
+        return Text(text)
+            .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                    .fill(color.opacity(0.2))
+            )
+            .foregroundColor(color)
     }
 
     private var middleDot: some View {

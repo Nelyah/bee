@@ -60,6 +60,17 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedIndex, 0) // stays at task a
     }
 
+    func testSubmitInvalidParseKeepsInputAndShowsToast() {
+        let viewModel = LauncherViewModel()
+        viewModel.input = "bad query"
+
+        viewModel.handleSubmit()
+
+        XCTAssertEqual(viewModel.input, "bad query")
+        XCTAssertEqual(viewModel.toasts.count, 1)
+        XCTAssertEqual(viewModel.toasts.first?.message, "Invalid request")
+    }
+
     func testSyncSelectionAfterTasksUpdate() {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [

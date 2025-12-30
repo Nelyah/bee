@@ -47,6 +47,7 @@ final class LauncherViewModel: ObservableObject {
     private let apiClient: ApiClientProtocol
     private var requestCounter: Int = 0
     private var latestParse: ParseResponse?
+    private var lastParseErrorMessage: String?
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "view-model")
     private var suppressInputHandling = false
     private var configLoaded = false
@@ -186,6 +187,7 @@ final class LauncherViewModel: ObservableObject {
             let parsed = try await actionService.parse(input: query)
             guard requestId == requestCounter else { return }
             latestParse = parsed
+            lastParseErrorMessage = nil
             tokens = parsed.tokens
             actionName = parsed.action
             cancelPendingParseErrorToast()
@@ -197,6 +199,7 @@ final class LauncherViewModel: ObservableObject {
         } catch {
             guard requestId == requestCounter else { return }
             latestParse = nil
+            lastParseErrorMessage = error.localizedDescription
             tokens = []
             actionName = ""
             logger.error("Parse request failed. id=\(requestId), error=\(error.localizedDescription, privacy: .public)")
@@ -209,6 +212,12 @@ final class LauncherViewModel: ObservableObject {
         if selectedIndex != nil {
             openDetail()
         } else {
+            let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedInput.isEmpty, latestParse == nil {
+                cancelPendingParseErrorToast()
+                showToast(message: lastParseErrorMessage ?? "Invalid request")
+                return
+            }
             requestCounter += 1
             let requestId = requestCounter
             let snapshot = latestParse

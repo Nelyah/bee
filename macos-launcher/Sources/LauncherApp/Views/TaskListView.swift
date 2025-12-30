@@ -147,8 +147,7 @@ struct TaskListView: View {
                                     .onHover { hovering in
                                         viewModel.hoveredRowIndex = hovering ? rowIndex : nil
                                     }
-                                    .onTapGesture { viewModel.selectRow(rowIndex) }
-                                    .onTapGesture(count: 2) { viewModel.activatePrimary(at: rowIndex) }
+                                    .onTapGesture { viewModel.activatePrimary(at: rowIndex) }
 
                                 case .task(let item):
                                     TaskRow(
@@ -162,7 +161,11 @@ struct TaskListView: View {
                                         viewModel.hoveredRowIndex = hovering ? rowIndex : nil
                                     }
                                     .onTapGesture { viewModel.selectRow(rowIndex) }
-                                    .onTapGesture(count: 2) { viewModel.activatePrimary(at: rowIndex) }
+                                    .simultaneousGesture(
+                                        TapGesture(count: 2).onEnded {
+                                            viewModel.activatePrimary(at: rowIndex)
+                                        }
+                                    )
                                 }
                             }
                         }

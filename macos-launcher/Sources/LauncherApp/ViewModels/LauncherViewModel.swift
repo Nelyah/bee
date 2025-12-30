@@ -294,6 +294,12 @@ final class LauncherViewModel: ObservableObject {
         showToast(message: "Copied branch name to clipboard", icon: .gitlab)
     }
 
+    func copyLinkToClipboard(_ url: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url, forType: .string)
+        showToast(message: "Copied link to clipboard", icon: .gitlab)
+    }
+
     /// Cancel any pending delayed toast for parse errors.
     private func cancelPendingParseErrorToast() {
         parseErrorToastScheduler.cancel()

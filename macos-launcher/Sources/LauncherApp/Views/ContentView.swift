@@ -21,6 +21,9 @@ struct ContentView: View {
                     onCopyBranch: { branch in
                         viewModel.copyBranchNameToClipboard(branch)
                     },
+                    onCopyLink: { url in
+                        viewModel.copyLinkToClipboard(url)
+                    },
                     onClose: {
                         viewModel.closeDetail()
                     }

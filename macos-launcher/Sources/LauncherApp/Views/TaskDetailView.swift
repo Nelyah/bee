@@ -6,6 +6,7 @@ struct TaskDetailView: View {
     let externalLinksState: ExternalLinksState
     let onRefreshLinks: (ExternalLinkProvider) -> Void
     let onCopyBranch: (String) -> Void
+    let onCopyLink: (String) -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -82,7 +83,8 @@ struct TaskDetailView: View {
                 isRefreshing: externalLinksState.refreshingProviders.contains(.gitlab),
                 links: externalLinksForTask.filter { $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue },
                 onRefresh: { onRefreshLinks(.gitlab) },
-                onCopyBranch: onCopyBranch
+                onCopyBranch: onCopyBranch,
+                onCopyLink: onCopyLink
             )
 
             ExternalLinksProviderSection(
@@ -92,7 +94,8 @@ struct TaskDetailView: View {
                 isRefreshing: externalLinksState.refreshingProviders.contains(.jira),
                 links: externalLinksForTask.filter { $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue },
                 onRefresh: { onRefreshLinks(.jira) },
-                onCopyBranch: onCopyBranch
+                onCopyBranch: onCopyBranch,
+                onCopyLink: onCopyLink
             )
         }
     }
@@ -290,6 +293,7 @@ private struct ExternalLinksProviderSection: View {
     let links: [ExternalLinkDto]
     let onRefresh: () -> Void
     let onCopyBranch: (String) -> Void
+    let onCopyLink: (String) -> Void
     @State private var isHoveringRefresh = false
 
     var body: some View {
@@ -334,7 +338,11 @@ private struct ExternalLinksProviderSection: View {
             } else {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     ForEach(links, id: \.id) { link in
-                        ExternalLinkRow(link: link, onCopyBranch: onCopyBranch)
+                        ExternalLinkRow(
+                            link: link,
+                            onCopyBranch: onCopyBranch,
+                            onCopyLink: onCopyLink
+                        )
                     }
                 }
             }
@@ -357,9 +365,11 @@ private struct QuietRefreshButtonStyle: ButtonStyle {
 private struct ExternalLinkRow: View {
     let link: ExternalLinkDto
     let onCopyBranch: (String) -> Void
+    let onCopyLink: (String) -> Void
     @Environment(\.openURL) private var openURL
     @State private var isHoveringTitle = false
     @State private var isHoveringBranch = false
+    @State private var isHoveringLinkCopy = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -401,21 +411,7 @@ private struct ExternalLinkRow: View {
                                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
                                 .foregroundColor(ThemeManager.current.subtext0)
                             middleDot
-                            if let url = URL(string: link.url) {
-                                Link(destination: url) {
-                                    Text(link.url)
-                                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
-                                        .foregroundColor(ThemeManager.current.subtext0)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                }
-                            } else {
-                                Text(link.url)
-                                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
-                                    .foregroundColor(ThemeManager.current.subtext0)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                            }
+                            mrLinkLine
                             Spacer()
                             LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt, compact: true)
                         }
@@ -501,6 +497,37 @@ private struct ExternalLinkRow: View {
     private func openMergeRequest() {
         guard let url = URL(string: link.url) else { return }
         _ = openURL(url)
+    }
+
+    private var mrLinkLine: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            if let url = URL(string: link.url) {
+                Link(destination: url) {
+                    Text(link.url)
+                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
+                        .foregroundColor(ThemeManager.current.subtext0)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            } else {
+                Text(link.url)
+                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
+                    .foregroundColor(ThemeManager.current.subtext0)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Button(action: { onCopyLink(link.url) }) {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
+                    .foregroundColor(isHoveringLinkCopy ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
+            }
+            .buttonStyle(QuietTextButtonStyle(isHovering: isHoveringLinkCopy))
+            .onHover { hovering in
+                isHoveringLinkCopy = hovering
+            }
+            .help("Copy link")
+        }
     }
 
     private var titleText: String {
@@ -756,6 +783,7 @@ private struct TimelineRow: View {
         ),
         onRefreshLinks: { _ in },
         onCopyBranch: { _ in },
+        onCopyLink: { _ in },
         onClose: {}
     )
         .padding(24)

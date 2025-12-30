@@ -10,11 +10,10 @@
 - Priority: P1
 - Effort: M
 - Area: macos-launcher ViewModels
-- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`, `macos-launcher/Sources/LauncherApp/Utilities/CompletionEngine.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/ParseErrorToastScheduler.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/TaskListCoordinator.swift:1`
+- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift:7`, `macos-launcher/Sources/LauncherApp/Utilities/CompletionEngine.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/ParseErrorToastScheduler.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/TaskListCoordinator.swift:1`, `macos-launcher/Sources/LauncherApp/Utilities/LauncherActionService.swift:1`
 - Smells: SRP, complexity, coupling
-- Problem (rough): The view model still handles API requests, parsing, and UI navigation in a single large class. Completion, parse-error toast scheduling, and task list selection were extracted, but remaining concerns are still tightly coupled and make change risk high.
+- Problem (rough): The view model still handles UI navigation and state orchestration in a single large class. Completion, parse-error toast scheduling, task list selection, and action orchestration were extracted, but remaining concerns are still tightly coupled and make change risk high.
 - Suggested fix (rough):
-- Extract API/parse orchestration into a dedicated service (e.g., `LauncherActionService`).
 - Move navigation state management into a small coordinator to reduce UI coupling.
 - Keep `LauncherViewModel` as a thin orchestrator that composes these components.
 - Safety net: Expand unit tests around completion detection, toast scheduling, and selection logic; add tests for the extracted components.

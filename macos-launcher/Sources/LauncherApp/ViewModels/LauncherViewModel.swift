@@ -29,7 +29,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var completionContext: CompletionContext = .none
     @Published var cursorPosition: Int = 0
 
-    private let apiClient: ApiClientProtocol
+    private let actionService: LauncherActionService
     private var requestCounter: Int = 0
     private var latestParse: ParseResponse?
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "view-model")
@@ -56,9 +56,10 @@ final class LauncherViewModel: ObservableObject {
 
     init(
         apiClient: ApiClientProtocol = ApiClient(),
+        actionService: LauncherActionService? = nil,
         unexpectedTokenToastDelay: TimeInterval = Constants.defaultUnexpectedTokenToastDelay
     ) {
-        self.apiClient = apiClient
+        self.actionService = actionService ?? LauncherActionService(apiClient: apiClient)
         self.unexpectedTokenToastDelay = unexpectedTokenToastDelay
     }
 
@@ -67,9 +68,9 @@ final class LauncherViewModel: ObservableObject {
         guard !configLoaded else { return }
         configLoaded = true
         do {
-            let config = try await apiClient.fetchConfig()
-            reportConfig = config.report
-            logger.info("Config loaded: \(config.report.columns.count) columns")
+            let config = try await actionService.loadConfig()
+            reportConfig = config
+            logger.info("Config loaded: \(config.columns.count) columns")
         } catch {
             logger.error("Failed to load config: \(error.localizedDescription, privacy: .public)")
             showToast(message: error.localizedDescription)
@@ -105,7 +106,7 @@ final class LauncherViewModel: ObservableObject {
     func parseOnly(for query: String, requestId: Int) async {
         do {
             logger.debug("Parse request start. id=\(requestId)")
-            let parsed = try await apiClient.parse(input: query)
+            let parsed = try await actionService.parse(input: query)
             guard requestId == requestCounter else { return }
             latestParse = parsed
             tokens = parsed.tokens
@@ -146,15 +147,10 @@ final class LauncherViewModel: ObservableObject {
     /// Run the action derived from the latest parse response.
     func runAction(from parsed: ParseResponse?, requestId: Int, resetInput: Bool, updateStatus: Bool) async {
         do {
-            let parsed = parsed ?? apiClient.emptyParse()
+            let parsed = parsed ?? actionService.emptyParse()
             let actionName = parsed.action.isEmpty ? "list" : parsed.action
             logger.debug("Action request start. id=\(requestId), action=\(actionName)")
-            let filter = await resolveDefaultFilterIfNeeded(parsed: parsed, actionName: actionName)
-            let response = try await apiClient.runAction(
-                action: actionName,
-                properties: parsed.properties,
-                filter: filter
-            )
+            let response = try await actionService.runAction(parsed: parsed, actionName: actionName)
             guard requestId == requestCounter else { return }
             tasks = TaskListCoordinator.sortTasksByUrgency(response.tasks)
             syncSelectionAfterTasksUpdate()
@@ -175,21 +171,6 @@ final class LauncherViewModel: ObservableObject {
     }
 
     /// Apply default report filters to list actions when no filter was provided.
-    func resolveDefaultFilterIfNeeded(parsed: ParseResponse, actionName: String) async -> JSONValue? {
-        guard actionName.lowercased() == "list" else { return parsed.filter }
-        guard parsed.filter == nil else { return parsed.filter }
-        guard let defaults = reportConfig?.filters, !defaults.isEmpty else { return parsed.filter }
-
-        let filterExpr = defaults.joined(separator: " or ")
-        do {
-            let parsedDefaults = try await apiClient.parse(input: "list \(filterExpr)")
-            return parsedDefaults.filter
-        } catch {
-            logger.error("Failed to parse default filters: \(error.localizedDescription, privacy: .public)")
-            return parsed.filter
-        }
-    }
-
     /// Present a toast message that auto-dismisses after a duration.
     func showToast(message: String, duration: TimeInterval = Constants.defaultToastDuration) {
         let toast = ToastMessage(message: message)
@@ -272,7 +253,7 @@ final class LauncherViewModel: ObservableObject {
         guard shouldAutoList(actionName: actionName) else { return }
         requestCounter += 1
         let requestId = requestCounter
-        let snapshot = apiClient.emptyParse()
+        let snapshot = actionService.emptyParse()
 
         Task {
             await runAction(from: snapshot, requestId: requestId, resetInput: false, updateStatus: false)
@@ -297,23 +278,8 @@ final class LauncherViewModel: ObservableObject {
         guard !completionsLoaded else { return }
         completionsLoaded = true
 
-        async let projectsTask = apiClient.fetchCompletions(type: "projects")
-        async let tagsTask = apiClient.fetchCompletions(type: "tags")
-        async let actionsTask = apiClient.fetchCompletions(type: "actions")
-        async let statusTask = apiClient.fetchCompletions(type: "status")
-        async let datesTask = apiClient.fetchCompletions(type: "dates")
-
         do {
-            let (projects, tags, actions, status, dates) = try await (
-                projectsTask, tagsTask, actionsTask, statusTask, datesTask
-            )
-            completionCache = CompletionCache(
-                projects: projects.items,
-                tags: tags.items,
-                actions: actions.items,
-                status: status.items,
-                dates: dates.items
-            )
+            completionCache = try await actionService.fetchCompletions()
             logger.info("Completions loaded: \(self.completionCache.projects.count) projects, \(self.completionCache.tags.count) tags, \(self.completionCache.actions.count) actions")
         } catch {
             logger.error("Failed to load completions: \(error.localizedDescription, privacy: .public)")

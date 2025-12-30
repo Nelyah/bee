@@ -189,12 +189,13 @@ final class LauncherViewModelTests: XCTestCase {
             filter: .string("default-filter"),
             tokens: []
         ))
-        let viewModel = LauncherViewModel(apiClient: mock)
-        viewModel.reportConfig = ReportConfig(
+        let service = LauncherActionService(apiClient: mock)
+        service.setReportConfig(ReportConfig(
             filters: ["status:pending or status:active"],
             columns: ["id"],
             columnNames: ["ID"]
-        )
+        ))
+        let viewModel = LauncherViewModel(apiClient: mock, actionService: service)
 
         let parsed = ParseResponse(action: "list", properties: nil, filter: nil, tokens: [])
         await viewModel.runAction(from: parsed, requestId: 1, resetInput: false, updateStatus: false)

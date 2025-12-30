@@ -106,17 +106,17 @@ final class LauncherViewModelTests: XCTestCase {
 
     func testBuildHighlightSpansActionProjectTag() {
         let tokens = [
-            TokenSpan(tokenType: "WordString", literal: "this", start: 0, end: 4),
-            TokenSpan(tokenType: "Blank", literal: " ", start: 4, end: 5),
-            TokenSpan(tokenType: "WordString", literal: "is", start: 5, end: 7),
-            TokenSpan(tokenType: "Blank", literal: " ", start: 7, end: 8),
-            TokenSpan(tokenType: "WordString", literal: "add", start: 8, end: 11),
-            TokenSpan(tokenType: "Blank", literal: " ", start: 11, end: 12),
-            TokenSpan(tokenType: "ProjectPrefix", literal: "proj:", start: 12, end: 17),
-            TokenSpan(tokenType: "WordString", literal: "abc", start: 17, end: 20),
-            TokenSpan(tokenType: "Blank", literal: " ", start: 20, end: 21),
-            TokenSpan(tokenType: "TagPlusPrefix", literal: "+", start: 21, end: 22),
-            TokenSpan(tokenType: "WordString", literal: "tag", start: 22, end: 25)
+            TokenSpan(tokenType: .wordString, literal: "this", start: 0, end: 4),
+            TokenSpan(tokenType: .blank, literal: " ", start: 4, end: 5),
+            TokenSpan(tokenType: .wordString, literal: "is", start: 5, end: 7),
+            TokenSpan(tokenType: .blank, literal: " ", start: 7, end: 8),
+            TokenSpan(tokenType: .wordString, literal: "add", start: 8, end: 11),
+            TokenSpan(tokenType: .blank, literal: " ", start: 11, end: 12),
+            TokenSpan(tokenType: .projectPrefix, literal: "proj:", start: 12, end: 17),
+            TokenSpan(tokenType: .wordString, literal: "abc", start: 17, end: 20),
+            TokenSpan(tokenType: .blank, literal: " ", start: 20, end: 21),
+            TokenSpan(tokenType: .tagPlusPrefix, literal: "+", start: 21, end: 22),
+            TokenSpan(tokenType: .wordString, literal: "tag", start: 22, end: 25)
         ]
 
         let spans = buildHighlightSpans(tokens: tokens, actionName: "add")

@@ -7,20 +7,10 @@
 - Token classification still relies on stringly-typed token names in `TokenClassifier`/`HighlightSpan`, risking silent regressions.
 
 ## Open Issues
-### DEBT-0010: Token types are stringly-typed across highlighting and classification
-- Priority: P2
-- Effort: M
-- Area: macos-launcher parsing/highlighting
-- Evidence: `macos-launcher/Sources/LauncherApp/Models/ParseModels.swift:TokenSpan.tokenType`, `macos-launcher/Sources/LauncherApp/Utilities/TokenClassifier.swift`, `macos-launcher/Sources/LauncherApp/Utilities/HighlightSpan.swift`
-- Smells: magic-string, coupling
-- Problem (rough): Token types are represented as raw strings across parsing, classification, and highlighting. A typo or backend change can silently break highlighting or completion behavior without compiler errors.
-- Suggested fix (rough):
-- Introduce a `TokenType` enum with raw values matching API payloads.
-- Convert `TokenSpan.tokenType` to `TokenType` in decoding (with safe fallback).
-- Update `TokenClassifier` and `HighlightSpan` to use the enum instead of string literals.
-- Safety net: Add tests for decoding unknown token types and for classification/highlighting on expected tokens.
-
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0010: Token types are stringly-typed across highlighting and classification
+- Resolved on: 2025-12-30
+- Note: Introduced `TokenType` enum with unknown fallback and updated classifier/highlighting/tests.
 ### DEBT-0009: Collapsed-group persistence uses stringly-typed keys across tests
 - Resolved on: 2025-12-30
 - Note: Added `UserDefaultsKeys` helper and switched production/tests to shared keys.

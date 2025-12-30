@@ -36,7 +36,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
             var end = token.end
             var nextIndex = index + 1
             while nextIndex < tokens.count,
-                  tokens[nextIndex].tokenType == "WordString",
+                  tokens[nextIndex].tokenType == .wordString,
                   tokens[nextIndex].start == end {
                 end = tokens[nextIndex].end
                 nextIndex += 1
@@ -54,7 +54,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
             var end = token.end
             var nextIndex = index + 1
             while nextIndex < tokens.count,
-                  tokens[nextIndex].tokenType == "WordString",
+                  tokens[nextIndex].tokenType == .wordString,
                   tokens[nextIndex].start == end {
                 end = tokens[nextIndex].end
                 nextIndex += 1
@@ -74,7 +74,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
             // Include following value tokens
             while nextIndex < tokens.count,
                   tokens[nextIndex].start == end,
-                  tokens[nextIndex].tokenType != "Blank" {
+                  tokens[nextIndex].tokenType != .blank {
                 end = tokens[nextIndex].end
                 nextIndex += 1
             }
@@ -90,7 +90,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
             var nextIndex = index + 1
             while nextIndex < tokens.count,
                   tokens[nextIndex].start == end,
-                  tokens[nextIndex].tokenType == "WordString" {
+                  tokens[nextIndex].tokenType == .wordString {
                 end = tokens[nextIndex].end
                 nextIndex += 1
             }
@@ -106,7 +106,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
             var nextIndex = index + 1
             while nextIndex < tokens.count,
                   tokens[nextIndex].start == end,
-                  tokens[nextIndex].tokenType != "Blank" {
+                  tokens[nextIndex].tokenType != .blank {
                 end = tokens[nextIndex].end
                 nextIndex += 1
             }
@@ -137,7 +137,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
         }
 
         // Action name match
-        if tokenType == "WordString",
+        if tokenType == .wordString,
            !lowerAction.isEmpty,
            token.literal.lowercased() == lowerAction {
             spans.append(HighlightSpan(start: token.start, end: token.end, kind: .action))

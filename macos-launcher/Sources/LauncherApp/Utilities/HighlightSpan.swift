@@ -31,7 +31,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
         let tokenType = token.tokenType
 
         // Tags: +tag or -tag (prefix + following WordStrings)
-        if tokenType == "TagPlusPrefix" || tokenType == "TagMinusPrefix" {
+        if TokenClassifier.isTagPrefix(tokenType) {
             let start = token.start
             var end = token.end
             var nextIndex = index + 1
@@ -49,7 +49,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
         }
 
         // Projects: project:value or proj:value
-        if tokenType == "ProjectPrefix" {
+        if TokenClassifier.isProjectPrefix(tokenType) {
             let start = token.start
             var end = token.end
             var nextIndex = index + 1
@@ -67,13 +67,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
         }
 
         // Date filters: due:, due.before:, due.after:, created.*, end.*
-        if tokenType == "FilterTokDateDue" ||
-           tokenType == "FilterTokDateDueBefore" ||
-           tokenType == "FilterTokDateDueAfter" ||
-           tokenType == "FilterTokDateCreatedBefore" ||
-           tokenType == "FilterTokDateCreatedAfter" ||
-           tokenType == "FilterTokDateEndBefore" ||
-           tokenType == "FilterTokDateEndAfter" {
+        if TokenClassifier.isDateFilter(tokenType) {
             let start = token.start
             var end = token.end
             var nextIndex = index + 1
@@ -90,7 +84,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
         }
 
         // Status filter: status:value
-        if tokenType == "FilterStatus" {
+        if TokenClassifier.isStatusFilter(tokenType) {
             let start = token.start
             var end = token.end
             var nextIndex = index + 1
@@ -106,7 +100,7 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
         }
 
         // Dependencies: depends:uuid
-        if tokenType == "DependsOn" {
+        if TokenClassifier.isDependency(tokenType) {
             let start = token.start
             var end = token.end
             var nextIndex = index + 1
@@ -122,21 +116,21 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
         }
 
         // Logical operators: and, or, xor
-        if tokenType == "OperatorAnd" || tokenType == "OperatorOr" || tokenType == "OperatorXor" {
+        if TokenClassifier.isLogicalOperator(tokenType) {
             spans.append(HighlightSpan(start: token.start, end: token.end, kind: .logicalOp))
             index += 1
             continue
         }
 
         // Parentheses
-        if tokenType == "LeftParenthesis" || tokenType == "RightParenthesis" {
+        if TokenClassifier.isParenthesis(tokenType) {
             spans.append(HighlightSpan(start: token.start, end: token.end, kind: .parenthesis))
             index += 1
             continue
         }
 
         // Identifiers: UUID and Int
-        if tokenType == "Uuid" || tokenType == "Int" {
+        if TokenClassifier.isIdentifier(tokenType) {
             spans.append(HighlightSpan(start: token.start, end: token.end, kind: .identifier))
             index += 1
             continue

@@ -363,21 +363,21 @@ final class LauncherViewModel: ObservableObject {
 
         // Check for specific prefixes
         if let lastToken = tokens.last(where: { $0.end <= pos }) {
-            switch lastToken.tokenType {
-            case "TagPlusPrefix", "TagMinusPrefix":
+            let tokenType = lastToken.tokenType
+            if TokenClassifier.isTagPrefix(tokenType) {
                 return .tag
-            case "ProjectPrefix":
+            }
+            if TokenClassifier.isProjectPrefix(tokenType) {
                 return .project
-            case "FilterStatus":
+            }
+            if TokenClassifier.isStatusFilter(tokenType) {
                 return .status
-            case "FilterTokDateDue", "FilterTokDateDueBefore", "FilterTokDateDueAfter",
-                 "FilterTokDateCreatedBefore", "FilterTokDateCreatedAfter",
-                 "FilterTokDateEndBefore", "FilterTokDateEndAfter":
+            }
+            if TokenClassifier.isDateFilter(tokenType) {
                 return .date
-            case "DependsOn":
+            }
+            if TokenClassifier.isDependency(tokenType) {
                 return .taskRef
-            default:
-                break
             }
         }
 

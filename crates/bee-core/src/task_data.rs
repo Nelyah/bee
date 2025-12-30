@@ -5,7 +5,7 @@ use uuid::Uuid;
 use std::collections::HashMap;
 
 use super::{DependsOnIdentifier, Link, LinkType, Task, TaskProperties, TaskStatus};
-use crate::filters::Filter;
+use crate::{CoreError, CoreResult, filters::Filter};
 
 #[derive(Default, Clone)]
 pub struct TaskData {
@@ -51,9 +51,13 @@ impl TaskData {
         self.tasks.values().collect()
     }
 
-    pub fn apply(&mut self, task_uuid: &Uuid, props: &TaskProperties) -> Result<(), String> {
+    pub fn apply(&mut self, task_uuid: &Uuid, props: &TaskProperties) -> CoreResult<()> {
         if props.depends_on.is_none() && props.blocks.is_none() {
-            return self.tasks.get_mut(task_uuid).unwrap().apply(props);
+            return self
+                .tasks
+                .get_mut(task_uuid)
+                .ok_or_else(|| CoreError::not_found(format!("Task UUID {task_uuid} not found")))?
+                .apply(props);
         }
 
         let my_props = self.update_task_property_depends_on(props)?;
@@ -68,7 +72,12 @@ impl TaskData {
                         self.tasks
                             .get_mut(uuid)
                             .or_else(|| self.extra_tasks.get_mut(uuid))
-                            .ok_or(format!("Unable to find task with UUID {}", uuid))?
+                            .ok_or_else(|| {
+                                CoreError::not_found(format!(
+                                    "Unable to find task with UUID {}",
+                                    uuid
+                                ))
+                            })?
                             .apply(&TaskProperties {
                                 blocks: Some(vec![DependsOnIdentifier::Uuid(task_uuid.to_owned())]),
                                 ..Default::default()
@@ -77,7 +86,10 @@ impl TaskData {
                 }
             }
         }
-        self.tasks.get_mut(task_uuid).unwrap().apply(&my_props)
+        self.tasks
+            .get_mut(task_uuid)
+            .ok_or_else(|| CoreError::not_found(format!("Task UUID {task_uuid} not found")))?
+            .apply(&my_props)
     }
 
     pub fn get_owned(&self, uuid: &Uuid) -> Option<Task> {
@@ -112,7 +124,7 @@ impl TaskData {
     pub(crate) fn update_task_property_depends_on(
         &self,
         props: &TaskProperties,
-    ) -> Result<TaskProperties, String> {
+    ) -> CoreResult<TaskProperties> {
         if props.depends_on.is_none() {
             return Ok(props.clone());
         }
@@ -131,10 +143,12 @@ impl TaskData {
                         new_depends_on.push(DependsOnIdentifier::Uuid(
                             self.id_to_uuid
                                 .get(id)
-                                .ok_or(format!(
-                                    "The given id {} doesn't correspond to any known task.",
-                                    &id
-                                ))?
+                                .ok_or_else(|| {
+                                    CoreError::not_found(format!(
+                                        "The given id {} doesn't correspond to any known task.",
+                                        &id
+                                    ))
+                                })?
                                 .to_owned(),
                         ));
                     }
@@ -182,11 +196,7 @@ impl TaskData {
         self.tasks.insert(task.uuid.to_owned(), task);
     }
 
-    pub fn add_task(
-        &mut self,
-        props: &TaskProperties,
-        status: TaskStatus,
-    ) -> Result<&Task, String> {
+    pub fn add_task(&mut self, props: &TaskProperties, status: TaskStatus) -> CoreResult<&Task> {
         // This allows the user to override the default status of the task being
         // created (defined by the caller of this function, usually Pending)
         let status = match &props.status {
@@ -218,7 +228,7 @@ impl TaskData {
 
         let summary = match &props.summary {
             Some(summary) => summary.to_owned(),
-            None => return Err("A task must have a summary".to_owned()),
+            None => return Err(CoreError::task("A task must have a summary")),
         };
 
         let tags = match &props.tags_add {

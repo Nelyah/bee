@@ -2,6 +2,8 @@ use crate::config::SyncConfig;
 use crate::dto::{
     ExternalLinkResolveResponse, ExternalLinkSyncResponse, GitlabMergeRequestDto, JiraIssueDto,
 };
+use crate::error_type::{ApiError, ApiResult};
+use bee_core::UserFacingError;
 use bee_core::config::{ExternalLinksConfig, ProviderConfig};
 use bee_core::external_links::ExternalLink;
 use bee_core::storage::db::DbStore;
@@ -59,8 +61,8 @@ pub enum JiraIssueScope {
 pub fn parse_external_link(
     url: &str,
     config: &ExternalLinksConfig,
-) -> Result<ParsedExternalLink, String> {
-    let url = Url::parse(url).map_err(|e| format!("Invalid URL: {e}"))?;
+) -> ApiResult<ParsedExternalLink> {
+    let url = Url::parse(url).map_err(|e| ApiError::bad_request(format!("Invalid URL: {e}")))?;
     let url_str = url.as_str();
 
     if let Some(jira) = &config.jira {
@@ -83,7 +85,9 @@ pub fn parse_external_link(
         }
     }
 
-    Err("URL does not match any configured provider base URL".to_string())
+    Err(ApiError::bad_request(
+        "URL does not match any configured provider base URL",
+    ))
 }
 
 pub async fn sync_single_link(
@@ -92,9 +96,9 @@ pub async fn sync_single_link(
     sync: &SyncConfig,
     link: ExternalLink,
     force: bool,
-) -> Result<ExternalLinkSyncResponse, String> {
+) -> ApiResult<ExternalLinkSyncResponse> {
     let provider = ProviderKind::from_str(&link.provider)
-        .ok_or_else(|| format!("Unknown provider {}", link.provider))?;
+        .ok_or_else(|| ApiError::external_link(format!("Unknown provider {}", link.provider)))?;
 
     if !force && !is_due(&link, sync.stale_after_hours) {
         return Ok(ExternalLinkSyncResponse {
@@ -117,7 +121,7 @@ pub async fn sync_single_link(
             attempted: 1,
             succeeded: 0,
             failed: 1,
-            errors: vec![err],
+            errors: vec![err.developer_message()],
         }),
     }
 }
@@ -129,10 +133,8 @@ pub async fn sync_links_batch(
     provider_filter: Option<&str>,
     task_uuid: Option<Uuid>,
     force: bool,
-) -> Result<ExternalLinkSyncResponse, String> {
-    let links = DbStore::list_external_links(provider_filter, task_uuid)
-        .await
-        .map_err(|e| format!("Failed to load external links: {e}"))?;
+) -> ApiResult<ExternalLinkSyncResponse> {
+    let links = DbStore::list_external_links(provider_filter, task_uuid).await?;
 
     let mut due_links: Vec<ExternalLink> = links
         .into_iter()
@@ -168,7 +170,7 @@ pub async fn sync_links_batch(
                 Ok(()) => succeeded += 1,
                 Err(err) => {
                     failed += 1;
-                    errors.push(err);
+                    errors.push(err.developer_message());
                 }
             }
 
@@ -194,11 +196,11 @@ pub async fn fetch_recent_gitlab_merge_requests(
     client: &Client,
     config: &ExternalLinksConfig,
     limit: usize,
-) -> Result<Vec<GitlabMergeRequestDto>, String> {
+) -> ApiResult<Vec<GitlabMergeRequestDto>> {
     let cfg = config
         .gitlab
         .as_ref()
-        .ok_or_else(|| "GitLab is not configured".to_string())?;
+        .ok_or_else(|| ApiError::config("GitLab is not configured"))?;
     let base = normalize_base_url(&cfg.base_url)?;
     let token = resolve_token(cfg)?;
 
@@ -209,18 +211,20 @@ pub async fn fetch_recent_gitlab_merge_requests(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("Failed to call GitLab user API: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to call GitLab user API: {e}")))?;
     let status = user_response.status();
     let body = user_response
         .text()
         .await
-        .map_err(|e| format!("Failed to read GitLab user response: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to read GitLab user response: {e}")))?;
     if !status.is_success() {
-        return Err(format!("GitLab user API error {status}: {body}"));
+        return Err(ApiError::external_link(format!(
+            "GitLab user API error {status}: {body}"
+        )));
     }
 
-    let user: GitlabUser =
-        serde_json::from_str(&body).map_err(|e| format!("Invalid GitLab user JSON: {e}"))?;
+    let user: GitlabUser = serde_json::from_str(&body)
+        .map_err(|e| ApiError::external_link(format!("Invalid GitLab user JSON: {e}")))?;
 
     let url = format!(
         "{base}/api/v4/merge_requests?scope=all&author_id={}&order_by=updated_at&sort=desc&per_page={}",
@@ -233,18 +237,19 @@ pub async fn fetch_recent_gitlab_merge_requests(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("Failed to call GitLab merge request API: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to call GitLab merge request API: {e}")))?;
     let status = response.status();
-    let body = response
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read GitLab merge request response: {e}"))?;
+    let body = response.text().await.map_err(|e| {
+        ApiError::http(format!("Failed to read GitLab merge request response: {e}"))
+    })?;
     if !status.is_success() {
-        return Err(format!("GitLab merge request API error {status}: {body}"));
+        return Err(ApiError::external_link(format!(
+            "GitLab merge request API error {status}: {body}"
+        )));
     }
 
     let raw: Vec<GitlabMergeRequestRaw> = serde_json::from_str(&body)
-        .map_err(|e| format!("Invalid GitLab merge request JSON: {e}"))?;
+        .map_err(|e| ApiError::external_link(format!("Invalid GitLab merge request JSON: {e}")))?;
 
     let mut results = Vec::with_capacity(raw.len());
     for item in raw {
@@ -305,7 +310,7 @@ async fn fetch_gitlab_approval_status(
     token: &str,
     project_path: &str,
     iid: i64,
-) -> Result<Option<bool>, String> {
+) -> ApiResult<Option<bool>> {
     let encoded_project = urlencoding::encode(project_path);
     let url =
         format!("{base_url}/api/v4/projects/{encoded_project}/merge_requests/{iid}/approvals");
@@ -315,18 +320,20 @@ async fn fetch_gitlab_approval_status(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("Failed to call GitLab approval API: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to call GitLab approval API: {e}")))?;
     let status = response.status();
     let body = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read GitLab approval response: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to read GitLab approval response: {e}")))?;
     if !status.is_success() {
-        return Err(format!("GitLab approval API error {status}: {body}"));
+        return Err(ApiError::external_link(format!(
+            "GitLab approval API error {status}: {body}"
+        )));
     }
 
-    let payload: GitlabApprovalRaw =
-        serde_json::from_str(&body).map_err(|e| format!("Invalid GitLab approval JSON: {e}"))?;
+    let payload: GitlabApprovalRaw = serde_json::from_str(&body)
+        .map_err(|e| ApiError::external_link(format!("Invalid GitLab approval JSON: {e}")))?;
     Ok(payload.approved)
 }
 
@@ -335,11 +342,11 @@ pub async fn fetch_recent_jira_issues(
     config: &ExternalLinksConfig,
     limit: usize,
     scope: JiraIssueScope,
-) -> Result<Vec<JiraIssueDto>, String> {
+) -> ApiResult<Vec<JiraIssueDto>> {
     let cfg = config
         .jira
         .as_ref()
-        .ok_or_else(|| "Jira is not configured".to_string())?;
+        .ok_or_else(|| ApiError::config("Jira is not configured"))?;
     let base = normalize_base_url(&cfg.base_url)?;
     let token = resolve_token(cfg)?;
 
@@ -360,18 +367,20 @@ pub async fn fetch_recent_jira_issues(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("Failed to call Jira search API: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to call Jira search API: {e}")))?;
     let status = response.status();
     let body = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read Jira search response: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to read Jira search response: {e}")))?;
     if !status.is_success() {
-        return Err(format!("Jira search API error {status}: {body}"));
+        return Err(ApiError::external_link(format!(
+            "Jira search API error {status}: {body}"
+        )));
     }
 
-    let raw: JiraSearchResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Invalid Jira search JSON: {e}"))?;
+    let raw: JiraSearchResponse = serde_json::from_str(&body)
+        .map_err(|e| ApiError::external_link(format!("Invalid Jira search JSON: {e}")))?;
 
     Ok(raw
         .issues
@@ -394,7 +403,7 @@ pub async fn resolve_external_link(
     config: &ExternalLinksConfig,
     provider: ProviderKind,
     input: &str,
-) -> Result<ExternalLinkResolveResponse, String> {
+) -> ApiResult<ExternalLinkResolveResponse> {
     if input.starts_with("http://") || input.starts_with("https://") {
         return Ok(ExternalLinkResolveResponse {
             url: input.to_string(),
@@ -406,7 +415,7 @@ pub async fn resolve_external_link(
             let cfg = config
                 .jira
                 .as_ref()
-                .ok_or_else(|| "Jira is not configured".to_string())?;
+                .ok_or_else(|| ApiError::config("Jira is not configured"))?;
             let base = normalize_base_url(&cfg.base_url)?;
 
             if is_jira_key(input) {
@@ -429,7 +438,7 @@ pub async fn resolve_external_link(
             let cfg = config
                 .gitlab
                 .as_ref()
-                .ok_or_else(|| "GitLab is not configured".to_string())?;
+                .ok_or_else(|| ApiError::config("GitLab is not configured"))?;
             let base = normalize_base_url(&cfg.base_url)?;
 
             let mrs = fetch_recent_gitlab_merge_requests(client, config, 20).await?;
@@ -458,15 +467,16 @@ pub async fn resolve_external_link(
         }
     }
 
-    Err("No matching external link found".to_string())
+    Err(ApiError::not_found("No matching external link found"))
 }
 
-fn normalize_base_url(base_url: &str) -> Result<String, String> {
-    let url = Url::parse(base_url).map_err(|e| format!("Invalid base URL: {e}"))?;
+fn normalize_base_url(base_url: &str) -> ApiResult<String> {
+    let url =
+        Url::parse(base_url).map_err(|e| ApiError::config(format!("Invalid base URL: {e}")))?;
     Ok(url.as_str().trim_end_matches('/').to_string())
 }
 
-fn parse_jira_key(url: &Url) -> Result<String, String> {
+fn parse_jira_key(url: &Url) -> ApiResult<String> {
     let segments: Vec<&str> = url
         .path_segments()
         .map(|s| s.filter(|seg| !seg.is_empty()).collect())
@@ -485,7 +495,9 @@ fn parse_jira_key(url: &Url) -> Result<String, String> {
         }
     }
 
-    Err("Unable to parse Jira issue key from URL".to_string())
+    Err(ApiError::bad_request(
+        "Unable to parse Jira issue key from URL",
+    ))
 }
 
 fn is_jira_key(segment: &str) -> bool {
@@ -507,7 +519,7 @@ fn is_jira_key(segment: &str) -> bool {
     true
 }
 
-fn parse_gitlab_key(url: &Url) -> Result<String, String> {
+fn parse_gitlab_key(url: &Url) -> ApiResult<String> {
     let segments: Vec<&str> = url
         .path_segments()
         .map(|s| s.filter(|seg| !seg.is_empty()).collect())
@@ -515,7 +527,7 @@ fn parse_gitlab_key(url: &Url) -> Result<String, String> {
 
     let dash_index = segments.iter().position(|seg| *seg == "-");
     let Some(dash_index) = dash_index else {
-        return Err("GitLab URL missing '/-/' segment".to_string());
+        return Err(ApiError::bad_request("GitLab URL missing '/-/' segment"));
     };
 
     let project_segments = &segments[..dash_index];
@@ -523,15 +535,17 @@ fn parse_gitlab_key(url: &Url) -> Result<String, String> {
 
     let resource = segments
         .get(dash_index + 1)
-        .ok_or_else(|| "GitLab URL missing resource segment".to_string())?;
+        .ok_or_else(|| ApiError::bad_request("GitLab URL missing resource segment"))?;
     let iid = segments
         .get(dash_index + 2)
-        .ok_or_else(|| "GitLab URL missing IID segment".to_string())?;
+        .ok_or_else(|| ApiError::bad_request("GitLab URL missing IID segment"))?;
 
     match *resource {
         "issues" => Ok(format!("issue:{project_path}:{iid}")),
         "merge_requests" => Ok(format!("mr:{project_path}:{iid}")),
-        _ => Err("GitLab URL must be an issue or merge request".to_string()),
+        _ => Err(ApiError::bad_request(
+            "GitLab URL must be an issue or merge request",
+        )),
     }
 }
 
@@ -553,21 +567,21 @@ fn provider_delay_ms(config: &ExternalLinksConfig, provider: ProviderKind) -> Op
     }
 }
 
-fn resolve_token(cfg: &ProviderConfig) -> Result<String, String> {
+fn resolve_token(cfg: &ProviderConfig) -> ApiResult<String> {
     if let Some(value) = cfg.token.value.as_ref().filter(|v| !v.trim().is_empty()) {
         return Ok(value.to_string());
     }
 
     if let Some(env_key) = cfg.token.env.as_ref().filter(|v| !v.trim().is_empty()) {
         return env::var(env_key).map_err(|_| {
-            format!(
+            ApiError::config(format!(
                 "Environment variable '{}' is not set for provider token",
                 env_key
-            )
+            ))
         });
     }
 
-    Err("Provider token must specify value or env".to_string())
+    Err(ApiError::config("Provider token must specify value or env"))
 }
 
 async fn fetch_and_cache_link(
@@ -575,33 +589,29 @@ async fn fetch_and_cache_link(
     config: &ExternalLinksConfig,
     link: &ExternalLink,
     provider: ProviderKind,
-) -> Result<(), String> {
+) -> ApiResult<()> {
     let now = Utc::now();
     let result = match provider {
         ProviderKind::Jira => {
             let cfg = config
                 .jira
                 .as_ref()
-                .ok_or_else(|| "Jira is not configured".to_string())?;
+                .ok_or_else(|| ApiError::config("Jira is not configured"))?;
             fetch_jira_issue(client, cfg, &link.external_key).await
         }
         ProviderKind::Gitlab => {
             let cfg = config
                 .gitlab
                 .as_ref()
-                .ok_or_else(|| "GitLab is not configured".to_string())?;
+                .ok_or_else(|| ApiError::config("GitLab is not configured"))?;
             fetch_gitlab_item(client, cfg, &link.external_key).await
         }
     };
 
     match result {
-        Ok(json) => DbStore::update_external_link_cache_success(link.id, json, now)
-            .await
-            .map_err(|e| format!("Failed to update cache: {e}"))?,
+        Ok(json) => DbStore::update_external_link_cache_success(link.id, json, now).await?,
         Err(err) => {
-            DbStore::update_external_link_sync_error(link.id, err.to_string())
-                .await
-                .map_err(|e| format!("Failed to update sync error: {e}"))?;
+            DbStore::update_external_link_sync_error(link.id, err.to_string()).await?;
             return Err(err);
         }
     }
@@ -613,7 +623,7 @@ async fn fetch_jira_issue(
     client: &Client,
     cfg: &ProviderConfig,
     issue_key: &str,
-) -> Result<String, String> {
+) -> ApiResult<String> {
     let base = normalize_base_url(&cfg.base_url)?;
     let token = resolve_token(cfg)?;
     let url = format!("{base}/rest/api/3/issue/{issue_key}?fields=summary,status,assignee,updated");
@@ -624,15 +634,17 @@ async fn fetch_jira_issue(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("Failed to call Jira API: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to call Jira API: {e}")))?;
 
     let status = response.status();
     let body = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read Jira response: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to read Jira response: {e}")))?;
     if !status.is_success() {
-        return Err(format!("Jira API error {status}: {body}"));
+        return Err(ApiError::external_link(format!(
+            "Jira API error {status}: {body}"
+        )));
     }
 
     Ok(body)
@@ -642,7 +654,7 @@ async fn fetch_gitlab_item(
     client: &Client,
     cfg: &ProviderConfig,
     external_key: &str,
-) -> Result<String, String> {
+) -> ApiResult<String> {
     let (kind, project_path, iid) = parse_gitlab_external_key(external_key)?;
     let base = normalize_base_url(&cfg.base_url)?;
     let token = resolve_token(cfg)?;
@@ -664,14 +676,16 @@ async fn fetch_gitlab_item(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("Failed to call GitLab API: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to call GitLab API: {e}")))?;
     let status = response.status();
     let body = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read GitLab response: {e}"))?;
+        .map_err(|e| ApiError::http(format!("Failed to read GitLab response: {e}")))?;
     if !status.is_success() {
-        return Err(format!("GitLab API error {status}: {body}"));
+        return Err(ApiError::external_link(format!(
+            "GitLab API error {status}: {body}"
+        )));
     }
 
     if matches!(kind, GitlabLinkKind::MergeRequest) {
@@ -683,29 +697,27 @@ async fn fetch_gitlab_item(
             .header("Accept", "application/json")
             .send()
             .await
-            .map_err(|e| format!("Failed to call GitLab approvals API: {e}"))?;
+            .map_err(|e| ApiError::http(format!("Failed to call GitLab approvals API: {e}")))?;
         let approvals_status = approvals_resp.status();
-        let approvals_body = approvals_resp
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read GitLab approvals response: {e}"))?;
+        let approvals_body = approvals_resp.text().await.map_err(|e| {
+            ApiError::http(format!("Failed to read GitLab approvals response: {e}"))
+        })?;
         if !approvals_status.is_success() {
-            return Err(format!(
+            return Err(ApiError::external_link(format!(
                 "GitLab approvals API error {approvals_status}: {approvals_body}"
-            ));
+            )));
         }
 
-        let mr_json: Value =
-            serde_json::from_str(&body).map_err(|e| format!("Invalid MR JSON: {e}"))?;
+        let mr_json: Value = serde_json::from_str(&body)
+            .map_err(|e| ApiError::external_link(format!("Invalid MR JSON: {e}")))?;
         let approvals_json: Value = serde_json::from_str(&approvals_body)
-            .map_err(|e| format!("Invalid approvals JSON: {e}"))?;
+            .map_err(|e| ApiError::external_link(format!("Invalid approvals JSON: {e}")))?;
         let combined = serde_json::json!({
             "merge_request": mr_json,
             "approvals": approvals_json
         });
-        return Ok(
-            serde_json::to_string(&combined).map_err(|e| format!("Serialize JSON failed: {e}"))?
-        );
+        return Ok(serde_json::to_string(&combined)
+            .map_err(|e| ApiError::external_link(format!("Serialize JSON failed: {e}")))?);
     }
 
     Ok(body)
@@ -717,14 +729,14 @@ enum GitlabLinkKind {
     MergeRequest,
 }
 
-fn parse_gitlab_external_key(key: &str) -> Result<(GitlabLinkKind, String, String), String> {
+fn parse_gitlab_external_key(key: &str) -> ApiResult<(GitlabLinkKind, String, String)> {
     let mut parts = key.splitn(3, ':');
     let kind = parts.next().unwrap_or("");
     let project = parts.next().unwrap_or("");
     let iid = parts.next().unwrap_or("");
 
     if project.is_empty() || iid.is_empty() {
-        return Err("Invalid GitLab external key".to_string());
+        return Err(ApiError::bad_request("Invalid GitLab external key"));
     }
 
     match kind {
@@ -734,7 +746,7 @@ fn parse_gitlab_external_key(key: &str) -> Result<(GitlabLinkKind, String, Strin
             project.to_string(),
             iid.to_string(),
         )),
-        _ => Err("Unknown GitLab external key type".to_string()),
+        _ => Err(ApiError::bad_request("Unknown GitLab external key type")),
     }
 }
 

@@ -2,6 +2,8 @@ use bee_core::config::ReportConfig;
 use serde::Deserialize;
 use std::{fs, path::PathBuf};
 
+use crate::error_type::{ApiError, ApiResult};
+
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:3000";
 
 /// API server configuration loaded from `bee-api.toml` style files.
@@ -55,27 +57,28 @@ impl Default for SyncConfig {
 }
 
 /// Load the API configuration from disk or return defaults.
-pub fn load_config() -> Result<ApiConfig, String> {
+pub fn load_config() -> ApiResult<ApiConfig> {
     match find_config_file() {
         Some(path) => {
-            let content = fs::read_to_string(path)
-                .map_err(|err| format!("Unable to read API config file: {err}"))?;
+            let content = fs::read_to_string(path).map_err(|err| {
+                ApiError::config(format!("Unable to read API config file: {err}"))
+            })?;
             load_config_from_string(&content)
         }
         None => Ok(ApiConfig::default()),
     }
 }
 
-fn load_config_from_string(content: &str) -> Result<ApiConfig, String> {
-    let toml_value: toml::Value =
-        toml::from_str(content).map_err(|err| format!("Invalid API config: {err}"))?;
+fn load_config_from_string(content: &str) -> ApiResult<ApiConfig> {
+    let toml_value: toml::Value = toml::from_str(content)
+        .map_err(|err| ApiError::config(format!("Invalid API config: {err}")))?;
     let api_section = match toml_value.get("api") {
         Some(section) => section.clone(),
         None => return Ok(ApiConfig::default()),
     };
     let api: ApiConfig = api_section
         .try_into()
-        .map_err(|err| format!("Invalid [api] config: {err}"))?;
+        .map_err(|err| ApiError::config(format!("Invalid [api] config: {err}")))?;
     Ok(api)
 }
 

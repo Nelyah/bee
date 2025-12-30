@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::{CoreError, CoreResult};
+
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct Config {
     #[serde(default = "default_report_name")]
@@ -123,41 +125,37 @@ pub fn get_config() -> &'static Config {
 
 // The code is used as soon as it is first acces, thanks to the Lazy library
 #[allow(dead_code)]
-static CONFIG: Lazy<Result<Config, String>> = Lazy::new(|| match load_config() {
+static CONFIG: Lazy<CoreResult<Config>> = Lazy::new(|| match load_config() {
     Ok(config) => Ok(config),
     Err(e) => Err(e),
 });
 
 const DEFAULT_REPORT_NAME: &str = "__default";
 
-pub fn load_config() -> Result<Config, String> {
+pub fn load_config() -> CoreResult<Config> {
     match find_config_file() {
         Some(file) => {
-            let content = match fs::read_to_string(file) {
-                Ok(content) => content,
-                Err(e) => {
-                    eprintln!("{e}");
-                    panic!("Error: Could not read the configuration file.")
-                }
-            };
+            let content = fs::read_to_string(file)
+                .map_err(|e| CoreError::config(format!("Could not read config file: {e}")))?;
 
             load_config_from_string(&content)
         }
         None => Ok(Config::default()),
     }
 }
-fn load_config_from_string(content: &str) -> Result<Config, String> {
-    let toml_value: toml::Value =
-        toml::from_str(content).map_err(|e| format!("Unable to read configuration file: {}", e))?;
+fn load_config_from_string(content: &str) -> CoreResult<Config> {
+    let toml_value: toml::Value = toml::from_str(content)
+        .map_err(|e| CoreError::config(format!("Unable to read configuration file: {e}")))?;
     let mut config: Config = if let Some(core_config) = toml_value.get("core") {
         core_config.clone().try_into().map_err(|e| {
-            format!(
-                "Unable to parse the [core] section of the configuration. {}",
-                e
-            )
+            CoreError::config(format!(
+                "Unable to parse the [core] section of the configuration. {e}"
+            ))
         })?
     } else {
-        return Err("Configuration file found but the [core] section is missing.".to_string());
+        return Err(CoreError::config(
+            "Configuration file found but the [core] section is missing.",
+        ));
     };
 
     for (name, report) in &config.report_map {

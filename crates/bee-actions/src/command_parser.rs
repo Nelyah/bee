@@ -2,6 +2,7 @@ use bee_core::filters;
 use bee_core::filters::Filter;
 use log::debug;
 
+use crate::ActionResult;
 use bee_core::config::{ReportConfig, get_config};
 
 use std::collections::HashMap;
@@ -29,7 +30,7 @@ pub struct ParsedCommand {
 }
 
 impl Parser {
-    pub fn parse_command_line_arguments(&self, args: Vec<String>) -> Result<ParsedCommand, String> {
+    pub fn parse_command_line_arguments(&self, args: Vec<String>) -> ActionResult<ParsedCommand> {
         // Build a map from command name to ParsedCommand
         let mut command_to_parser = HashMap::new();
         for parsed_command in &self.command_parsers {

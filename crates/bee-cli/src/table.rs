@@ -6,6 +6,7 @@ use terminal_size::{Width, terminal_size};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::config::get_cli_config;
+use bee_core::{CoreError, CoreResult};
 
 /// Get the number of actual characters in a string, where
 /// 1 character = 1 grapheme
@@ -63,7 +64,7 @@ impl Section {
         &mut self,
         row: Vec<String>,
         style: Option<StyledText>,
-    ) -> Result<&mut Self, &'static str> {
+    ) -> CoreResult<&mut Self> {
         self.rows.push(row);
         self.row_styles.push(style);
         Ok(self)
@@ -99,9 +100,9 @@ fn overwrite_style(mut first: StyledText, second: &StyledText) -> StyledText {
 }
 
 impl<W: Write> Table<W> {
-    pub fn new(column_headers: &Vec<String>, writer: W) -> Result<Table<W>, &'static str> {
+    pub fn new(column_headers: &Vec<String>, writer: W) -> CoreResult<Table<W>> {
         if column_headers.is_empty() {
-            return Err("table must have at least one column");
+            return Err(CoreError::internal("table must have at least one column"));
         }
 
         let column_widths = column_headers.iter().map(|header| header.len()).collect();
@@ -159,9 +160,11 @@ impl<W: Write> Table<W> {
         &mut self,
         row: Vec<String>,
         style: Option<StyledText>,
-    ) -> Result<&mut Self, &'static str> {
+    ) -> CoreResult<&mut Self> {
         if row.len() != self.columns.len() {
-            return Err("row length does not match column length");
+            return Err(CoreError::internal(
+                "row length does not match column length",
+            ));
         }
 
         if self.sections.is_empty() {

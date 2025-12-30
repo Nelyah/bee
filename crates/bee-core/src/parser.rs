@@ -3,7 +3,10 @@ use std::fmt::Debug;
 
 use chrono::{DateTime, Duration, Local, NaiveTime, TimeDelta, TimeZone};
 
-use crate::lexer::{Lexer, Token, TokenType};
+use crate::{
+    CoreError, CoreResult,
+    lexer::{Lexer, Token, TokenType},
+};
 
 fn matches_year_string(input: &str) -> bool {
     input == "y" || input == "year" || input == "years"
@@ -33,11 +36,11 @@ fn matches_second_string(input: &str) -> bool {
     input == "s" || input == "second" || input == "seconds"
 }
 
-fn get_day_duration_from_string(number: i64, value: &str) -> Result<TimeDelta, String> {
+fn get_day_duration_from_string(number: i64, value: &str) -> CoreResult<TimeDelta> {
     let parsed = value
         .parse::<i64>()
-        .map_err(|err| format!("invalid duration value '{}': {}", value, err))?;
-    Duration::try_days(number * parsed).ok_or_else(|| "invalid day duration".to_string())
+        .map_err(|err| CoreError::parse(format!("invalid duration value '{}': {}", value, err)))?;
+    Duration::try_days(number * parsed).ok_or_else(|| CoreError::parse("invalid day duration"))
 }
 
 fn empty_token() -> Token {
@@ -133,7 +136,7 @@ pub trait BaseParser: Debug {
         blank_count
     }
 
-    fn read_date_expr(&mut self) -> Result<DateTime<Local>, String> {
+    fn read_date_expr(&mut self) -> CoreResult<DateTime<Local>> {
         debug!("Reading date expression");
         let mut time = None;
         let mut try_time = Local::now();
@@ -177,33 +180,33 @@ pub trait BaseParser: Debug {
                         }
                         value if matches_hour_string(value) => {
                             let parsed = number_token.literal.parse::<i64>().map_err(|err| {
-                                format!(
+                                CoreError::parse(format!(
                                     "invalid hour duration value '{}': {}",
                                     number_token.literal, err
-                                )
+                                ))
                             })?;
                             Duration::try_hours(parsed)
-                                .ok_or_else(|| "invalid hour duration".to_string())?
+                                .ok_or_else(|| CoreError::parse("invalid hour duration"))?
                         }
                         value if matches_minute_string(value) => {
                             let parsed = number_token.literal.parse::<i64>().map_err(|err| {
-                                format!(
+                                CoreError::parse(format!(
                                     "invalid minute duration value '{}': {}",
                                     number_token.literal, err
-                                )
+                                ))
                             })?;
                             Duration::try_minutes(parsed)
-                                .ok_or_else(|| "invalid minute duration".to_string())?
+                                .ok_or_else(|| CoreError::parse("invalid minute duration"))?
                         }
                         value if matches_second_string(value) => {
                             let parsed = number_token.literal.parse::<i64>().map_err(|err| {
-                                format!(
+                                CoreError::parse(format!(
                                     "invalid second duration value '{}': {}",
                                     number_token.literal, err
-                                )
+                                ))
                             })?;
                             Duration::try_seconds(parsed)
-                                .ok_or_else(|| "invalid second duration".to_string())?
+                                .ok_or_else(|| CoreError::parse("invalid second duration"))?
                         }
                         _ => {
                             break;
@@ -241,19 +244,19 @@ pub trait BaseParser: Debug {
                 }
                 TokenType::TagPlusPrefix | TokenType::TagMinusPrefix => {
                     if first {
-                        return Err(format!(
+                        return Err(CoreError::parse(format!(
                             "unexpected token '{}' found in invalid date expression",
                             self.get_current_token().literal
-                        ));
+                        )));
                     }
                     if expect_duration {
                         if time.is_some() {
                             break;
                         }
-                        return Err(format!(
+                        return Err(CoreError::parse(format!(
                             "unexpected token '{}' found in invalid date expression",
                             self.get_current_token().literal
-                        ));
+                        )));
                     }
                     debug!("Read plus token '{}'", self.get_current_token().literal);
                     cur_scope = if self.get_current_token().token_type == TokenType::TagPlusPrefix {
@@ -280,12 +283,13 @@ pub trait BaseParser: Debug {
                     let today_start = Local
                         .from_local_datetime(
                             &now.date_naive().and_time(
-                                NaiveTime::from_hms_opt(0, 0, 0)
-                                    .ok_or_else(|| "invalid time for day start".to_string())?,
+                                NaiveTime::from_hms_opt(0, 0, 0).ok_or_else(|| {
+                                    CoreError::parse("invalid time for day start")
+                                })?,
                             ),
                         )
                         .single()
-                        .ok_or_else(|| "unable to resolve local date start".to_string())?;
+                        .ok_or_else(|| CoreError::parse("unable to resolve local date start"))?;
                     match self.get_current_token().literal.as_str() {
                         "now" => {
                             try_time = now;
@@ -296,17 +300,17 @@ pub trait BaseParser: Debug {
                         "tomorrow" => {
                             try_time = today_start
                                 + Duration::try_days(1)
-                                    .ok_or_else(|| "invalid day duration".to_string())?;
+                                    .ok_or_else(|| CoreError::parse("invalid day duration"))?;
                         }
                         "yesterday" => {
                             try_time = today_start
                                 - Duration::try_days(1)
-                                    .ok_or_else(|| "invalid day duration".to_string())?;
+                                    .ok_or_else(|| CoreError::parse("invalid day duration"))?;
                         }
                         "eod" => {
                             try_time = today_start
                                 + Duration::try_hours(18)
-                                    .ok_or_else(|| "invalid hour duration".to_string())?;
+                                    .ok_or_else(|| CoreError::parse("invalid hour duration"))?;
                         }
                         "in" => {
                             expect_duration = true;
@@ -317,10 +321,10 @@ pub trait BaseParser: Debug {
                         }
                         // last week
                         _ => {
-                            return Err(format!(
+                            return Err(CoreError::parse(format!(
                                 "unexpected token '{}' found in invalid date expression",
                                 self.get_current_token().literal
-                            ));
+                            )));
                         }
                     }
 
@@ -340,7 +344,7 @@ pub trait BaseParser: Debug {
         }
         self.back_n_tokens(backtrace_tokens);
         debug!("Parsed date expression. Time: {:?}", time);
-        time.ok_or_else(|| "invalid date expression".to_string())
+        time.ok_or_else(|| CoreError::parse("invalid date expression"))
     }
 }
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
 use bee_core::Printer;
 
 use bee_core::task::TaskData;
@@ -18,7 +18,7 @@ pub struct HelpTaskAction {
 
 impl TaskAction for HelpTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()> {
         self.command_descriptions.insert(
             "header".to_string(),
             r#"

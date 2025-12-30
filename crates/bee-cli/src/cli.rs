@@ -5,7 +5,7 @@ use crate::{
 
 use crate::config::SectionType;
 use bee_core::{
-    Printer,
+    CoreError, CoreResult, Printer,
     config::ReportConfig,
     filters,
     task::{Task, TaskStatus},
@@ -51,7 +51,7 @@ fn format_relative_time(t: DateTime<Local>) -> String {
 pub struct SimpleTaskTextPrinter;
 
 // Return the style that should be applied to a Task
-fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
+fn get_style_for_task(task: &Task) -> CoreResult<Option<StyledText>> {
     let conf = get_cli_config();
 
     for colour_conf in &conf.colour_fields {
@@ -91,11 +91,10 @@ fn get_style_for_task(task: &Task) -> Result<Option<StyledText>, String> {
             }
             "primary_colour" | "secondary_colour" => {}
             _ => {
-                return Err(format!(
-                    "Unable to colour the output based on the unknown field '{}'.\
-                    Please check your configuration.",
+                return Err(CoreError::config(format!(
+                    "Unable to colour the output based on the unknown field '{}'. Please check your configuration.",
                     colour_conf.field
-                ));
+                )));
             }
         }
     }
@@ -124,7 +123,7 @@ impl Ord for RowTask {
 }
 
 impl Printer for SimpleTaskTextPrinter {
-    fn show_help(&self, help_section_description: &HashMap<String, String>) -> Result<(), String> {
+    fn show_help(&self, help_section_description: &HashMap<String, String>) -> CoreResult<()> {
         let mut tbl = Table::new(
             &vec!["Action name".to_string(), "Description".to_string()],
             io::stdout(),
@@ -142,7 +141,7 @@ impl Printer for SimpleTaskTextPrinter {
         Ok(())
     }
 
-    fn print_task_info(&self, task: &Task) -> Result<(), String> {
+    fn print_task_info(&self, task: &Task) -> CoreResult<()> {
         let status = match task.get_status() {
             TaskStatus::Active => task.get_status().to_string().to_uppercase().green(),
             TaskStatus::Pending => task.get_status().to_string().to_uppercase().blue(),
@@ -265,11 +264,7 @@ impl Printer for SimpleTaskTextPrinter {
         Ok(())
     }
 
-    fn print_list_of_tasks(
-        &self,
-        tasks: Vec<&Task>,
-        report_kind: &ReportConfig,
-    ) -> Result<(), String> {
+    fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig) -> CoreResult<()> {
         let mut writer = io::stdout();
         self.print_list_of_tasks_impl(tasks, report_kind, &mut writer)
     }
@@ -309,10 +304,12 @@ impl SimpleTaskTextPrinter {
                 match field.as_str() {
                     "date_created" | "date_completed" | "date_due" => {
                         if let Some(date_str) = t.get_field(field).as_str() {
-                            let local_date: DateTime<Local> = DateTime::from(
-                                DateTime::parse_from_rfc3339(date_str).ok().unwrap(),
-                            );
-                            row_fields.push(format_relative_time(local_date))
+                            if let Ok(parsed) = DateTime::parse_from_rfc3339(date_str) {
+                                let local_date: DateTime<Local> = DateTime::from(parsed);
+                                row_fields.push(format_relative_time(local_date))
+                            } else {
+                                row_fields.push("".to_owned());
+                            }
                         } else {
                             row_fields.push("".to_owned());
                         }
@@ -403,7 +400,7 @@ impl SimpleTaskTextPrinter {
         &self,
         mut rows: Vec<RowTask>,
         empty_key: &str,
-    ) -> Result<IndexMap<String, Vec<RowTask>>, String> {
+    ) -> CoreResult<IndexMap<String, Vec<RowTask>>> {
         let mut group_on_value = IndexMap::<String, Vec<RowTask>>::new();
 
         let section_config = &get_cli_config().section;
@@ -487,11 +484,12 @@ impl SimpleTaskTextPrinter {
         tasks: Vec<&Task>,
         report_kind: &ReportConfig,
         writer: &mut W,
-    ) -> Result<(), String> {
+    ) -> CoreResult<()> {
         let rows: Vec<RowTask> = self.build_row_task_objects(tasks, report_kind);
 
         if rows.is_empty() {
-            return writeln!(writer, "No task to show.").map_err(|e| e.to_string());
+            return writeln!(writer, "No task to show.")
+                .map_err(|err| CoreError::internal(format!("Failed to write output: {err}")));
         }
 
         let (rows, header_names) = self.remove_unused_columns(rows, report_kind);
@@ -507,8 +505,7 @@ impl SimpleTaskTextPrinter {
             tbl.add_section("".to_string());
 
             for row in rows {
-                tbl.add_row(row.row.clone(), get_style_for_task(&row.task)?)
-                    .unwrap();
+                tbl.add_row(row.row.clone(), get_style_for_task(&row.task)?)?;
             }
         }
 
@@ -526,8 +523,7 @@ impl SimpleTaskTextPrinter {
             tbl.add_section(section_name.to_string());
 
             for row_task in rows {
-                tbl.add_row(row_task.row.clone(), get_style_for_task(&row_task.task)?)
-                    .unwrap();
+                tbl.add_row(row_task.row.clone(), get_style_for_task(&row_task.task)?)?;
             }
         }
         tbl.print();
@@ -549,7 +545,7 @@ fn print_value(value: &Value) -> String {
         }
         Value::Null => "".to_string(),
         // You can add more matches for other types if needed
-        _ => panic!("Unsupported type {}", value),
+        _ => value.to_string(),
     }
 }
 

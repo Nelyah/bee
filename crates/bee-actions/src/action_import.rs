@@ -1,4 +1,6 @@
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 use bee_core::Printer;
 use bee_core::task::TaskData;
 use std::io::{self, Read};
@@ -16,11 +18,11 @@ pub struct ImportTaskAction {
 impl TaskAction for ImportTaskAction {
     impl_taskaction_from_base!();
 
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()> {
         let json_content = self.read_json_input()?;
 
         let imported_data: TaskData = serde_json::from_str(&json_content)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+            .map_err(|err| ActionError::execution(format!("Failed to parse JSON: {err}")))?;
 
         let imported_tasks = imported_data.to_vec();
         let import_count = imported_tasks.len();
@@ -38,24 +40,24 @@ impl TaskAction for ImportTaskAction {
 
 impl ImportTaskAction {
     /// Read JSON content from file path or stdin.
-    fn read_json_input(&self) -> Result<String, String> {
-        let source = self
-            .base
-            .arguments
-            .first()
-            .ok_or_else(|| "Import requires a file path or '-' for stdin".to_string())?;
+    fn read_json_input(&self) -> ActionResult<String> {
+        let source =
+            self.base.arguments.first().ok_or_else(|| {
+                ActionError::input("Import requires a file path or '-' for stdin")
+            })?;
 
         if source == "-" {
             // Read from stdin
             let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .map_err(|e| format!("Failed to read from stdin: {}", e))?;
+            io::stdin().read_to_string(&mut buffer).map_err(|err| {
+                ActionError::execution(format!("Failed to read from stdin: {err}"))
+            })?;
             Ok(buffer)
         } else {
             // Read from file
-            std::fs::read_to_string(source)
-                .map_err(|e| format!("Failed to read file '{}': {}", source, e))
+            std::fs::read_to_string(source).map_err(|err| {
+                ActionError::execution(format!("Failed to read file '{source}': {err}"))
+            })
         }
     }
 

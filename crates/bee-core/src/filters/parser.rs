@@ -2,6 +2,7 @@ use uuid::Uuid;
 
 use crate::lexer::Lexer;
 use crate::task::{Project, TaskStatus};
+use crate::{CoreError, CoreResult};
 
 use super::filters_impl::{
     AndFilter, DateCreatedFilter, DateDueFilter, DateDueFilterType, DateEndFilter, DependsOnFilter,
@@ -102,7 +103,7 @@ impl FilterParser {
         parser
     }
 
-    pub fn parse_filter(&mut self) -> Result<Box<dyn Filter>, String> {
+    pub fn parse_filter(&mut self) -> CoreResult<Box<dyn Filter>> {
         let mut has_only_ids = true;
         let filter = self.parse_filter_impl(&0, ScopeOperator::None, &mut has_only_ids)?;
 
@@ -126,7 +127,7 @@ impl FilterParser {
         parenthesis_scope: &usize,
         scope_operator: ScopeOperator,
         has_only_ids: &mut bool,
-    ) -> Result<Box<dyn Filter>, String> {
+    ) -> CoreResult<Box<dyn Filter>> {
         let mut filter: Box<dyn Filter> = new_empty();
         let err_msg_prefix: String = "could not parse the filter expression. ".to_string();
 
@@ -144,7 +145,9 @@ impl FilterParser {
                     *has_only_ids = false;
                     match self.peek_token.token_type {
                         TokenType::OperatorOr | TokenType::OperatorAnd | TokenType::OperatorXor => {
-                            return Err(err_msg_prefix + "Found two operators one after the other");
+                            return Err(CoreError::filter(format!(
+                                "{err_msg_prefix}Found two operators one after the other"
+                            )));
                         }
                         _ => {}
                     }
@@ -167,7 +170,9 @@ impl FilterParser {
                     *has_only_ids = false;
                     match self.peek_token.token_type {
                         TokenType::OperatorOr | TokenType::OperatorAnd | TokenType::OperatorXor => {
-                            return Err(err_msg_prefix + "Found two operators one after the other");
+                            return Err(CoreError::filter(format!(
+                                "{err_msg_prefix}Found two operators one after the other"
+                            )));
                         }
                         _ => {}
                     }
@@ -187,7 +192,9 @@ impl FilterParser {
                     *has_only_ids = false;
                     match self.peek_token.token_type {
                         TokenType::OperatorOr | TokenType::OperatorAnd | TokenType::OperatorXor => {
-                            return Err(err_msg_prefix + "Found two operators one after the other");
+                            return Err(CoreError::filter(format!(
+                                "{err_msg_prefix}Found two operators one after the other"
+                            )));
                         }
                         _ => {}
                     }
@@ -211,7 +218,9 @@ impl FilterParser {
                 }
                 TokenType::RightParenthesis => {
                     if *parenthesis_scope == 0 {
-                        return Err(err_msg_prefix + "Encountered ')' before encountering a '('");
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}Encountered ')' before encountering a '('"
+                        )));
                     }
                     return Ok(filter);
                 }
@@ -236,11 +245,10 @@ impl FilterParser {
                         });
                     }
                     if self.current_token.token_type != TokenType::RightParenthesis {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "Expected right parenthesis, found '{}'",
-                                self.current_token.literal
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}Expected right parenthesis, found '{}'",
+                            self.current_token.literal
+                        )));
                     }
                     self.next_token();
                 }
@@ -249,16 +257,15 @@ impl FilterParser {
                     self.next_token();
                     self.skip_whitespace();
                     if self.current_token.token_type != TokenType::WordString {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
-                                self.current_token.token_type, self.current_token.literal
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}Expected a token of type String following a TokenTypeFilterStatus, found '{}' (value: '{}')",
+                            self.current_token.token_type, self.current_token.literal
+                        )));
                     }
 
                     let status_filter = Box::new(StatusFilter {
                         status: TaskStatus::from_string(&self.current_token.literal)
-                            .map_err(|err| err_msg_prefix.to_string() + &err)?,
+                            .map_err(|err| CoreError::filter(format!("{err_msg_prefix}{err}")))?,
                     });
                     filter = add_to_current_filter(filter, status_filter, &ScopeOperator::And);
 
@@ -269,11 +276,10 @@ impl FilterParser {
                     self.next_token();
                     self.skip_whitespace();
                     if self.current_token.token_type != TokenType::WordString {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "Expected a token of type String following a TokenTypeProjectPrefix, found '{}' (value: '{}')",
-                                self.current_token.token_type, self.current_token.literal
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}Expected a token of type String following a TokenTypeProjectPrefix, found '{}' (value: '{}')",
+                            self.current_token.token_type, self.current_token.literal
+                        )));
                     }
 
                     let mut project_name = self.current_token.literal.to_string();
@@ -286,19 +292,17 @@ impl FilterParser {
                     }
 
                     if project_name.ends_with('.') {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "A project name cannot end with a '.' (name: '{}')",
-                                project_name
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}A project name cannot end with a '.' (name: '{}')",
+                            project_name
+                        )));
                     }
 
                     if project_name.ends_with('-') {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "A project name cannot end with a '-' (name: '{}')",
-                                project_name
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}A project name cannot end with a '-' (name: '{}')",
+                            project_name
+                        )));
                     }
 
                     let project_filter = Box::new(ProjectFilter {
@@ -324,7 +328,9 @@ impl FilterParser {
                     filter = add_to_current_filter(
                         filter,
                         Box::new(UuidFilter {
-                            uuid: Uuid::parse_str(&self.current_token.literal).unwrap(),
+                            uuid: Uuid::parse_str(&self.current_token.literal).map_err(|err| {
+                                CoreError::filter(format!("{err_msg_prefix}Invalid UUID: {err}"))
+                            })?,
                         }),
                         &ScopeOperator::And,
                     );
@@ -338,7 +344,11 @@ impl FilterParser {
                                 .current_token
                                 .literal
                                 .parse::<i32>()
-                                .unwrap()
+                                .map_err(|err| {
+                                    CoreError::filter(format!(
+                                        "{err_msg_prefix}Invalid task id: {err}"
+                                    ))
+                                })?
                                 .to_owned(),
                         }),
                         &ScopeOperator::And,
@@ -348,11 +358,10 @@ impl FilterParser {
                 TokenType::TagMinusPrefix => {
                     *has_only_ids = false;
                     if self.peek_token.token_type != TokenType::WordString {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "Expected a token of type String following a TokenType::TagMinusPrefix, found '{}' (value: '{}')",
-                                self.peek_token.token_type, self.peek_token.literal
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}Expected a token of type String following a TokenType::TagMinusPrefix, found '{}' (value: '{}')",
+                            self.peek_token.token_type, self.peek_token.literal
+                        )));
                     }
 
                     let tag_filter = Box::new(TagFilter {
@@ -366,11 +375,10 @@ impl FilterParser {
                 TokenType::TagPlusPrefix => {
                     *has_only_ids = false;
                     if self.peek_token.token_type != TokenType::WordString {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "Expected a token of type String following a TokenType::TagMinusPrefix, found '{}' (value: '{}')",
-                                self.peek_token.token_type, self.peek_token.literal
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}Expected a token of type String following a TokenType::TagMinusPrefix, found '{}' (value: '{}')",
+                            self.peek_token.token_type, self.peek_token.literal
+                        )));
                     }
                     let tag_filter = Box::new(TagFilter {
                         include: true,
@@ -390,7 +398,11 @@ impl FilterParser {
                                 self.current_token
                                     .literal
                                     .parse::<i32>()
-                                    .unwrap()
+                                    .map_err(|err| {
+                                        CoreError::filter(format!(
+                                            "{err_msg_prefix}Invalid task id: {err}"
+                                        ))
+                                    })?
                                     .to_owned(),
                             ),
                             uuid: None,
@@ -400,17 +412,20 @@ impl FilterParser {
                                 self.current_token
                                     .literal
                                     .parse::<Uuid>()
-                                    .unwrap()
+                                    .map_err(|err| {
+                                        CoreError::filter(format!(
+                                            "{err_msg_prefix}Invalid UUID: {err}"
+                                        ))
+                                    })?
                                     .to_owned(),
                             ),
                             id: None,
                         }),
                         _ => {
-                            return Err(err_msg_prefix
-                                + &format!(
-                                    "Expected a token of type Int or UUID following a TokenType::DependsOn, found '{}' (value: '{}')",
-                                    self.current_token.token_type, self.current_token.literal
-                                ));
+                            return Err(CoreError::filter(format!(
+                                "{err_msg_prefix}Expected a token of type Int or UUID following a TokenType::DependsOn, found '{}' (value: '{}')",
+                                self.current_token.token_type, self.current_token.literal
+                            )));
                         }
                     };
                     filter = add_to_current_filter(filter, depends_on_filter, &ScopeOperator::And);
@@ -434,11 +449,10 @@ impl FilterParser {
                     if self.current_token.token_type != TokenType::WordString
                         && self.current_token.token_type != TokenType::Int
                     {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "Expected a token of type String or Int following a TokenTypeFilterDateEnd, found '{}' (value: '{}')",
-                                self.peek_token.token_type, self.peek_token.literal
-                            ));
+                        return Err(CoreError::filter(format!(
+                            "{err_msg_prefix}Expected a token of type String or Int following a TokenTypeFilterDateEnd, found '{}' (value: '{}')",
+                            self.peek_token.token_type, self.peek_token.literal
+                        )));
                     }
 
                     let time = self.read_date_expr()?;

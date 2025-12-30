@@ -4,6 +4,8 @@ Guidance for Codex when working in this repository.
 
 Keep changes minimal and focused. Prefer existing conventions and keep instructions actionable.
 Never remove TODO comments unless the TODO has been fully addressed.
+If you think that what you are being asked is a bad idea, stop and say so. Explain why.
+If you think the user is missing something, let them know.
 
 ## Quick start
 ```bash
@@ -80,3 +82,6 @@ mod module_test;
 
 ## Docs lookup
 Always use Context7 when you need code generation, setup/configuration steps, or library/API documentation.
+
+## Setup
+Initialise Serena and figure out what it can do

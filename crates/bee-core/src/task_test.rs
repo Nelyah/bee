@@ -3,25 +3,41 @@ use chrono::{Local, NaiveTime, TimeZone};
 use uuid::Uuid;
 
 use super::*;
+use crate::CoreError;
 
 #[test]
 fn test_task_status_from_str() {
-    assert_eq!(TaskStatus::from_string("pending"), Ok(TaskStatus::Pending));
     assert_eq!(
-        TaskStatus::from_string("completed"),
-        Ok(TaskStatus::Completed)
+        TaskStatus::from_string("pending").unwrap(),
+        TaskStatus::Pending
     );
-    assert_eq!(TaskStatus::from_string("deleted"), Ok(TaskStatus::Deleted));
-    assert_eq!(TaskStatus::from_string("PeNdiNg"), Ok(TaskStatus::Pending));
     assert_eq!(
-        TaskStatus::from_string("CoMplEted"),
-        Ok(TaskStatus::Completed)
+        TaskStatus::from_string("completed").unwrap(),
+        TaskStatus::Completed
     );
-    assert_eq!(TaskStatus::from_string("DelEtEd"), Ok(TaskStatus::Deleted));
+    assert_eq!(
+        TaskStatus::from_string("deleted").unwrap(),
+        TaskStatus::Deleted
+    );
+    assert_eq!(
+        TaskStatus::from_string("PeNdiNg").unwrap(),
+        TaskStatus::Pending
+    );
+    assert_eq!(
+        TaskStatus::from_string("CoMplEted").unwrap(),
+        TaskStatus::Completed
+    );
+    assert_eq!(
+        TaskStatus::from_string("DelEtEd").unwrap(),
+        TaskStatus::Deleted
+    );
 
-    assert_eq!(
-        TaskStatus::from_string("invalid"),
-        Err("Invalid task status name".to_string())
+    assert!(
+        matches!(
+            TaskStatus::from_string("invalid"),
+            Err(CoreError::Task { .. })
+        ),
+        "expected invalid status to return a CoreError::Task"
     );
 }
 

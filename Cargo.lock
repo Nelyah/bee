@@ -408,6 +408,7 @@ dependencies = [
  "serde_json",
  "strum 0.27.1",
  "tempfile",
+ "thiserror 1.0.69",
  "uuid",
 ]
 
@@ -426,6 +427,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "thiserror 1.0.69",
  "tokio",
  "toml",
  "tower",
@@ -456,6 +458,7 @@ dependencies = [
  "serde",
  "serde_json",
  "terminal_size",
+ "thiserror 1.0.69",
  "tokio",
  "toml",
  "unicode-segmentation",
@@ -478,6 +481,7 @@ dependencies = [
  "serde_json",
  "shellexpand",
  "strum 0.27.1",
+ "thiserror 1.0.69",
  "tokio",
  "toml",
  "typetag",

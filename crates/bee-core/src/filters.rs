@@ -2,8 +2,7 @@ pub(crate) mod filters_impl;
 
 mod parser;
 
-use crate::lexer::Lexer;
-use crate::task::Task;
+use crate::{CoreResult, lexer::Lexer, task::Task};
 use parser::FilterParser;
 
 use log::{debug, error};
@@ -80,7 +79,7 @@ pub fn or(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
     })
 }
 
-pub fn from(values: &[String]) -> Result<Box<dyn Filter>, String> {
+pub fn from(values: &[String]) -> CoreResult<Box<dyn Filter>> {
     let lexer = Lexer::new(values.join(" "));
     let mut parser = FilterParser::new(lexer);
     let f = parser.parse_filter()?;

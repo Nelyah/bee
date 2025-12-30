@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::{cmp::Ordering, fmt};
 
 use super::task_properties::TaskProperties;
+use crate::{CoreError, CoreResult};
 
 #[derive(
     Clone,
@@ -32,14 +33,14 @@ pub enum TaskStatus {
 }
 
 impl TaskStatus {
-    pub fn from_string(input: &str) -> Result<TaskStatus, String> {
+    pub fn from_string(input: &str) -> CoreResult<TaskStatus> {
         match input.to_lowercase().as_str() {
             "active" => Ok(TaskStatus::Active),
             "pending" => Ok(TaskStatus::Pending),
             "completed" => Ok(TaskStatus::Completed),
             "deleted" => Ok(TaskStatus::Deleted),
             "blocked" => Ok(TaskStatus::Blocked),
-            _ => Err("Invalid task status name".to_string()),
+            _ => Err(CoreError::task("Invalid task status name")),
         }
     }
 
@@ -268,9 +269,9 @@ impl Task {
         }
     }
 
-    pub fn compute_urgency(&mut self) -> Result<i64, String> {
+    pub fn compute_urgency(&mut self) -> CoreResult<i64> {
         if self.status == TaskStatus::Deleted {
-            return Err("Cannot compute urgency for deleted task".to_string());
+            return Err(CoreError::task("Cannot compute urgency for deleted task"));
         }
 
         let active_status_coef: i64 = 2;
@@ -294,7 +295,7 @@ impl Task {
         }
 
         self.urgency = Some(urgency);
-        Ok(self.urgency.unwrap())
+        Ok(self.urgency.unwrap_or(0))
     }
 
     pub fn get_history(&self) -> &Vec<TaskHistory> {
@@ -361,7 +362,7 @@ impl Task {
         uuids
     }
 
-    pub(crate) fn apply(&mut self, props: &TaskProperties) -> Result<(), String> {
+    pub(crate) fn apply(&mut self, props: &TaskProperties) -> CoreResult<()> {
         if let Some(summary) = &props.summary {
             self.history.push(TaskHistory {
                 id: None,
@@ -383,10 +384,10 @@ impl Task {
         if let Some(active) = &props.active_status {
             if *active {
                 if self.status != TaskStatus::Pending {
-                    return Err(format!(
+                    return Err(CoreError::task(format!(
                         "Task '{}' status cannot be set to 'ACTIVE' because its status is already 'ACTIVE'",
                         self.summary
-                    ));
+                    )));
                 }
                 self.status = TaskStatus::Active;
                 self.history.push(TaskHistory {
@@ -396,10 +397,10 @@ impl Task {
                 });
             } else {
                 if self.status != TaskStatus::Active {
-                    return Err(format!(
+                    return Err(CoreError::task(format!(
                         "Task '{}' status cannot be 'stopped' because its status is not 'ACTIVE'",
                         self.summary
-                    ));
+                    )));
                 }
                 self.status = TaskStatus::Pending;
                 self.history.push(TaskHistory {

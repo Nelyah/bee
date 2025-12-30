@@ -2,6 +2,8 @@ use migration::{Migrator, MigratorTrait, sea_orm::Database};
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
 use std::path::PathBuf;
 
+use crate::CoreResult;
+
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5_000;
 
 /// Returns the database URL using a fallback chain:
@@ -46,7 +48,7 @@ fn get_database_url() -> String {
 }
 
 /// Creates parent directories for the database file if they don't exist.
-fn ensure_parent_directories(db_url: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn ensure_parent_directories(db_url: &str) -> CoreResult<()> {
     // Extract path from SQLite URL (sqlite://path?mode=rwc)
     if let Some(path_str) = db_url
         .strip_prefix("sqlite://")
@@ -63,9 +65,7 @@ fn ensure_parent_directories(db_url: &str) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-pub(super) async fn get_database(
-    db_address: Option<&str>,
-) -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
+pub(super) async fn get_database(db_address: Option<&str>) -> CoreResult<DatabaseConnection> {
     let url = match db_address {
         Some(addr) => addr.to_string(),
         None => get_database_url(),
@@ -86,7 +86,7 @@ pub(super) async fn get_database(
 }
 
 /// Apply SQLite pragmas that improve concurrency and integrity.
-async fn apply_sqlite_pragmas(db: &DatabaseConnection) -> Result<(), Box<dyn std::error::Error>> {
+async fn apply_sqlite_pragmas(db: &DatabaseConnection) -> CoreResult<()> {
     db.execute(Statement::from_string(
         DatabaseBackend::Sqlite,
         "PRAGMA foreign_keys = ON",

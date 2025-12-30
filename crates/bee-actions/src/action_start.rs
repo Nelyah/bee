@@ -1,8 +1,11 @@
 use uuid::Uuid;
 
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 
 use bee_core::Printer;
+use bee_core::UserFacingError;
 use bee_core::task::{ActionUndoType, Task, TaskData, TaskProperties};
 
 use std::collections::HashMap;
@@ -14,7 +17,7 @@ pub struct StartTaskAction {
 
 impl TaskAction for StartTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, p: &dyn Printer) -> ActionResult<()> {
         let mut props = TaskProperties::default();
         props.set_active_status(true);
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
@@ -27,14 +30,20 @@ impl TaskAction for StartTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_modify {
-            let task_before = self.base.tasks.get_task_map().get(&uuid).unwrap().clone();
+            let task_before = self
+                .base
+                .tasks
+                .get_task_map()
+                .get(&uuid)
+                .ok_or_else(|| ActionError::execution("Invalid UUID to modify"))?
+                .clone();
             let res = self.base.tasks.apply(&uuid, &props);
 
             // I "know" that I can expect Err here that is not fatal and should be given as
             // a warning.
             // TODO: Have a better Error handling with custom types
-            if let Some(err) = res.err() {
-                p.show_information_message(err.as_str());
+            if let Err(err) = res {
+                p.show_information_message(&err.user_message());
                 continue;
             }
 
@@ -43,7 +52,7 @@ impl TaskAction for StartTaskAction {
                 .tasks
                 .get_task_map()
                 .get(&uuid)
-                .ok_or("Invalid UUID to modify".to_owned())?;
+                .ok_or_else(|| ActionError::execution("Invalid UUID to modify"))?;
             if task_before != *t {
                 undos.insert(t.get_uuid().to_owned(), task_before.to_owned());
             }
@@ -74,7 +83,7 @@ mod tests {
 
     use super::*;
     use bee_core::{
-        Printer,
+        CoreResult, Printer,
         config::ReportConfig,
         task::{Task, TaskData, TaskProperties, TaskStatus},
     };
@@ -82,21 +91,18 @@ mod tests {
     struct MockPrinter;
 
     impl Printer for MockPrinter {
-        fn show_help(
-            &self,
-            _help_section_description: &HashMap<String, String>,
-        ) -> Result<(), String> {
+        fn show_help(&self, _help_section_description: &HashMap<String, String>) -> CoreResult<()> {
             Ok(())
         }
-        fn print_task_info(&self, _task: &Task) -> Result<(), String> {
+        fn print_task_info(&self, _task: &Task) -> CoreResult<()> {
             Ok(())
         }
         fn print_raw(&self, _: &str) {}
         fn show_information_message(&self, _message: &str) {}
         fn error(&self, _: &str) {}
 
-        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> Result<(), String> {
-            Err("Not implemented".to_string())
+        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> CoreResult<()> {
+            Ok(())
         }
     }
 

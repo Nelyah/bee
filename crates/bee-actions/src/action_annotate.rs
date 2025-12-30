@@ -1,6 +1,8 @@
 use uuid::Uuid;
 
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 
 use bee_core::Printer;
 use bee_core::task::{Task, TaskData, TaskProperties};
@@ -12,7 +14,7 @@ pub struct AnnotateTaskAction {
 
 impl TaskAction for AnnotateTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, p: &dyn Printer) -> ActionResult<()> {
         let props = if let Some(props) = self.base.get_properties() {
             props
         } else {
@@ -37,7 +39,7 @@ impl TaskAction for AnnotateTaskAction {
                 .tasks
                 .get_task_map()
                 .get(&uuid)
-                .ok_or("Invalid UUID to annotate".to_owned())?;
+                .ok_or_else(|| ActionError::execution("Invalid UUID to annotate"))?;
             undos.push(t.to_owned());
             match t.get_id() {
                 Some(id) => {

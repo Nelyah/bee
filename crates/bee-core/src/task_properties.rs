@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::task_prop_parser::TaskPropertyParser;
 use super::{DependsOnIdentifier, Project, TaskAnnotation, TaskStatus};
+use crate::CoreResult;
 use crate::lexer::Lexer;
 
 /// This structure contains information regarding setting fields for a Task
@@ -75,7 +76,7 @@ impl TaskProperties {
         self.active_status = Some(status);
     }
 
-    pub fn from(values: &[String]) -> Result<TaskProperties, String> {
+    pub fn from(values: &[String]) -> CoreResult<TaskProperties> {
         let lexer = Lexer::new(values.join(" "));
         let mut parser = TaskPropertyParser::new(lexer);
         parser.parse_task_properties()

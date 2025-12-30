@@ -8,6 +8,8 @@ use std::{fmt, fs, num::ParseIntError};
 use serde::Deserialize;
 use serde::Deserializer;
 
+use crate::error_type::{CliError, CliResult};
+
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct Config {
     #[serde(default = "default_colour_field")]
@@ -19,14 +21,14 @@ pub struct Config {
 }
 
 impl Config {
-    fn validate(&self) -> Result<(), String> {
+    fn validate(&self) -> CliResult<()> {
         if let Some(section_type) = &self.section.section_type
             && section_type == &SectionType::Filters
             && self.section.filters.is_empty()
         {
-            return Err("Configuration: Section: The section configuration type is \
-                               'filters' but no filter was provided."
-                .to_string());
+            return Err(CliError::config(
+                "Configuration: Section: The section configuration type is 'filters' but no filter was provided.",
+            ));
         }
 
         Ok(())
@@ -245,43 +247,35 @@ pub fn get_cli_config() -> &'static Config {
     CONFIG.as_ref().unwrap()
 }
 
-// The code is used as soon as it is first acces, thanks to the Lazy library
-#[allow(dead_code)]
-static CONFIG: Lazy<Result<Config, String>> = Lazy::new(|| match load_config() {
+static CONFIG: Lazy<CliResult<Config>> = Lazy::new(|| match load_config() {
     Ok(config) => Ok(config),
     Err(e) => Err(e),
 });
 
-pub fn load_config() -> Result<Config, String> {
+pub fn load_config() -> CliResult<Config> {
     match find_config_file() {
         Some(file) => {
-            let content = match fs::read_to_string(file) {
-                Ok(content) => content,
-                Err(e) => {
-                    eprintln!("{e}");
-                    panic!("Error: Could not read the configuration file.")
-                }
-            };
+            let content = fs::read_to_string(file).map_err(|err| {
+                CliError::io(format!("Could not read the configuration file: {err}"))
+            })?;
 
             load_config_from_string(&content)
         }
         None => Ok(Config::default()),
     }
 }
-fn load_config_from_string(content: &str) -> Result<Config, String> {
-    let toml_value: toml::Value =
-        toml::from_str(content).map_err(|e| format!("Unable to read configuration file: {}", e))?;
+fn load_config_from_string(content: &str) -> CliResult<Config> {
+    let toml_value: toml::Value = toml::from_str(content)
+        .map_err(|err| CliError::config(format!("Unable to read configuration file: {err}")))?;
     let config: Config = if let Some(cli_config) = toml_value.get("cli") {
-        cli_config.clone().try_into().map_err(|e| {
-            format!(
-                "Unable to parse the [cli] section of the configuration. {}",
-                e
-            )
+        cli_config.clone().try_into().map_err(|err| {
+            CliError::config(format!(
+                "Unable to parse the [cli] section of the configuration. {err}"
+            ))
         })?
     } else {
-        toml::from_str("").map_err(|e| {
-            format!("Unable to read an empty string as valid TOML! err={}", e).to_string()
-        })?
+        toml::from_str("")
+            .map_err(|err| CliError::config(format!("Unable to read empty TOML! err={err}")))?
     };
 
     config.validate()?;

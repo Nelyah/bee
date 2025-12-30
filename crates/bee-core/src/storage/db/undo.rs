@@ -1,5 +1,8 @@
 use super::tables;
-use crate::task::{ActionUndo, ActionUndoType};
+use crate::{
+    CoreError, CoreResult,
+    task::{ActionUndo, ActionUndoType},
+};
 use tables::undo_actions;
 
 use chrono::Local;
@@ -14,7 +17,7 @@ pub(super) async fn append_undo_action_impl(
     db: &DatabaseConnection,
     count: usize,
     undos: Vec<ActionUndo>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> CoreResult<()> {
     let count_u64: u64 = count.try_into().unwrap();
     let last_undos_ids: Vec<i32> = undo_actions::Entity::find()
         .order_by_desc(undo_actions::Column::CreatedAt)
@@ -34,16 +37,15 @@ pub(super) async fn append_undo_action_impl(
     // TODO: Need to not rewrite the created_at if some undos were already present in the DB
     // Although this is not too bad since the created_at only exists inside the DB and this is
     // the only place we're using it.
-    let undo_to_model =
-        |u: ActionUndo| -> Result<undo_actions::ActiveModel, Box<dyn std::error::Error>> {
-            let payload = serde_json::to_string(&u)?;
-            Ok(undo_actions::ActiveModel {
-                action_type: Set(u.action_type.to_string()),
-                payload: Set(payload),
-                created_at: Set(Local::now().to_rfc3339()),
-                ..Default::default()
-            })
-        };
+    let undo_to_model = |u: ActionUndo| -> CoreResult<undo_actions::ActiveModel> {
+        let payload = serde_json::to_string(&u)?;
+        Ok(undo_actions::ActiveModel {
+            action_type: Set(u.action_type.to_string()),
+            payload: Set(payload),
+            created_at: Set(Local::now().to_rfc3339()),
+            ..Default::default()
+        })
+    };
 
     let mut undo_active_models = Vec::new();
     for undo in undos {
@@ -63,7 +65,7 @@ pub(super) async fn append_undo_action_impl(
 pub(super) async fn load_undos_impl(
     db: &DatabaseConnection,
     limit: usize,
-) -> Result<Vec<ActionUndo>, Box<dyn std::error::Error>> {
+) -> CoreResult<Vec<ActionUndo>> {
     if limit == 0 {
         return Ok(Vec::new());
     }
@@ -80,7 +82,8 @@ pub(super) async fn load_undos_impl(
     let mut undos: Vec<ActionUndo> = Vec::with_capacity(records.len());
     for record in records {
         let mut undo: ActionUndo = serde_json::from_str(&record.payload)?;
-        undo.action_type = ActionUndoType::from_str(&record.action_type)?;
+        undo.action_type = ActionUndoType::from_str(&record.action_type)
+            .map_err(|err| CoreError::parse(err.to_string()))?;
         undos.push(undo);
     }
     Ok(undos)

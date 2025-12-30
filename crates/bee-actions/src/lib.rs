@@ -20,15 +20,67 @@ mod action_undo;
 
 use crate::{action_type::ActionType, command_parser::ParsedCommand};
 use bee_core::{
-    Printer,
+    CoreError, ErrorCode, Printer, UserFacingError,
     config::ReportConfig,
     task::{ActionUndo, ActionUndoType, TaskData, TaskProperties},
 };
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum ActionError {
+    #[error("Invalid action input: {message}")]
+    Input { message: String },
+    #[error("Action failed: {message}")]
+    Execution { message: String },
+    #[error(transparent)]
+    Core(#[from] CoreError),
+}
+
+pub type ActionResult<T> = Result<T, ActionError>;
+
+impl ActionError {
+    pub fn input(message: impl Into<String>) -> Self {
+        Self::Input {
+            message: message.into(),
+        }
+    }
+
+    pub fn execution(message: impl Into<String>) -> Self {
+        Self::Execution {
+            message: message.into(),
+        }
+    }
+}
+
+impl UserFacingError for ActionError {
+    fn code(&self) -> ErrorCode {
+        match self {
+            ActionError::Input { .. } => ErrorCode::InvalidInput,
+            ActionError::Execution { .. } => ErrorCode::ActionError,
+            ActionError::Core(err) => err.code(),
+        }
+    }
+
+    fn user_message(&self) -> String {
+        match self {
+            ActionError::Input { .. } => "That action input was not valid.".to_string(),
+            ActionError::Execution { .. } => "That action could not be completed.".to_string(),
+            ActionError::Core(err) => err.user_message(),
+        }
+    }
+
+    fn developer_message(&self) -> String {
+        match self {
+            ActionError::Core(err) => err.developer_message(),
+            _ => self.to_string(),
+        }
+    }
+}
 
 pub trait TaskAction: Send {
     /// This is the main execution of the action. This is where it will affect
     /// the tasks it targets or call the printer
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String>;
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()>;
 
     /// Setter for the ActionUndo vector
     fn set_undos(&mut self, undos: Vec<ActionUndo>);
@@ -100,11 +152,11 @@ impl BaseTaskAction {
     }
 
     /// Return structured task properties or parse them from arguments.
-    pub fn get_properties_or_parse(&self) -> Result<TaskProperties, String> {
+    pub fn get_properties_or_parse(&self) -> ActionResult<TaskProperties> {
         if let Some(properties) = &self.properties {
             return Ok(properties.clone());
         }
-        TaskProperties::from(&self.arguments)
+        TaskProperties::from(&self.arguments).map_err(ActionError::from)
     }
 
     pub fn set_arguments(&mut self, arguments: Vec<String>) {

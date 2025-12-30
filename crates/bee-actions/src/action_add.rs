@@ -1,4 +1,4 @@
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
 use bee_core::Printer;
 use bee_core::task::ActionUndoType;
 use bee_core::task::{Task, TaskData, TaskStatus};
@@ -12,7 +12,7 @@ pub struct AddTaskAction {
 
 impl TaskAction for AddTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()> {
         info!("Performing AddTaskAction");
         let props = self.base.get_properties_or_parse()?;
 

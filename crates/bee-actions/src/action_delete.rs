@@ -1,7 +1,9 @@
 use log::info;
 use uuid::Uuid;
 
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 
 use bee_core::Printer;
 
@@ -15,7 +17,7 @@ pub struct DeleteTaskAction {
 
 impl TaskAction for DeleteTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, p: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, p: &dyn Printer) -> ActionResult<()> {
         info!("Performing DeleteTaskAction");
         let mut undos: HashMap<Uuid, Task> = HashMap::default();
         if self.base.tasks.get_task_map().is_empty() {
@@ -30,9 +32,20 @@ impl TaskAction for DeleteTaskAction {
             .map(|u| u.to_owned())
             .collect();
         for uuid in uuids_to_deleted {
-            let task_before = self.base.tasks.get_task_map().get(&uuid).unwrap().clone();
+            let task_before = self
+                .base
+                .tasks
+                .get_task_map()
+                .get(&uuid)
+                .ok_or_else(|| ActionError::execution("Invalid UUID to delete"))?
+                .clone();
             self.base.tasks.task_delete(&uuid);
-            let t = self.base.tasks.get_task_map().get(&uuid).unwrap();
+            let t = self
+                .base
+                .tasks
+                .get_task_map()
+                .get(&uuid)
+                .ok_or_else(|| ActionError::execution("Invalid UUID to delete"))?;
             if task_before != *t {
                 undos.insert(t.get_uuid().to_owned(), task_before.to_owned());
             }
@@ -96,9 +109,11 @@ mod tests {
     use all_asserts::*;
 
     use super::*;
-    use bee_core::Printer;
-    use bee_core::config::ReportConfig;
-    use bee_core::task::{Task, TaskData, TaskProperties, TaskStatus};
+    use bee_core::{
+        CoreResult, Printer,
+        config::ReportConfig,
+        task::{Task, TaskData, TaskProperties, TaskStatus},
+    };
 
     struct MockPrinter;
 
@@ -107,21 +122,18 @@ mod tests {
     }
 
     impl Printer for MockPrinter {
-        fn show_help(
-            &self,
-            _help_section_description: &HashMap<String, String>,
-        ) -> Result<(), String> {
+        fn show_help(&self, _help_section_description: &HashMap<String, String>) -> CoreResult<()> {
             Ok(())
         }
-        fn print_task_info(&self, _task: &Task) -> Result<(), String> {
+        fn print_task_info(&self, _task: &Task) -> CoreResult<()> {
             Ok(())
         }
         fn print_raw(&self, _: &str) {}
         fn show_information_message(&self, _message: &str) {}
         fn error(&self, _: &str) {}
 
-        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> Result<(), String> {
-            Err("Not implemented".to_string())
+        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> CoreResult<()> {
+            Ok(())
         }
     }
 

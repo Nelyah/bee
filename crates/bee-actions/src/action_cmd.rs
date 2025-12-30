@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 
 use bee_core::Printer;
 
@@ -47,9 +49,9 @@ fn get_tags_as_string(tasks: &TaskData) -> String {
 
 impl TaskAction for CmdTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()> {
         if self.base.arguments.is_empty() {
-            return Err("No argument found for TaskAction Cmd".to_string());
+            return Err(ActionError::input("No argument found for TaskAction Cmd"));
         }
         let do_get = self.base.arguments.first().unwrap().as_str() == "get";
 
@@ -66,11 +68,13 @@ impl TaskAction for CmdTaskAction {
                     printer.print_raw(get_tags_as_string(&self.base.tasks).as_str());
                 }
                 _ => {
-                    return Err("TaskAction::Cmd: Not a valid field to request".to_string());
+                    return Err(ActionError::input(
+                        "TaskAction::Cmd: Not a valid field to request",
+                    ));
                 }
             },
             None => {
-                return Err("No argument found for command 'get'.".to_string());
+                return Err(ActionError::input("No argument found for command 'get'."));
             }
         }
 

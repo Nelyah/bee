@@ -3,6 +3,8 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
 
+use crate::{CoreError, CoreResult};
+
 #[derive(Debug, PartialEq, Default, Clone)]
 pub enum TokenType {
     FilterTokDateDue,
@@ -169,10 +171,10 @@ impl Lexer {
     }
 
     // Method to check and read a UUID
-    fn read_uuid(&mut self) -> Result<String, String> {
+    fn read_uuid(&mut self) -> CoreResult<String> {
         let end_pos = self.position + 36;
         if end_pos > self.get_input_len() {
-            return Err("Not a valid UUID string".to_string());
+            return Err(CoreError::parse("Not a valid UUID string"));
         }
 
         let uuid_str = self
@@ -192,7 +194,7 @@ impl Lexer {
                 .map(|s| s.to_string());
             Ok(uuid_str.to_string())
         } else {
-            Err("Not a valid UUID string".to_string())
+            Err(CoreError::parse("Not a valid UUID string"))
         }
     }
 
@@ -255,7 +257,7 @@ impl Lexer {
         output_str
     }
 
-    pub fn next_token(&mut self) -> Result<Token, String> {
+    pub fn next_token(&mut self) -> CoreResult<Token> {
         let token_start = self.position;
         let mut whitespaces = String::default();
         while matches!(&self.ch, Some(ch) if ch

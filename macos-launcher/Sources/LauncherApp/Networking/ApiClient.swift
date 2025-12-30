@@ -42,15 +42,24 @@ final class ApiClient: ApiClientProtocol, Sendable {
         while true {
             do {
                 return try await send(request, path: "/v1/action")
-            } catch let ApiClientError.api(message) {
-                if message.lowercased().contains("database is locked"), attempt < 2 {
-                    attempt += 1
-                    let delay = UInt64(150_000_000 * attempt)
-                    logger.warning("Retrying action after database lock. attempt=\(attempt)")
-                    try await Task.sleep(nanoseconds: delay)
-                    continue
+            } catch let error as ApiClientError {
+                switch error {
+                case .api(let message, let code, let developerMessage):
+                    if message.lowercased().contains("database is locked"), attempt < 2 {
+                        attempt += 1
+                        let delay = UInt64(150_000_000 * attempt)
+                        logger.warning("Retrying action after database lock. attempt=\(attempt)")
+                        try await Task.sleep(nanoseconds: delay)
+                        continue
+                    }
+                    throw ApiClientError.api(
+                        message: message,
+                        code: code,
+                        developerMessage: developerMessage
+                    )
+                case .invalidResponse:
+                    throw error
                 }
-                throw ApiClientError.api(message: message)
             }
         }
     }
@@ -110,9 +119,17 @@ final class ApiClient: ApiClientProtocol, Sendable {
             throw ApiClientError.invalidResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            let message = decodeErrorMessage(from: data) ?? "HTTP \(http.statusCode)"
+            let payload = decodeErrorPayload(from: data)
+            let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
             logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
-            throw ApiClientError.api(message: message)
+            if let payload {
+                logger.error("API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)")
+            }
+            throw ApiClientError.api(
+                message: message,
+                code: payload?.code,
+                developerMessage: payload?.developerMessage
+            )
         }
         logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
         return try JSONDecoder().decode(Response.self, from: data)
@@ -140,34 +157,57 @@ final class ApiClient: ApiClientProtocol, Sendable {
             throw ApiClientError.invalidResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            let message = decodeErrorMessage(from: data) ?? "HTTP \(http.statusCode)"
+            let payload = decodeErrorPayload(from: data)
+            let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
             logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
-            throw ApiClientError.api(message: message)
+            if let payload {
+                logger.error("API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)")
+            }
+            throw ApiClientError.api(
+                message: message,
+                code: payload?.code,
+                developerMessage: payload?.developerMessage
+            )
         }
         logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
-    /// Decode an API error message from a JSON error payload.
-    private func decodeErrorMessage(from data: Data) -> String? {
-        guard let response = try? JSONDecoder().decode(ApiErrorResponse.self, from: data) else {
-            return nil
-        }
-        return response.error
+    /// Decode an API error payload from non-2xx responses.
+    private func decodeErrorPayload(from data: Data) -> ApiErrorResponse? {
+        try? JSONDecoder().decode(ApiErrorResponse.self, from: data)
     }
 }
 
 /// Errors surfaced by the API client.
 enum ApiClientError: LocalizedError {
-    case api(message: String)
+    case api(message: String, code: String?, developerMessage: String?)
     case invalidResponse
 
     var errorDescription: String? {
         switch self {
-        case .api(let message):
+        case .api(let message, _, _):
             return message
         case .invalidResponse:
             return "Invalid response from server"
+        }
+    }
+
+    var code: String? {
+        switch self {
+        case .api(_, let code, _):
+            return code
+        case .invalidResponse:
+            return nil
+        }
+    }
+
+    var developerMessage: String? {
+        switch self {
+        case .api(_, _, let developerMessage):
+            return developerMessage
+        case .invalidResponse:
+            return nil
         }
     }
 }

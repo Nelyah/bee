@@ -1,4 +1,6 @@
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 use bee_core::task::ActionUndoType;
 
 use bee_core::Printer;
@@ -12,12 +14,15 @@ pub struct UndoTaskAction {
 
 impl TaskAction for UndoTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, _: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, _: &dyn Printer) -> ActionResult<()> {
         let undos = &self.base.undos;
         for current_undo in undos.iter().rev() {
             for t in &current_undo.tasks {
                 if !self.get_tasks().get_undos().contains_key(t.get_uuid()) {
-                    return Err(format!("Could not find task to undo: {}", t.get_uuid()));
+                    return Err(ActionError::execution(format!(
+                        "Could not find task to undo: {}",
+                        t.get_uuid()
+                    )));
                 }
 
                 match current_undo.action_type {

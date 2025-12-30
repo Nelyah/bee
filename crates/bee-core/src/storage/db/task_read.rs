@@ -1,6 +1,7 @@
 use super::filter_sql::{condition_expression_to_condition, filter_to_condition_expr};
 use super::tables;
 use crate::{
+    CoreError, CoreResult,
     filters::{
         self, Filter,
         filters_impl::{OrFilter, TaskIdFilter, UuidFilter},
@@ -29,9 +30,7 @@ pub struct CompletionRow {
 }
 
 /// Get all unique projects with task counts, sorted by count descending.
-pub async fn get_projects_with_counts(
-    db: &DatabaseConnection,
-) -> Result<Vec<CompletionRow>, Box<dyn std::error::Error>> {
+pub async fn get_projects_with_counts(db: &DatabaseConnection) -> CoreResult<Vec<CompletionRow>> {
     let results = CompletionRow::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Sqlite,
         r#"
@@ -49,9 +48,7 @@ pub async fn get_projects_with_counts(
 }
 
 /// Get all unique tags with task counts, sorted by count descending.
-pub async fn get_tags_with_counts(
-    db: &DatabaseConnection,
-) -> Result<Vec<CompletionRow>, Box<dyn std::error::Error>> {
+pub async fn get_tags_with_counts(db: &DatabaseConnection) -> CoreResult<Vec<CompletionRow>> {
     let results = CompletionRow::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Sqlite,
         r#"
@@ -72,7 +69,7 @@ pub(super) async fn load_tasks_impl(
     db: &DatabaseConnection,
     filter_opt: Option<Box<dyn Filter>>,
     props: Option<TaskProperties>,
-) -> Result<TaskData, Box<dyn std::error::Error>> {
+) -> CoreResult<TaskData> {
     let filter = filter_opt.unwrap_or_else(filters::new_empty);
     let tasks_obj = tasks_from_filter(db, filter.as_ref()).await?;
 
@@ -107,10 +104,7 @@ pub(super) async fn load_tasks_impl(
     Ok(task_data)
 }
 
-async fn tasks_from_filter(
-    db: &DatabaseConnection,
-    filter: &dyn Filter,
-) -> Result<Vec<Task>, Box<dyn std::error::Error>> {
+async fn tasks_from_filter(db: &DatabaseConnection, filter: &dyn Filter) -> CoreResult<Vec<Task>> {
     let models = tables::tasks::Entity::find()
         .filter(condition_expression_to_condition(filter_to_condition_expr(
             filter,
@@ -120,14 +114,13 @@ async fn tasks_from_filter(
     task_models_to_objects(db, models).await
 }
 
-fn parse_datetime(value: &str) -> Result<DateTime<Local>, chrono::ParseError> {
-    DateTime::parse_from_rfc3339(value).map(|dt| dt.with_timezone(&Local))
+fn parse_datetime(value: &str) -> CoreResult<DateTime<Local>> {
+    DateTime::parse_from_rfc3339(value)
+        .map(|dt| dt.with_timezone(&Local))
+        .map_err(CoreError::from)
 }
 
-async fn task_models_to_objects<C>(
-    db: &C,
-    models: Vec<tasks::Model>,
-) -> Result<Vec<Task>, Box<dyn std::error::Error>>
+async fn task_models_to_objects<C>(db: &C, models: Vec<tasks::Model>) -> CoreResult<Vec<Task>>
 where
     C: ConnectionTrait,
 {
@@ -258,22 +251,16 @@ where
     let mut links_by_task: HashMap<i32, Vec<Link>> = HashMap::new();
     for link in outgoing_links {
         let from_uuid = *uuid_map.get(&link.from_task_id).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "Could not resolve linked task id {} to a UUID",
-                    link.from_task_id
-                ),
-            )
+            CoreError::not_found(format!(
+                "Could not resolve linked task id {} to a UUID",
+                link.from_task_id
+            ))
         })?;
         let to_uuid = *uuid_map.get(&link.to_task_id).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "Could not resolve linked task id {} to a UUID",
-                    link.to_task_id
-                ),
-            )
+            CoreError::not_found(format!(
+                "Could not resolve linked task id {} to a UUID",
+                link.to_task_id
+            ))
         })?;
         links_by_task
             .entry(link.from_task_id)
@@ -288,22 +275,16 @@ where
 
     for link in incoming_links {
         let current_uuid = *uuid_map.get(&link.to_task_id).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "Could not resolve linked task id {} to a UUID",
-                    link.to_task_id
-                ),
-            )
+            CoreError::not_found(format!(
+                "Could not resolve linked task id {} to a UUID",
+                link.to_task_id
+            ))
         })?;
         let blocked_uuid = *uuid_map.get(&link.from_task_id).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "Could not resolve linked task id {} to a UUID",
-                    link.from_task_id
-                ),
-            )
+            CoreError::not_found(format!(
+                "Could not resolve linked task id {} to a UUID",
+                link.from_task_id
+            ))
         })?;
         links_by_task
             .entry(link.to_task_id)
@@ -319,16 +300,12 @@ where
     let mut tasks_obj = Vec::with_capacity(models.len());
     for task_model in models {
         let uuid = *uuid_map.get(&task_model.db_id).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "Could not resolve linked task id {} to a UUID",
-                    task_model.db_id
-                ),
-            )
+            CoreError::not_found(format!(
+                "Could not resolve linked task id {} to a UUID",
+                task_model.db_id
+            ))
         })?;
-        let status = TaskStatus::from_string(&task_model.status)
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+        let status = TaskStatus::from_string(&task_model.status)?;
         let date_created = parse_datetime(&task_model.date_created)?;
         let date_completed = task_model
             .date_completed

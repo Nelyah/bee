@@ -4,6 +4,7 @@ use log::debug;
 use uuid::Uuid;
 
 use crate::{
+    CoreError, CoreResult,
     lexer::{Lexer, Token, TokenType},
     parser::BaseParser,
     task::{DependsOnIdentifier, Project, TaskProperties, TaskStatus},
@@ -94,7 +95,7 @@ impl TaskPropertyParser {
         parser
     }
 
-    pub fn parse_task_properties(&mut self) -> Result<TaskProperties, String> {
+    pub fn parse_task_properties(&mut self) -> CoreResult<TaskProperties> {
         let err_msg_prefix: String = "could not parse the task property expression. ".to_string();
         let mut props = TaskProperties::default();
         if self.current_token.token_type == TokenType::Eof {
@@ -131,10 +132,10 @@ impl TaskPropertyParser {
                     self.skip_whitespace();
 
                     if self.current_token.token_type != TokenType::WordString {
-                        return Err(format!(
+                        return Err(CoreError::parse(format!(
                             "Expected a token of type WordString following a TokenTypeFilterStatus, found '{}' (value: '{}')",
                             self.peek_token.token_type, self.peek_token.literal
-                        ));
+                        )));
                     }
 
                     let status = match TaskStatus::from_string(&self.current_token.literal) {
@@ -151,10 +152,10 @@ impl TaskPropertyParser {
                     self.skip_whitespace();
 
                     if self.current_token.token_type != TokenType::WordString {
-                        return Err(format!(
+                        return Err(CoreError::parse(format!(
                             "Expected a token of type WordString following a TokenTypeProjectPrefix, found '{}' (value: '{}')",
                             self.peek_token.token_type, self.peek_token.literal
-                        ));
+                        )));
                     }
 
                     let mut project_name = self.current_token.literal.to_string();
@@ -167,19 +168,23 @@ impl TaskPropertyParser {
                     }
 
                     if project_name.ends_with('.') {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "A project name cannot end with a '.' (name: '{}')",
-                                project_name
-                            ));
+                        return Err(CoreError::parse(
+                            err_msg_prefix
+                                + &format!(
+                                    "A project name cannot end with a '.' (name: '{}')",
+                                    project_name
+                                ),
+                        ));
                     }
 
                     if project_name.ends_with('-') {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "A project name cannot end with a '-' (name: '{}')",
-                                project_name
-                            ));
+                        return Err(CoreError::parse(
+                            err_msg_prefix
+                                + &format!(
+                                    "A project name cannot end with a '-' (name: '{}')",
+                                    project_name
+                                ),
+                        ));
                     }
 
                     if project_name.to_lowercase() == "none" {
@@ -213,7 +218,7 @@ impl TaskPropertyParser {
                         TokenType::Uuid => {
                             let parsed = Uuid::parse_str(&self.current_token.literal)
                                 .map_err(|err| {
-                                    format!(
+                                    CoreError::parse(format!(
                                         "Expected a UUID following {}, but could not parse '{}' ({})",
                                         if is_blocks {
                                             "TokenTypeBlocks"
@@ -222,7 +227,7 @@ impl TaskPropertyParser {
                                         },
                                         self.current_token.literal,
                                         err
-                                    )
+                                    ))
                                 })?;
                             new_depends_on.push(DependsOnIdentifier::Uuid(parsed));
                         }
@@ -232,7 +237,7 @@ impl TaskPropertyParser {
                                 .literal
                                 .parse::<i32>()
                                 .map_err(|err| {
-                                    format!(
+                                    CoreError::parse(format!(
                                         "Expected an integer following {}, but could not parse '{}' ({})",
                                         if is_blocks {
                                             "TokenTypeBlocks"
@@ -241,7 +246,7 @@ impl TaskPropertyParser {
                                         },
                                         self.current_token.literal,
                                         err
-                                    )
+                                    ))
                                 })?;
                             new_depends_on.push(DependsOnIdentifier::Id(parsed));
                         }
@@ -255,17 +260,19 @@ impl TaskPropertyParser {
                             }
                         }
                         _ => {
-                            return Err(err_msg_prefix
-                                + &format!(
-                                    "Expected a token of type Uuid or Int following a {}, found '{}' (value: '{}')",
-                                    if is_blocks {
-                                        "TokenTypeBlocks"
-                                    } else {
-                                        "TokenTypeDependsOn"
-                                    },
-                                    self.current_token.token_type,
-                                    self.current_token.literal
-                                ));
+                            return Err(CoreError::parse(
+                                err_msg_prefix
+                                    + &format!(
+                                        "Expected a token of type Uuid or Int following a {}, found '{}' (value: '{}')",
+                                        if is_blocks {
+                                            "TokenTypeBlocks"
+                                        } else {
+                                            "TokenTypeDependsOn"
+                                        },
+                                        self.current_token.token_type,
+                                        self.current_token.literal
+                                    ),
+                            ));
                         }
                     }
                     if !new_depends_on.is_empty() {
@@ -284,11 +291,13 @@ impl TaskPropertyParser {
                     if self.current_token.token_type != TokenType::WordString
                         && self.current_token.token_type != TokenType::Int
                     {
-                        return Err(err_msg_prefix
-                            + &format!(
-                                "Expected a token of type String or Int following a TokenTypeFilterDateEnd, found '{}' (value: '{}')",
-                                self.peek_token.token_type, self.peek_token.literal
-                            ));
+                        return Err(CoreError::parse(
+                            err_msg_prefix
+                                + &format!(
+                                    "Expected a token of type String or Int following a TokenTypeFilterDateEnd, found '{}' (value: '{}')",
+                                    self.peek_token.token_type, self.peek_token.literal
+                                ),
+                        ));
                     }
 
                     let time = self.read_date_expr()?;
@@ -296,10 +305,9 @@ impl TaskPropertyParser {
                     self.next_token();
                 }
                 TokenType::Eof => {
-                    return Err(
-                        "unexpected end of input while parsing task property expression"
-                            .to_string(),
-                    );
+                    return Err(CoreError::parse(
+                        "unexpected end of input while parsing task property expression",
+                    ));
                 }
             }
         }

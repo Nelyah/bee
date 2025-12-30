@@ -1,4 +1,4 @@
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
 use bee_core::Printer;
 
 use bee_core::task::TaskData;
@@ -10,7 +10,7 @@ pub struct InfoTaskAction {
 
 impl TaskAction for InfoTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()> {
         for task in self.base.get_tasks().to_vec() {
             printer.print_task_info(task)?;
         }

@@ -1,5 +1,5 @@
 use crate::dto::ApiEvent;
-use bee_core::{Printer, config::ReportConfig, task::Task};
+use bee_core::{CoreResult, Printer, config::ReportConfig, task::Task};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -27,11 +27,7 @@ impl JsonPrinter {
 }
 
 impl Printer for JsonPrinter {
-    fn print_list_of_tasks(
-        &self,
-        tasks: Vec<&Task>,
-        report_kind: &ReportConfig,
-    ) -> Result<(), String> {
+    fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig) -> CoreResult<()> {
         self.push_event(ApiEvent::new(
             "list",
             format!(
@@ -43,7 +39,7 @@ impl Printer for JsonPrinter {
         Ok(())
     }
 
-    fn print_task_info(&self, task: &Task) -> Result<(), String> {
+    fn print_task_info(&self, task: &Task) -> CoreResult<()> {
         self.push_event(ApiEvent::new(
             "task_info",
             format!("task {}", task.get_uuid()),
@@ -51,7 +47,7 @@ impl Printer for JsonPrinter {
         Ok(())
     }
 
-    fn show_help(&self, help_section_description: &HashMap<String, String>) -> Result<(), String> {
+    fn show_help(&self, help_section_description: &HashMap<String, String>) -> CoreResult<()> {
         self.push_event(ApiEvent::new(
             "help",
             format!("{} help sections", help_section_description.len()),

@@ -6,7 +6,9 @@ use std::{
     process::Command,
 };
 
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 use bee_core::Printer;
 use bee_core::task::{Task, TaskData, TaskProperties};
 
@@ -18,17 +20,17 @@ pub struct EditTaskAction {
 use tempfile::Builder;
 use uuid::Uuid;
 
-fn create_and_edit_json_file(input_serialised_tasks: &str) -> Result<TaskData, String> {
+fn create_and_edit_json_file(input_serialised_tasks: &str) -> ActionResult<TaskData> {
     // Create a temporary file path
     let mut temp_file = Builder::new()
         .suffix(".json")
         .tempfile()
-        .map_err(|e| e.to_string())?;
+        .map_err(|err| ActionError::execution(format!("Failed to create temp file: {err}")))?;
 
     // Write some initial JSON content to the file
     temp_file
         .write_all(input_serialised_tasks.as_bytes())
-        .map_err(|e| format!("Failed to write to file: {}", e))?;
+        .map_err(|err| ActionError::execution(format!("Failed to write to file: {err}")))?;
 
     // Determine the editor to use
     let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
@@ -37,16 +39,17 @@ fn create_and_edit_json_file(input_serialised_tasks: &str) -> Result<TaskData, S
     let status = Command::new(editor)
         .arg(temp_file.path().to_string_lossy().into_owned())
         .status()
-        .expect("Failed to open editor");
+        .map_err(|err| ActionError::execution(format!("Failed to open editor: {err}")))?;
 
     if !status.success() {
-        return Err("Editor exited with an error".to_string());
+        return Err(ActionError::execution("Editor exited with an error"));
     }
 
     let task_data: TaskData = serde_json::from_str(
-        &fs::read_to_string(temp_file).map_err(|e| format!("Failed to read file: {}", e))?,
+        &fs::read_to_string(temp_file)
+            .map_err(|err| ActionError::execution(format!("Failed to read file: {err}")))?,
     )
-    .map_err(|e| format!("Could not parse the modified file: {}", e))?;
+    .map_err(|err| ActionError::execution(format!("Could not parse the modified file: {err}")))?;
 
     Ok(task_data)
 }
@@ -89,7 +92,7 @@ fn get_task_property(old_task: &Task, new_task: &Task) -> TaskProperties {
 }
 
 impl EditTaskAction {
-    fn do_action_impl(&mut self, printer: &dyn Printer, new_tasks: TaskData) -> Result<(), String> {
+    fn do_action_impl(&mut self, printer: &dyn Printer, new_tasks: TaskData) -> ActionResult<()> {
         let uuids_to_modify: Vec<Uuid> = self
             .base
             .tasks
@@ -107,16 +110,19 @@ impl EditTaskAction {
                 let old_task = match self.base.tasks.get_task_map().get(uuid) {
                     Some(task) => task,
                     None => {
-                        return Err("An unexpected error happen when editing a task.".to_string());
+                        return Err(ActionError::execution(
+                            "An unexpected error happened when editing a task.",
+                        ));
                     }
                 };
                 let new_task = match new_tasks.get_task_map().get(uuid) {
                     Some(task) => task,
                     None => {
-                        return Err("An unexpected error happen when editing a task. \
+                        return Err(ActionError::execution(
+                            "An unexpected error happened when editing a task. \
 It is likely that an UUID was modified when editing tasks. \
-Don't do that."
-                            .to_string());
+Don't do that.",
+                        ));
                     }
                 };
 
@@ -134,7 +140,7 @@ Don't do that."
                     .tasks
                     .get_task_map()
                     .get(uuid)
-                    .unwrap()
+                    .ok_or_else(|| ActionError::execution("Invalid UUID to edit"))?
                     .get_summary()
             ));
             task_were_modified = true;
@@ -158,9 +164,10 @@ Don't do that."
 impl TaskAction for EditTaskAction {
     impl_taskaction_from_base!();
 
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()> {
         let new_tasks = create_and_edit_json_file(
-            &serde_json::to_string_pretty(self.base.get_tasks()).unwrap(),
+            &serde_json::to_string_pretty(self.base.get_tasks())
+                .map_err(|err| ActionError::execution(format!("Failed to export tasks: {err}")))?,
         )?;
 
         self.do_action_impl(printer, new_tasks)
@@ -188,7 +195,7 @@ mod tests {
 
     use super::*;
     use bee_core::{
-        Printer,
+        CoreResult, Printer,
         config::ReportConfig,
         task::{Task, TaskData, TaskProperties, TaskStatus},
     };
@@ -196,21 +203,18 @@ mod tests {
     struct MockPrinter;
 
     impl Printer for MockPrinter {
-        fn show_help(
-            &self,
-            _help_section_description: &HashMap<String, String>,
-        ) -> Result<(), String> {
+        fn show_help(&self, _help_section_description: &HashMap<String, String>) -> CoreResult<()> {
             Ok(())
         }
-        fn print_task_info(&self, _task: &Task) -> Result<(), String> {
+        fn print_task_info(&self, _task: &Task) -> CoreResult<()> {
             Ok(())
         }
         fn print_raw(&self, _: &str) {}
         fn show_information_message(&self, _message: &str) {}
         fn error(&self, _: &str) {}
 
-        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> Result<(), String> {
-            Err("Not implemented".to_string())
+        fn print_list_of_tasks(&self, _: Vec<&Task>, _: &ReportConfig) -> CoreResult<()> {
+            Ok(())
         }
     }
 
@@ -253,8 +257,8 @@ mod tests {
             .unwrap();
 
         let result = action.do_action_impl(&printer, new_tasks);
-        if result.is_err() {
-            debug!("After edit of the tasks: {}", result.clone().err().unwrap());
+        if let Err(err) = result.as_ref() {
+            debug!("After edit of the tasks: {err}");
         }
         assert_true!(result.is_ok());
 
@@ -314,8 +318,8 @@ mod tests {
         let new_tasks = old_tasks.clone();
 
         let result = action.do_action_impl(&printer, new_tasks);
-        if result.is_err() {
-            debug!("After edit of the tasks: {}", result.clone().err().unwrap());
+        if let Err(err) = result.as_ref() {
+            debug!("After edit of the tasks: {err}");
         }
         assert_true!(result.is_ok());
 

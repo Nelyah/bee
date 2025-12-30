@@ -1,7 +1,10 @@
 use super::blocking::{resequence_task_ids_txn, update_blocking_status};
 use super::sync_relations::{sync_annotations, sync_history, sync_links, sync_tags};
 use super::tables;
-use crate::task::{Project, Task};
+use crate::{
+    CoreResult,
+    task::{Project, Task},
+};
 use tables::{projects, tasks};
 
 use log::debug;
@@ -24,10 +27,7 @@ macro_rules! diff_active_model {
     };
 }
 
-pub(super) async fn write_tasks_impl(
-    db: &DatabaseConnection,
-    task: &Task,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) async fn write_tasks_impl(db: &DatabaseConnection, task: &Task) -> CoreResult<()> {
     debug!("Enter in insert_task_impl");
     let txn = db.begin().await?;
     let project_id = persist_project(&txn, task.project.as_ref()).await?;
@@ -116,7 +116,7 @@ async fn task_to_active_model<C>(
     db: &C,
     task_obj: &Task,
     project_dbid_option: Option<i32>,
-) -> Result<tasks::ActiveModel, Box<dyn std::error::Error>>
+) -> Result<tasks::ActiveModel, DbErr>
 where
     C: ConnectionTrait,
 {

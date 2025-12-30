@@ -1,4 +1,6 @@
-use crate::{ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base};
+use crate::{
+    ActionError, ActionResult, ActionUndo, BaseTaskAction, TaskAction, impl_taskaction_from_base,
+};
 use bee_core::Printer;
 
 use bee_core::task::TaskData;
@@ -10,10 +12,10 @@ pub struct ExportTaskAction {
 
 impl TaskAction for ExportTaskAction {
     impl_taskaction_from_base!();
-    fn do_action(&mut self, printer: &dyn Printer) -> Result<(), String> {
-        printer.show_information_message(
-            &serde_json::to_string_pretty(self.base.get_tasks()).unwrap(),
-        );
+    fn do_action(&mut self, printer: &dyn Printer) -> ActionResult<()> {
+        let json = serde_json::to_string_pretty(self.base.get_tasks())
+            .map_err(|err| ActionError::execution(format!("Failed to serialize tasks: {err}")))?;
+        printer.show_information_message(&json);
         Ok(())
     }
 }

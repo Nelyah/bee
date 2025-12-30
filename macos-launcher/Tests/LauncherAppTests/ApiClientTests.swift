@@ -36,7 +36,7 @@ final class ApiClientTests: XCTestCase {
 
     func testParseReturnsApiErrorMessageForNon2xx() async {
         TestURLProtocol.requestHandler = { request in
-            let data = #"{"error":"bad things"}"#.data(using: .utf8)!
+            let data = #"{"code":"parse_error","user_message":"bad things","developer_message":"details"}"#.data(using: .utf8)!
             return (
                 HTTPURLResponse(
                     url: request.url!,
@@ -58,8 +58,10 @@ final class ApiClientTests: XCTestCase {
             XCTFail("Expected ApiClientError")
         } catch let error as ApiClientError {
             switch error {
-            case .api(let message):
+            case .api(let message, let code, let developerMessage):
                 XCTAssertEqual(message, "bad things")
+                XCTAssertEqual(code, "parse_error")
+                XCTAssertEqual(developerMessage, "details")
             default:
                 XCTFail("Expected api error message")
             }

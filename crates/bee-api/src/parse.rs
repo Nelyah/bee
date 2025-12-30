@@ -1,4 +1,5 @@
 use crate::dto::TokenSpan;
+use crate::error_type::ApiResult;
 use bee_actions::ActionRegistry;
 use bee_core::{
     filters::{self, Filter},
@@ -15,7 +16,7 @@ pub struct ParsedInput {
 }
 
 /// Parse a raw input string into structured action, properties, and filter data.
-pub fn parse_input(input: &str) -> Result<ParsedInput, String> {
+pub fn parse_input(input: &str) -> ApiResult<ParsedInput> {
     let args: Vec<String> = input
         .split_whitespace()
         .map(|token| token.to_string())
@@ -71,7 +72,7 @@ pub fn parse_input(input: &str) -> Result<ParsedInput, String> {
 }
 
 /// Tokenize an input string into spans for UI highlighting.
-pub fn tokenize_with_spans(input: &str) -> Result<Vec<TokenSpan>, String> {
+pub fn tokenize_with_spans(input: &str) -> ApiResult<Vec<TokenSpan>> {
     let mut lexer = Lexer::new(input.to_string());
     let mut tokens = Vec::new();
 

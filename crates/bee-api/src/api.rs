@@ -8,6 +8,7 @@ use crate::{
         GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse, ReportConfigDto,
         TokenSpan,
     },
+    error_type::{ApiError, ApiErrorResponse, ApiResult},
     parse::{parse_input, tokenize_with_spans},
     printer::JsonPrinter,
 };
@@ -15,7 +16,6 @@ use axum::{
     Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    response::IntoResponse,
     routing::{delete, get, post},
 };
 use bee_actions::{ActionRegistry, command_parser::ParsedCommand};
@@ -24,12 +24,11 @@ use bee_core::{
     task::TaskProperties,
 };
 use serde::Deserialize;
-use serde::Serialize;
 use serde_json::Value;
 use std::{collections::HashSet, time::Duration};
 use tower_http::trace::TraceLayer;
 use tracing::Span;
-use utoipa::{OpenApi, ToSchema};
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use uuid::Uuid;
 
@@ -55,44 +54,6 @@ impl AppState {
             external_links_sync: config.external_links.sync,
             http_client: reqwest::Client::new(),
         }
-    }
-}
-
-/// Error type returned by API handlers.
-#[derive(Debug)]
-struct ApiError {
-    status: StatusCode,
-    message: String,
-}
-
-/// Error payload returned on API failures.
-#[derive(Debug, Serialize, ToSchema)]
-struct ErrorResponse {
-    error: String,
-}
-
-impl ApiError {
-    fn bad_request(message: impl Into<String>) -> Self {
-        Self {
-            status: StatusCode::BAD_REQUEST,
-            message: message.into(),
-        }
-    }
-
-    fn internal(message: impl Into<String>) -> Self {
-        Self {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            message: message.into(),
-        }
-    }
-}
-
-impl IntoResponse for ApiError {
-    fn into_response(self) -> axum::response::Response {
-        let payload = ErrorResponse {
-            error: self.message,
-        };
-        (self.status, Json(payload)).into_response()
     }
 }
 
@@ -188,17 +149,15 @@ struct CompletionsQuery {
     params(CompletionsQuery),
     responses(
         (status = 200, description = "Completion suggestions", body = CompletionsResponse),
-        (status = 400, description = "Invalid completion type", body = ErrorResponse)
+        (status = 400, description = "Invalid completion type", body = ApiErrorResponse)
     )
 )]
 async fn completions_handler(
     Query(query): Query<CompletionsQuery>,
-) -> Result<Json<CompletionsResponse>, ApiError> {
+) -> ApiResult<Json<CompletionsResponse>> {
     let items = match query.completion_type.as_str() {
         "projects" => {
-            let rows = DbStore::get_projects()
-                .await
-                .map_err(|e| ApiError::internal(format!("Failed to get projects: {e}")))?;
+            let rows = DbStore::get_projects().await?;
             rows.into_iter()
                 .map(|r| CompletionItem {
                     value: r.value,
@@ -207,9 +166,7 @@ async fn completions_handler(
                 .collect()
         }
         "tags" => {
-            let rows = DbStore::get_tags()
-                .await
-                .map_err(|e| ApiError::internal(format!("Failed to get tags: {e}")))?;
+            let rows = DbStore::get_tags().await?;
             rows.into_iter()
                 .map(|r| CompletionItem {
                     value: r.value,
@@ -318,10 +275,8 @@ async fn completions_handler(
 )]
 async fn list_external_links_handler(
     Path(task_uuid): Path<Uuid>,
-) -> Result<Json<Vec<ExternalLinkDto>>, ApiError> {
-    let links = DbStore::list_external_links_by_task(task_uuid)
-        .await
-        .map_err(|e| ApiError::internal(format!("Failed to load external links: {e}")))?;
+) -> ApiResult<Json<Vec<ExternalLinkDto>>> {
+    let links = DbStore::list_external_links_by_task(task_uuid).await?;
 
     Ok(Json(
         links.into_iter().map(ExternalLinkDto::from_link).collect(),
@@ -337,20 +292,17 @@ async fn list_external_links_handler(
     ),
     responses(
         (status = 200, description = "External link created", body = ExternalLinkDto),
-        (status = 400, description = "Invalid link", body = ErrorResponse)
+        (status = 400, description = "Invalid link", body = ApiErrorResponse)
     )
 )]
 async fn create_external_link_handler(
     State(state): State<AppState>,
     Path(task_uuid): Path<Uuid>,
     Json(payload): Json<ExternalLinkCreateRequest>,
-) -> Result<Json<ExternalLinkDto>, ApiError> {
-    let parsed = external_links::parse_external_link(&payload.url, &state.external_links)
-        .map_err(ApiError::bad_request)?;
+) -> ApiResult<Json<ExternalLinkDto>> {
+    let parsed = external_links::parse_external_link(&payload.url, &state.external_links)?;
 
-    let existing = DbStore::list_external_links_by_task(task_uuid)
-        .await
-        .map_err(|e| ApiError::internal(format!("Failed to load external links: {e}")))?;
+    let existing = DbStore::list_external_links_by_task(task_uuid).await?;
     let provider = parsed.provider.to_string();
     if existing
         .iter()
@@ -365,8 +317,7 @@ async fn create_external_link_handler(
     }
 
     let link = DbStore::insert_external_link(task_uuid, provider, payload.url, parsed.external_key)
-        .await
-        .map_err(|e| ApiError::internal(format!("Failed to insert external link: {e}")))?;
+        .await?;
 
     Ok(Json(ExternalLinkDto::from_link(link)))
 }
@@ -381,10 +332,8 @@ async fn create_external_link_handler(
         (status = 200, description = "External link deleted")
     )
 )]
-async fn delete_external_link_handler(Path(link_id): Path<i32>) -> Result<StatusCode, ApiError> {
-    DbStore::delete_external_link_by_id(link_id)
-        .await
-        .map_err(|e| ApiError::internal(format!("Failed to delete external link: {e}")))?;
+async fn delete_external_link_handler(Path(link_id): Path<i32>) -> ApiResult<StatusCode> {
+    DbStore::delete_external_link_by_id(link_id).await?;
     Ok(StatusCode::OK)
 }
 
@@ -397,19 +346,16 @@ async fn delete_external_link_handler(Path(link_id): Path<i32>) -> Result<Status
     ),
     responses(
         (status = 200, description = "Sync result", body = ExternalLinkSyncResponse),
-        (status = 400, description = "Sync error", body = ErrorResponse)
+        (status = 400, description = "Sync error", body = ApiErrorResponse)
     )
 )]
 async fn sync_external_link_handler(
     State(state): State<AppState>,
     Path(link_id): Path<i32>,
     Query(query): Query<external_links::SyncQuery>,
-) -> Result<Json<ExternalLinkSyncResponse>, ApiError> {
-    let Some(link) = DbStore::get_external_link_by_id(link_id)
-        .await
-        .map_err(|e| ApiError::internal(format!("Failed to load link: {e}")))?
-    else {
-        return Err(ApiError::bad_request("External link not found"));
+) -> ApiResult<Json<ExternalLinkSyncResponse>> {
+    let Some(link) = DbStore::get_external_link_by_id(link_id).await? else {
+        return Err(ApiError::not_found("External link not found"));
     };
 
     let result = external_links::sync_single_link(
@@ -419,8 +365,7 @@ async fn sync_external_link_handler(
         link,
         query.force.unwrap_or(false),
     )
-    .await
-    .map_err(ApiError::bad_request)?;
+    .await?;
 
     Ok(Json(result))
 }
@@ -431,13 +376,13 @@ async fn sync_external_link_handler(
     request_body = ExternalLinkSyncRequest,
     responses(
         (status = 200, description = "Batch sync result", body = ExternalLinkSyncResponse),
-        (status = 400, description = "Sync error", body = ErrorResponse)
+        (status = 400, description = "Sync error", body = ApiErrorResponse)
     )
 )]
 async fn sync_external_links_handler(
     State(state): State<AppState>,
     Json(payload): Json<ExternalLinkSyncRequest>,
-) -> Result<Json<ExternalLinkSyncResponse>, ApiError> {
+) -> ApiResult<Json<ExternalLinkSyncResponse>> {
     let result = external_links::sync_links_batch(
         &state.http_client,
         &state.external_links,
@@ -446,8 +391,7 @@ async fn sync_external_links_handler(
         payload.task_uuid,
         payload.force.unwrap_or(false),
     )
-    .await
-    .map_err(ApiError::bad_request)?;
+    .await?;
 
     Ok(Json(result))
 }
@@ -464,21 +408,20 @@ struct RecentGitlabQuery {
     params(RecentGitlabQuery),
     responses(
         (status = 200, description = "Recent merge requests", body = [GitlabMergeRequestDto]),
-        (status = 400, description = "GitLab error", body = ErrorResponse)
+        (status = 400, description = "GitLab error", body = ApiErrorResponse)
     )
 )]
 async fn recent_gitlab_merge_requests_handler(
     State(state): State<AppState>,
     Query(query): Query<RecentGitlabQuery>,
-) -> Result<Json<Vec<GitlabMergeRequestDto>>, ApiError> {
+) -> ApiResult<Json<Vec<GitlabMergeRequestDto>>> {
     let limit = query.limit.unwrap_or(20);
     let items = external_links::fetch_recent_gitlab_merge_requests(
         &state.http_client,
         &state.external_links,
         limit,
     )
-    .await
-    .map_err(ApiError::bad_request)?;
+    .await?;
     Ok(Json(items))
 }
 
@@ -496,13 +439,13 @@ struct RecentJiraQuery {
     params(RecentJiraQuery),
     responses(
         (status = 200, description = "Recent Jira issues", body = [JiraIssueDto]),
-        (status = 400, description = "Jira error", body = ErrorResponse)
+        (status = 400, description = "Jira error", body = ApiErrorResponse)
     )
 )]
 async fn recent_jira_issues_handler(
     State(state): State<AppState>,
     Query(query): Query<RecentJiraQuery>,
-) -> Result<Json<Vec<JiraIssueDto>>, ApiError> {
+) -> ApiResult<Json<Vec<JiraIssueDto>>> {
     let limit = query.limit.unwrap_or(20);
     let scope = match query.scope.as_deref() {
         Some("assigned") => external_links::JiraIssueScope::Assigned,
@@ -515,8 +458,7 @@ async fn recent_jira_issues_handler(
         limit,
         scope,
     )
-    .await
-    .map_err(ApiError::bad_request)?;
+    .await?;
     Ok(Json(items))
 }
 
@@ -526,13 +468,13 @@ async fn recent_jira_issues_handler(
     request_body = ExternalLinkResolveRequest,
     responses(
         (status = 200, description = "Resolved link", body = ExternalLinkResolveResponse),
-        (status = 400, description = "Resolve error", body = ErrorResponse)
+        (status = 400, description = "Resolve error", body = ApiErrorResponse)
     )
 )]
 async fn resolve_external_link_handler(
     State(state): State<AppState>,
     Json(payload): Json<ExternalLinkResolveRequest>,
-) -> Result<Json<ExternalLinkResolveResponse>, ApiError> {
+) -> ApiResult<Json<ExternalLinkResolveResponse>> {
     let provider = match payload.provider.as_str() {
         "jira" => external_links::ProviderKind::Jira,
         "gitlab" => external_links::ProviderKind::Gitlab,
@@ -545,8 +487,7 @@ async fn resolve_external_link_handler(
         provider,
         &payload.input,
     )
-    .await
-    .map_err(ApiError::bad_request)?;
+    .await?;
 
     Ok(Json(resolved))
 }
@@ -557,12 +498,12 @@ async fn resolve_external_link_handler(
     request_body = ParseRequest,
     responses(
         (status = 200, description = "Parsed input", body = ParseResponse),
-        (status = 400, description = "Invalid input", body = ErrorResponse)
+        (status = 400, description = "Invalid input", body = ApiErrorResponse)
     )
 )]
-async fn parse_handler(Json(payload): Json<ParseRequest>) -> Result<Json<ParseResponse>, ApiError> {
-    let parsed = parse_input(&payload.input).map_err(ApiError::bad_request)?;
-    let tokens = tokenize_with_spans(&payload.input).map_err(ApiError::bad_request)?;
+async fn parse_handler(Json(payload): Json<ParseRequest>) -> ApiResult<Json<ParseResponse>> {
+    let parsed = parse_input(&payload.input)?;
+    let tokens = tokenize_with_spans(&payload.input)?;
     let properties_value = serialize_properties(parsed.properties)?;
     let filter_value = serialize_filter(parsed.filter)?;
 
@@ -580,14 +521,14 @@ async fn parse_handler(Json(payload): Json<ParseRequest>) -> Result<Json<ParseRe
     request_body = ActionRequest,
     responses(
         (status = 200, description = "Action result", body = ActionResponse),
-        (status = 400, description = "Invalid request", body = ErrorResponse),
-        (status = 500, description = "Server error", body = ErrorResponse)
+        (status = 400, description = "Invalid request", body = ApiErrorResponse),
+        (status = 500, description = "Server error", body = ApiErrorResponse)
     )
 )]
 async fn action_handler(
     State(state): State<AppState>,
     Json(payload): Json<ActionRequest>,
-) -> Result<Json<ActionResponse>, ApiError> {
+) -> ApiResult<Json<ActionResponse>> {
     let action_name = payload.action.trim();
     if action_name.is_empty() {
         return Err(ApiError::bad_request("action name is required"));
@@ -612,13 +553,9 @@ async fn action_handler(
     let props_for_load = properties.clone();
     let filter_for_load = deserialize_filter(payload.filter)?;
 
-    let undos = DbStore::load_undos(state.undo_count)
-        .await
-        .map_err(|err| ApiError::internal(format!("Failed to load undos: {err}")))?;
+    let undos = DbStore::load_undos(state.undo_count).await?;
 
-    let mut tasks = DbStore::load_tasks(filter_for_load, props_for_load)
-        .await
-        .map_err(|err| ApiError::internal(format!("Failed to load tasks: {err}")))?;
+    let mut tasks = DbStore::load_tasks(filter_for_load, props_for_load).await?;
 
     for undo_action in &undos {
         tasks.set_undos(&undo_action.tasks);
@@ -638,15 +575,11 @@ async fn action_handler(
     action.set_undos(undos);
 
     let printer = JsonPrinter::new();
-    action.do_action(&printer).map_err(ApiError::bad_request)?;
+    action.do_action(&printer)?;
 
-    DbStore::write_tasks(action.get_tasks())
-        .await
-        .map_err(|err| ApiError::internal(format!("Failed to write tasks: {err}")))?;
+    DbStore::write_tasks(action.get_tasks()).await?;
 
-    DbStore::log_undo(state.undo_count, action.get_undos().to_owned())
-        .await
-        .map_err(|err| ApiError::internal(format!("Failed to log undo: {err}")))?;
+    DbStore::log_undo(state.undo_count, action.get_undos().to_owned()).await?;
 
     let tasks = action.get_tasks().to_vec();
     let tasks = tasks.into_iter().map(ApiTask::from_task).collect();
@@ -669,7 +602,7 @@ fn is_api_action_allowed(state: &AppState, action: &str) -> bool {
     state.allowed_actions.contains(action)
 }
 
-fn deserialize_filter(filter: Option<Value>) -> Result<Option<Box<dyn Filter>>, ApiError> {
+fn deserialize_filter(filter: Option<Value>) -> ApiResult<Option<Box<dyn Filter>>> {
     match filter {
         Some(value) => serde_json::from_value(value)
             .map(Some)
@@ -678,7 +611,7 @@ fn deserialize_filter(filter: Option<Value>) -> Result<Option<Box<dyn Filter>>, 
     }
 }
 
-fn serialize_filter(filter: Option<Box<dyn Filter>>) -> Result<Option<Value>, ApiError> {
+fn serialize_filter(filter: Option<Box<dyn Filter>>) -> ApiResult<Option<Value>> {
     match filter {
         Some(filter) => serde_json::to_value(filter)
             .map(Some)
@@ -687,7 +620,7 @@ fn serialize_filter(filter: Option<Box<dyn Filter>>) -> Result<Option<Value>, Ap
     }
 }
 
-fn deserialize_properties(properties: Option<Value>) -> Result<Option<TaskProperties>, ApiError> {
+fn deserialize_properties(properties: Option<Value>) -> ApiResult<Option<TaskProperties>> {
     match properties {
         Some(value) => serde_json::from_value(value)
             .map(Some)
@@ -696,7 +629,7 @@ fn deserialize_properties(properties: Option<Value>) -> Result<Option<TaskProper
     }
 }
 
-fn serialize_properties(properties: Option<TaskProperties>) -> Result<Option<Value>, ApiError> {
+fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<Value>> {
     match properties {
         Some(properties) => serde_json::to_value(properties)
             .map(Some)
@@ -743,7 +676,7 @@ fn serialize_properties(properties: Option<TaskProperties>) -> Result<Option<Val
         ApiTask,
         ApiEvent,
         TokenSpan,
-        ErrorResponse
+        ApiErrorResponse
     )),
     tags((name = "bee-api", description = "Bee REST API"))
 )]

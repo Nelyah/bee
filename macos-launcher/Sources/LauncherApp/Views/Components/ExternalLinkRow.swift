@@ -6,10 +6,6 @@ struct ExternalLinkRow: View {
     let onCopyBranch: (String) -> Void
     let onCopyLink: (String) -> Void
     @Environment(\.openURL) private var openURL
-    @State private var isHoveringTitle = false
-    @State private var isHoveringBranch = false
-    @State private var isHoveringLinkCopy = false
-    @State private var isHoveringLink = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -23,15 +19,11 @@ struct ExternalLinkRow: View {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     if isGitlabRow {
                         HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
-                            Button(action: openMergeRequest) {
+                            HoverableButton(action: openMergeRequest) { isHovering in
                                 Text(gitlabTitleLine)
                                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
-                                    .foregroundColor(isHoveringTitle ? ThemeManager.current.subtext1 : ThemeManager.current.text)
-                                    .underline(isHoveringTitle)
-                            }
-                            .buttonStyle(QuietButtonStyle(isHovering: isHoveringTitle))
-                            .onHover { hovering in
-                                isHoveringTitle = hovering
+                                    .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current.text)
+                                    .underline(isHovering)
                             }
                             Spacer()
                         }
@@ -51,7 +43,7 @@ struct ExternalLinkRow: View {
                         }
 
                         if let branch = gitlabBranchLine {
-                            Button(action: { onCopyBranch(branch) }) {
+                            HoverableButton(action: { onCopyBranch(branch) }) { isHovering in
                                 HStack(spacing: DesignTokens.Spacing.xs) {
                                     if let icon = AssetIcon.image(named: "git-branch") {
                                         icon
@@ -72,16 +64,12 @@ struct ExternalLinkRow: View {
                                 .padding(.vertical, 4)
                                 .background(
                                     RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
-                                        .fill(ThemeManager.current.surface2.opacity(isHoveringBranch ? 0.85 : 0.7))
+                                        .fill(ThemeManager.current.surface2.opacity(isHovering ? 0.85 : 0.7))
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
                                         .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
                                 )
-                            }
-                            .buttonStyle(QuietButtonStyle(isHovering: isHoveringBranch))
-                            .onHover { hovering in
-                                isHoveringBranch = hovering
                             }
                         }
                     } else {
@@ -140,16 +128,15 @@ struct ExternalLinkRow: View {
     private var mrLinkLine: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             if let url = URL(string: link.url) {
-                Link(destination: url) {
-                    Text(link.url)
-                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
-                        .foregroundColor(isHoveringLink ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
-                        .underline(isHoveringLink)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .onHover { hovering in
-                    isHoveringLink = hovering
+                HoverableLink { isHovering in
+                    Link(destination: url) {
+                        Text(link.url)
+                            .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
+                            .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
+                            .underline(isHovering)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
                 }
             } else {
                 Text(link.url)
@@ -159,14 +146,10 @@ struct ExternalLinkRow: View {
                     .truncationMode(.middle)
             }
 
-            Button(action: { onCopyLink(link.url) }) {
+            HoverableButton(action: { onCopyLink(link.url) }) { isHovering in
                 Image(systemName: "doc.on.doc")
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
-                    .foregroundColor(isHoveringLinkCopy ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
-            }
-            .buttonStyle(QuietButtonStyle(isHovering: isHoveringLinkCopy))
-            .onHover { hovering in
-                isHoveringLinkCopy = hovering
+                    .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
             }
             .help("Copy link")
         }

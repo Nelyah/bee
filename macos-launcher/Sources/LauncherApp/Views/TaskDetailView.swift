@@ -294,7 +294,6 @@ private struct ExternalLinksProviderSection: View {
     let onRefresh: () -> Void
     let onCopyBranch: (String) -> Void
     let onCopyLink: (String) -> Void
-    @State private var isHoveringRefresh = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
@@ -311,22 +310,25 @@ private struct ExternalLinksProviderSection: View {
                     .foregroundColor(ThemeManager.current.text)
                 Spacer()
                 if !links.isEmpty {
-                    Button(action: onRefresh) {
-                        if isRefreshing {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                        } else {
-                            Text("Refresh")
-                                .underline(isHoveringRefresh)
+                    HoverableButton(
+                        action: onRefresh,
+                        pressedOpacity: 0.6,
+                        pressedScale: 0.96,
+                        animationDuration: 0.15
+                    ) { isHovering in
+                        Group {
+                            if isRefreshing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            } else {
+                                Text("Refresh")
+                                    .underline(isHovering)
+                            }
                         }
+                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
+                        .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
                     }
-                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
-                    .foregroundColor(isHoveringRefresh ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
                     .contentShape(Rectangle())
-                    .onHover { hovering in
-                        isHoveringRefresh = hovering
-                    }
-                    .buttonStyle(QuietButtonStyle(isHovering: isHoveringRefresh, pressedOpacity: 0.6, pressedScale: 0.96, animationDuration: 0.15))
                     .disabled(isRefreshing)
                 }
             }

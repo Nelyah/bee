@@ -57,6 +57,9 @@ struct ContentView: View {
                 installNormalModeMonitor()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            configureWindowAppearance()
+        }
         .onDisappear {
             removeEscapeMonitor()
             removeNormalModeMonitor()

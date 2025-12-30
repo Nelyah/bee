@@ -357,6 +357,7 @@ final class LauncherViewModel: ObservableObject {
 
     /// Load the list view for the current input, if applicable.
     func loadInitialListIfNeeded() {
+        guard tasks.isEmpty else { return }
         guard shouldAutoList(actionName: actionName) else { return }
         requestCounter += 1
         let requestId = requestCounter
@@ -383,10 +384,11 @@ final class LauncherViewModel: ObservableObject {
     /// Load all completion data from the API at startup.
     func loadCompletionData() async {
         guard !completionsLoaded else { return }
-        completionsLoaded = true
 
         do {
             completionCache = try await actionService.fetchCompletions()
+            completionsLoaded = true
+            updateCompletions()
             logger.info("Completions loaded: \(self.completionCache.projects.count) projects, \(self.completionCache.tags.count) tags, \(self.completionCache.actions.count) actions")
         } catch {
             logger.error("Failed to load completions: \(error.localizedDescription, privacy: .public)")

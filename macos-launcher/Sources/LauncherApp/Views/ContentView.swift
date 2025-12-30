@@ -11,9 +11,20 @@ struct ContentView: View {
             launcherBackground
 
             if viewModel.mode == .detail, let task = viewModel.selectedTask {
-                TaskDetailView(task: task, onClose: {
-                    viewModel.closeDetail()
-                })
+                TaskDetailView(
+                    task: task,
+                    detailState: viewModel.taskDetailState,
+                    externalLinksState: viewModel.externalLinksState,
+                    onRefreshLinks: { provider in
+                        viewModel.refreshExternalLinks(provider: provider)
+                    },
+                    onCopyBranch: { branch in
+                        viewModel.copyBranchNameToClipboard(branch)
+                    },
+                    onClose: {
+                        viewModel.closeDetail()
+                    }
+                )
                     .padding(24)
             } else {
                 TaskListView(viewModel: viewModel, completion: viewModel.completion)

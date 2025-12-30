@@ -5,6 +5,7 @@ struct TaskDetailView: View {
     let detailState: TaskDetailState
     let externalLinksState: ExternalLinksState
     let onRefreshLinks: (ExternalLinkProvider) -> Void
+    let onCopyBranch: (String) -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -80,7 +81,8 @@ struct TaskDetailView: View {
                 useOriginalIcon: true,
                 isRefreshing: externalLinksState.refreshingProviders.contains(.gitlab),
                 links: externalLinksForTask.filter { $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue },
-                onRefresh: { onRefreshLinks(.gitlab) }
+                onRefresh: { onRefreshLinks(.gitlab) },
+                onCopyBranch: onCopyBranch
             )
 
             ExternalLinksProviderSection(
@@ -89,7 +91,8 @@ struct TaskDetailView: View {
                 useOriginalIcon: true,
                 isRefreshing: externalLinksState.refreshingProviders.contains(.jira),
                 links: externalLinksForTask.filter { $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue },
-                onRefresh: { onRefreshLinks(.jira) }
+                onRefresh: { onRefreshLinks(.jira) },
+                onCopyBranch: onCopyBranch
             )
         }
     }
@@ -286,6 +289,7 @@ private struct ExternalLinksProviderSection: View {
     let isRefreshing: Bool
     let links: [ExternalLinkDto]
     let onRefresh: () -> Void
+    let onCopyBranch: (String) -> Void
     @State private var isHoveringRefresh = false
 
     var body: some View {
@@ -330,7 +334,7 @@ private struct ExternalLinksProviderSection: View {
             } else {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     ForEach(links, id: \.id) { link in
-                        ExternalLinkRow(link: link)
+                        ExternalLinkRow(link: link, onCopyBranch: onCopyBranch)
                     }
                 }
             }
@@ -352,6 +356,10 @@ private struct QuietRefreshButtonStyle: ButtonStyle {
 
 private struct ExternalLinkRow: View {
     let link: ExternalLinkDto
+    let onCopyBranch: (String) -> Void
+    @Environment(\.openURL) private var openURL
+    @State private var isHoveringTitle = false
+    @State private var isHoveringBranch = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -371,9 +379,16 @@ private struct ExternalLinkRow: View {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     if isGitlabRow {
                         HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
-                            Text(gitlabTitleLine)
-                                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
-                                .foregroundColor(ThemeManager.current.text)
+                            Button(action: openMergeRequest) {
+                                Text(gitlabTitleLine)
+                                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
+                                    .foregroundColor(isHoveringTitle ? ThemeManager.current.subtext1 : ThemeManager.current.text)
+                                    .underline(isHoveringTitle)
+                            }
+                            .buttonStyle(QuietTextButtonStyle(isHovering: isHoveringTitle))
+                            .onHover { hovering in
+                                isHoveringTitle = hovering
+                            }
                             Spacer()
                         }
 
@@ -406,28 +421,34 @@ private struct ExternalLinkRow: View {
                         }
 
                         if let branch = gitlabBranchLine {
-                            HStack(spacing: DesignTokens.Spacing.xs) {
-                                if let icon = AssetIcon.image(named: "git-branch") {
-                                    icon
-                                        .resizable()
-                                        .renderingMode(.original)
-                                        .scaledToFit()
-                                        .frame(width: 12, height: 12)
-                                } else {
-                                    Image(systemName: "arrow.triangle.branch")
-                                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
-                                        .foregroundColor(ThemeManager.current.subtext0)
+                            Button(action: { onCopyBranch(branch) }) {
+                                HStack(spacing: DesignTokens.Spacing.xs) {
+                                    if let icon = AssetIcon.image(named: "git-branch") {
+                                        icon
+                                            .resizable()
+                                            .renderingMode(.original)
+                                            .scaledToFit()
+                                            .frame(width: 12, height: 12)
+                                    } else {
+                                        Image(systemName: "arrow.triangle.branch")
+                                            .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
+                                            .foregroundColor(ThemeManager.current.subtext0)
+                                    }
+                                    Text(branch)
+                                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(ThemeManager.current.text)
                                 }
-                                Text(branch)
-                                    .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(ThemeManager.current.text)
+                                .padding(.horizontal, DesignTokens.Spacing.sm)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                                        .fill(ThemeManager.current.surface1.opacity(isHoveringBranch ? 0.9 : 0.7))
+                                )
                             }
-                            .padding(.horizontal, DesignTokens.Spacing.sm)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
-                                    .fill(ThemeManager.current.surface1.opacity(0.7))
-                            )
+                            .buttonStyle(QuietTextButtonStyle(isHovering: isHoveringBranch))
+                            .onHover { hovering in
+                                isHoveringBranch = hovering
+                            }
                         }
                     } else {
                         HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
@@ -468,11 +489,18 @@ private struct ExternalLinkRow: View {
                 }
             }
         }
-        .padding(DesignTokens.Spacing.sm)
+        .padding(.top, DesignTokens.Spacing.xs)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.bottom, DesignTokens.Spacing.sm)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
                 .fill(ThemeManager.current.surface1.opacity(0.7))
         )
+    }
+
+    private func openMergeRequest() {
+        guard let url = URL(string: link.url) else { return }
+        _ = openURL(url)
     }
 
     private var titleText: String {
@@ -682,6 +710,18 @@ private struct LinkStatusBadge: View {
     }
 }
 
+private struct QuietTextButtonStyle: ButtonStyle {
+    let isHovering: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+}
+
 private struct TimelineRow: View {
     let timestamp: String
     let value: String
@@ -715,6 +755,7 @@ private struct TimelineRow: View {
             links: MockApiClient.sampleExternalLinks
         ),
         onRefreshLinks: { _ in },
+        onCopyBranch: { _ in },
         onClose: {}
     )
         .padding(24)

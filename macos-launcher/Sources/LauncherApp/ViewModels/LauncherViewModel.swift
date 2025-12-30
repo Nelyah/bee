@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import OSLog
@@ -26,6 +27,8 @@ final class LauncherViewModel: ObservableObject {
         for: .list(selection: .none, isInsertMode: true)
     )
     @Published var reportConfig: ReportConfig?
+    @Published private(set) var taskDetailState = TaskDetailState()
+    @Published private(set) var externalLinksState = ExternalLinksState()
     @Published var toasts: [ToastMessage] = []
     let commandPalette: CommandPaletteCoordinator
 
@@ -285,6 +288,12 @@ final class LauncherViewModel: ObservableObject {
         }
     }
 
+    func copyBranchNameToClipboard(_ branch: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(branch, forType: .string)
+        showToast(message: "Copied branch name to clipboard", icon: .gitlab)
+    }
+
     /// Cancel any pending delayed toast for parse errors.
     private func cancelPendingParseErrorToast() {
         parseErrorToastScheduler.cancel()
@@ -457,17 +466,106 @@ final class LauncherViewModel: ObservableObject {
     func openDetail() {
         if let newMode = NavigationCoordinator.modeForOpenDetail(selectedIndex: selectedIndex) {
             mode = newMode
+            if let task = selectedTask {
+                loadTaskDetail(taskUUID: task.uuid)
+                loadExternalLinks(taskUUID: task.uuid)
+            }
         }
     }
 
     /// Close the detail view and return to the list.
     func closeDetail() {
         mode = NavigationCoordinator.modeForCloseDetail()
+        taskDetailState = TaskDetailState()
+        externalLinksState = ExternalLinksState()
     }
 
     /// Return the currently selected task.
     var selectedTask: ApiTask? {
         TaskListCoordinator.selectedTask(tasks: tasks, selectedIndex: selectedIndex)
+    }
+
+    func loadTaskDetail(taskUUID: String) {
+        if taskDetailState.isLoading, taskDetailState.detail?.uuid == taskUUID {
+            return
+        }
+        let currentDetail = taskDetailState.detail?.uuid == taskUUID ? taskDetailState.detail : nil
+        taskDetailState = TaskDetailState(
+            isLoading: true,
+            taskUUID: taskUUID,
+            detail: currentDetail,
+            errorMessage: nil
+        )
+        Task {
+            do {
+                let detail = try await apiClient.fetchTaskDetail(taskUUID: taskUUID)
+                taskDetailState = TaskDetailState(
+                    isLoading: false,
+                    taskUUID: taskUUID,
+                    detail: detail,
+                    errorMessage: nil
+                )
+            } catch {
+                taskDetailState = TaskDetailState(
+                    isLoading: false,
+                    taskUUID: taskUUID,
+                    detail: nil,
+                    errorMessage: error.localizedDescription
+                )
+            }
+        }
+    }
+
+    func loadExternalLinks(taskUUID: String) {
+        if externalLinksState.isLoading, externalLinksState.taskUUID == taskUUID {
+            return
+        }
+        externalLinksState = ExternalLinksState(isLoading: true, taskUUID: taskUUID)
+        Task {
+            do {
+                let links = try await apiClient.fetchExternalLinks(taskUUID: taskUUID)
+                externalLinksState = ExternalLinksState(
+                    isLoading: false,
+                    taskUUID: taskUUID,
+                    links: links,
+                    errorMessage: nil,
+                    refreshingProviders: []
+                )
+            } catch {
+                externalLinksState = ExternalLinksState(
+                    isLoading: false,
+                    taskUUID: taskUUID,
+                    links: [],
+                    errorMessage: error.localizedDescription,
+                    refreshingProviders: []
+                )
+            }
+        }
+    }
+
+    func refreshExternalLinks(provider: ExternalLinkProvider) {
+        guard let task = selectedTask else { return }
+        if externalLinksState.taskUUID != task.uuid {
+            loadExternalLinks(taskUUID: task.uuid)
+            return
+        }
+        let linksToSync = externalLinksState.links.filter { $0.provider.lowercased() == provider.rawValue }
+        guard !linksToSync.isEmpty else { return }
+
+        externalLinksState.refreshingProviders.insert(provider)
+        Task {
+            defer {
+                externalLinksState.refreshingProviders.remove(provider)
+            }
+            do {
+                for link in linksToSync {
+                    _ = try await apiClient.syncExternalLink(linkId: link.id, force: true)
+                }
+                loadExternalLinks(taskUUID: task.uuid)
+            } catch {
+                externalLinksState.errorMessage = error.localizedDescription
+            }
+        }
     }
 
     /// Return true if we should automatically run the list action while typing.
@@ -597,6 +695,9 @@ final class LauncherViewModel: ObservableObject {
                 } else {
                     showToast(message: "Link added.")
                 }
+                if mode == .detail {
+                    loadExternalLinks(taskUUID: taskUUID)
+                }
                 closeCommandPalette()
             } catch {
                 removeToast(id: pendingToastId)
@@ -717,6 +818,21 @@ final class LauncherViewModel: ObservableObject {
             return false
         }
     }
+}
+
+struct TaskDetailState {
+    var isLoading: Bool = false
+    var taskUUID: String? = nil
+    var detail: ApiTaskDetail? = nil
+    var errorMessage: String? = nil
+}
+
+struct ExternalLinksState {
+    var isLoading: Bool = false
+    var taskUUID: String? = nil
+    var links: [ExternalLinkDto] = []
+    var errorMessage: String? = nil
+    var refreshingProviders: Set<ExternalLinkProvider> = []
 }
 
 // MARK: - Array Safe Subscript

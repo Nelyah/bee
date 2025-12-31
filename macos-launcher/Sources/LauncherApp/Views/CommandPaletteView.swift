@@ -137,21 +137,30 @@ struct CommandPaletteView: View {
 
     @ViewBuilder
     private var sectionedContentList: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                // Back row when not at root
-                if !commandPalette.isAtRoot {
-                    backRow
-                }
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    // Back row when not at root
+                    if !commandPalette.isAtRoot {
+                        backRow
+                    }
 
-                // Sections
-                ForEach(sections) { section in
-                    sectionView(section)
+                    // Sections
+                    ForEach(sections) { section in
+                        sectionView(section)
+                    }
+                }
+                .padding(DesignTokens.Spacing.lg)
+            }
+            .frame(maxHeight: 300)
+            .onChange(of: commandPalette.selectionIndex) { _, newIndex in
+                guard newIndex < selectableItems.count else { return }
+                let itemId = selectableItems[newIndex].id
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    proxy.scrollTo(itemId, anchor: nil)
                 }
             }
-            .padding(DesignTokens.Spacing.lg)
         }
-        .frame(maxHeight: 300)
     }
 
     @ViewBuilder
@@ -184,8 +193,10 @@ struct CommandPaletteView: View {
                 itemContent(item, isSelected: isSelected)
             }
             .buttonStyle(.plain)
+            .id(item.id)
         } else {
             itemContent(item, isSelected: false)
+                .id(item.id)
         }
     }
 

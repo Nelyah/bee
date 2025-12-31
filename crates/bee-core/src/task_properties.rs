@@ -92,7 +92,10 @@ mod tests {
 
         props.project = Some(None);
         let value = serde_json::to_value(&props).expect("serialize properties");
-        assert_eq!(value.get("project"), Some(&Value::String("none".to_string())));
+        assert_eq!(
+            value.get("project"),
+            Some(&Value::String("none".to_string()))
+        );
     }
 
     #[test]

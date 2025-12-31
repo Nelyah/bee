@@ -15,6 +15,19 @@ fn assert_time_close(actual: DateTime<Local>, expected: DateTime<Local>, toleran
     );
 }
 
+fn next_weekday_start_test(
+    today_start: DateTime<Local>,
+    target: chrono::Weekday,
+) -> DateTime<Local> {
+    let today_weekday = today_start.weekday();
+    let mut days_ahead =
+        (target.num_days_from_monday() + 7 - today_weekday.num_days_from_monday()) % 7;
+    if days_ahead == 0 {
+        days_ahead = 7;
+    }
+    today_start + Duration::try_days(days_ahead as i64).unwrap()
+}
+
 #[derive(Debug, Default)]
 pub struct MockParser {
     lexer: Lexer,
@@ -125,6 +138,24 @@ fn test_read_date_expr() {
     let res = p.read_date_expr().unwrap();
     // Allow a small delta since parsing uses the current time.
     assert_time_close(res, now, 1);
+
+    let lexer = Lexer::new("friday".to_string());
+    let mut p = MockParser::new(lexer);
+
+    let res = p.read_date_expr().unwrap();
+    assert_eq!(
+        res.to_rfc2822(),
+        next_weekday_start_test(today_start, chrono::Weekday::Fri).to_rfc2822()
+    );
+
+    let lexer = Lexer::new("next week".to_string());
+    let mut p = MockParser::new(lexer);
+
+    let res = p.read_date_expr().unwrap();
+    assert_eq!(
+        res.to_rfc2822(),
+        next_weekday_start_test(today_start, chrono::Weekday::Mon).to_rfc2822()
+    );
 
     let lexer = Lexer::new("today - 1h".to_string());
     let mut p = MockParser::new(lexer);

@@ -1,7 +1,7 @@
 use log::debug;
 use std::fmt::Debug;
 
-use chrono::{DateTime, Duration, Local, NaiveTime, TimeDelta, TimeZone};
+use chrono::{DateTime, Datelike, Duration, Local, NaiveTime, TimeDelta, TimeZone, Weekday};
 
 use crate::{
     CoreError, CoreResult,
@@ -312,12 +312,50 @@ pub trait BaseParser: Debug {
                                 + Duration::try_hours(18)
                                     .ok_or_else(|| CoreError::parse("invalid hour duration"))?;
                         }
+                        "next" => {
+                            self.next_token();
+                            self.skip_whitespace();
+                            if self.get_current_token().token_type != TokenType::WordString {
+                                return Err(CoreError::parse(format!(
+                                    "unexpected token '{}' found in invalid date expression",
+                                    self.get_current_token().literal
+                                )));
+                            }
+                            if self.get_current_token().literal != "week" {
+                                return Err(CoreError::parse(format!(
+                                    "unexpected token '{}' found in invalid date expression",
+                                    self.get_current_token().literal
+                                )));
+                            }
+                            try_time = next_weekday_start(today_start, Weekday::Mon);
+                        }
                         "in" => {
                             expect_duration = true;
                             self.next_token();
                             backtrace_tokens += 1 + self.skip_whitespace();
                             in_keyword = true;
                             continue;
+                        }
+                        "monday" => {
+                            try_time = next_weekday_start(today_start, Weekday::Mon);
+                        }
+                        "tuesday" => {
+                            try_time = next_weekday_start(today_start, Weekday::Tue);
+                        }
+                        "wednesday" => {
+                            try_time = next_weekday_start(today_start, Weekday::Wed);
+                        }
+                        "thursday" => {
+                            try_time = next_weekday_start(today_start, Weekday::Thu);
+                        }
+                        "friday" => {
+                            try_time = next_weekday_start(today_start, Weekday::Fri);
+                        }
+                        "saturday" => {
+                            try_time = next_weekday_start(today_start, Weekday::Sat);
+                        }
+                        "sunday" => {
+                            try_time = next_weekday_start(today_start, Weekday::Sun);
                         }
                         // last week
                         _ => {
@@ -346,6 +384,16 @@ pub trait BaseParser: Debug {
         debug!("Parsed date expression. Time: {:?}", time);
         time.ok_or_else(|| CoreError::parse("invalid date expression"))
     }
+}
+
+fn next_weekday_start(today_start: DateTime<Local>, target: Weekday) -> DateTime<Local> {
+    let today_weekday = today_start.weekday();
+    let mut days_ahead =
+        (target.num_days_from_monday() + 7 - today_weekday.num_days_from_monday()) % 7;
+    if days_ahead == 0 {
+        days_ahead = 7;
+    }
+    today_start + Duration::try_days(days_ahead as i64).unwrap_or_else(|| Duration::days(0))
 }
 
 #[cfg(test)]

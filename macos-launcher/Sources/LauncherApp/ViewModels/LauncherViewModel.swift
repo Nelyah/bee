@@ -8,8 +8,6 @@ import SwiftUI
 @MainActor
 final class LauncherViewModel: ObservableObject {
     private enum Constants {
-        static let defaultToastDuration: TimeInterval = 10
-        static let toastAnimationDuration: TimeInterval = 0.2
         static let defaultUnexpectedTokenToastDelay: TimeInterval = 3
     }
 
@@ -30,9 +28,9 @@ final class LauncherViewModel: ObservableObject {
     @Published var availableReports: [ReportSummary] = []
     @Published var selectedReportName: String = UserDefaults.standard
         .string(forKey: UserDefaultsKeys.selectedReportName) ?? ""
-    @Published private(set) var reportFilterChips: [CriteriaChip] = []
-    @Published private(set) var taskDetailState = TaskDetailState()
-    @Published private(set) var externalLinksState = ExternalLinksState()
+    @Published var reportFilterChips: [CriteriaChip] = []
+    @Published var taskDetailState = TaskDetailState()
+    @Published var externalLinksState = ExternalLinksState()
     @Published var toasts: [ToastMessage] = []
     let commandPalette: CommandPaletteCoordinator
 
@@ -55,6 +53,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var taskExpandedData: [String: TaskExpandedContent] = [:]
 
     // MARK: - Project Scope State
+
     /// The currently scoped project (layers on top of report filters).
     @Published var projectScope: String?
 
@@ -73,16 +72,16 @@ final class LauncherViewModel: ObservableObject {
     @Published var hoveredRowIndex: Int?
     /// Currently selected row index in grouped view.
     @Published var selectedRowIndex: Int?
-    private var lastSelectedRowIndex: Int?
+    var lastSelectedRowIndex: Int?
 
-    private let actionService: LauncherActionService
-    private let apiClient: ApiClientProtocol
+    let actionService: LauncherActionService
+    let apiClient: ApiClientProtocol
     private var requestCounter: Int = 0
     private var latestParse: ParseResponse?
-    private var lastSuccessfulParse: ParseResponse?
+    var lastSuccessfulParse: ParseResponse?
     private var lastParseErrorMessage: String?
-    private let logger = Logger(subsystem: "bee.macos-launcher", category: "view-model")
-    private var suppressInputHandling = false
+    let logger = Logger(subsystem: "bee.macos-launcher", category: "view-model")
+    var suppressInputHandling = false
     private var configLoaded = false
     private let unexpectedTokenToastDelay: TimeInterval
     private var cancellables: Set<AnyCancellable> = []
@@ -100,8 +99,6 @@ final class LauncherViewModel: ObservableObject {
             self?.showToast(message: message)
         }
     )
-
-    // Cached completion data
 
     init(
         apiClient: ApiClientProtocol = ApiClient(),
@@ -351,46 +348,7 @@ final class LauncherViewModel: ObservableObject {
         }
     }
 
-    /// Apply default report filters to list actions when no filter was provided.
-    /// Present a toast message that auto-dismisses after a duration.
-    @discardableResult
-    func showToast(
-        message: String,
-        icon: ToastIcon = .warning,
-        duration: TimeInterval = Constants.defaultToastDuration
-    ) -> UUID {
-        let toast = ToastMessage(message: message, icon: icon)
-        withAnimation(.easeInOut(duration: Constants.toastAnimationDuration)) {
-            toasts.append(toast)
-        }
-        Task {
-            try? await Task.sleep(for: .seconds(duration))
-            await MainActor.run {
-                withAnimation(.easeInOut(duration: Constants.toastAnimationDuration)) {
-                    toasts.removeAll { $0.id == toast.id }
-                }
-            }
-        }
-        return toast.id
-    }
-
-    func removeToast(id: UUID) {
-        withAnimation(.easeInOut(duration: Constants.toastAnimationDuration)) {
-            toasts.removeAll { $0.id == id }
-        }
-    }
-
-    func copyBranchNameToClipboard(_ branch: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(branch, forType: .string)
-        showToast(message: "Copied branch name to clipboard", icon: .gitlab)
-    }
-
-    func copyLinkToClipboard(_ url: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(url, forType: .string)
-        showToast(message: "Copied link to clipboard", icon: .gitlab)
-    }
+    // MARK: - Parse Error Toast Scheduling
 
     /// Cancel any pending delayed toast for parse errors.
     private func cancelPendingParseErrorToast() {
@@ -403,241 +361,8 @@ final class LauncherViewModel: ObservableObject {
     }
 
     /// If a parse error is pending, schedule it once the menu closes.
-    private func schedulePendingParseErrorAfterMenuClose() {
+    func schedulePendingParseErrorAfterMenuClose() {
         parseErrorToastScheduler.scheduleAfterMenuClose()
-    }
-
-    /// Move the selection by a delta, clamping at list boundaries (skipping group headers).
-    /// Also exits insert mode when navigating.
-    func moveSelection(delta: Int) {
-        exitInsertMode(restoreSelection: false)
-        let rows = groupedRows
-        let nextIndex = TaskListCoordinator.moveGroupedSelection(
-            rows: rows,
-            currentRowIndex: selectedRowIndex,
-            delta: delta
-        )
-        updateSelection(rowIndex: nextIndex, rows: rows)
-    }
-
-    /// Select the first row in the list.
-    func selectFirstRow() {
-        let rows = groupedRows
-        guard !rows.isEmpty else { return }
-        exitInsertMode(restoreSelection: false)
-        updateSelection(rowIndex: 0, rows: rows)
-    }
-
-    /// Select the last row in the list.
-    func selectLastRow() {
-        let rows = groupedRows
-        guard !rows.isEmpty else { return }
-        exitInsertMode(restoreSelection: false)
-        updateSelection(rowIndex: rows.count - 1, rows: rows)
-    }
-
-    /// Enter insert mode, focusing the text input.
-    func enterInsertMode() {
-        lastSelectedRowIndex = selectedRowIndex
-        isInsertMode = true
-        updateSelection(rowIndex: nil)
-    }
-
-    func exitInsertMode(restoreSelection: Bool = true) {
-        guard isInsertMode else { return }
-        isInsertMode = false
-        if restoreSelection, selectedRowIndex == nil, let lastSelectedRowIndex {
-            updateSelection(rowIndex: lastSelectedRowIndex)
-        }
-    }
-
-    func selectRow(_ rowIndex: Int) {
-        exitInsertMode(restoreSelection: false)
-        updateSelection(rowIndex: rowIndex)
-    }
-
-    func activatePrimary(at rowIndex: Int) {
-        let rows = groupedRows
-        guard rowIndex >= 0, rowIndex < rows.count else { return }
-        exitInsertMode(restoreSelection: false)
-        updateSelection(rowIndex: rowIndex, rows: rows)
-        switch rows[rowIndex] {
-        case let .header(header):
-            toggleGroupCollapse(header.key)
-        case .task:
-            openDetail()
-        }
-    }
-
-    private func updateSelection(rowIndex: Int?, rows: [GroupedListRow]? = nil) {
-        let currentRows = rows ?? groupedRows
-        selectedRowIndex = rowIndex
-        if let rowIndex, rowIndex < currentRows.count {
-            if case let .task(item) = currentRows[rowIndex] {
-                selectedIndex = item.flatIndex
-            }
-        } else {
-            selectedIndex = nil
-        }
-        if !isInsertMode {
-            lastSelectedRowIndex = rowIndex
-        }
-    }
-
-    // MARK: - Grouping Methods
-
-    /// Computed grouped rows for display.
-    var groupedRows: [GroupedListRow] {
-        TaskListCoordinator.groupTasks(tasks, using: groupingStrategy, collapsedKeys: collapsedGroups)
-    }
-
-    /// Toggle collapse for a group.
-    func toggleGroupCollapse(_ key: String?) {
-        if collapsedGroups.contains(key) {
-            collapsedGroups.remove(key)
-        } else {
-            collapsedGroups.insert(key)
-        }
-        saveCollapsedState()
-    }
-
-    /// Toggle collapse for the currently selected or hovered header. Returns true if toggled.
-    func toggleSelectedOrHoveredGroupCollapse() -> Bool {
-        let rows = groupedRows
-        // Prefer selected row (keyboard navigation), fall back to hovered (mouse)
-        let idx = selectedRowIndex ?? hoveredRowIndex
-        guard let idx,
-              idx < rows.count,
-              case let .header(header) = rows[idx]
-        else {
-            return false
-        }
-        toggleGroupCollapse(header.key)
-        return true
-    }
-
-    func canToggleSelectedOrHoveredGroupCollapse() -> Bool {
-        let rows = groupedRows
-        let idx = selectedRowIndex ?? hoveredRowIndex
-        guard let idx, idx < rows.count else { return false }
-        if case .header = rows[idx] {
-            return true
-        }
-        return false
-    }
-
-    private func saveCollapsedState() {
-        let keys = collapsedGroups.compactMap { $0 }
-        UserDefaults.standard.set(keys, forKey: UserDefaultsKeys.collapsedGroups)
-        UserDefaults.standard.set(collapsedGroups.contains(nil), forKey: UserDefaultsKeys.collapsedNilGroup)
-    }
-
-    func loadCollapsedState() {
-        let keys = UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.collapsedGroups) ?? []
-        let includesNil = UserDefaults.standard.bool(forKey: UserDefaultsKeys.collapsedNilGroup)
-        collapsedGroups = Set(keys.map { Optional($0) })
-        if includesNil { collapsedGroups.insert(nil) }
-    }
-
-    /// Set the grouping strategy and persist the selection.
-    func setGroupingStrategy(_ option: GroupByOption) {
-        // Clear collapsed state - keys won't match new strategy
-        collapsedGroups.removeAll()
-
-        groupingStrategy = option.makeStrategy()
-
-        // Persist selection
-        UserDefaults.standard.set(option.rawValue, forKey: UserDefaultsKeys.selectedGroupBy)
-
-        // Clear old collapsed state persistence
-        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.collapsedGroups)
-        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.collapsedNilGroup)
-
-        // Close command palette after selection
-        commandPalette.close()
-    }
-
-    /// Load the persisted grouping strategy.
-    func loadGroupingStrategy() {
-        let rawValue = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedGroupBy)
-        let option = rawValue.flatMap { GroupByOption(rawValue: $0) } ?? .project
-        groupingStrategy = option.makeStrategy()
-    }
-
-    // MARK: - Task Expansion Methods
-
-    /// Toggle expansion for a task. If expanding and data not loaded, triggers load.
-    func toggleTaskExpansion(_ taskUUID: String) {
-        if expandedTasks.contains(taskUUID) {
-            expandedTasks.remove(taskUUID)
-        } else {
-            expandedTasks.insert(taskUUID)
-            // Load data if not already loaded
-            if taskExpandedData[taskUUID] == nil {
-                loadExpandedContent(for: taskUUID)
-            }
-        }
-    }
-
-    /// Check if a task is expanded.
-    func isTaskExpanded(_ taskUUID: String) -> Bool {
-        expandedTasks.contains(taskUUID)
-    }
-
-    /// Toggle expansion for the currently selected or hovered task. Returns true if toggled.
-    func toggleSelectedOrHoveredTaskExpansion() -> Bool {
-        let rows = groupedRows
-        let idx = selectedRowIndex ?? hoveredRowIndex
-        guard let idx,
-              idx < rows.count,
-              case let .task(item) = rows[idx]
-        else {
-            return false
-        }
-        toggleTaskExpansion(item.task.uuid)
-        return true
-    }
-
-    /// Check if the currently selected or hovered row is an expandable task.
-    func canToggleSelectedOrHoveredTaskExpansion() -> Bool {
-        let rows = groupedRows
-        let idx = selectedRowIndex ?? hoveredRowIndex
-        guard let idx, idx < rows.count else { return false }
-        if case .task = rows[idx] {
-            return true
-        }
-        return false
-    }
-
-    /// Load expanded content (links + annotations) for a task.
-    private func loadExpandedContent(for taskUUID: String) {
-        // Mark as loading with timestamp for delayed indicator
-        taskExpandedData[taskUUID] = TaskExpandedContent(isLoading: true, loadingStartedAt: Date())
-
-        Task {
-            do {
-                // Load both detail (for annotations) and external links in parallel
-                async let detailTask = apiClient.fetchTaskDetail(taskUUID: taskUUID)
-                async let linksTask = apiClient.fetchExternalLinks(taskUUID: taskUUID)
-
-                let detail = try await detailTask
-                let links = try await linksTask
-
-                taskExpandedData[taskUUID] = TaskExpandedContent(
-                    isLoading: false,
-                    links: links,
-                    annotations: detail.annotations,
-                    errorMessage: nil
-                )
-            } catch {
-                taskExpandedData[taskUUID] = TaskExpandedContent(
-                    isLoading: false,
-                    links: [],
-                    annotations: [],
-                    errorMessage: error.localizedDescription
-                )
-            }
-        }
     }
 
     // MARK: - Project Scope Methods
@@ -654,217 +379,7 @@ final class LauncherViewModel: ObservableObject {
         handleInputChange(input)
     }
 
-    /// Keep selection within bounds after tasks update.
-    func syncSelectionAfterTasksUpdate() {
-        selectedIndex = TaskListCoordinator.syncSelection(tasks: tasks, selectedIndex: selectedIndex)
-        if let selectedIndex {
-            let rows = groupedRows
-            let rowIndex = rows.firstIndex { row in
-                if case let .task(item) = row {
-                    return item.flatIndex == selectedIndex
-                }
-                return false
-            }
-            updateSelection(rowIndex: rowIndex, rows: rows)
-        } else {
-            updateSelection(rowIndex: nil)
-        }
-    }
-
-    /// Sort tasks by urgency, highest first, keeping nil urgency last.
-    func sortTasksByUrgency(_ items: [ApiTask]) -> [ApiTask] {
-        TaskListCoordinator.sortTasksByUrgency(items)
-    }
-
-    /// Open the detail view for the currently selected task.
-    func openDetail() {
-        if let newMode = NavigationCoordinator.modeForOpenDetail(selectedIndex: selectedIndex) {
-            mode = newMode
-            if let task = selectedTask {
-                loadTaskDetail(taskUUID: task.uuid)
-                loadExternalLinks(taskUUID: task.uuid)
-            }
-        }
-    }
-
-    /// Close the detail view and return to the list.
-    func closeDetail() {
-        mode = NavigationCoordinator.modeForCloseDetail()
-        taskDetailState = TaskDetailState()
-        externalLinksState = ExternalLinksState()
-    }
-
-    /// Return the currently selected task.
-    var selectedTask: ApiTask? {
-        TaskListCoordinator.selectedTask(tasks: tasks, selectedIndex: selectedIndex)
-    }
-
-    /// Display name for the current report.
-    var currentReportDisplayName: String {
-        if selectedReportName.isEmpty {
-            return availableReports.first(where: { $0.isDefault })?.name ?? "default"
-        }
-        return selectedReportName
-    }
-
-    var criteriaFilterChips: [CriteriaChip] {
-        var chips = reportFilterChips
-        if let parsed = lastSuccessfulParse {
-            let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter)
-            if parsedChips.isEmpty, shouldAutoList(actionName: parsed.action) {
-                chips.append(contentsOf: CriteriaChipBuilder.filterChips(
-                    from: parsed.tokens,
-                    actionName: parsed.action
-                ))
-            } else if !parsedChips.isEmpty {
-                chips.append(contentsOf: parsedChips)
-            }
-        }
-        return deduplicateChips(chips)
-    }
-
-    var criteriaPropertyChips: [CriteriaChip] {
-        guard let parsed = lastSuccessfulParse else { return [] }
-        return CriteriaChipBuilder.propertyChips(from: parsed.properties)
-    }
-
-    /// Chip representing the current project scope, if any.
-    var projectScopeChip: CriteriaChip? {
-        guard let project = projectScope else { return nil }
-        return CriteriaChip(kind: .filter, label: project, systemImage: "folder", tone: .teal)
-    }
-
-    func refreshReportFilterChips() async {
-        guard let reportConfig else {
-            reportFilterChips = []
-            return
-        }
-        let filterExpr = reportConfig.filters.joined(separator: " or ").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !filterExpr.isEmpty else {
-            reportFilterChips = []
-            return
-        }
-
-        do {
-            let parsed = try await actionService.parse(input: "list \(filterExpr)")
-            let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter)
-            let fallbackChips = CriteriaChipBuilder.filterChips(from: parsed.tokens, actionName: parsed.action)
-            reportFilterChips = deduplicateChips(parsedChips.isEmpty ? fallbackChips : parsedChips)
-        } catch {
-            logger.error("Failed to parse report filters: \(error.localizedDescription, privacy: .public)")
-            reportFilterChips = CriteriaChipBuilder.reportFilterChips(from: reportConfig)
-        }
-    }
-
-    private func deduplicateChips(_ chips: [CriteriaChip]) -> [CriteriaChip] {
-        var seen = Set<String>()
-        var result: [CriteriaChip] = []
-        for chip in chips where seen.insert(chip.id).inserted {
-            result.append(chip)
-        }
-        return result
-    }
-
-    /// Select a report by name and refresh the task list.
-    func selectReport(_ name: String) {
-        guard let report = availableReports.first(where: { $0.name == name }) else { return }
-        selectedReportName = name
-        UserDefaults.standard.set(name, forKey: UserDefaultsKeys.selectedReportName)
-        reportConfig = ReportConfig(
-            filters: report.filters,
-            columns: report.columns,
-            columnNames: report.columnNames
-        )
-        actionService.setReportConfig(reportConfig)
-        Task {
-            await refreshReportFilterChips()
-        }
-        // Refresh task list with new report filters
-        handleInputChange(input)
-    }
-
-    func loadTaskDetail(taskUUID: String) {
-        if taskDetailState.isLoading, taskDetailState.detail?.uuid == taskUUID {
-            return
-        }
-        let currentDetail = taskDetailState.detail?.uuid == taskUUID ? taskDetailState.detail : nil
-        taskDetailState = TaskDetailState(
-            isLoading: true,
-            taskUUID: taskUUID,
-            detail: currentDetail,
-            errorMessage: nil
-        )
-        Task {
-            do {
-                let detail = try await apiClient.fetchTaskDetail(taskUUID: taskUUID)
-                taskDetailState = TaskDetailState(
-                    isLoading: false,
-                    taskUUID: taskUUID,
-                    detail: detail,
-                    errorMessage: nil
-                )
-            } catch {
-                taskDetailState = TaskDetailState(
-                    isLoading: false,
-                    taskUUID: taskUUID,
-                    detail: nil,
-                    errorMessage: error.localizedDescription
-                )
-            }
-        }
-    }
-
-    func loadExternalLinks(taskUUID: String) {
-        if externalLinksState.isLoading, externalLinksState.taskUUID == taskUUID {
-            return
-        }
-        externalLinksState = ExternalLinksState(isLoading: true, taskUUID: taskUUID)
-        Task {
-            do {
-                let links = try await apiClient.fetchExternalLinks(taskUUID: taskUUID)
-                externalLinksState = ExternalLinksState(
-                    isLoading: false,
-                    taskUUID: taskUUID,
-                    links: links,
-                    errorMessage: nil,
-                    refreshingProviders: []
-                )
-            } catch {
-                externalLinksState = ExternalLinksState(
-                    isLoading: false,
-                    taskUUID: taskUUID,
-                    links: [],
-                    errorMessage: error.localizedDescription,
-                    refreshingProviders: []
-                )
-            }
-        }
-    }
-
-    func refreshExternalLinks(provider: ExternalLinkProvider) {
-        guard let task = selectedTask else { return }
-        if externalLinksState.taskUUID != task.uuid {
-            loadExternalLinks(taskUUID: task.uuid)
-            return
-        }
-        let linksToSync = externalLinksState.links.filter { $0.provider.lowercased() == provider.rawValue }
-        guard !linksToSync.isEmpty else { return }
-
-        externalLinksState.refreshingProviders.insert(provider)
-        Task {
-            defer {
-                externalLinksState.refreshingProviders.remove(provider)
-            }
-            do {
-                for link in linksToSync {
-                    _ = try await apiClient.syncExternalLink(linkId: link.id, force: true)
-                }
-                loadExternalLinks(taskUUID: task.uuid)
-            } catch {
-                externalLinksState.errorMessage = error.localizedDescription
-            }
-        }
-    }
+    // MARK: - Utility Methods
 
     /// Return true if we should automatically run the list action while typing.
     func shouldAutoList(actionName: String) -> Bool {
@@ -907,94 +422,7 @@ final class LauncherViewModel: ObservableObject {
         suppressInputHandling = false
     }
 
-    // MARK: - Command Palette
-
-    func openCommandPalette() {
-        let context = CommandPaletteContext(
-            hasSelectedTask: selectedTask != nil,
-            selectedTaskUUID: selectedTask?.uuid,
-            currentReportName: selectedReportName,
-            availableReports: availableReports,
-            projects: completion.projectNames,
-            tags: completion.tagNames,
-            currentProjectScope: projectScope
-        )
-        if let message = commandPalette.open(context: context) {
-            showToast(message: message)
-        }
-    }
-
-    func closeCommandPalette() {
-        commandPalette.close()
-    }
-
-    func submitCommandPaletteSelection() {
-        commandPalette.handleEnter()
-    }
-
-    func moveCommandPaletteSelection(delta: Int) {
-        commandPalette.moveSelection(delta: delta)
-    }
-
-    // MARK: - Completion Methods
-
-    /// Load all completion data from the API at startup.
-    func loadCompletionData() async {
-        if let errorMessage = await completion.loadData(actionService: actionService) {
-            logger.error("Failed to load completions: \(errorMessage, privacy: .public)")
-            return
-        }
-        completion.update(input: input, tokens: tokens, tasks: tasks)
-        let counts = completion.cacheCounts
-        logger.info("Completions loaded: \(counts.projects) projects, \(counts.tags) tags, \(counts.actions) actions")
-    }
-
-    /// Update completions based on the current context and prefix.
-    func updateCompletions() {
-        completion.update(input: input, tokens: tokens, tasks: tasks)
-    }
-
-    /// Accept the currently selected completion.
-    func acceptCompletion(_ item: CompletionItem? = nil) {
-        guard let result = completion.applyCompletion(item, input: input) else { return }
-        suppressInputHandling = true
-        input = result.text
-        completion.cursorPosition = result.cursorPosition
-        suppressInputHandling = false
-
-        clearCompletions()
-
-        // Re-parse after completion
-        handleInputChange(input)
-    }
-
-    /// Accept the ghost text completion (Tab key).
-    func acceptGhostText() {
-        if let item = completion.acceptGhostText() {
-            acceptCompletion(item)
-        }
-    }
-
-    /// Toggle the completion menu visibility.
-    func toggleCompletionMenu() {
-        completion.toggleMenu(input: input, tokens: tokens, tasks: tasks)
-    }
-
-    /// Move completion selection up/down.
-    func moveCompletionSelection(delta: Int) {
-        completion.moveSelection(delta: delta)
-    }
-
-    /// Clear all completion state.
-    func clearCompletions() {
-        completion.clear()
-        schedulePendingParseErrorAfterMenuClose()
-    }
-
-    /// Handle cursor position changes from the text view.
-    func handleCursorChange(_ position: Int) {
-        completion.updateCursorPosition(position, input: input, tokens: tokens, tasks: tasks)
-    }
+    // MARK: - Keyboard Handlers
 
     @discardableResult
     func handleEscape() -> Bool {
@@ -1062,6 +490,8 @@ final class LauncherViewModel: ObservableObject {
         }
     }
 }
+
+// MARK: - Supporting Types
 
 struct TaskDetailState {
     var isLoading: Bool = false

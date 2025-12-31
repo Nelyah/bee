@@ -236,22 +236,22 @@ enum KeyHandlingDecider {
     private static func normalModeKeyAction(_ input: KeyInput) -> NormalModeAction? {
         switch input.keyCode {
         case KeyCode.keyI:
-            return .enterInsertMode
+            .enterInsertMode
         case KeyCode.keyJ:
-            return .moveSelection(1)
+            .moveSelection(1)
         case KeyCode.keyK:
-            return .moveSelection(-1)
+            .moveSelection(-1)
         case KeyCode.keyG:
-            return input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
+            input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
         case KeyCode.returnKey, KeyCode.keypadEnter:
-            return .activatePrimary
+            .activatePrimary
         case KeyCode.space:
-            return .toggleGroupCollapse
+            .toggleGroupCollapse
         case KeyCode.tab:
             // Tab works for both: collapse headers or expand tasks (context decides)
-            return .toggleWithTab
+            .toggleWithTab
         default:
-            return nil
+            nil
         }
     }
 

@@ -156,7 +156,7 @@ final class CommandPaletteCoordinatorTests: XCTestCase {
         _ = coordinator.open(context: CommandPaletteContext())
 
         let items = coordinator.selectableItems
-        let ids = items.map { $0.id }
+        let ids = items.map(\.id)
 
         // All IDs should be unique
         XCTAssertEqual(Set(ids).count, ids.count, "All item IDs must be unique for scrollTo to work")
@@ -216,7 +216,7 @@ private struct TestMultiItemContributor: CommandPaletteSectionContributor {
     var priority: Int { 0 }
 
     func buildSections(context: CommandPaletteContext, query: String) -> [CommandPaletteSection] {
-        let items: [CommandPaletteItem] = (1...5).map { index in
+        let items: [CommandPaletteItem] = (1 ... 5).map { index in
             .action(CommandPaletteActionItem(
                 id: "test-item-\(index)",
                 title: "Test Item \(index)",

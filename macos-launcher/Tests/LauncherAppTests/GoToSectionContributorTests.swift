@@ -4,7 +4,6 @@ import XCTest
 
 @MainActor
 final class GoToSectionContributorTests: XCTestCase {
-
     // MARK: - Section Building Tests
 
     func testBuildSectionsWithProjects() {
@@ -93,7 +92,6 @@ final class GoToSectionContributorTests: XCTestCase {
 
 @MainActor
 final class ActionsSectionContributorScopeTests: XCTestCase {
-
     func testClearProjectScopeActionAppearsWhenScopeSet() {
         let handler = MockActionHandler()
         let contributor = ActionsSectionContributor(actionHandler: handler)

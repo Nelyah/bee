@@ -24,12 +24,12 @@ final class CompletionCoordinator: ObservableObject {
 
     /// Project names from completion cache.
     var projectNames: [String] {
-        cache.projects.map { $0.value }
+        cache.projects.map(\.value)
     }
 
     /// Tag names from completion cache.
     var tagNames: [String] {
-        cache.tags.map { $0.value }
+        cache.tags.map(\.value)
     }
 
     func loadData(actionService: LauncherActionService) async -> String? {

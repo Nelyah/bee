@@ -1,24 +1,6 @@
 # DEBT TODO
 
-## Summary
-- Task list UX has multiple interaction gaps (selection vs input focus, bottom hint bar overlap).
-- Report management is missing user-defined persistence and UI entry points.
-- List rows lack progressive disclosure for links/annotations in-place.
-
 ## Open Issues
-### DEBT-0029: Bottom hint bar overlaps last list row
-- Priority: P1
-- Effort: M
-- Area: macos-launcher list layout
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/ContentView.swift`, `macos-launcher/Sources/LauncherApp/Views/Components/BottomHintBar.swift`, `macos-launcher/Sources/LauncherApp/Views/TaskListView.swift`
-- Smells: UX-regression, layout-collision, magic-number
-- Problem (rough): The bottom status/hint bar visually overlays the last list row. Selection can move into a row that is partially hidden beneath the bar, so the user loses context for the selected item.
-- Suggested fix (rough):
-  - Add a scroll padding/inset that accounts for `BottomHintBar.height` when calculating visible list area.
-  - Adjust the scroll-to anchor or offset so selection stops when the item is above the bar (i.e., keep one row of breathing room).
-  - Consider a layout container that reserves space for the bar while keeping the bar visually transparent.
-- Safety net: Add a UI test or view model test that verifies selected row index scrolls to a visible area above the bar; add snapshot or geometry assertions if available.
-
 ### DEBT-0033: Missing “Go to…” menu for project-scoped views
 - Priority: P1
 - Effort: M
@@ -64,6 +46,15 @@
 - Safety net: Unit tests for expanded state tracking; UI snapshot tests for collapsed vs expanded row.
 
 ## Done
+### DEBT-0029: Bottom hint bar overlaps last list row ✅
+- Status: Completed (2025-12-31)
+- Priority: P1
+- Effort: M
+- Area: macos-launcher list layout
+- Evidence: `macos-launcher/Sources/LauncherApp/Views/TaskListView.swift`
+- Resolution: Used `safeAreaInset(edge: .bottom)` on ScrollView to reserve space for hint bar (50pt). This makes `scrollTo`, G command, and all scroll calculations respect the reserved area. Direction-aware anchor for smooth UX. Added frosted glass effect to hint bar.
+- Safety net: Manual verification; last row visible when scrolled to bottom.
+
 ### DEBT-0037: Missing back navigation affordance in non-main views ✅
 - Status: Completed (2025-12-31)
 - Priority: P1

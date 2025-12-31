@@ -26,7 +26,11 @@ struct BottomHintBar: View {
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .fill(ThemeManager.current.surface0.opacity(0.6))
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                        .fill(ThemeManager.current.surface0.opacity(0.7))
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                         .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)

@@ -202,10 +202,15 @@ struct TaskListView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, TaskListLayout.listVerticalPadding)
                     }
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        // Reserve space for BottomHintBar overlay so scrollTo respects it
+                        Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.lg)
+                    }
                     .onChange(of: viewModel.selectedRowIndex) { _, newValue in
                         guard let index = newValue,
                               index < viewModel.groupedRows.count else { return }
                         let rowId = viewModel.groupedRows[index].id
+                        // anchor: nil only scrolls if item is out of visible area
                         proxy.scrollTo(rowId, anchor: nil)
                     }
                 }

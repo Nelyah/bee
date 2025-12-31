@@ -127,14 +127,14 @@ final class CommandPaletteDataSource: ObservableObject {
                 }
                 // Also check subtitle if available
                 if let subtitle = item.subtitle,
-                    let score = scorer.score(query: trimmedQuery, target: subtitle)
+                   let score = scorer.score(query: trimmedQuery, target: subtitle)
                 {
                     return (item, score)
                 }
                 return nil
             }
             .sorted { $0.score > $1.score }
-            .map { $0.item }
+            .map(\.item)
     }
 
     /// Returns the number of registered contributors.
@@ -144,6 +144,6 @@ final class CommandPaletteDataSource: ObservableObject {
 
     /// Returns the IDs of all registered contributors in priority order.
     var contributorIds: [String] {
-        contributors.map { $0.contributorId }
+        contributors.map(\.contributorId)
     }
 }

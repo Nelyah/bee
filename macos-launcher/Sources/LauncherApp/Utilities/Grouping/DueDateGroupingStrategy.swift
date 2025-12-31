@@ -12,21 +12,21 @@ struct DueDateGroupingStrategy: TaskGroupingStrategy {
 
         var displayName: String {
             switch self {
-            case .overdue: return "Overdue"
-            case .today: return "Today"
-            case .tomorrow: return "Tomorrow"
-            case .future: return "Future"
-            case .noDueDate: return "No Due Date"
+            case .overdue: "Overdue"
+            case .today: "Today"
+            case .tomorrow: "Tomorrow"
+            case .future: "Future"
+            case .noDueDate: "No Due Date"
             }
         }
 
         var sortOrder: Int {
             switch self {
-            case .overdue: return 0
-            case .today: return 1
-            case .tomorrow: return 2
-            case .future: return 3
-            case .noDueDate: return 4
+            case .overdue: 0
+            case .today: 1
+            case .tomorrow: 2
+            case .future: 3
+            case .noDueDate: 4
             }
         }
     }
@@ -48,7 +48,11 @@ struct DueDateGroupingStrategy: TaskGroupingStrategy {
             return Bucket.noDueDate.rawValue
         }
 
-        let daysDifference = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: calendar.startOfDay(for: dueDate)).day ?? 0
+        let daysDifference = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: today),
+            to: calendar.startOfDay(for: dueDate)
+        ).day ?? 0
 
         if daysDifference < 0 {
             return Bucket.overdue.rawValue
@@ -62,7 +66,7 @@ struct DueDateGroupingStrategy: TaskGroupingStrategy {
     }
 
     func displayName(for key: String?) -> String {
-        guard let key = key, let bucket = Bucket(rawValue: key) else {
+        guard let key, let bucket = Bucket(rawValue: key) else {
             return "Unknown"
         }
         return bucket.displayName

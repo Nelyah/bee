@@ -16,7 +16,8 @@ final class ApiClient: ApiClientProtocol, Sendable {
         if let baseURL {
             self.baseURL = baseURL
         } else if let env = environment["BEE_API_BASE_URL"],
-                  let url = URL(string: env) {
+                  let url = URL(string: env)
+        {
             self.baseURL = url
         } else {
             self.baseURL = defaultURL
@@ -44,7 +45,7 @@ final class ApiClient: ApiClientProtocol, Sendable {
                 return try await send(request, path: "/v1/action")
             } catch let error as ApiClientError {
                 switch error {
-                case .api(let message, let code, let developerMessage):
+                case let .api(message, code, developerMessage):
                     if message.lowercased().contains("database is locked"), attempt < 2 {
                         attempt += 1
                         let delay = UInt64(150_000_000 * attempt)
@@ -99,12 +100,15 @@ final class ApiClient: ApiClientProtocol, Sendable {
             path: "/v1/external-links/jira/issues/recent",
             queryItems: [
                 URLQueryItem(name: "limit", value: String(limit)),
-                URLQueryItem(name: "scope", value: scope.rawValue)
+                URLQueryItem(name: "scope", value: scope.rawValue),
             ]
         )
     }
 
-    func resolveExternalLink(provider: ExternalLinkProvider, input: String) async throws -> ExternalLinkResolveResponse {
+    func resolveExternalLink(
+        provider: ExternalLinkProvider,
+        input: String
+    ) async throws -> ExternalLinkResolveResponse {
         let request = ExternalLinkResolveRequest(provider: provider.rawValue, input: input)
         return try await send(request, path: "/v1/external-links/resolve")
     }
@@ -115,8 +119,8 @@ final class ApiClient: ApiClientProtocol, Sendable {
     }
 
     /// Send a JSON POST request to the API and decode the response type.
-    private func send<Request: Encodable, Response: Decodable>(
-        _ body: Request,
+    private func send<Response: Decodable>(
+        _ body: some Encodable,
         path: String
     ) async throws -> Response {
         let url = baseURL.appendingPathComponent(path)
@@ -179,12 +183,15 @@ final class ApiClient: ApiClientProtocol, Sendable {
             logger.error("HTTP error \(path, privacy: .public) (no response)")
             throw ApiClientError.invalidResponse
         }
-        guard (200..<300).contains(http.statusCode) else {
+        guard (200 ..< 300).contains(http.statusCode) else {
             let payload = decodeErrorPayload(from: data)
             let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
             logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
             if let payload {
-                logger.error("API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)")
+                logger
+                    .error(
+                        "API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)"
+                    )
             }
             throw ApiClientError.api(
                 message: message,
@@ -208,28 +215,28 @@ enum ApiClientError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .api(let message, _, _):
-            return message
+        case let .api(message, _, _):
+            message
         case .invalidResponse:
-            return "Invalid response from server"
+            "Invalid response from server"
         }
     }
 
     var code: String? {
         switch self {
-        case .api(_, let code, _):
-            return code
+        case let .api(_, code, _):
+            code
         case .invalidResponse:
-            return nil
+            nil
         }
     }
 
     var developerMessage: String? {
         switch self {
-        case .api(_, _, let developerMessage):
-            return developerMessage
+        case let .api(_, _, developerMessage):
+            developerMessage
         case .invalidResponse:
-            return nil
+            nil
         }
     }
 }

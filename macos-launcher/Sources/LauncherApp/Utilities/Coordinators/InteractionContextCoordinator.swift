@@ -23,7 +23,7 @@ struct BottomHintModel: Equatable {
     let right: [BottomHint]
 }
 
-struct InteractionContextCoordinator {
+enum InteractionContextCoordinator {
     static func baseContext(
         mode: LauncherMode,
         selectedRowIndex: Int?,
@@ -51,7 +51,7 @@ struct InteractionContextCoordinator {
         switch base {
         case .detail:
             return .detail
-        case .list(let selection):
+        case let .list(selection):
             if showCompletionMenu {
                 return .completionMenu(selection: selection, isInsertMode: isInsertMode)
             }
@@ -75,7 +75,7 @@ struct InteractionContextCoordinator {
     }
 }
 
-struct BottomHintModelBuilder {
+enum BottomHintModelBuilder {
     static func model(for context: InteractionContext) -> BottomHintModel {
         let left = leftHints(for: context)
         let right = rightHints(for: context)
@@ -84,7 +84,7 @@ struct BottomHintModelBuilder {
 
     private static func leftHints(for context: InteractionContext) -> [BottomHint] {
         var hints = [BottomHint(key: "Esc", label: escapeLabel(for: context))]
-        if case .list(_, let isInsertMode) = context, !isInsertMode {
+        if case let .list(_, isInsertMode) = context, !isInsertMode {
             hints.append(BottomHint(key: "i", label: "Insert"))
         }
         return hints
@@ -102,32 +102,32 @@ struct BottomHintModelBuilder {
     private static func escapeLabel(for context: InteractionContext) -> String {
         switch context {
         case .commandPalette:
-            return "Close menu"
+            "Close menu"
         case .completionMenu:
-            return "Hide suggestions"
+            "Hide suggestions"
         case .detail:
-            return "Back"
-        case .list(_, let isInsertMode):
-            return isInsertMode ? "Exit insert" : "Close"
+            "Back"
+        case let .list(_, isInsertMode):
+            isInsertMode ? "Exit insert" : "Close"
         }
     }
 
     private static func enterLabel(for context: InteractionContext) -> String? {
         switch context {
         case .commandPalette:
-            return "Select"
+            "Select"
         case .completionMenu:
-            return "Accept suggestion"
+            "Accept suggestion"
         case .detail:
-            return nil
-        case .list(let selection, _):
+            nil
+        case let .list(selection, _):
             switch selection {
             case .groupHeader:
-                return "Toggle fold"
+                "Toggle fold"
             case .task:
-                return "Open task"
+                "Open task"
             case .none:
-                return "Run action"
+                "Run action"
             }
         }
     }

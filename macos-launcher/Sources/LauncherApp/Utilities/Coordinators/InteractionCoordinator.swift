@@ -1,4 +1,4 @@
-struct InteractionCoordinator {
+enum InteractionCoordinator {
     enum EscapeAction: Equatable {
         case closeCommandPalette
         case clearCompletions
@@ -22,13 +22,13 @@ struct InteractionCoordinator {
     static func escapeAction(for context: InteractionContext) -> EscapeAction {
         switch context {
         case .commandPalette:
-            return .closeCommandPalette
+            .closeCommandPalette
         case .completionMenu:
-            return .clearCompletions
+            .clearCompletions
         case .detail:
-            return .closeDetail
-        case .list(_, let isInsertMode):
-            return isInsertMode ? .exitInsertMode : .closeWindow
+            .closeDetail
+        case let .list(_, isInsertMode):
+            isInsertMode ? .exitInsertMode : .closeWindow
         }
     }
 
@@ -38,19 +38,19 @@ struct InteractionCoordinator {
     ) -> NormalModeEffect {
         switch action {
         case .enterInsertMode:
-            return .enterInsertMode
-        case .moveSelection(let delta):
-            return .moveSelection(delta)
+            .enterInsertMode
+        case let .moveSelection(delta):
+            .moveSelection(delta)
         case .selectFirst:
-            return .selectFirst
+            .selectFirst
         case .selectLast:
-            return .selectLast
+            .selectLast
         case .toggleGroupCollapse:
-            return .toggleGroupCollapse
+            .toggleGroupCollapse
         case .activatePrimary:
-            return canToggleGroupCollapse ? .toggleGroupCollapse : .openDetail
+            canToggleGroupCollapse ? .toggleGroupCollapse : .openDetail
         case .openCommandPalette:
-            return .openCommandPalette
+            .openCommandPalette
         }
     }
 }

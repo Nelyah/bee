@@ -63,7 +63,7 @@ private struct HintChip: View {
         leftHints: [BottomHint(key: "Esc", label: "Back")],
         rightHints: [
             BottomHint(key: "Enter", label: "Open"),
-            BottomHint(key: "⌘K", label: "Command menu")
+            BottomHint(key: "⌘K", label: "Command menu"),
         ]
     )
     .padding(24)

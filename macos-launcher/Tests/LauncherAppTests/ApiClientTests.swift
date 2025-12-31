@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class ApiClientTests: XCTestCase {
     override func tearDown() {
@@ -36,7 +36,8 @@ final class ApiClientTests: XCTestCase {
 
     func testParseReturnsApiErrorMessageForNon2xx() async {
         TestURLProtocol.requestHandler = { request in
-            let data = #"{"code":"parse_error","user_message":"bad things","developer_message":"details"}"#.data(using: .utf8)!
+            let data = #"{"code":"parse_error","user_message":"bad things","developer_message":"details"}"#
+                .data(using: .utf8)!
             return (
                 HTTPURLResponse(
                     url: request.url!,
@@ -58,7 +59,7 @@ final class ApiClientTests: XCTestCase {
             XCTFail("Expected ApiClientError")
         } catch let error as ApiClientError {
             switch error {
-            case .api(let message, let code, let developerMessage):
+            case let .api(message, code, developerMessage):
                 XCTAssertEqual(message, "bad things")
                 XCTAssertEqual(code, "parse_error")
                 XCTAssertEqual(developerMessage, "details")

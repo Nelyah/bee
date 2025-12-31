@@ -75,7 +75,7 @@ struct ProjectGroupingStrategy: TaskGroupingStrategy {
     }
 
     func isCollapsed(_ key: String?, collapsedKeys: Set<String?>) -> Bool {
-        guard let key = key else {
+        guard let key else {
             // nil key = "No Project", just check direct collapse
             return collapsedKeys.contains(nil)
         }
@@ -90,7 +90,7 @@ struct ProjectGroupingStrategy: TaskGroupingStrategy {
     }
 
     func isParentCollapsed(_ key: String?, collapsedKeys: Set<String?>) -> Bool {
-        guard let key = key else {
+        guard let key else {
             // nil key ("No Project") has no parent
             return false
         }

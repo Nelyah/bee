@@ -151,28 +151,28 @@ enum GroupByOption: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .project: return "Project"
-        case .dueDate: return "Due Date"
-        case .tag: return "Tag"
-        case .none: return "None"
+        case .project: "Project"
+        case .dueDate: "Due Date"
+        case .tag: "Tag"
+        case .none: "None"
         }
     }
 
     var icon: CommandPaletteIcon {
         switch self {
-        case .project: return .system("folder")
-        case .dueDate: return .system("calendar")
-        case .tag: return .system("tag")
-        case .none: return .system("list.bullet")
+        case .project: .system("folder")
+        case .dueDate: .system("calendar")
+        case .tag: .system("tag")
+        case .none: .system("list.bullet")
         }
     }
 
     func makeStrategy() -> TaskGroupingStrategy {
         switch self {
-        case .project: return ProjectGroupingStrategy()
-        case .dueDate: return DueDateGroupingStrategy()
-        case .tag: return TagGroupingStrategy()
-        case .none: return NoGroupingStrategy()
+        case .project: ProjectGroupingStrategy()
+        case .dueDate: DueDateGroupingStrategy()
+        case .tag: TagGroupingStrategy()
+        case .none: NoGroupingStrategy()
         }
     }
 }

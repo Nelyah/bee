@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class CompletionEngineTests: XCTestCase {
     func testActionCompletionsIncludeFilterKeywords() {
@@ -29,7 +29,7 @@ final class CompletionEngineTests: XCTestCase {
             actions: [],
             status: [
                 CompletionItem(value: "pending", count: nil),
-                CompletionItem(value: "active", count: nil)
+                CompletionItem(value: "active", count: nil),
             ],
             dates: []
         )

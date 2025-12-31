@@ -1,4 +1,4 @@
-struct NavigationCoordinator {
+enum NavigationCoordinator {
     static func modeForInputChange() -> LauncherMode {
         .list
     }

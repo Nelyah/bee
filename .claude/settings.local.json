@@ -58,7 +58,12 @@
       "mcp__serena__think_about_collected_information",
       "WebSearch",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__query-docs"
+      "mcp__context7__query-docs",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__write_memory",
+      "Bash(git log:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(pre-commit run:*)"
     ]
   },
   "outputStyle": "default"

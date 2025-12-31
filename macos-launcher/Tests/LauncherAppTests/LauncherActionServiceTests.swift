@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 @MainActor
 final class LauncherActionServiceTests: XCTestCase {
@@ -34,7 +34,7 @@ final class LauncherActionServiceTests: XCTestCase {
 
         XCTAssertEqual(mock.lastParseInput, "list status:pending or status:active")
         switch filter {
-        case .string(let value):
+        case let .string(value):
             XCTAssertEqual(value, "from-default")
         default:
             XCTFail("Expected parsed default filter")
@@ -60,10 +60,11 @@ final class LauncherActionServiceTests: XCTestCase {
         let parsed = ParseResponse(action: "list", properties: nil, filter: .string("from-user"), tokens: [])
         let filter = await service.resolveDefaultFilterIfNeeded(parsed: parsed, actionName: "list")
 
-        guard case .object(let obj)? = filter,
-              case .string(let type)? = obj["type"], type == "AndFilter",
-              case .object(let valueObj)? = obj["value"],
-              case .array(let children)? = valueObj["children"] else {
+        guard case let .object(obj)? = filter,
+              case let .string(type)? = obj["type"], type == "AndFilter",
+              case let .object(valueObj)? = obj["value"],
+              case let .array(children)? = valueObj["children"]
+        else {
             return XCTFail("Expected AndFilter wrapper")
         }
 
@@ -159,7 +160,10 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
         []
     }
 
-    func resolveExternalLink(provider: ExternalLinkProvider, input: String) async throws -> ExternalLinkResolveResponse {
+    func resolveExternalLink(
+        provider: ExternalLinkProvider,
+        input: String
+    ) async throws -> ExternalLinkResolveResponse {
         ExternalLinkResolveResponse(url: "")
     }
 

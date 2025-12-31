@@ -1,6 +1,6 @@
 import SwiftUI
 
-fileprivate enum TaskListLayout {
+private enum TaskListLayout {
     static let searchSpacing: CGFloat = DesignTokens.Spacing.md
     static let searchRowSpacing: CGFloat = DesignTokens.Spacing.md
     static let inputHeight: CGFloat = 30
@@ -43,7 +43,11 @@ struct TaskListView: View {
                         ZStack(alignment: .leading) {
                             if viewModel.input.isEmpty {
                                 Text("Search tasks…")
-                                    .font(.system(size: DesignTokens.TypeScale.input, weight: .medium, design: .rounded))
+                                    .font(.system(
+                                        size: DesignTokens.TypeScale.input,
+                                        weight: .medium,
+                                        design: .rounded
+                                    ))
                                     .foregroundColor(ThemeManager.current.overlay0)
                                     .padding(.leading, 2)
                             }
@@ -167,7 +171,7 @@ struct TaskListView: View {
                         LazyVStack(alignment: .leading, spacing: TaskListLayout.listSpacing) {
                             ForEach(Array(viewModel.groupedRows.enumerated()), id: \.element.id) { rowIndex, row in
                                 switch row {
-                                case .header(let header):
+                                case let .header(header):
                                     GroupHeaderRow(
                                         header: header,
                                         isHovered: viewModel.hoveredRowIndex == rowIndex,
@@ -179,7 +183,7 @@ struct TaskListView: View {
                                     }
                                     .onTapGesture { viewModel.activatePrimary(at: rowIndex) }
 
-                                case .task(let item):
+                                case let .task(item):
                                     TaskRow(
                                         task: item.task,
                                         columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
@@ -224,14 +228,14 @@ struct TaskListView: View {
                 }
             }
 
-            if completion.showMenu && !completion.items.isEmpty {
-                    CompletionMenuView(
-                        items: completion.items,
-                        selectedIndex: completion.selectedIndex,
-                        onSelect: { item in
-                            viewModel.acceptCompletion(item)
-                        }
-                    )
+            if completion.showMenu, !completion.items.isEmpty {
+                CompletionMenuView(
+                    items: completion.items,
+                    selectedIndex: completion.selectedIndex,
+                    onSelect: { item in
+                        viewModel.acceptCompletion(item)
+                    }
+                )
                 .frame(width: TaskListLayout.completionMenuWidth)
                 .offset(x: TaskListLayout.completionMenuOffsetX, y: TaskListLayout.completionMenuOffsetY)
                 .zIndex(1)
@@ -247,7 +251,6 @@ struct TaskListView: View {
         }
     }
 }
-
 
 #Preview {
     let viewModel = makePreviewViewModel()

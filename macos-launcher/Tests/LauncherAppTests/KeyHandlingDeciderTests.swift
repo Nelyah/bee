@@ -1,6 +1,6 @@
 import AppKit
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class KeyHandlingDeciderTests: XCTestCase {
     func testToggleMenuWithCtrlSpace() {

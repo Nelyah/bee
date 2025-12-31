@@ -105,7 +105,7 @@ final class ReportMenuButtonView: NSView {
                 hostingView.leadingAnchor.constraint(equalTo: leadingAnchor),
                 hostingView.trailingAnchor.constraint(equalTo: trailingAnchor),
                 hostingView.topAnchor.constraint(equalTo: topAnchor),
-                hostingView.bottomAnchor.constraint(equalTo: bottomAnchor)
+                hostingView.bottomAnchor.constraint(equalTo: bottomAnchor),
             ])
             self.hostingView = hostingView
         }
@@ -144,10 +144,10 @@ final class ReportMenuButtonView: NSView {
         contextMenu.popUp(positioning: nil, at: origin, in: self)
     }
 
-#if DEBUG
-    /// Exposes menu items for tests.
-    var menuItems: [NSMenuItem] {
-        menu?.items ?? []
-    }
-#endif
+    #if DEBUG
+        /// Exposes menu items for tests.
+        var menuItems: [NSMenuItem] {
+            menu?.items ?? []
+        }
+    #endif
 }

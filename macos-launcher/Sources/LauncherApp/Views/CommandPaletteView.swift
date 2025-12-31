@@ -220,7 +220,7 @@ struct CommandPaletteView: View {
             }
 
             // Shortcut display
-            if case .shortcut(let shortcut) = item {
+            if case let .shortcut(shortcut) = item {
                 Text(shortcut.keys)
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .monospaced))
                     .foregroundColor(ThemeManager.current.subtext0)
@@ -239,12 +239,12 @@ struct CommandPaletteView: View {
     @ViewBuilder
     private func iconView(_ icon: CommandPaletteIcon) -> some View {
         switch icon {
-        case .system(let name):
+        case let .system(name):
             Image(systemName: name)
                 .font(.system(size: 14))
                 .foregroundColor(ThemeManager.current.subtext0)
                 .frame(width: 16, height: 16)
-        case .asset(let name):
+        case let .asset(name):
             Image(name, bundle: .module)
                 .resizable()
                 .renderingMode(.original)

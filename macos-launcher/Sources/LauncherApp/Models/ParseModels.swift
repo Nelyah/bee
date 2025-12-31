@@ -43,28 +43,28 @@ enum TokenType: Hashable, Decodable {
 
     private static func fromRawValue(_ rawValue: String) -> TokenType {
         switch rawValue {
-        case "TagPlusPrefix": return .tagPlusPrefix
-        case "TagMinusPrefix": return .tagMinusPrefix
-        case "ProjectPrefix": return .projectPrefix
-        case "FilterTokDateDue": return .filterTokDateDue
-        case "FilterTokDateDueBefore": return .filterTokDateDueBefore
-        case "FilterTokDateDueAfter": return .filterTokDateDueAfter
-        case "FilterTokDateCreatedBefore": return .filterTokDateCreatedBefore
-        case "FilterTokDateCreatedAfter": return .filterTokDateCreatedAfter
-        case "FilterTokDateEndBefore": return .filterTokDateEndBefore
-        case "FilterTokDateEndAfter": return .filterTokDateEndAfter
-        case "FilterStatus": return .filterStatus
-        case "DependsOn": return .dependsOn
-        case "OperatorAnd": return .operatorAnd
-        case "OperatorOr": return .operatorOr
-        case "OperatorXor": return .operatorXor
-        case "LeftParenthesis": return .leftParenthesis
-        case "RightParenthesis": return .rightParenthesis
-        case "Uuid": return .uuid
-        case "Int": return .int
-        case "WordString": return .wordString
-        case "Blank": return .blank
-        default: return .unknown(rawValue)
+        case "TagPlusPrefix": .tagPlusPrefix
+        case "TagMinusPrefix": .tagMinusPrefix
+        case "ProjectPrefix": .projectPrefix
+        case "FilterTokDateDue": .filterTokDateDue
+        case "FilterTokDateDueBefore": .filterTokDateDueBefore
+        case "FilterTokDateDueAfter": .filterTokDateDueAfter
+        case "FilterTokDateCreatedBefore": .filterTokDateCreatedBefore
+        case "FilterTokDateCreatedAfter": .filterTokDateCreatedAfter
+        case "FilterTokDateEndBefore": .filterTokDateEndBefore
+        case "FilterTokDateEndAfter": .filterTokDateEndAfter
+        case "FilterStatus": .filterStatus
+        case "DependsOn": .dependsOn
+        case "OperatorAnd": .operatorAnd
+        case "OperatorOr": .operatorOr
+        case "OperatorXor": .operatorXor
+        case "LeftParenthesis": .leftParenthesis
+        case "RightParenthesis": .rightParenthesis
+        case "Uuid": .uuid
+        case "Int": .int
+        case "WordString": .wordString
+        case "Blank": .blank
+        default: .unknown(rawValue)
         }
     }
 }

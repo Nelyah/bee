@@ -28,7 +28,7 @@ struct ContentView: View {
                         viewModel.closeDetail()
                     }
                 )
-                    .padding(24)
+                .padding(24)
             } else {
                 TaskListView(viewModel: viewModel, completion: viewModel.completion)
                     .padding(20)
@@ -62,6 +62,7 @@ struct ContentView: View {
                 .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
         )
         .frame(minWidth: 680, minHeight: 440)
+        .ignoresSafeArea()
         .onAppear {
             DispatchQueue.main.async {
                 NSApplication.shared.setActivationPolicy(.regular)
@@ -71,12 +72,6 @@ struct ContentView: View {
                 installNormalModeMonitor()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            configureWindowAppearance()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            configureWindowAppearance()
-        }
         .onDisappear {
             removeEscapeMonitor()
             removeNormalModeMonitor()
@@ -85,23 +80,23 @@ struct ContentView: View {
 
     private var launcherBackground: some View {
         ThemeManager.current.base
-            .ignoresSafeArea()
     }
 
-
-    /// Apply Raycast-style window appearance (no title bar, clear background).
+    /// Apply Raycast-style window appearance (no visible title bar, clear background).
+    /// SwiftUI's `.windowStyle(.hiddenTitleBar)` hides the title bar, but we still need
+    /// `.fullSizeContentView` to make content extend into that area.
     private func configureWindowAppearance() {
         let windows = NSApplication.shared.windows
         guard !windows.isEmpty else { return }
         for window in windows {
-            // Keep titled style so the window can become key while hiding the title bar.
-            window.styleMask.insert(.titled)
+            // Essential: Make content extend into title bar area
             window.styleMask.insert(.fullSizeContentView)
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+
             window.isMovableByWindowBackground = true
             window.isOpaque = false
             window.backgroundColor = .clear
-            window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = true
             if let contentView = window.contentView {
                 contentView.wantsLayer = true
                 contentView.layer?.cornerRadius = 18
@@ -136,7 +131,8 @@ struct ContentView: View {
     private func installNormalModeMonitor() {
         guard normalModeMonitor == nil else { return }
         normalModeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // Only handle keys in normal mode (not insert mode), in list mode (not detail), and when command palette is closed
+            // Only handle keys in normal mode (not insert mode), in list mode (not detail), and when command palette is
+            // closed
             guard !viewModel.isInsertMode,
                   viewModel.mode == .list,
                   !viewModel.commandPalette.isPresented else { return event }

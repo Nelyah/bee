@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class InteractionContextCoordinatorTests: XCTestCase {
     func testBaseContextUsesHeaderSelection() {
@@ -117,7 +117,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         )
         return [
             .header(header),
-            .task(GroupedTask(task: task, flatIndex: 0, groupKey: "project"))
+            .task(GroupedTask(task: task, flatIndex: 0, groupKey: "project")),
         ]
     }
 }

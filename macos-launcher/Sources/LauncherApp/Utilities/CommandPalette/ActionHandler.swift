@@ -77,7 +77,7 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     // MARK: - Private Methods
 
     private func loadGitlabSuggestions(taskUUID: String) async {
-        guard let viewModel = viewModel else { return }
+        guard let viewModel else { return }
 
         viewModel.commandPalette.isLoading = true
         defer { viewModel.commandPalette.isLoading = false }
@@ -104,7 +104,7 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     }
 
     private func loadJiraSuggestions(taskUUID: String) async {
-        guard let viewModel = viewModel else { return }
+        guard let viewModel else { return }
 
         viewModel.commandPalette.isLoading = true
         defer { viewModel.commandPalette.isLoading = false }
@@ -171,7 +171,7 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     }
 
     private func handleGitlabSelection(mr: GitlabMergeRequestSuggestion, taskUUID: String) {
-        guard let viewModel = viewModel else { return }
+        guard let viewModel else { return }
 
         Task {
             do {
@@ -189,7 +189,7 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     }
 
     private func handleJiraSelection(issue: JiraIssueSuggestion, taskUUID: String) {
-        guard let viewModel = viewModel else { return }
+        guard let viewModel else { return }
 
         Task {
             do {

@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class CriteriaChipBuilderTests: XCTestCase {
     func testPropertyChipsFromTagsAndStatus() {
@@ -7,7 +7,7 @@ final class CriteriaChipBuilderTests: XCTestCase {
             "tags_add": .array([.string("home"), .string("work")]),
             "tags_remove": .array([.string("later")]),
             "status": .string("active"),
-            "summary": .string("Finish the report")
+            "summary": .string("Finish the report"),
         ])
 
         let chips = CriteriaChipBuilder.propertyChips(from: properties)
@@ -21,13 +21,13 @@ final class CriteriaChipBuilderTests: XCTestCase {
 
     func testPropertyChipsIgnoreNullProjectAndShowNoneString() {
         let withNull: JSONValue = .object([
-            "project": .null
+            "project": .null,
         ])
         let nullChips = CriteriaChipBuilder.propertyChips(from: withNull)
         XCTAssertFalse(nullChips.contains { $0.label.contains("Project:") })
 
         let withNone: JSONValue = .object([
-            "project": .string("none")
+            "project": .string("none"),
         ])
         let noneChips = CriteriaChipBuilder.propertyChips(from: withNone)
         XCTAssertTrue(noneChips.contains { $0.label == "Project: none" })
@@ -37,15 +37,15 @@ final class CriteriaChipBuilderTests: XCTestCase {
         let tagFilter: JSONValue = .object([
             "type": .string("TagFilter"),
             "include": .bool(true),
-            "tag_name": .string("urgent")
+            "tag_name": .string("urgent"),
         ])
         let statusFilter: JSONValue = .object([
             "type": .string("StatusFilter"),
-            "status": .string("pending")
+            "status": .string("pending"),
         ])
         let rootFilter: JSONValue = .object([
             "type": .string("AndFilter"),
-            "children": .array([tagFilter, statusFilter])
+            "children": .array([tagFilter, statusFilter]),
         ])
 
         let chips = CriteriaChipBuilder.filterChips(from: rootFilter)
@@ -59,7 +59,7 @@ final class CriteriaChipBuilderTests: XCTestCase {
             TokenSpan(tokenType: .filterStatus, literal: "status:", start: 0, end: 7),
             TokenSpan(tokenType: .wordString, literal: "completed", start: 7, end: 16),
             TokenSpan(tokenType: .blank, literal: " ", start: 16, end: 17),
-            TokenSpan(tokenType: .wordString, literal: "foo", start: 17, end: 20)
+            TokenSpan(tokenType: .wordString, literal: "foo", start: 17, end: 20),
         ]
 
         let chips = CriteriaChipBuilder.filterChips(from: tokens, actionName: "list")

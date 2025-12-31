@@ -20,7 +20,7 @@ final class CommandPaletteCoordinator: ObservableObject {
 
     // MARK: - Context
 
-    private(set) var context: CommandPaletteContext = CommandPaletteContext()
+    private(set) var context: CommandPaletteContext = .init()
 
     // MARK: - Computed Properties
 
@@ -35,7 +35,7 @@ final class CommandPaletteCoordinator: ObservableObject {
 
     /// Flat list of all selectable items for keyboard navigation.
     var selectableItems: [CommandPaletteItem] {
-        currentSections.flatMap { $0.items.filter { $0.isSelectable } }
+        currentSections.flatMap { $0.items.filter(\.isSelectable) }
     }
 
     /// The currently selected item based on selection index.
@@ -113,16 +113,16 @@ final class CommandPaletteCoordinator: ObservableObject {
         guard let item = selectedItem else { return }
 
         switch item {
-        case .submenu(let submenu):
+        case let .submenu(submenu):
             let menu = submenu.menuBuilder()
             navigationStack.push(menu)
             query = ""
             selectionIndex = 0
 
-        case .action(let action):
+        case let .action(action):
             action.handler()
 
-        case .suggestion(let suggestion):
+        case let .suggestion(suggestion):
             suggestion.handler()
 
         case .shortcut:

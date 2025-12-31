@@ -1,10 +1,10 @@
-struct TokenClassifier {
+enum TokenClassifier {
     static let tagPrefixes: Set<TokenType> = [
         .tagPlusPrefix,
-        .tagMinusPrefix
+        .tagMinusPrefix,
     ]
     static let projectPrefixes: Set<TokenType> = [
-        .projectPrefix
+        .projectPrefix,
     ]
     static let dateFilters: Set<TokenType> = [
         .filterTokDateDue,
@@ -13,26 +13,26 @@ struct TokenClassifier {
         .filterTokDateCreatedBefore,
         .filterTokDateCreatedAfter,
         .filterTokDateEndBefore,
-        .filterTokDateEndAfter
+        .filterTokDateEndAfter,
     ]
     static let statusFilters: Set<TokenType> = [
-        .filterStatus
+        .filterStatus,
     ]
     static let dependencies: Set<TokenType> = [
-        .dependsOn
+        .dependsOn,
     ]
     static let logicalOperators: Set<TokenType> = [
         .operatorAnd,
         .operatorOr,
-        .operatorXor
+        .operatorXor,
     ]
     static let parentheses: Set<TokenType> = [
         .leftParenthesis,
-        .rightParenthesis
+        .rightParenthesis,
     ]
     static let identifiers: Set<TokenType> = [
         .uuid,
-        .int
+        .int,
     ]
 
     static func isTagPrefix(_ tokenType: TokenType) -> Bool {

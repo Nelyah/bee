@@ -48,24 +48,24 @@ enum GitlabMergeRequestState: Equatable, Decodable {
     var iconName: String {
         switch self {
         case .merged:
-            return "pr-merged"
+            "pr-merged"
         case .closed:
-            return "pr-closed"
+            "pr-closed"
         case .opened, .unknown:
-            return "pr-open"
+            "pr-open"
         }
     }
 
     static func fromRaw(_ value: String) -> GitlabMergeRequestState {
         switch value.lowercased() {
         case "opened", "open":
-            return .opened
+            .opened
         case "merged":
-            return .merged
+            .merged
         case "closed":
-            return .closed
+            .closed
         default:
-            return .unknown(value)
+            .unknown(value)
         }
     }
 }
@@ -103,51 +103,51 @@ enum GitlabPipelineStatus: Equatable, Decodable {
     var iconName: String? {
         switch self {
         case .success:
-            return "gitlab-success"
+            "gitlab-success"
         case .running:
-            return "gitlab-running"
+            "gitlab-running"
         case .pending, .failed, .canceled, .skipped:
-            return "gitlab-pending"
+            "gitlab-pending"
         case .unknown:
-            return nil
+            nil
         }
     }
 
     var label: String {
         switch self {
         case .success:
-            return "Passed"
+            "Passed"
         case .failed:
-            return "Failed"
+            "Failed"
         case .running:
-            return "Running"
+            "Running"
         case .pending:
-            return "Pending"
+            "Pending"
         case .canceled:
-            return "Canceled"
+            "Canceled"
         case .skipped:
-            return "Skipped"
-        case .unknown(let value):
-            return value.capitalized
+            "Skipped"
+        case let .unknown(value):
+            value.capitalized
         }
     }
 
     static func fromRaw(_ value: String) -> GitlabPipelineStatus {
         switch value.lowercased() {
         case "success":
-            return .success
+            .success
         case "running":
-            return .running
+            .running
         case "pending":
-            return .pending
+            .pending
         case "failed":
-            return .failed
+            .failed
         case "canceled":
-            return .canceled
+            .canceled
         case "skipped":
-            return .skipped
+            .skipped
         default:
-            return .unknown(value)
+            .unknown(value)
         }
     }
 }
@@ -306,7 +306,7 @@ private enum ExternalLinkCachedParser {
         let sourceBranch = json["source_branch"] as? String
         let pipelineStatus =
             (json["head_pipeline"] as? [String: Any])?["status"] as? String
-            ?? (json["pipeline"] as? [String: Any])?["status"] as? String
+                ?? (json["pipeline"] as? [String: Any])?["status"] as? String
         let approved = approvals?["approved"] as? Bool
             ?? {
                 guard let approvedBy = approvals?["approved_by"] as? [[String: Any]] else { return nil }

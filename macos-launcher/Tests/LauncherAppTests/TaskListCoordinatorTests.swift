@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class TaskListCoordinatorTests: XCTestCase {
     func testMoveSelectionWrapsForward() {
@@ -47,11 +47,11 @@ final class TaskListCoordinatorTests: XCTestCase {
             makeTask(id: "a", urgency: 9),
             makeTask(id: "b", urgency: 2),
             makeTask(id: "d", urgency: nil),
-            makeTask(id: "e", urgency: 9)
+            makeTask(id: "e", urgency: 9),
         ]
 
         let sorted = TaskListCoordinator.sortTasksByUrgency(tasks)
-        let ids = sorted.map { $0.uuid }
+        let ids = sorted.map(\.uuid)
 
         XCTAssertEqual(ids, ["a", "e", "b", "c", "d"])
     }
@@ -62,7 +62,7 @@ final class TaskListCoordinatorTests: XCTestCase {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
             .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
-            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A"))
+            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A")),
         ]
 
         // At last row, moving forward should stay at last row (clamp)
@@ -77,7 +77,7 @@ final class TaskListCoordinatorTests: XCTestCase {
     func testMoveGroupedSelectionClampsAtStart() {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
-            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A"))
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
         ]
 
         // At first row, moving backward should stay at first row (clamp)
@@ -93,7 +93,7 @@ final class TaskListCoordinatorTests: XCTestCase {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
             .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
-            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A"))
+            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A")),
         ]
 
         var selection = TaskListCoordinator.moveGroupedSelection(
@@ -114,7 +114,7 @@ final class TaskListCoordinatorTests: XCTestCase {
     func testMoveGroupedSelectionInitialSelection() {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
-            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A"))
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
         ]
 
         // Initial selection when moving down
@@ -141,7 +141,7 @@ final class TaskListCoordinatorTests: XCTestCase {
             makeTask(id: "a", urgency: 1, project: "beta"),
             makeTask(id: "b", urgency: 5, project: nil),
             makeTask(id: "c", urgency: 3, project: "alpha"),
-            makeTask(id: "d", urgency: 2, project: "alpha")
+            makeTask(id: "d", urgency: 2, project: "alpha"),
         ]
 
         let rows = TaskListCoordinator.groupTasks(
@@ -152,8 +152,8 @@ final class TaskListCoordinatorTests: XCTestCase {
 
         let rowDescriptions = rows.map { row in
             switch row {
-            case .header(let header): return "header:\(header.displayName)"
-            case .task(let item): return "task:\(item.task.uuid)"
+            case let .header(header): "header:\(header.displayName)"
+            case let .task(item): "task:\(item.task.uuid)"
             }
         }
 
@@ -166,7 +166,7 @@ final class TaskListCoordinatorTests: XCTestCase {
                 "task:c",
                 "task:d",
                 "header:beta",
-                "task:a"
+                "task:a",
             ]
         )
     }
@@ -175,7 +175,7 @@ final class TaskListCoordinatorTests: XCTestCase {
         let tasks = [
             makeTask(id: "a", project: "work.client1"),
             makeTask(id: "b", project: "work.client2"),
-            makeTask(id: "c", project: "personal")
+            makeTask(id: "c", project: "personal"),
         ]
 
         let rows = TaskListCoordinator.groupTasks(
@@ -185,8 +185,9 @@ final class TaskListCoordinatorTests: XCTestCase {
         )
 
         XCTAssertEqual(rows.count, 2)
-        guard case .header(let header) = rows[0],
-              case .task(let item) = rows[1] else {
+        guard case let .header(header) = rows[0],
+              case let .task(item) = rows[1]
+        else {
             XCTFail("Expected header and task rows")
             return
         }

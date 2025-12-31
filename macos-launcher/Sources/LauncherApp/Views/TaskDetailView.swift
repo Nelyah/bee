@@ -123,7 +123,11 @@ struct TaskDetailView: View {
             DetailSection(title: "Overview") {
                 DetailRow(label: "UUID", value: shortUUID(task.uuid), helpText: task.uuid)
                 DetailRow(label: "Project", value: task.project ?? "None", helpText: nil)
-                DetailRow(label: "Tags", value: task.tags.isEmpty ? "None" : task.tags.joined(separator: ", "), helpText: nil)
+                DetailRow(
+                    label: "Tags",
+                    value: task.tags.isEmpty ? "None" : task.tags.joined(separator: ", "),
+                    helpText: nil
+                )
                 DetailRow(label: "Urgency", value: task.urgency.map(String.init) ?? "None", helpText: nil)
             }
 
@@ -218,7 +222,8 @@ struct TaskDetailView: View {
     private func sortedAnnotations(_ items: [TaskAnnotationDto]) -> [TaskAnnotationDto] {
         items.sorted { lhs, rhs in
             guard let left = RelativeDateFormatter.date(from: lhs.time),
-                  let right = RelativeDateFormatter.date(from: rhs.time) else {
+                  let right = RelativeDateFormatter.date(from: rhs.time)
+            else {
                 return lhs.time > rhs.time
             }
             return left > right
@@ -228,7 +233,8 @@ struct TaskDetailView: View {
     private func sortedHistory(_ items: [TaskHistoryDto]) -> [TaskHistoryDto] {
         items.sorted { lhs, rhs in
             guard let left = RelativeDateFormatter.date(from: lhs.datetime),
-                  let right = RelativeDateFormatter.date(from: rhs.datetime) else {
+                  let right = RelativeDateFormatter.date(from: rhs.datetime)
+            else {
                 return lhs.datetime > rhs.datetime
             }
             return left > right
@@ -238,7 +244,8 @@ struct TaskDetailView: View {
     private var detailForTask: ApiTaskDetail? {
         guard detailState.taskUUID == task.uuid,
               let detail = detailState.detail,
-              detail.uuid == task.uuid else {
+              detail.uuid == task.uuid
+        else {
             return nil
         }
         return detail
@@ -373,7 +380,10 @@ private struct ExternalLinksProviderSection: View {
 #Preview {
     TaskDetailView(
         task: MockApiClient.sampleTasks[0],
-        detailState: TaskDetailState(taskUUID: MockApiClient.sampleTaskDetail.uuid, detail: MockApiClient.sampleTaskDetail),
+        detailState: TaskDetailState(
+            taskUUID: MockApiClient.sampleTaskDetail.uuid,
+            detail: MockApiClient.sampleTaskDetail
+        ),
         externalLinksState: ExternalLinksState(
             taskUUID: MockApiClient.sampleTaskDetail.uuid,
             links: MockApiClient.sampleExternalLinks
@@ -383,7 +393,7 @@ private struct ExternalLinksProviderSection: View {
         onCopyLink: { _ in },
         onClose: {}
     )
-        .padding(24)
-        .frame(width: 600, height: 400)
-        .background(ThemeManager.current.base)
+    .padding(24)
+    .frame(width: 600, height: 400)
+    .background(ThemeManager.current.base)
 }

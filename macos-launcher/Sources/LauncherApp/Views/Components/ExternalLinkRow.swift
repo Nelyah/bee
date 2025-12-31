@@ -21,8 +21,13 @@ struct ExternalLinkRow: View {
                         HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
                             HoverableButton(action: openMergeRequest) { isHovering in
                                 Text(gitlabTitleLine)
-                                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
-                                    .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current.text)
+                                    .font(.system(
+                                        size: DesignTokens.TypeScale.bodySm,
+                                        weight: .semibold,
+                                        design: .rounded
+                                    ))
+                                    .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current
+                                        .text)
                                     .underline(isHovering)
                             }
                             Spacer()
@@ -57,7 +62,11 @@ struct ExternalLinkRow: View {
                                             .foregroundColor(ThemeManager.current.subtext0)
                                     }
                                     Text(branch)
-                                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .monospaced))
+                                        .font(.system(
+                                            size: DesignTokens.TypeScale.caption,
+                                            weight: .semibold,
+                                            design: .monospaced
+                                        ))
                                         .foregroundColor(ThemeManager.current.text)
                                 }
                                 .padding(.horizontal, DesignTokens.Spacing.sm)
@@ -162,9 +171,9 @@ struct ExternalLinkRow: View {
     private var titleText: String {
         if let summary = link.cachedSummary() {
             switch summary {
-            case .gitlab(let gitlab):
+            case let .gitlab(gitlab):
                 return gitlab.title
-            case .jira(let jira):
+            case let .jira(jira):
                 return jira.summary
             }
         }
@@ -174,7 +183,7 @@ struct ExternalLinkRow: View {
     private var detailText: String {
         if let summary = cachedSummary {
             switch summary {
-            case .gitlab(let gitlab):
+            case let .gitlab(gitlab):
                 var parts: [String] = []
                 if let state = gitlab.state {
                     let display = GitlabMergeRequestState.fromRaw(state)
@@ -185,7 +194,7 @@ struct ExternalLinkRow: View {
                         parts.append("Merged")
                     case .closed:
                         parts.append("Closed")
-                    case .unknown(let value):
+                    case let .unknown(value):
                         parts.append(value.capitalized)
                     }
                 }
@@ -193,7 +202,7 @@ struct ExternalLinkRow: View {
                     parts.append(GitlabPipelineStatus.fromRaw(pipeline).label)
                 }
                 return parts.joined(separator: " • ")
-            case .jira(let jira):
+            case let .jira(jira):
                 if let status = jira.status {
                     return status
                 }
@@ -208,7 +217,7 @@ struct ExternalLinkRow: View {
     }
 
     private var gitlabSummary: GitlabCachedSummary? {
-        guard case .gitlab(let gitlab)? = cachedSummary else { return nil }
+        guard case let .gitlab(gitlab)? = cachedSummary else { return nil }
         return gitlab
     }
 
@@ -247,7 +256,7 @@ struct ExternalLinkRow: View {
                     LinearGradient(
                         colors: [
                             ThemeManager.current.surface2.opacity(0.65),
-                            ThemeManager.current.surface2.opacity(0.35)
+                            ThemeManager.current.surface2.opacity(0.35),
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -281,7 +290,8 @@ struct ExternalLinkRow: View {
             return "!\(iid)"
         }
         if link.externalKey.contains(":"),
-           let last = link.externalKey.split(separator: ":").last {
+           let last = link.externalKey.split(separator: ":").last
+        {
             return "!\(last)"
         }
         return nil
@@ -296,7 +306,7 @@ struct ExternalLinkRow: View {
             return "Merged"
         case .closed:
             return "Closed"
-        case .unknown(let value):
+        case let .unknown(value):
             return value.capitalized
         }
     }

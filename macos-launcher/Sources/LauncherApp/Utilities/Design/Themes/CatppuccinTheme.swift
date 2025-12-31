@@ -73,6 +73,7 @@ struct CatppuccinTheme: Theme {
     var rosewaterNS: NSColor { Self.rosewaterColorNS }
 
     // MARK: - Base Colors
+
     private static let baseColor = Color(hex: "#1e1e2e")
     private static let baseColorNS = NSColor(hex: "#1e1e2e")
     private static let mantleColor = Color(hex: "#181825")
@@ -81,6 +82,7 @@ struct CatppuccinTheme: Theme {
     private static let crustColorNS = NSColor(hex: "#11111b")
 
     // MARK: - Surface Colors
+
     private static let surface0Color = Color(hex: "#313244")
     private static let surface0ColorNS = NSColor(hex: "#313244")
     private static let surface1Color = Color(hex: "#45475a")
@@ -89,6 +91,7 @@ struct CatppuccinTheme: Theme {
     private static let surface2ColorNS = NSColor(hex: "#585b70")
 
     // MARK: - Text Colors
+
     private static let textColor = Color(hex: "#cdd6f4")
     private static let textColorNS = NSColor(hex: "#cdd6f4")
     private static let subtext1Color = Color(hex: "#bac2de")
@@ -99,6 +102,7 @@ struct CatppuccinTheme: Theme {
     private static let overlay0ColorNS = NSColor(hex: "#6c7086")
 
     // MARK: - Accent Colors
+
     private static let blueColor = Color(hex: "#89b4fa")
     private static let blueColorNS = NSColor(hex: "#89b4fa")
     private static let greenColor = Color(hex: "#a6e3a1")

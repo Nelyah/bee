@@ -28,7 +28,8 @@ final class LauncherViewModel: ObservableObject {
     )
     @Published var reportConfig: ReportConfig?
     @Published var availableReports: [ReportSummary] = []
-    @Published var selectedReportName: String = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedReportName) ?? ""
+    @Published var selectedReportName: String = UserDefaults.standard
+        .string(forKey: UserDefaultsKeys.selectedReportName) ?? ""
     @Published private(set) var reportFilterChips: [CriteriaChip] = []
     @Published private(set) var taskDetailState = TaskDetailState()
     @Published private(set) var externalLinksState = ExternalLinksState()
@@ -36,9 +37,11 @@ final class LauncherViewModel: ObservableObject {
     let commandPalette: CommandPaletteCoordinator
 
     // MARK: - Completion State
+
     let completion: CompletionCoordinator
 
     // MARK: - Grouping State
+
     /// The current grouping strategy.
     @Published var groupingStrategy: TaskGroupingStrategy = ProjectGroupingStrategy()
     /// Set of collapsed group keys.
@@ -47,13 +50,14 @@ final class LauncherViewModel: ObservableObject {
     /// The current grouping option for UI display.
     var currentGroupByOption: GroupByOption {
         switch groupingStrategy {
-        case is ProjectGroupingStrategy: return .project
-        case is DueDateGroupingStrategy: return .dueDate
-        case is TagGroupingStrategy: return .tag
-        case is NoGroupingStrategy: return .none
-        default: return .project
+        case is ProjectGroupingStrategy: .project
+        case is DueDateGroupingStrategy: .dueDate
+        case is TagGroupingStrategy: .tag
+        case is NoGroupingStrategy: .none
+        default: .project
         }
     }
+
     /// Currently hovered row index (for collapse toggle).
     @Published var hoveredRowIndex: Int?
     /// Currently selected row index in grouped view.
@@ -79,7 +83,7 @@ final class LauncherViewModel: ObservableObject {
         },
         isRequestCurrent: { [weak self] requestId in
             guard let self else { return false }
-            return requestId == self.requestCounter
+            return requestId == requestCounter
         },
         showToast: { [weak self] message in
             self?.showToast(message: message)
@@ -96,8 +100,8 @@ final class LauncherViewModel: ObservableObject {
         self.apiClient = apiClient
         self.actionService = actionService ?? LauncherActionService(apiClient: apiClient)
         self.unexpectedTokenToastDelay = unexpectedTokenToastDelay
-        self.commandPalette = CommandPaletteCoordinator()
-        self.completion = CompletionCoordinator()
+        commandPalette = CommandPaletteCoordinator()
+        completion = CompletionCoordinator()
 
         commandPalette.objectWillChange
             .sink { [weak self] _ in
@@ -144,7 +148,7 @@ final class LauncherViewModel: ObservableObject {
             }
             let rows = TaskListCoordinator.groupTasks(
                 tasks,
-                using: self.groupingStrategy,
+                using: groupingStrategy,
                 collapsedKeys: collapsedGroups
             )
             return InteractionContextCoordinator.baseContext(
@@ -202,7 +206,7 @@ final class LauncherViewModel: ObservableObject {
 
             actionService.setReportConfig(reportConfig)
             await refreshReportFilterChips()
-            logger.info("Config loaded: \(self.reportConfig?.columns.count ?? 0) columns, \(self.availableReports.count) reports")
+            logger.info("Config loaded: \(reportConfig?.columns.count ?? 0) columns, \(availableReports.count) reports")
         } catch {
             logger.error("Failed to load config: \(error.localizedDescription, privacy: .public)")
             showToast(message: error.localizedDescription)
@@ -252,7 +256,12 @@ final class LauncherViewModel: ObservableObject {
             if shouldAutoList(actionName: parsed.action) {
                 await runAction(from: parsed, requestId: requestId, resetInput: false, updateStatus: false)
             } else if shouldPreviewList(actionName: parsed.action) {
-                let preview = ParseResponse(action: "list", properties: nil, filter: parsed.filter, tokens: parsed.tokens)
+                let preview = ParseResponse(
+                    action: "list",
+                    properties: nil,
+                    filter: parsed.filter,
+                    tokens: parsed.tokens
+                )
                 await runAction(from: preview, requestId: requestId, resetInput: false, updateStatus: false)
             }
         } catch {
@@ -310,7 +319,8 @@ final class LauncherViewModel: ObservableObject {
         } catch {
             guard requestId == requestCounter else { return }
             tasks = []
-            logger.error("Action request failed. id=\(requestId), error=\(error.localizedDescription, privacy: .public)")
+            logger
+                .error("Action request failed. id=\(requestId), error=\(error.localizedDescription, privacy: .public)")
             showToast(message: error.localizedDescription)
         }
     }
@@ -426,7 +436,7 @@ final class LauncherViewModel: ObservableObject {
         exitInsertMode(restoreSelection: false)
         updateSelection(rowIndex: rowIndex, rows: rows)
         switch rows[rowIndex] {
-        case .header(let header):
+        case let .header(header):
             toggleGroupCollapse(header.key)
         case .task:
             openDetail()
@@ -437,7 +447,7 @@ final class LauncherViewModel: ObservableObject {
         let currentRows = rows ?? groupedRows
         selectedRowIndex = rowIndex
         if let rowIndex, rowIndex < currentRows.count {
-            if case .task(let item) = currentRows[rowIndex] {
+            if case let .task(item) = currentRows[rowIndex] {
                 selectedIndex = item.flatIndex
             }
         } else {
@@ -470,9 +480,10 @@ final class LauncherViewModel: ObservableObject {
         let rows = groupedRows
         // Prefer selected row (keyboard navigation), fall back to hovered (mouse)
         let idx = selectedRowIndex ?? hoveredRowIndex
-        guard let idx = idx,
+        guard let idx,
               idx < rows.count,
-              case .header(let h) = rows[idx] else {
+              case let .header(h) = rows[idx]
+        else {
             return false
         }
         toggleGroupCollapse(h.key)
@@ -482,7 +493,7 @@ final class LauncherViewModel: ObservableObject {
     func canToggleSelectedOrHoveredGroupCollapse() -> Bool {
         let rows = groupedRows
         let idx = selectedRowIndex ?? hoveredRowIndex
-        guard let idx = idx, idx < rows.count else { return false }
+        guard let idx, idx < rows.count else { return false }
         if case .header = rows[idx] {
             return true
         }
@@ -533,7 +544,7 @@ final class LauncherViewModel: ObservableObject {
         if let selectedIndex {
             let rows = groupedRows
             let rowIndex = rows.firstIndex { row in
-                if case .task(let item) = row {
+                if case let .task(item) = row {
                     return item.flatIndex == selectedIndex
                 }
                 return false
@@ -585,7 +596,10 @@ final class LauncherViewModel: ObservableObject {
         if let parsed = lastSuccessfulParse {
             let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter)
             if parsedChips.isEmpty, shouldAutoList(actionName: parsed.action) {
-                chips.append(contentsOf: CriteriaChipBuilder.filterChips(from: parsed.tokens, actionName: parsed.action))
+                chips.append(contentsOf: CriteriaChipBuilder.filterChips(
+                    from: parsed.tokens,
+                    actionName: parsed.action
+                ))
             } else if !parsedChips.isEmpty {
                 chips.append(contentsOf: parsedChips)
             }
@@ -745,7 +759,7 @@ final class LauncherViewModel: ObservableObject {
     /// Build a status message from API events.
     func buildStatusMessage(from events: [ApiEvent]) -> String? {
         guard !events.isEmpty else { return nil }
-        return events.map { $0.message }.joined(separator: " ")
+        return events.map(\.message).joined(separator: " ")
     }
 
     /// Load the list view for the current input, if applicable.
@@ -901,7 +915,7 @@ final class LauncherViewModel: ObservableObject {
         case .enterInsertMode:
             enterInsertMode()
             return true
-        case .moveSelection(let delta):
+        case let .moveSelection(delta):
             moveSelection(delta: delta)
             return true
         case .selectFirst:
@@ -926,16 +940,16 @@ final class LauncherViewModel: ObservableObject {
 
 struct TaskDetailState {
     var isLoading: Bool = false
-    var taskUUID: String? = nil
-    var detail: ApiTaskDetail? = nil
-    var errorMessage: String? = nil
+    var taskUUID: String?
+    var detail: ApiTaskDetail?
+    var errorMessage: String?
 }
 
 struct ExternalLinksState {
     var isLoading: Bool = false
-    var taskUUID: String? = nil
+    var taskUUID: String?
     var links: [ExternalLinkDto] = []
-    var errorMessage: String? = nil
+    var errorMessage: String?
     var refreshingProviders: Set<ExternalLinkProvider> = []
 }
 

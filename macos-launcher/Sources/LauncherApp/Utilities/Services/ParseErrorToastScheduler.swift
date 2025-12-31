@@ -41,15 +41,15 @@ final class ParseErrorToastScheduler {
 
         pendingToastTask = Task { [weak self] in
             guard let self else { return }
-            try? await Task.sleep(for: .seconds(self.delay))
-            guard let pendingRequestId = self.pendingRequestId,
+            try? await Task.sleep(for: .seconds(delay))
+            guard let pendingRequestId,
                   pendingRequestId == requestId else { return }
-            guard self.isRequestCurrent(requestId) else { return }
-            guard let pendingMessage = self.pendingMessage else { return }
-            self.pendingToastTask = nil
+            guard isRequestCurrent(requestId) else { return }
+            guard let pendingMessage else { return }
+            pendingToastTask = nil
             self.pendingMessage = nil
             self.pendingRequestId = nil
-            self.showToast(pendingMessage)
+            showToast(pendingMessage)
         }
     }
 

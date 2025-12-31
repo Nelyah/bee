@@ -1,8 +1,7 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class GroupingStrategyTests: XCTestCase {
-
     // MARK: - DueDateGroupingStrategy Tests
 
     func testDueDateBucketOverdue() {
@@ -162,7 +161,7 @@ final class GroupingStrategyTests: XCTestCase {
         let tasks = [
             makeTask(id: "a", tags: ["urgent", "work"]),
             makeTask(id: "b", tags: ["work"]),
-            makeTask(id: "c", tags: [])
+            makeTask(id: "c", tags: []),
         ]
 
         let rows = TaskListCoordinator.groupTasks(
@@ -174,7 +173,7 @@ final class GroupingStrategyTests: XCTestCase {
         // Should have headers for: urgent, work, No Tags (in alphabetical order, No Tags last)
         // Task "a" appears in both urgent and work groups
         let headers = rows.compactMap { row -> String? in
-            if case .header(let h) = row { return h.displayName }
+            if case let .header(h) = row { return h.displayName }
             return nil
         }
 
@@ -190,7 +189,7 @@ final class GroupingStrategyTests: XCTestCase {
         let tasks = [
             makeTask(id: "a", urgency: 5, project: "alpha"),
             makeTask(id: "b", urgency: 10, project: "beta"),
-            makeTask(id: "c", urgency: 1, project: nil)
+            makeTask(id: "c", urgency: 1, project: nil),
         ]
 
         let rows = TaskListCoordinator.groupTasks(
@@ -209,7 +208,7 @@ final class GroupingStrategyTests: XCTestCase {
 
         // Should be sorted by urgency (highest first)
         let taskIds = rows.compactMap { row -> String? in
-            if case .task(let t) = row { return t.task.uuid }
+            if case let .task(t) = row { return t.task.uuid }
             return nil
         }
         XCTAssertEqual(taskIds, ["b", "a", "c"])
@@ -225,7 +224,7 @@ final class GroupingStrategyTests: XCTestCase {
             makeTask(id: "a", dateDue: formatDate(yesterday)),
             makeTask(id: "b", dateDue: formatDate(today)),
             makeTask(id: "c", dateDue: formatDate(tomorrow)),
-            makeTask(id: "d", dateDue: nil)
+            makeTask(id: "d", dateDue: nil),
         ]
 
         let strategy = DueDateGroupingStrategy(calendar: calendar, today: today)
@@ -236,7 +235,7 @@ final class GroupingStrategyTests: XCTestCase {
         )
 
         let headers = rows.compactMap { row -> String? in
-            if case .header(let h) = row { return h.displayName }
+            if case let .header(h) = row { return h.displayName }
             return nil
         }
 

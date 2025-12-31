@@ -68,17 +68,17 @@ final class LauncherActionService {
     private func combineFilters(defaults: JSONValue?, user: JSONValue?) -> JSONValue? {
         switch (defaults, user) {
         case (nil, nil):
-            return nil
+            nil
         case (let defaults?, nil):
-            return defaults
+            defaults
         case (nil, let user?):
-            return user
-        case (let defaults?, let user?):
-            return .object([
+            user
+        case let (defaults?, user?):
+            .object([
                 "type": .string("AndFilter"),
                 "value": .object([
-                    "children": .array([defaults, user])
-                ])
+                    "children": .array([defaults, user]),
+                ]),
             ])
         }
     }

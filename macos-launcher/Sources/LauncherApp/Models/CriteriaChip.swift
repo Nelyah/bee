@@ -21,27 +21,27 @@ enum CriteriaChipTone: String, Hashable {
     var color: Color {
         switch self {
         case .blue:
-            return ThemeManager.current.blue
+            ThemeManager.current.blue
         case .teal:
-            return ThemeManager.current.teal
+            ThemeManager.current.teal
         case .green:
-            return ThemeManager.current.green
+            ThemeManager.current.green
         case .yellow:
-            return ThemeManager.current.yellow
+            ThemeManager.current.yellow
         case .peach:
-            return ThemeManager.current.peach
+            ThemeManager.current.peach
         case .mauve:
-            return ThemeManager.current.mauve
+            ThemeManager.current.mauve
         case .lavender:
-            return ThemeManager.current.lavender
+            ThemeManager.current.lavender
         case .pink:
-            return ThemeManager.current.pink
+            ThemeManager.current.pink
         case .sky:
-            return ThemeManager.current.sky
+            ThemeManager.current.sky
         case .rosewater:
-            return ThemeManager.current.rosewater
+            ThemeManager.current.rosewater
         case .red:
-            return ThemeManager.current.red
+            ThemeManager.current.red
         }
     }
 }
@@ -58,6 +58,6 @@ struct CriteriaChip: Identifiable, Hashable {
         self.label = label
         self.systemImage = systemImage
         self.tone = tone
-        self.id = "\(kind.rawValue)-\(systemImage)-\(label)"
+        id = "\(kind.rawValue)-\(systemImage)-\(label)"
     }
 }

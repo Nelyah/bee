@@ -22,46 +22,46 @@ struct LinkStatusBadge: View {
     private var label: String {
         switch state {
         case .pending:
-            return "Pending"
+            "Pending"
         case .error:
-            return "Error"
-        case .synced(let date):
-            return "Synced \(RelativeDateFormatter.description(for: date, now: Date(), calendar: .current))"
-        case .stale(let date):
-            return "Stale \(RelativeDateFormatter.description(for: date, now: Date(), calendar: .current))"
+            "Error"
+        case let .synced(date):
+            "Synced \(RelativeDateFormatter.description(for: date, now: Date(), calendar: .current))"
+        case let .stale(date):
+            "Stale \(RelativeDateFormatter.description(for: date, now: Date(), calendar: .current))"
         }
     }
 
     private var helpText: String? {
         switch state {
-        case .error(let message):
-            return message
+        case let .error(message):
+            message
         default:
-            return timestamp
+            timestamp
         }
     }
 
     private var iconName: String? {
         switch state {
-        case .synced(let date):
-            return Calendar.current.isDateInToday(date) ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+        case let .synced(date):
+            Calendar.current.isDateInToday(date) ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
         case .stale:
-            return "exclamationmark.triangle.fill"
+            "exclamationmark.triangle.fill"
         default:
-            return nil
+            nil
         }
     }
 
     private var color: Color {
         switch state {
         case .pending:
-            return ThemeManager.current.subtext0
-        case .synced(let date):
-            return Calendar.current.isDateInToday(date) ? ThemeManager.current.teal : ThemeManager.current.peach
+            ThemeManager.current.subtext0
+        case let .synced(date):
+            Calendar.current.isDateInToday(date) ? ThemeManager.current.teal : ThemeManager.current.peach
         case .stale:
-            return ThemeManager.current.peach
+            ThemeManager.current.peach
         case .error:
-            return ThemeManager.current.red
+            ThemeManager.current.red
         }
     }
 }

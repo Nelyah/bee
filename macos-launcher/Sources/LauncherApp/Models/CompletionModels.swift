@@ -15,23 +15,23 @@ struct CompletionsResponse: Decodable {
 
 /// Context for determining what type of completions to show.
 enum CompletionContext: Equatable {
-    case action           // First word - complete action names
-    case tag              // After + or -
-    case project          // After project: or proj:
-    case status           // After status:
-    case date             // After due:, due.before:, etc.
-    case taskRef          // After depends:
-    case none             // No completion context
+    case action // First word - complete action names
+    case tag // After + or -
+    case project // After project: or proj:
+    case status // After status:
+    case date // After due:, due.before:, etc.
+    case taskRef // After depends:
+    case none // No completion context
 
     /// The API type parameter for fetching completions.
     var apiType: String? {
         switch self {
-        case .action: return "actions"
-        case .tag: return "tags"
-        case .project: return "projects"
-        case .status: return "status"
-        case .date: return "dates"
-        case .taskRef, .none: return nil
+        case .action: "actions"
+        case .tag: "tags"
+        case .project: "projects"
+        case .status: "status"
+        case .date: "dates"
+        case .taskRef, .none: nil
         }
     }
 }

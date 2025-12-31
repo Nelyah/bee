@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class ExternalLinkCachedResponseTests: XCTestCase {
     func testParsesGitlabCachedSummary() {
@@ -22,7 +22,7 @@ final class ExternalLinkCachedResponseTests: XCTestCase {
         }
 
         switch summary {
-        case .gitlab(let gitlab):
+        case let .gitlab(gitlab):
             XCTAssertEqual(gitlab.title, "Improve task sync")
             XCTAssertEqual(gitlab.state, "opened")
             XCTAssertEqual(gitlab.comments, 12)
@@ -53,7 +53,7 @@ final class ExternalLinkCachedResponseTests: XCTestCase {
         }
 
         switch summary {
-        case .jira(let jira):
+        case let .jira(jira):
             XCTAssertEqual(jira.summary, "Add command palette")
             XCTAssertEqual(jira.status, "In Progress")
         case .gitlab:

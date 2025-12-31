@@ -1,9 +1,8 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 @MainActor
 final class CommandPaletteCoordinatorTests: XCTestCase {
-
     // MARK: - Lifecycle Tests
 
     func testOpenWithContextInitializesStack() {

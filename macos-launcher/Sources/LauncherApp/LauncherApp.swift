@@ -9,7 +9,6 @@ struct LauncherApp: App {
             ContentView(viewModel: viewModel)
         }
         .windowStyle(.hiddenTitleBar)
-        .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(after: .textEditing) {
                 Button("Close Detail") {

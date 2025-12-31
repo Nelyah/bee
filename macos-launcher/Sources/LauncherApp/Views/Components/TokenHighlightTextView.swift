@@ -119,7 +119,7 @@ struct TokenHighlightTextView: NSViewRepresentable {
 func ghostTextAttributes(font: NSFont?) -> [NSAttributedString.Key: Any] {
     [
         .font: font ?? NSFont.systemFont(ofSize: 18, weight: .medium),
-        .foregroundColor: ThemeManager.current.overlay0NS
+        .foregroundColor: ThemeManager.current.overlay0NS,
     ]
 }
 
@@ -164,17 +164,19 @@ enum NormalModeAction: Equatable {
     case openCommandPalette
 }
 
-struct KeyHandlingDecider {
+enum KeyHandlingDecider {
     static func action(for input: KeyInput, showCompletionMenu: Bool) -> KeyHandlingAction? {
         if input.modifierFlags.contains(.control),
-           input.keyCode == KeyCode.space {
+           input.keyCode == KeyCode.space
+        {
             return .toggleMenu
         }
 
         if input.modifierFlags.contains(.command),
            !input.modifierFlags.contains(.control),
            !input.modifierFlags.contains(.option),
-           input.charactersIgnoringModifiers?.lowercased() == "i" {
+           input.charactersIgnoringModifiers?.lowercased() == "i"
+        {
             return .toggleMenu
         }
 
@@ -215,7 +217,8 @@ struct KeyHandlingDecider {
         }
 
         if input.modifierFlags.contains(.control),
-           input.charactersIgnoringModifiers == "w" {
+           input.charactersIgnoringModifiers == "w"
+        {
             return .deleteWordBackward
         }
 
@@ -239,7 +242,8 @@ struct KeyHandlingDecider {
         if input.modifierFlags.contains(.command),
            !input.modifierFlags.contains(.control),
            !input.modifierFlags.contains(.option),
-           input.keyCode == KeyCode.k {
+           input.keyCode == KeyCode.k
+        {
             return .openCommandPalette
         }
 
@@ -293,9 +297,9 @@ struct KeyHandlingDecider {
     private static func isSubmit(_ input: KeyInput) -> Bool {
         switch input.keyCode {
         case KeyCode.returnKey, KeyCode.keypadEnter:
-            return true
+            true
         default:
-            return false
+            false
         }
     }
 
@@ -351,7 +355,7 @@ final class KeyHandlingTextView: NSTextView {
         super.draw(dirtyRect)
 
         guard let ghost = ghostText, !ghost.isEmpty else { return }
-        guard let layoutManager = layoutManager, let textContainer = textContainer else { return }
+        guard let layoutManager, let textContainer else { return }
 
         let origin = NSPoint(x: textContainerInset.width, y: textContainerInset.height)
         let length = textStorage?.length ?? 0
@@ -391,7 +395,7 @@ final class KeyHandlingTextView: NSTextView {
             onToggleMenu?()
         case .acceptGhost:
             onAcceptGhost?()
-        case .menuNavigate(let delta):
+        case let .menuNavigate(delta):
             onMenuNavigation?(delta)
         case .acceptCompletion:
             onAcceptCompletion?()
@@ -403,7 +407,7 @@ final class KeyHandlingTextView: NSTextView {
             moveWordBackward()
         case .deleteWordBackward:
             deleteWordBackward(nil)
-        case .moveSelection(let delta):
+        case let .moveSelection(delta):
             onMoveSelection?(delta)
         case .submit:
             onSubmit?()

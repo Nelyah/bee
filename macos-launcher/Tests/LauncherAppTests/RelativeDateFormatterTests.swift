@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class RelativeDateFormatterTests: XCTestCase {
     func testYesterdayUsesCalendarDay() {

@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class TokenClassifierTests: XCTestCase {
     func testTokenClassifierDateFilters() {
@@ -10,7 +10,7 @@ final class TokenClassifierTests: XCTestCase {
             .filterTokDateCreatedBefore,
             .filterTokDateCreatedAfter,
             .filterTokDateEndBefore,
-            .filterTokDateEndAfter
+            .filterTokDateEndAfter,
         ]
 
         for tokenType in dateTypes {
@@ -42,7 +42,7 @@ final class TokenClassifierTests: XCTestCase {
         """
         let data = Data(json.utf8)
         let span = try JSONDecoder().decode(TokenSpan.self, from: data)
-        if case .unknown(let rawValue) = span.tokenType {
+        if case let .unknown(rawValue) = span.tokenType {
             XCTAssertEqual(rawValue, "MysteryToken")
         } else {
             XCTFail("Expected unknown token type")

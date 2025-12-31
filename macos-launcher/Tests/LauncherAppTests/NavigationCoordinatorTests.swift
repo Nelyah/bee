@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class NavigationCoordinatorTests: XCTestCase {
     func testModeForInputChangeReturnsList() {

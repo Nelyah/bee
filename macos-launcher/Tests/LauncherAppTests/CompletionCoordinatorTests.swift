@@ -1,5 +1,5 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 @MainActor
 final class CompletionCoordinatorTests: XCTestCase {

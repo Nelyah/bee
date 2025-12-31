@@ -11,7 +11,7 @@ struct CompletionResult {
     let ghostText: String?
 }
 
-struct CompletionEngine {
+enum CompletionEngine {
     private static let tagSuffixes = ["+", "-"]
     private static let projectPrefixes = ["project:", "proj:"]
     private static let statusPrefixes = ["status:"]
@@ -22,7 +22,7 @@ struct CompletionEngine {
         "created.before:",
         "created.after:",
         "end.before:",
-        "end.after:"
+        "end.after:",
     ]
     private static let dependencyPrefixes = ["depends:"]
     private static let filterKeywords = [
@@ -36,7 +36,7 @@ struct CompletionEngine {
         "created.after:",
         "end.before:",
         "end.after:",
-        "depends:"
+        "depends:",
     ]
 
     static func detectContext(input: String, cursorPosition: Int, tokens: [TokenSpan]) -> CompletionContext {
@@ -92,7 +92,7 @@ struct CompletionEngine {
             return .taskRef
         }
 
-        if !lastWord.isEmpty && !lastWord.contains(":") {
+        if !lastWord.isEmpty, !lastWord.contains(":") {
             return .action
         }
 
@@ -109,7 +109,7 @@ struct CompletionEngine {
 
     private static func mergedActions(_ actions: [CompletionItem]) -> [CompletionItem] {
         var merged = actions
-        let existing = Set(actions.map { $0.value })
+        let existing = Set(actions.map(\.value))
         for keyword in filterKeywords where !existing.contains(keyword) {
             merged.append(CompletionItem(value: keyword, count: nil))
         }
@@ -158,15 +158,14 @@ struct CompletionEngine {
             return CompletionResult(items: [], ghostText: nil)
         }
 
-        let items: [CompletionItem]
-        if prefix.isEmpty {
-            items = source
+        let items: [CompletionItem] = if prefix.isEmpty {
+            source
         } else {
-            items = source.filter { $0.value.lowercased().hasPrefix(prefix) }
+            source.filter { $0.value.lowercased().hasPrefix(prefix) }
         }
 
         let ghostText: String?
-        if let first = items.first, (!prefix.isEmpty || context != .action) {
+        if let first = items.first, !prefix.isEmpty || context != .action {
             if prefix.isEmpty {
                 ghostText = first.value
             } else {
@@ -193,7 +192,7 @@ struct CompletionEngine {
         var newInput = input
         let startIndex = newInput.index(newInput.startIndex, offsetBy: prefixStart)
         let endIndex = newInput.index(newInput.startIndex, offsetBy: pos)
-        newInput.replaceSubrange(startIndex..<endIndex, with: completion.value)
+        newInput.replaceSubrange(startIndex ..< endIndex, with: completion.value)
 
         return (newInput, prefixStart + completion.value.count)
     }

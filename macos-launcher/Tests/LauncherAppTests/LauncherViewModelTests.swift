@@ -1,6 +1,6 @@
 import AppKit
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 @MainActor
 final class LauncherViewModelTests: XCTestCase {
@@ -9,7 +9,7 @@ final class LauncherViewModelTests: XCTestCase {
         viewModel.tasks = [
             makeTask(id: "a"),
             makeTask(id: "b"),
-            makeTask(id: "c")
+            makeTask(id: "c"),
         ]
         // Grouped rows: [header("No Project"), task(a,0), task(b,1), task(c,2)]
         // Navigation now includes headers
@@ -39,7 +39,7 @@ final class LauncherViewModelTests: XCTestCase {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [
             makeTask(id: "a"),
-            makeTask(id: "b")
+            makeTask(id: "b"),
         ]
         // Grouped rows: [header("No Project"), task(a,0), task(b,1)]
 
@@ -75,7 +75,7 @@ final class LauncherViewModelTests: XCTestCase {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [
             makeTask(id: "a"),
-            makeTask(id: "b")
+            makeTask(id: "b"),
         ]
         viewModel.selectedIndex = 1
 
@@ -167,7 +167,7 @@ final class LauncherViewModelTests: XCTestCase {
             TokenSpan(tokenType: .wordString, literal: "abc", start: 17, end: 20),
             TokenSpan(tokenType: .blank, literal: " ", start: 20, end: 21),
             TokenSpan(tokenType: .tagPlusPrefix, literal: "+", start: 21, end: 22),
-            TokenSpan(tokenType: .wordString, literal: "tag", start: 22, end: 25)
+            TokenSpan(tokenType: .wordString, literal: "tag", start: 22, end: 25),
         ]
 
         let spans = buildHighlightSpans(tokens: tokens, actionName: "add")
@@ -183,7 +183,7 @@ final class LauncherViewModelTests: XCTestCase {
         let viewModel = LauncherViewModel()
         let events = [
             ApiEvent(kind: "info", message: "Added task."),
-            ApiEvent(kind: "info", message: "Undo recorded.")
+            ApiEvent(kind: "info", message: "Undo recorded."),
         ]
 
         let status = viewModel.buildStatusMessage(from: events)
@@ -299,11 +299,11 @@ final class LauncherViewModelTests: XCTestCase {
             makeTask(id: "a", urgency: 9),
             makeTask(id: "b", urgency: 2),
             makeTask(id: "d", urgency: nil),
-            makeTask(id: "e", urgency: 9)
+            makeTask(id: "e", urgency: 9),
         ]
 
         let sorted = viewModel.sortTasksByUrgency(tasks)
-        let ids = sorted.map { $0.uuid }
+        let ids = sorted.map(\.uuid)
 
         XCTAssertEqual(ids, ["a", "e", "b", "c", "d"])
     }
@@ -329,7 +329,7 @@ final class LauncherViewModelTests: XCTestCase {
 
         XCTAssertEqual(mock.lastParseInput, "list status:pending or status:active")
         switch mock.lastRunActionFilter {
-        case .string(let value):
+        case let .string(value):
             XCTAssertEqual(value, "default-filter")
         default:
             XCTFail("Expected default filter to be passed to runAction")

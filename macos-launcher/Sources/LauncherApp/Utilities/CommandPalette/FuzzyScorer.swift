@@ -9,7 +9,6 @@ import Foundation
 /// - Substring match: low priority (query found within target)
 /// - Fuzzy match: lowest priority (characters appear in order)
 struct CommandPaletteFuzzyScorer {
-
     /// Score weights for different match types
     enum MatchWeight: Int {
         case exactMatch = 1000

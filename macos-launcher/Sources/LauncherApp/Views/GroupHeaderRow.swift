@@ -7,11 +7,11 @@ struct GroupHeaderRow: View {
 
     private var backgroundColor: Color {
         if isSelected {
-            return ThemeManager.current.surface1
+            ThemeManager.current.surface1
         } else if isHovered {
-            return ThemeManager.current.surface0
+            ThemeManager.current.surface0
         } else {
-            return Color.clear
+            Color.clear
         }
     }
 

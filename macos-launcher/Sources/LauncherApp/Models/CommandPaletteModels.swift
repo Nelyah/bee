@@ -41,44 +41,44 @@ enum CommandPaletteItem: Identifiable {
 
     var id: String {
         switch self {
-        case .action(let item): return "action-\(item.id)"
-        case .submenu(let item): return "submenu-\(item.id)"
-        case .suggestion(let item): return "suggestion-\(item.id)"
-        case .shortcut(let item): return "shortcut-\(item.id)"
+        case let .action(item): "action-\(item.id)"
+        case let .submenu(item): "submenu-\(item.id)"
+        case let .suggestion(item): "suggestion-\(item.id)"
+        case let .shortcut(item): "shortcut-\(item.id)"
         }
     }
 
     var displayTitle: String {
         switch self {
-        case .action(let item): return item.title
-        case .submenu(let item): return item.title
-        case .suggestion(let item): return item.title
-        case .shortcut(let item): return item.title
+        case let .action(item): item.title
+        case let .submenu(item): item.title
+        case let .suggestion(item): item.title
+        case let .shortcut(item): item.title
         }
     }
 
     var subtitle: String? {
         switch self {
-        case .action(let item): return item.subtitle
-        case .submenu(let item): return item.subtitle
-        case .suggestion(let item): return item.subtitle
-        case .shortcut: return nil
+        case let .action(item): item.subtitle
+        case let .submenu(item): item.subtitle
+        case let .suggestion(item): item.subtitle
+        case .shortcut: nil
         }
     }
 
     var icon: CommandPaletteIcon? {
         switch self {
-        case .action(let item): return item.icon
-        case .submenu(let item): return item.icon
-        case .suggestion(let item): return item.icon
-        case .shortcut: return nil
+        case let .action(item): item.icon
+        case let .submenu(item): item.icon
+        case let .suggestion(item): item.icon
+        case .shortcut: nil
         }
     }
 
     var isSelectable: Bool {
         switch self {
-        case .shortcut: return false
-        default: return true
+        case .shortcut: false
+        default: true
         }
     }
 }
@@ -192,7 +192,7 @@ struct CommandPaletteMenu: Identifiable {
 
     /// All selectable items across all sections
     var selectableItems: [CommandPaletteItem] {
-        sections.flatMap { $0.items.filter { $0.isSelectable } }
+        sections.flatMap { $0.items.filter(\.isSelectable) }
     }
 }
 
@@ -203,7 +203,7 @@ final class CommandPaletteStack: ObservableObject {
     var currentMenu: CommandPaletteMenu? { stack.last }
     var isAtRoot: Bool { stack.count <= 1 }
     var depth: Int { stack.count }
-    var breadcrumb: [String] { stack.map { $0.title } }
+    var breadcrumb: [String] { stack.map(\.title) }
 
     func push(_ menu: CommandPaletteMenu) {
         stack.append(menu)

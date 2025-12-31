@@ -60,27 +60,27 @@ struct TaskRow: View {
     private func value(for column: String) -> String {
         switch column {
         case "id":
-            return task.dbId.map(String.init) ?? "-"
+            task.dbId.map(String.init) ?? "-"
         case "uuid":
-            return String(task.uuid.prefix(8))
+            String(task.uuid.prefix(8))
         case "summary":
-            return task.summary
+            task.summary
         case "status":
-            return task.status
+            task.status
         case "project":
-            return task.project ?? "-"
+            task.project ?? "-"
         case "tags":
-            return task.tags.isEmpty ? "-" : task.tags.joined(separator: ", ")
+            task.tags.isEmpty ? "-" : task.tags.joined(separator: ", ")
         case "urgency":
-            return task.urgency.map(String.init) ?? "-"
+            task.urgency.map(String.init) ?? "-"
         case "date_created":
-            return formatDate(task.dateCreated)
+            formatDate(task.dateCreated)
         case "date_completed":
-            return task.dateCompleted.map(formatDate) ?? "-"
+            task.dateCompleted.map(formatDate) ?? "-"
         case "date_due":
-            return task.dateDue.map(formatDate) ?? "-"
+            task.dateDue.map(formatDate) ?? "-"
         default:
-            return "-"
+            "-"
         }
     }
 

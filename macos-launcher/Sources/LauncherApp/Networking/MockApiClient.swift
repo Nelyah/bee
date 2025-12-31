@@ -22,7 +22,8 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
     var syncExternalLinkResult: Result<ExternalLinkSyncResponse, Error> = .success(
         ExternalLinkSyncResponse(attempted: 1, succeeded: 1, failed: 0, errors: [])
     )
-    var gitlabMergeRequestsResult: Result<[GitlabMergeRequestSuggestion], Error> = .success(MockApiClient.sampleMergeRequests)
+    var gitlabMergeRequestsResult: Result<[GitlabMergeRequestSuggestion], Error> = .success(MockApiClient
+        .sampleMergeRequests)
     var jiraIssuesResult: Result<[JiraIssueSuggestion], Error> = .success(MockApiClient.sampleJiraIssues)
     var resolveResult: Result<ExternalLinkResolveResponse, Error> = .success(
         ExternalLinkResolveResponse(url: "https://gitlab.example.com/group/project/-/merge_requests/42")
@@ -79,7 +80,10 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         try jiraIssuesResult.get()
     }
 
-    func resolveExternalLink(provider: ExternalLinkProvider, input: String) async throws -> ExternalLinkResolveResponse {
+    func resolveExternalLink(
+        provider: ExternalLinkProvider,
+        input: String
+    ) async throws -> ExternalLinkResolveResponse {
         try resolveResult.get()
     }
 
@@ -113,7 +117,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
                 columns: ["id", "summary", "status"],
                 columnNames: ["ID", "Summary", "Status"],
                 isDefault: false
-            )
+            ),
         ]
     )
 
@@ -159,7 +163,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             dateCompleted: "2024-01-12T16:00:00Z",
             dateDue: nil,
             urgency: nil
-        )
+        ),
     ]
 
     static let sampleTaskDetail = ApiTaskDetail(
@@ -174,11 +178,11 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         dateDue: "2024-01-20T17:00:00Z",
         urgency: 8,
         annotations: [
-            TaskAnnotationDto(value: "Follow up with QA", time: "2024-01-18T09:00:00Z")
+            TaskAnnotationDto(value: "Follow up with QA", time: "2024-01-18T09:00:00Z"),
         ],
         history: [
             TaskHistoryDto(value: "Status changed from 'PENDING' to 'ACTIVE'", datetime: "2024-01-16T12:30:00Z"),
-            TaskHistoryDto(value: "Added a UUID to depend on: 'deadbeef'", datetime: "2024-01-15T11:00:00Z")
+            TaskHistoryDto(value: "Added a UUID to depend on: 'deadbeef'", datetime: "2024-01-15T11:00:00Z"),
         ]
     )
 
@@ -204,7 +208,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             """,
             lastSyncedAt: "2024-09-22T09:30:00Z",
             syncError: nil
-        )
+        ),
     ]
 
     static let sampleMergeRequests: [GitlabMergeRequestSuggestion] = [
@@ -229,7 +233,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             notesCount: 4,
             approved: true,
             pipelineStatus: .success
-        )
+        ),
     ]
 
     static let sampleJiraIssues: [JiraIssueSuggestion] = [
@@ -246,6 +250,6 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             status: "To Do",
             webURL: "https://jira.example.com/browse/BEE-102",
             updatedAt: "2024-09-21T14:05:00Z"
-        )
+        ),
     ]
 }

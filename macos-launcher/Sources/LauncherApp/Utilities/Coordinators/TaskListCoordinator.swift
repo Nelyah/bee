@@ -1,4 +1,4 @@
-struct TaskListCoordinator {
+enum TaskListCoordinator {
     static func moveSelection(tasks: [ApiTask], selectedIndex: Int?, delta: Int) -> Int? {
         guard !tasks.isEmpty else { return nil }
         let count = tasks.count

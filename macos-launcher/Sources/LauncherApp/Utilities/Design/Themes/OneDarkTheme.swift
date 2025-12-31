@@ -73,6 +73,7 @@ struct OneDarkTheme: Theme {
     var rosewaterNS: NSColor { Self.rosewaterColorNS }
 
     // MARK: - Base Colors
+
     private static let baseColor = Color(hex: "#222222")
     private static let baseColorNS = NSColor(hex: "#222222")
     private static let mantleColor = Color(hex: "#222222")
@@ -81,6 +82,7 @@ struct OneDarkTheme: Theme {
     private static let crustColorNS = NSColor(hex: "#222222")
 
     // MARK: - Surface Colors
+
     private static let surface0Color = Color(hex: "#2c313c")
     private static let surface0ColorNS = NSColor(hex: "#2c313c")
     private static let surface1Color = Color(hex: "#3e4451")
@@ -89,6 +91,7 @@ struct OneDarkTheme: Theme {
     private static let surface2ColorNS = NSColor(hex: "#4b5263")
 
     // MARK: - Text Colors
+
     private static let textColor = Color(hex: "#abb2bf")
     private static let textColorNS = NSColor(hex: "#abb2bf")
     private static let subtext1Color = Color(hex: "#a0a8b7")
@@ -99,6 +102,7 @@ struct OneDarkTheme: Theme {
     private static let overlay0ColorNS = NSColor(hex: "#5c6370")
 
     // MARK: - Accent Colors
+
     private static let blueColor = Color(hex: "#61afef")
     private static let blueColorNS = NSColor(hex: "#61afef")
     private static let greenColor = Color(hex: "#98c379")

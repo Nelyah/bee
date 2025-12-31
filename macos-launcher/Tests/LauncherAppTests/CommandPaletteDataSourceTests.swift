@@ -75,9 +75,9 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                                 id: "action1",
                                 title: "Select Report",
                                 handler: {}
-                            ))
+                            )),
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor)
@@ -99,9 +99,9 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                     id: "s1",
                     title: "First",
                     items: [
-                        .action(CommandPaletteActionItem(id: "a1", title: "Action 1", handler: {}))
+                        .action(CommandPaletteActionItem(id: "a1", title: "Action 1", handler: {})),
                     ]
-                )
+                ),
             ]
         )
         let contributor2 = MockContributor(
@@ -112,9 +112,9 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                     id: "s2",
                     title: "Second",
                     items: [
-                        .action(CommandPaletteActionItem(id: "a2", title: "Action 2", handler: {}))
+                        .action(CommandPaletteActionItem(id: "a2", title: "Action 2", handler: {})),
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor1)
@@ -144,7 +144,7 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                         .action(
                             CommandPaletteActionItem(id: "a3", title: "Add Jira link", handler: {})),
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor)
@@ -169,7 +169,7 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                         .action(
                             CommandPaletteActionItem(id: "a2", title: "Add GitLab link", handler: {})),
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor)
@@ -188,9 +188,9 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                     id: "s1",
                     items: [
                         .action(
-                            CommandPaletteActionItem(id: "a1", title: "Select Report", handler: {}))
+                            CommandPaletteActionItem(id: "a1", title: "Select Report", handler: {})),
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor)
@@ -214,9 +214,9 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                                 title: "Action",
                                 subtitle: "special keyword",
                                 handler: {}
-                            ))
+                            )),
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor)
@@ -235,9 +235,9 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                     id: "s1",
                     title: "Will be empty",
                     items: [
-                        .action(CommandPaletteActionItem(id: "a1", title: "ABC", handler: {}))
+                        .action(CommandPaletteActionItem(id: "a1", title: "ABC", handler: {})),
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor)
@@ -259,14 +259,16 @@ final class CommandPaletteDataSourceTests: XCTestCase {
                     items: [
                         .action(
                             CommandPaletteActionItem(
-                                id: "fuzzy", title: "Add something GitLab", handler: {})),  // fuzzy match for "git"
+                                id: "fuzzy", title: "Add something GitLab", handler: {}
+                            )), // fuzzy match for "git"
                         .action(
-                            CommandPaletteActionItem(id: "prefix", title: "GitLab link", handler: {})),  // prefix match
+                            CommandPaletteActionItem(id: "prefix", title: "GitLab link", handler: {})), // prefix match
                         .action(
                             CommandPaletteActionItem(
-                                id: "word", title: "Add GitLab", handler: {})),  // word prefix match
+                                id: "word", title: "Add GitLab", handler: {}
+                            )), // word prefix match
                     ]
-                )
+                ),
             ]
         )
         dataSource.register(contributor)
@@ -287,7 +289,7 @@ private struct MockContributor: CommandPaletteSectionContributor {
     let sections: [CommandPaletteSection]
 
     init(id: String, priority: Int, sections: [CommandPaletteSection] = []) {
-        self.contributorId = id
+        contributorId = id
         self.priority = priority
         self.sections = sections
     }

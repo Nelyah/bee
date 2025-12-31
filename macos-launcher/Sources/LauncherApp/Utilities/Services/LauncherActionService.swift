@@ -42,13 +42,12 @@ final class LauncherActionService {
 
     func resolveDefaultFilterIfNeeded(parsed: ParseResponse, actionName: String) async -> JSONValue? {
         guard actionName.lowercased() == "list" else { return parsed.filter }
-        guard parsed.filter == nil else { return parsed.filter }
         guard let defaults = reportConfig?.filters, !defaults.isEmpty else { return parsed.filter }
 
         let filterExpr = defaults.joined(separator: " or ")
         do {
             let parsedDefaults = try await apiClient.parse(input: "list \(filterExpr)")
-            return parsedDefaults.filter
+            return combineFilters(defaults: parsedDefaults.filter, user: parsed.filter)
         } catch {
             logger.error("Failed to parse default filters: \(error.localizedDescription, privacy: .public)")
             return parsed.filter
@@ -63,6 +62,24 @@ final class LauncherActionService {
                 properties: parsed.properties,
                 filter: filter
             )
+        }
+    }
+
+    private func combineFilters(defaults: JSONValue?, user: JSONValue?) -> JSONValue? {
+        switch (defaults, user) {
+        case (nil, nil):
+            return nil
+        case (let defaults?, nil):
+            return defaults
+        case (nil, let user?):
+            return user
+        case (let defaults?, let user?):
+            return .object([
+                "type": .string("AndFilter"),
+                "value": .object([
+                    "children": .array([defaults, user])
+                ])
+            ])
         }
     }
 

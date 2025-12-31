@@ -29,6 +29,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var reportConfig: ReportConfig?
     @Published var availableReports: [ReportSummary] = []
     @Published var selectedReportName: String = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedReportName) ?? ""
+    @Published private(set) var reportFilterChips: [CriteriaChip] = []
     @Published private(set) var taskDetailState = TaskDetailState()
     @Published private(set) var externalLinksState = ExternalLinksState()
     @Published var toasts: [ToastMessage] = []
@@ -52,6 +53,7 @@ final class LauncherViewModel: ObservableObject {
     private let apiClient: ApiClientProtocol
     private var requestCounter: Int = 0
     private var latestParse: ParseResponse?
+    private var lastSuccessfulParse: ParseResponse?
     private var lastParseErrorMessage: String?
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "view-model")
     private var suppressInputHandling = false
@@ -172,6 +174,7 @@ final class LauncherViewModel: ObservableObject {
             }
 
             actionService.setReportConfig(reportConfig)
+            await refreshReportFilterChips()
             logger.info("Config loaded: \(self.reportConfig?.columns.count ?? 0) columns, \(self.availableReports.count) reports")
         } catch {
             logger.error("Failed to load config: \(error.localizedDescription, privacy: .public)")
@@ -182,6 +185,7 @@ final class LauncherViewModel: ObservableObject {
                 columns: ["id", "summary", "tags", "status"],
                 columnNames: ["ID", "Summary", "Tags", "Status"]
             )
+            await refreshReportFilterChips()
         }
     }
 
@@ -211,6 +215,7 @@ final class LauncherViewModel: ObservableObject {
             let parsed = try await actionService.parse(input: query)
             guard requestId == requestCounter else { return }
             latestParse = parsed
+            lastSuccessfulParse = parsed
             lastParseErrorMessage = nil
             tokens = parsed.tokens
             actionName = parsed.action
@@ -219,6 +224,9 @@ final class LauncherViewModel: ObservableObject {
 
             if shouldAutoList(actionName: parsed.action) {
                 await runAction(from: parsed, requestId: requestId, resetInput: false, updateStatus: false)
+            } else if shouldPreviewList(actionName: parsed.action) {
+                let preview = ParseResponse(action: "list", properties: nil, filter: parsed.filter, tokens: parsed.tokens)
+                await runAction(from: preview, requestId: requestId, resetInput: false, updateStatus: false)
             }
         } catch {
             guard requestId == requestCounter else { return }
@@ -520,6 +528,57 @@ final class LauncherViewModel: ObservableObject {
         return selectedReportName
     }
 
+    var criteriaFilterChips: [CriteriaChip] {
+        var chips = reportFilterChips
+        if let parsed = lastSuccessfulParse {
+            let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter)
+            if parsedChips.isEmpty, shouldAutoList(actionName: parsed.action) {
+                chips.append(contentsOf: CriteriaChipBuilder.filterChips(from: parsed.tokens, actionName: parsed.action))
+            } else if !parsedChips.isEmpty {
+                chips.append(contentsOf: parsedChips)
+            }
+        }
+        return deduplicateChips(chips)
+    }
+
+    var criteriaPropertyChips: [CriteriaChip] {
+        guard let parsed = lastSuccessfulParse else { return [] }
+        return CriteriaChipBuilder.propertyChips(from: parsed.properties)
+    }
+
+    func refreshReportFilterChips() async {
+        guard let reportConfig else {
+            reportFilterChips = []
+            return
+        }
+        let filterExpr = reportConfig.filters.joined(separator: " or ").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !filterExpr.isEmpty else {
+            reportFilterChips = []
+            return
+        }
+
+        do {
+            let parsed = try await actionService.parse(input: "list \(filterExpr)")
+            let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter)
+            let fallbackChips = CriteriaChipBuilder.filterChips(from: parsed.tokens, actionName: parsed.action)
+            reportFilterChips = deduplicateChips(parsedChips.isEmpty ? fallbackChips : parsedChips)
+        } catch {
+            logger.error("Failed to parse report filters: \(error.localizedDescription, privacy: .public)")
+            reportFilterChips = CriteriaChipBuilder.reportFilterChips(from: reportConfig)
+        }
+    }
+
+    private func deduplicateChips(_ chips: [CriteriaChip]) -> [CriteriaChip] {
+        var seen = Set<String>()
+        var result: [CriteriaChip] = []
+        for chip in chips {
+            if seen.insert(chip.id).inserted {
+                result.append(chip)
+            }
+        }
+        return result
+    }
+
     /// Select a report by name and refresh the task list.
     func selectReport(_ name: String) {
         guard let report = availableReports.first(where: { $0.name == name }) else { return }
@@ -531,6 +590,9 @@ final class LauncherViewModel: ObservableObject {
             columnNames: report.columnNames
         )
         actionService.setReportConfig(reportConfig)
+        Task {
+            await refreshReportFilterChips()
+        }
         // Refresh task list with new report filters
         handleInputChange(input)
     }
@@ -623,6 +685,11 @@ final class LauncherViewModel: ObservableObject {
         actionName.isEmpty || actionName.lowercased() == "list"
     }
 
+    /// Return true if we should preview a list while typing a non-list action.
+    func shouldPreviewList(actionName: String) -> Bool {
+        !shouldAutoList(actionName: actionName)
+    }
+
     /// Build a status message from API events.
     func buildStatusMessage(from events: [ApiEvent]) -> String? {
         guard !events.isEmpty else { return nil }
@@ -649,6 +716,7 @@ final class LauncherViewModel: ObservableObject {
         tokens = []
         actionName = ""
         selectedIndex = nil
+        lastSuccessfulParse = nil
         clearCompletions()
         suppressInputHandling = false
     }

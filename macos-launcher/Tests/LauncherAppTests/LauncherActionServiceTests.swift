@@ -41,6 +41,35 @@ final class LauncherActionServiceTests: XCTestCase {
         }
     }
 
+    func testResolveDefaultFilterCombinesWithUserFilter() async {
+        let mock = MockApiClient()
+        mock.parseResult = .success(ParseResponse(
+            action: "list",
+            properties: nil,
+            filter: .string("from-default"),
+            tokens: []
+        ))
+
+        let service = LauncherActionService(apiClient: mock)
+        service.setReportConfig(ReportConfig(
+            filters: ["status:pending or status:active"],
+            columns: ["id"],
+            columnNames: ["ID"]
+        ))
+
+        let parsed = ParseResponse(action: "list", properties: nil, filter: .string("from-user"), tokens: [])
+        let filter = await service.resolveDefaultFilterIfNeeded(parsed: parsed, actionName: "list")
+
+        guard case .object(let obj)? = filter,
+              case .string(let type)? = obj["type"], type == "AndFilter",
+              case .object(let valueObj)? = obj["value"],
+              case .array(let children)? = valueObj["children"] else {
+            return XCTFail("Expected AndFilter wrapper")
+        }
+
+        XCTAssertEqual(children.count, 2)
+    }
+
     func testRunActionSerializesRequests() async throws {
         let client = BlockingApiClient()
         let service = LauncherActionService(apiClient: client)

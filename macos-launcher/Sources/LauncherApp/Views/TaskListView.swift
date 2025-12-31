@@ -2,11 +2,14 @@ import SwiftUI
 
 fileprivate enum TaskListLayout {
     static let searchSpacing: CGFloat = DesignTokens.Spacing.md
+    static let searchRowSpacing: CGFloat = DesignTokens.Spacing.md
     static let inputHeight: CGFloat = 30
     static let horizontalPadding: CGFloat = DesignTokens.Spacing.lg
     static let verticalPadding: CGFloat = DesignTokens.Spacing.md
     static let cornerRadius: CGFloat = DesignTokens.Radius.lg
     static let strokeOpacity: Double = 0.5
+    static let criteriaTopPadding: CGFloat = DesignTokens.Spacing.xs
+    static let criteriaBottomPadding: CGFloat = DesignTokens.Spacing.sm
     static let headerSpacing: CGFloat = DesignTokens.Spacing.md
     static let statusColumnWidth: CGFloat = 8
     static let firstColumnWidth: CGFloat = 30
@@ -31,85 +34,92 @@ struct TaskListView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 16) {
-                // Search input field
-                HStack(spacing: TaskListLayout.searchSpacing) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(ThemeManager.current.subtext0)
-                    ZStack(alignment: .leading) {
-                        if viewModel.input.isEmpty {
-                            Text("Search tasks…")
-                                .font(.system(size: DesignTokens.TypeScale.input, weight: .medium, design: .rounded))
-                                .foregroundColor(ThemeManager.current.overlay0)
-                                .padding(.leading, 2)
-                        }
-                        TokenHighlightTextView(
-                            text: $viewModel.input,
-                            tokens: viewModel.tokens,
-                            actionName: viewModel.actionName,
-                            isFocused: viewModel.isInsertMode && !viewModel.commandPalette.isPresented,
-                            ghostText: completion.ghostText,
-                            cursorPosition: completion.cursorPosition,
-                            showCompletionMenu: completion.showMenu,
-                            onSubmit: {
-                                viewModel.handleSubmit()
-                            },
-                            onEscape: {
-                                if completion.showMenu {
-                                    viewModel.clearCompletions()
-                                } else {
-                                    viewModel.isInsertMode = false
-                                }
-                            },
-                            onMoveSelection: { delta in
-                                viewModel.moveSelection(delta: delta)
-                            },
-                            onCursorChange: { position in
-                                viewModel.handleCursorChange(position)
-                            },
-                            onToggleMenu: {
-                                viewModel.toggleCompletionMenu()
-                            },
-                            onAcceptGhost: {
-                                viewModel.acceptGhostText()
-                            },
-                            onMenuNavigation: { delta in
-                                viewModel.moveCompletionSelection(delta: delta)
-                            },
-                            onAcceptCompletion: {
-                                viewModel.acceptCompletion()
+                // Search input field + report badge
+                HStack(spacing: TaskListLayout.searchRowSpacing) {
+                    HStack(spacing: TaskListLayout.searchSpacing) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(ThemeManager.current.subtext0)
+                        ZStack(alignment: .leading) {
+                            if viewModel.input.isEmpty {
+                                Text("Search tasks…")
+                                    .font(.system(size: DesignTokens.TypeScale.input, weight: .medium, design: .rounded))
+                                    .foregroundColor(ThemeManager.current.overlay0)
+                                    .padding(.leading, 2)
                             }
-                        )
+                            TokenHighlightTextView(
+                                text: $viewModel.input,
+                                tokens: viewModel.tokens,
+                                actionName: viewModel.actionName,
+                                isFocused: viewModel.isInsertMode && !viewModel.commandPalette.isPresented,
+                                ghostText: completion.ghostText,
+                                cursorPosition: completion.cursorPosition,
+                                showCompletionMenu: completion.showMenu,
+                                onSubmit: {
+                                    viewModel.handleSubmit()
+                                },
+                                onEscape: {
+                                    if completion.showMenu {
+                                        viewModel.clearCompletions()
+                                    } else {
+                                        viewModel.isInsertMode = false
+                                    }
+                                },
+                                onMoveSelection: { delta in
+                                    viewModel.moveSelection(delta: delta)
+                                },
+                                onCursorChange: { position in
+                                    viewModel.handleCursorChange(position)
+                                },
+                                onToggleMenu: {
+                                    viewModel.toggleCompletionMenu()
+                                },
+                                onAcceptGhost: {
+                                    viewModel.acceptGhostText()
+                                },
+                                onMenuNavigation: { delta in
+                                    viewModel.moveCompletionSelection(delta: delta)
+                                },
+                                onAcceptCompletion: {
+                                    viewModel.acceptCompletion()
+                                }
+                            )
+                        }
+                        .frame(height: TaskListLayout.inputHeight)
+                        .onChange(of: viewModel.input) { _, newValue in
+                            viewModel.handleInputChange(newValue)
+                        }
                     }
-                    .frame(height: TaskListLayout.inputHeight)
-                    .onChange(of: viewModel.input) { _, newValue in
-                        viewModel.handleInputChange(newValue)
-                    }
-                }
-                .padding(.horizontal, TaskListLayout.horizontalPadding)
-                .padding(.vertical, TaskListLayout.verticalPadding)
-                .background(
-                    RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                        .fill(ThemeManager.current.base)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                                .stroke(
-                                    viewModel.isInsertMode
-                                        ? ThemeManager.current.blue
-                                        : ThemeManager.current.surface1.opacity(TaskListLayout.strokeOpacity),
-                                    lineWidth: viewModel.isInsertMode ? 2 : 1
-                                )
-                        )
-                )
-                .contentShape(Rectangle())
-                .onTapGesture { viewModel.enterInsertMode() }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, TaskListLayout.horizontalPadding)
+                    .padding(.vertical, TaskListLayout.verticalPadding)
+                    .background(
+                        RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
+                            .fill(ThemeManager.current.base)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
+                                    .stroke(
+                                        viewModel.isInsertMode
+                                            ? ThemeManager.current.blue
+                                            : ThemeManager.current.surface1.opacity(TaskListLayout.strokeOpacity),
+                                        lineWidth: viewModel.isInsertMode ? 2 : 1
+                                    )
+                            )
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture { viewModel.enterInsertMode() }
 
-                // Report indicator
-                if !viewModel.availableReports.isEmpty {
-                    Text("Report: \(viewModel.currentReportDisplayName)")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(ThemeManager.current.subtext0)
-                        .padding(.horizontal, TaskListLayout.horizontalPadding)
+                    if !viewModel.availableReports.isEmpty {
+                        ReportBadgeView(name: viewModel.currentReportDisplayName)
+                    }
                 }
+
+                CriteriaStripView(
+                    filterChips: viewModel.criteriaFilterChips,
+                    propertyChips: viewModel.criteriaPropertyChips
+                )
+                .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
+                .padding(.top, TaskListLayout.criteriaTopPadding)
+                .padding(.bottom, TaskListLayout.criteriaBottomPadding)
 
                 // Column headers
                 if let config = viewModel.reportConfig {
@@ -218,6 +228,26 @@ struct TaskListView: View {
                 viewModel.loadInitialListIfNeeded()
             }
         }
+    }
+}
+
+private struct ReportBadgeView: View {
+    let name: String
+
+    var body: some View {
+        Text("Report: \(name)")
+            .font(.system(size: DesignTokens.TypeScale.label, weight: .semibold, design: .rounded))
+            .foregroundColor(ThemeManager.current.subtext0)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    .fill(ThemeManager.current.surface1)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    .stroke(ThemeManager.current.surface2.opacity(0.7), lineWidth: 1)
+            )
     }
 }
 

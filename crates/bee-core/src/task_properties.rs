@@ -1,5 +1,6 @@
 use chrono::prelude::DateTime;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 
 use super::task_prop_parser::TaskPropertyParser;
 use super::{DependsOnIdentifier, Project, TaskAnnotation, TaskStatus};
@@ -24,11 +25,82 @@ pub struct TaskProperties {
     pub(crate) active_status: Option<bool>,
     /// If presents, sets the task's project to the given
     /// Option<Project>
+    #[serde(
+        default,
+        skip_serializing_if = "is_project_absent",
+        serialize_with = "serialize_project",
+        deserialize_with = "deserialize_project"
+    )]
     pub(crate) project: Option<Option<Project>>,
     #[serde(default)]
     pub(crate) date_due: Option<DateTime<chrono::Local>>,
     pub(crate) depends_on: Option<Vec<DependsOnIdentifier>>,
     pub(crate) blocks: Option<Vec<DependsOnIdentifier>>,
+}
+
+fn is_project_absent(project: &Option<Option<Project>>) -> bool {
+    project.is_none()
+}
+
+fn serialize_project<S>(project: &Option<Option<Project>>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match project {
+        None => serializer.serialize_none(),
+        Some(None) => serializer.serialize_str("none"),
+        Some(Some(project)) => project.serialize(serializer),
+    }
+}
+
+fn deserialize_project<'de, D>(deserializer: D) -> Result<Option<Option<Project>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    match value {
+        None => Ok(None),
+        Some(Value::Null) => Ok(Some(None)),
+        Some(Value::String(text)) => {
+            if text.eq_ignore_ascii_case("none") {
+                Ok(Some(None))
+            } else {
+                Ok(Some(Some(Project::from(text))))
+            }
+        }
+        Some(Value::Object(map)) => {
+            let project: Project =
+                serde_json::from_value(Value::Object(map)).map_err(serde::de::Error::custom)?;
+            Ok(Some(Some(project)))
+        }
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "invalid project value: {other}"
+        ))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_serialization_omits_absent_and_encodes_none() {
+        let mut props = TaskProperties::default();
+        let value = serde_json::to_value(&props).expect("serialize properties");
+        let obj = value.as_object().expect("properties should be object");
+        assert!(!obj.contains_key("project"));
+
+        props.project = Some(None);
+        let value = serde_json::to_value(&props).expect("serialize properties");
+        assert_eq!(value.get("project"), Some(&Value::String("none".to_string())));
+    }
+
+    #[test]
+    fn project_deserialization_accepts_none_string() {
+        let value = serde_json::json!({ "project": "none" });
+        let props: TaskProperties = serde_json::from_value(value).expect("deserialize");
+        assert_eq!(props.project, Some(None));
+    }
 }
 
 // We implement a specific function for annotate because we cannot know how to differenciate

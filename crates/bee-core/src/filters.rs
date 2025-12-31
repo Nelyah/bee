@@ -1,3 +1,36 @@
+//! Task filtering system using a composite pattern.
+//!
+//! Filters form trees that match tasks based on various criteria. The system
+//! supports boolean composition (AND, OR, XOR) and 14 filter types covering
+//! status, project, tags, dates, and task relationships.
+//!
+//! # Building Filters
+//!
+//! Use the helper functions to construct filter trees:
+//! ```ignore
+//! // Parse from user input (CLI-style)
+//! let filter = filters::from(&["status:pending".into(), "project:backend".into()])?;
+//!
+//! // Combine programmatically
+//! let combined = filters::and(status_filter, project_filter);
+//!
+//! // Start with a pass-through filter
+//! let root = filters::new_empty();
+//! ```
+//!
+//! # Filter Types
+//!
+//! - **Composite**: `RootFilter` (pass-through), `AndFilter`, `OrFilter`, `XorFilter`
+//! - **String**: `StringFilter` (matches task description)
+//! - **Property**: `StatusFilter`, `ProjectFilter`, `TagFilter`
+//! - **ID**: `UuidFilter`, `TaskIdFilter`, `DependsOnFilter`
+//! - **Date**: `DateCreatedFilter`, `DateDueFilter`, `DateEndFilter`
+//!
+//! # Serialization
+//!
+//! Filters use `typetag` for automatic serialization. The `#[typetag::serde]`
+//! attribute on the trait enables polymorphic serialization of `Box<dyn Filter>`.
+
 pub(crate) mod filters_impl;
 
 mod parser;
@@ -19,19 +52,57 @@ use filters_impl::{
     TaskIdFilter, UuidFilter, XorFilter,
 };
 
+/// Composable filter for matching tasks.
+///
+/// Implementors must support cloning, debugging, display, typetag serialization,
+/// and thread-safety (`Send + Sync`). The trait uses a composite pattern where
+/// filters can contain child filters.
+///
+/// # Implementing a Custom Filter
+///
+/// 1. Create a struct implementing `Filter` with `#[typetag::serde]`
+/// 2. Implement `validate_task()` with your matching logic
+/// 3. For leaf filters, `add_children()` should panic or no-op
+/// 4. Add your filter to `FilterKind` enum in `filters_impl.rs`
 #[allow(private_bounds)]
 #[typetag::serde(tag = "type", content = "value")]
 pub trait Filter: CloneFilter + Any + Debug + Display + FilterKindGetter + Send + Sync {
+    /// Test whether a task matches this filter's criteria.
+    ///
+    /// For composite filters (And/Or/Xor), this recursively evaluates children.
+    /// For leaf filters, this checks the specific condition (status, project, etc.).
     fn validate_task(&self, task: &Task) -> bool;
+
+    /// Add a child filter to this composite filter.
+    ///
+    /// Used when building filter trees programmatically. Leaf filters (Status,
+    /// Project, etc.) should panic or ignore this call since they cannot have children.
     fn add_children(&mut self, child: Box<dyn Filter>);
+
+    /// Return self as `&dyn Any` for downcasting.
+    ///
+    /// Used by the `PartialEq` implementation to compare filters of the same type.
     fn as_any(&self) -> &dyn Any;
+
+    /// Iterate over this filter and all descendant filters.
+    ///
+    /// For leaf filters, returns an iterator containing only self.
+    /// For composite filters, recursively yields self and all children.
     fn iter(&self) -> Box<dyn Iterator<Item = &dyn Filter> + '_>;
+
+    /// Convert numeric task IDs to UUIDs within this filter tree.
+    ///
+    /// When users type `depends:5`, the parser creates a filter with the numeric ID.
+    /// Before the filter can be used or serialized, this method converts those IDs
+    /// to UUIDs using the provided mapping from the current TaskData.
     fn convert_id_to_uuid(&mut self, id_to_uuid: &HashMap<i32, Uuid>);
 }
 
-// Consume @lhs and @rhs to return a new Box<dyn Filter>
-// The two filters given in argument are linked by an AND
-// operator
+/// Combine two filters with AND logic.
+///
+/// Returns a filter that matches only if both inputs match. Optimizations:
+/// - If either input is `RootFilter`, returns the other (Root matches everything)
+/// - If either input is already `AndFilter`, appends to it instead of nesting
 pub fn and(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
     if lhs.get_kind() == FilterKind::Root {
         return rhs;
@@ -54,9 +125,9 @@ pub fn and(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
     })
 }
 
-// Consume @lhs and @rhs to return a new Box<dyn Filter>
-// The two filters given in argument are linked by an OR
-// operator
+/// Combine two filters with OR logic.
+///
+/// Returns a filter that matches if either input matches. Same optimizations as [`and()`].
 pub fn or(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
     if lhs.get_kind() == FilterKind::Root {
         return rhs;
@@ -79,6 +150,14 @@ pub fn or(lhs: Box<dyn Filter>, rhs: Box<dyn Filter>) -> Box<dyn Filter> {
     })
 }
 
+/// Parse a filter from string arguments (CLI-style input).
+///
+/// Tokenizes the input strings, parses filter expressions, and builds the filter tree.
+/// Supports syntax like `status:pending`, `project:backend`, `+tag`, `due:today`.
+///
+/// # Errors
+///
+/// Returns `CoreError::Parse` if the input contains invalid filter syntax.
 pub fn from(values: &[String]) -> CoreResult<Box<dyn Filter>> {
     let lexer = Lexer::new(values.join(" "));
     let mut parser = FilterParser::new(lexer);
@@ -87,6 +166,10 @@ pub fn from(values: &[String]) -> CoreResult<Box<dyn Filter>> {
     Ok(f)
 }
 
+/// Create an empty filter that matches all tasks.
+///
+/// Returns a `RootFilter` which is a pass-through—`validate_task()` always returns true.
+/// Useful as a starting point when building filters programmatically.
 pub fn new_empty() -> Box<dyn Filter> {
     Default::default()
 }

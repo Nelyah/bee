@@ -1,4 +1,40 @@
-// pub use sea_orm_migration::prelude::*;
+//! Database migrations for bee's SQLite schema.
+//!
+//! This crate uses SeaORM's migration framework to manage schema evolution.
+//! Migrations are automatically applied at application startup via the [`Migrator`] struct.
+//!
+//! # Migration Naming
+//!
+//! Files follow the pattern `m<YYYYMMDD>_<HHMMSS>_<description>.rs`, e.g.:
+//! - `m20250329_212639_create_task_schema.rs`
+//! - `m20251230_000001_create_external_links.rs`
+//!
+//! # Adding a New Migration
+//!
+//! 1. Create a new file in `src/` following the naming pattern above
+//! 2. Define a `Migration` struct and implement `MigrationTrait`:
+//!    ```ignore
+//!    pub struct Migration;
+//!
+//!    #[async_trait::async_trait]
+//!    impl MigrationTrait for Migration {
+//!        async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+//!            // Create tables, add columns, etc.
+//!        }
+//!
+//!        async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+//!            // Reverse the up migration
+//!        }
+//!    }
+//!    ```
+//! 3. Add the module to this file and include it in the `migrations()` vec
+//!
+//! # Current Migrations
+//!
+//! - `m20250329_212639_create_task_schema`: Core task tables (tasks, projects, tags, annotations, history)
+//! - `m20251230_000001_create_external_links`: External link tracking (GitLab, Jira)
+//! - `m20251230_000002_update_external_links_unique`: Unique constraint on external links
+//! - `m20250101_000001_create_user_reports`: User-defined saved reports
 
 pub use sea_orm_migration::prelude::sea_orm;
 pub use sea_orm_migration::{async_trait, MigrationTrait, MigratorTrait};
@@ -8,6 +44,10 @@ mod m20250329_212639_create_task_schema;
 mod m20251230_000001_create_external_links;
 mod m20251230_000002_update_external_links_unique;
 
+/// The migration runner that applies all schema migrations.
+///
+/// Call `Migrator::up()` to apply pending migrations, or `Migrator::down()` to roll back.
+/// Typically invoked at application startup.
 pub struct Migrator;
 
 #[async_trait::async_trait]

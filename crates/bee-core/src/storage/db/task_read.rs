@@ -1,3 +1,22 @@
+//! Task loading and hydration from the database.
+//!
+//! This module handles loading tasks with all their related data (projects, tags,
+//! annotations, history, dependencies). The key optimization is batched hydration—
+//! all related data is loaded in a fixed number of queries regardless of task count,
+//! avoiding the N+1 query problem.
+//!
+//! # Key Functions
+//!
+//! - [`load_tasks_impl`]: Main entry point for loading tasks with optional filtering
+//! - [`task_models_to_objects`]: Hydrates database models into domain Task objects
+//!
+//! # Performance
+//!
+//! Loading 100 tasks requires ~7 queries (not 700+). This is achieved by:
+//! 1. Collecting all task IDs upfront
+//! 2. Batch-loading each relationship type with `WHERE task_id IN (...)`
+//! 3. Building in-memory HashMaps for O(1) lookup during construction
+
 use super::filter_sql::{condition_expression_to_condition, filter_to_condition_expr};
 use super::tables;
 use crate::{
@@ -120,6 +139,26 @@ fn parse_datetime(value: &str) -> CoreResult<DateTime<Local>> {
         .map_err(CoreError::from)
 }
 
+/// Hydrate task database models into fully-populated Task domain objects.
+///
+/// This function solves the N+1 query problem by batching all relationship lookups.
+/// Instead of loading relationships per-task (which would be O(n) queries), it loads
+/// all relationships for all tasks in a fixed number of queries.
+///
+/// # Query Phases
+///
+/// 1. **Projects**: Single query for all referenced project IDs → `HashMap<project_id, Project>`
+/// 2. **Tags**: Query task_tag links, then tag names → `HashMap<task_id, Vec<Tag>>`
+/// 3. **Annotations**: Single query ordered by datetime → `HashMap<task_id, Vec<Annotation>>`
+/// 4. **History**: Single query ordered by datetime → `HashMap<task_id, Vec<HistoryEntry>>`
+/// 5. **Links (outgoing)**: DependsOn relationships from these tasks
+/// 6. **Links (incoming)**: Tasks that depend on these tasks (for Blocking display)
+/// 7. **Missing UUIDs**: Any task IDs referenced in links but not in the input set
+///
+/// # Construction
+///
+/// After all data is cached in HashMaps, a single pass constructs Task objects
+/// by looking up each relationship from the appropriate map.
 async fn task_models_to_objects<C>(db: &C, models: Vec<tasks::Model>) -> CoreResult<Vec<Task>>
 where
     C: ConnectionTrait,

@@ -1,3 +1,17 @@
+//! Core domain types and traits for the bee task manager.
+//!
+//! This crate provides the foundational abstractions used by CLI, API,
+//! and other frontends:
+//!
+//! - **Task model** ([`task`]): Task struct, properties, status, and undo types
+//! - **Filter system** ([`filters`]): Composable query predicates for task selection
+//! - **Storage abstraction** ([`storage`]): Trait-based persistence layer (sync and async)
+//! - **Output abstraction** ([`Printer`]): Trait for rendering results to different targets
+//! - **Error handling** ([`CoreError`], [`ErrorCode`]): Unified error types with user-facing messages
+//!
+//! Most consumers will interact with [`task::Task`], [`filters::Filter`],
+//! and the storage traits.
+
 pub mod config;
 pub mod external_links;
 pub mod filters;
@@ -192,20 +206,42 @@ impl From<toml::de::Error> for CoreError {
     }
 }
 
+/// Output abstraction for rendering results to different targets.
+///
+/// The CLI uses a table-formatted printer, while the API captures events
+/// for JSON serialization. Implementations should handle their own
+/// formatting and encoding.
+///
+/// # Error Handling
+///
+/// - `print_list_of_tasks`, `print_task_info`, `show_help`: Return `CoreResult`
+///   because formatting can fail (e.g., invalid column configuration)
+/// - `show_information_message`, `error`, `print_raw`: Infallible; log failures internally
 pub trait Printer {
+    /// Render a task list using the column configuration from `report_kind`.
+    ///
+    /// The report's `columns` field determines which task properties to display
+    /// and in what order. The `column_names` field provides custom headers.
     fn print_list_of_tasks(&self, tasks: Vec<&Task>, report_kind: &ReportConfig) -> CoreResult<()>;
+
+    /// Render detailed information for a single task.
+    ///
+    /// Should include all task fields: status, project, tags, annotations,
+    /// dependencies, dates, and history.
     fn print_task_info(&self, task: &Task) -> CoreResult<()>;
 
-    /// Print the help for all the possible actions. This can also have a couple more named sections.
+    /// Display help text organized by section.
     ///
-    /// @help_section_description: This is a map containing a mapping of Action name to
-    /// action description, as it is implemented by them. It may also contain a section
-    /// name to its content.
+    /// The map keys are section names (often action names like "add", "done"),
+    /// values are the help text for that section.
     fn show_help(&self, help_section_description: &HashMap<String, String>) -> CoreResult<()>;
+
+    /// Display a success or informational message (e.g., "Task created").
     fn show_information_message(&self, message: &str);
+
+    /// Display an error message to the user.
     fn error(&self, message: &str);
 
-    /// This function is for developer purposes only. It might be used so the program outputs
-    /// information to stdout or console.log, depending on the implementation
+    /// Debug output for development. Goes to stdout (CLI) or console.log (WASM).
     fn print_raw(&self, message: &str);
 }

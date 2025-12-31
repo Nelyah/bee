@@ -101,20 +101,6 @@
   - Consider builder pattern for task creation (currently in `add_task`)
 - Safety net: Refactor incrementally with tests; ensure serialization/deserialization still works correctly.
 
-### DEBT-0045: Sparse documentation on public APIs
-- Priority: P2
-- Effort: M
-- Area: All Rust crates
-- Evidence: Only ~117 doc comment lines (`///` or `//!`) across 33 files; public traits like `Filter`, `TaskAction`, `Store` lack usage examples
-- Smells: docs, maintainability, onboarding
-- Problem (rough): New contributors and future maintainers lack guidance on how to use public APIs. Complex algorithms (filter parsing, blocking status detection) have no high-level explanations. Module-level documentation is absent.
-- Suggested fix (rough):
-  - Add `//!` module docs to each crate's lib.rs explaining purpose
-  - Add doc comments with examples to public traits: Filter, TaskAction, Store, Printer
-  - Document complex algorithms in task_read.rs (batched hydration) and blocking.rs
-  - Use `#[doc(hidden)]` for internal APIs to clarify public surface
-- Safety net: Run `cargo doc --no-deps` to verify documentation builds; review generated docs for completeness.
-
 ### DEBT-0046: TokenHighlightTextView mixes multiple responsibilities
 - Priority: P1
 - Effort: M
@@ -172,6 +158,15 @@
 - Safety net: Unit tests for SettingsService; update ViewModel tests to use mock; verify persistence still works in app.
 
 ## Done
+### DEBT-0045: Sparse documentation on public APIs ✅
+- Status: Completed (2025-12-31)
+- Priority: P2
+- Effort: M
+- Area: All Rust crates
+- Evidence: `crates/bee-core/src/lib.rs`, `crates/bee-core/src/filters.rs`, `crates/bee-core/src/storage/mod.rs`, `crates/bee-actions/src/lib.rs`, `crates/migration/src/lib.rs`
+- Resolution: Added module-level `//!` documentation to all crate lib.rs files. Documented 4 key public traits (Filter, TaskAction, Store/AsyncStore, Printer) with usage patterns and method explanations. Documented 2 complex algorithms: batched hydration in task_read.rs (N+1 query optimization) and blocking status in blocking.rs (dependency reconciliation). Documentation follows a "clear and direct" style per project guidelines.
+- Safety net: `cargo doc --no-deps --workspace` builds successfully; all tests pass.
+
 ### DEBT-0035: Task list rows cannot expand to show links/annotations ✅
 - Status: Completed (2025-12-31)
 - Priority: P1

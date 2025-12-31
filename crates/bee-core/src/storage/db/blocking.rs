@@ -1,3 +1,21 @@
+//! Blocking status management for task dependencies.
+//!
+//! This module maintains the invariant that a task's status reflects its dependency state:
+//! - A task is `BLOCKED` if it has at least one active (non-completed, non-deleted) dependency
+//! - A task is `PENDING` (or returns to it) when all its dependencies are satisfied
+//!
+//! # When This Runs
+//!
+//! [`update_blocking_status`] is called after any mutation that could affect blocking:
+//! - A task is marked done (may unblock dependents)
+//! - A task is deleted (may unblock dependents)
+//! - A new dependency link is created (may block the dependent)
+//!
+//! # Performance
+//!
+//! All status updates happen in a single UPDATE statement using a SQL CASE expression,
+//! avoiding per-task updates.
+
 use super::tables;
 use crate::task::{LinkType, TaskStatus};
 use tables::{links, tasks};
@@ -125,13 +143,30 @@ fn build_status_case_expr(
     }
 }
 
-/// Reconcile task statuses with their dependency relationships.
+/// Reconcile task statuses based on current dependency relationships.
 ///
-/// Invariants enforced:
-/// - Only `PENDING`, `ACTIVE`, and `BLOCKED` tasks participate because completed/deleted entries
-///   no longer have user-visible IDs.
-/// - When a task loses every unfinished dependency, it returns to `PENDING`.
-/// - Dependencies in `COMPLETED` or `DELETED` states are treated as satisfied blockers.
+/// # Algorithm
+///
+/// 1. **Fetch dependencies**: Load all (dependent_id, blocker_id) pairs where the
+///    dependent is in a tracked status (PENDING, ACTIVE, BLOCKED)
+///
+/// 2. **Build sets**:
+///    - `dependents`: All tasks that have at least one dependency
+///    - `blockers_done`: Blocker tasks that are COMPLETED or DELETED
+///    - `currently_blocked`: Tasks currently in BLOCKED status
+///
+/// 3. **Determine transitions**:
+///    - **Unblock**: Tasks in `currently_blocked` where all blockers are in `blockers_done`
+///    - **Block**: Tasks in `dependents` with at least one blocker NOT in `blockers_done`
+///    - If a task appears in both sets, unblock wins (edge case resolution)
+///
+/// 4. **Execute update**: Build a single UPDATE with CASE expression
+///
+/// # Invariants
+///
+/// - Only tasks in PENDING, ACTIVE, or BLOCKED participate
+/// - COMPLETED and DELETED tasks are considered "done" (they satisfy dependencies)
+/// - A task can go BLOCKED → PENDING but never directly to ACTIVE
 pub(super) async fn update_blocking_status(db: &DatabaseTransaction) -> Result<(), DbErr> {
     debug!("Enter update_blocking_status");
     let statuses = StatusStrings::new();

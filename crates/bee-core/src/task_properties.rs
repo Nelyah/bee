@@ -24,7 +24,7 @@ pub struct TaskProperties {
     pub(crate) annotations: Option<Vec<TaskAnnotation>>,
     pub(crate) active_status: Option<bool>,
     /// If presents, sets the task's project to the given
-    /// Option<Project>
+    /// `Option<Project>`
     #[serde(
         default,
         skip_serializing_if = "is_project_absent",

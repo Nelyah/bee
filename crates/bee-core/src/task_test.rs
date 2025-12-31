@@ -469,3 +469,83 @@ fn test_sort_tasks() {
     assert_eq!(tasks[0].id, Some(1));
     assert_eq!(tasks[1].id, Some(2));
 }
+
+#[test]
+fn test_task_done_with_invalid_uuid_returns_error() {
+    let mut task_data = TaskData::default();
+    let invalid_uuid = Uuid::new_v4();
+
+    let result = task_data.task_done(&invalid_uuid);
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CoreError::NotFound { message } => {
+            assert!(message.contains(&invalid_uuid.to_string()));
+        }
+        _ => panic!("Expected NotFound error"),
+    }
+}
+
+#[test]
+fn test_task_delete_with_invalid_uuid_returns_error() {
+    let mut task_data = TaskData::default();
+    let invalid_uuid = Uuid::new_v4();
+
+    let result = task_data.task_delete(&invalid_uuid);
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CoreError::NotFound { message } => {
+            assert!(message.contains(&invalid_uuid.to_string()));
+        }
+        _ => panic!("Expected NotFound error"),
+    }
+}
+
+#[test]
+fn test_task_done_with_valid_uuid_succeeds() {
+    let mut task_data = TaskData::default();
+    let task = task_data
+        .add_task(
+            &TaskProperties::from(&["test task".to_owned()]).unwrap(),
+            TaskStatus::Pending,
+        )
+        .unwrap()
+        .clone();
+
+    let result = task_data.task_done(task.get_uuid());
+
+    assert!(result.is_ok());
+    assert_eq!(
+        task_data
+            .get_task_map()
+            .get(task.get_uuid())
+            .unwrap()
+            .status,
+        TaskStatus::Completed
+    );
+}
+
+#[test]
+fn test_task_delete_with_valid_uuid_succeeds() {
+    let mut task_data = TaskData::default();
+    let task = task_data
+        .add_task(
+            &TaskProperties::from(&["test task".to_owned()]).unwrap(),
+            TaskStatus::Pending,
+        )
+        .unwrap()
+        .clone();
+
+    let result = task_data.task_delete(task.get_uuid());
+
+    assert!(result.is_ok());
+    assert_eq!(
+        task_data
+            .get_task_map()
+            .get(task.get_uuid())
+            .unwrap()
+            .status,
+        TaskStatus::Deleted
+    );
+}

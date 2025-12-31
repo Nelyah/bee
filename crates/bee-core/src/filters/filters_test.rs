@@ -459,3 +459,50 @@ fn test_validate_task() {
     t.done();
     assert_false!(f_id.validate_task(&t));
 }
+
+#[test]
+#[allow(clippy::op_ref)] // References needed to avoid moving Box<dyn Filter> on comparison
+fn test_different_filter_types_are_not_equal() {
+    // This test verifies that comparing filters of different types returns false
+    // rather than panicking (regression test for DEBT-0040).
+
+    let string_filter: Box<dyn Filter> = Box::new(StringFilter {
+        value: "test".to_owned(),
+    });
+
+    let status_filter: Box<dyn Filter> = Box::new(StatusFilter {
+        status: TaskStatus::Pending,
+    });
+
+    let project_filter: Box<dyn Filter> = Box::new(ProjectFilter {
+        name: Project::from("test".to_owned()),
+    });
+
+    let tag_filter: Box<dyn Filter> = Box::new(TagFilter {
+        include: true,
+        tag_name: "test".to_owned(),
+    });
+
+    let and_filter: Box<dyn Filter> = Box::new(AndFilter { children: vec![] });
+
+    let or_filter: Box<dyn Filter> = Box::new(OrFilter { children: vec![] });
+
+    // Comparing different filter types should return false, not panic
+    assert_false!(&string_filter == &status_filter);
+    assert_false!(&string_filter == &project_filter);
+    assert_false!(&string_filter == &tag_filter);
+    assert_false!(&status_filter == &project_filter);
+    assert_false!(&and_filter == &or_filter);
+
+    // Same type with different values should also return false
+    let string_filter2: Box<dyn Filter> = Box::new(StringFilter {
+        value: "different".to_owned(),
+    });
+    assert_false!(&string_filter == &string_filter2);
+
+    // Same type with same values should return true
+    let string_filter3: Box<dyn Filter> = Box::new(StringFilter {
+        value: "test".to_owned(),
+    });
+    assert_true!(&string_filter == &string_filter3);
+}

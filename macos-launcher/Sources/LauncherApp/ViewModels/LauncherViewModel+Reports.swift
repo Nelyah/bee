@@ -83,7 +83,7 @@ extension LauncherViewModel {
     func selectReport(_ name: String) {
         guard let report = availableReports.first(where: { $0.name == name }) else { return }
         selectedReportName = name
-        UserDefaults.standard.set(name, forKey: UserDefaultsKeys.selectedReportName)
+        settingsService.selectedReportName = name
         reportConfig = ReportConfig(
             staticFilters: report.staticFilters,
             userFilter: report.userFilter,

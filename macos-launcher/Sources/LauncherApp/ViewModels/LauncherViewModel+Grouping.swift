@@ -44,14 +44,13 @@ extension LauncherViewModel {
     }
 
     func saveCollapsedState() {
-        let keys = collapsedGroups.compactMap { $0 }
-        UserDefaults.standard.set(keys, forKey: UserDefaultsKeys.collapsedGroups)
-        UserDefaults.standard.set(collapsedGroups.contains(nil), forKey: UserDefaultsKeys.collapsedNilGroup)
+        settingsService.collapsedGroups = collapsedGroups.compactMap { $0 }
+        settingsService.collapsedNilGroup = collapsedGroups.contains(nil)
     }
 
     func loadCollapsedState() {
-        let keys = UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.collapsedGroups) ?? []
-        let includesNil = UserDefaults.standard.bool(forKey: UserDefaultsKeys.collapsedNilGroup)
+        let keys = settingsService.collapsedGroups
+        let includesNil = settingsService.collapsedNilGroup
         collapsedGroups = Set(keys.map { Optional($0) })
         if includesNil { collapsedGroups.insert(nil) }
     }
@@ -64,11 +63,10 @@ extension LauncherViewModel {
         groupingStrategy = option.makeStrategy()
 
         // Persist selection
-        UserDefaults.standard.set(option.rawValue, forKey: UserDefaultsKeys.selectedGroupBy)
+        settingsService.selectedGroupBy = option.rawValue
 
         // Clear old collapsed state persistence
-        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.collapsedGroups)
-        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.collapsedNilGroup)
+        settingsService.clearCollapsedState()
 
         // Close command palette after selection
         commandPalette.close()
@@ -76,7 +74,7 @@ extension LauncherViewModel {
 
     /// Load the persisted grouping strategy.
     func loadGroupingStrategy() {
-        let rawValue = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedGroupBy)
+        let rawValue = settingsService.selectedGroupBy
         let option = rawValue.flatMap { GroupByOption(rawValue: $0) } ?? .project
         groupingStrategy = option.makeStrategy()
     }

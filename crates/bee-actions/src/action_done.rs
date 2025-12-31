@@ -40,7 +40,7 @@ impl TaskAction for DoneTaskAction {
                 .get(&uuid)
                 .ok_or_else(|| ActionError::execution("Invalid UUID to modify"))?
                 .clone();
-            self.base.tasks.task_done(&uuid);
+            self.base.tasks.task_done(&uuid)?;
             let t = self
                 .base
                 .tasks

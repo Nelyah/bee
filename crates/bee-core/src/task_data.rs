@@ -65,8 +65,14 @@ impl TaskData {
         if let Some(depends_on_ids) = &my_props.depends_on {
             for depends_on_id in depends_on_ids {
                 match depends_on_id {
-                    DependsOnIdentifier::Id(_) => {
-                        unreachable!("All identifiers should have been converted to Uuid!");
+                    DependsOnIdentifier::Id(id) => {
+                        // This should not happen after update_task_property_depends_on,
+                        // but we return an error instead of panicking for robustness.
+                        return Err(CoreError::internal(format!(
+                            "DependsOnIdentifier::Id({}) was not converted to UUID. \
+                            This indicates a bug in update_task_property_depends_on.",
+                            id
+                        )));
                     }
                     DependsOnIdentifier::Uuid(uuid) => {
                         self.tasks
@@ -111,12 +117,20 @@ impl TaskData {
         &self.undos
     }
 
-    pub fn task_done(&mut self, uuid: &Uuid) {
-        self.tasks.get_mut(uuid).unwrap().done();
+    pub fn task_done(&mut self, uuid: &Uuid) -> CoreResult<()> {
+        self.tasks
+            .get_mut(uuid)
+            .ok_or_else(|| CoreError::not_found(format!("Task with UUID {} not found", uuid)))?
+            .done();
+        Ok(())
     }
 
-    pub fn task_delete(&mut self, uuid: &Uuid) {
-        self.tasks.get_mut(uuid).unwrap().delete();
+    pub fn task_delete(&mut self, uuid: &Uuid) -> CoreResult<()> {
+        self.tasks
+            .get_mut(uuid)
+            .ok_or_else(|| CoreError::not_found(format!("Task with UUID {} not found", uuid)))?
+            .delete();
+        Ok(())
     }
 
     /// Turns the ID to UUIDs in the depends_on vector of TaskProperties
@@ -170,10 +184,17 @@ impl TaskData {
             if filter.validate_task(task) {
                 new_data.tasks.insert(key.to_owned(), task.to_owned());
                 for uuid_dep in &task.get_depends_on() {
-                    extra_tasks.push(self.tasks.get(uuid_dep).unwrap());
+                    // Skip missing dependencies gracefully - they may have been
+                    // filtered out or deleted
+                    if let Some(dep_task) = self.tasks.get(uuid_dep) {
+                        extra_tasks.push(dep_task);
+                    }
                 }
                 for uuid_dep in task.get_blocking() {
-                    extra_tasks.push(self.tasks.get(uuid_dep).unwrap());
+                    // Skip missing blocking tasks gracefully
+                    if let Some(blocking_task) = self.tasks.get(uuid_dep) {
+                        extra_tasks.push(blocking_task);
+                    }
                 }
             }
         }
@@ -242,12 +263,14 @@ impl TaskData {
                 let mut deps_uuid: Vec<Uuid> = Vec::new();
                 for item in my_props.depends_on.unwrap() {
                     match item {
-                        DependsOnIdentifier::Id(_) => {
-                            unreachable!(
-                                "We should not have a usize here. \
-                            We should have converted it to a UUID before applying \
-                            the properties to the task."
-                            );
+                        DependsOnIdentifier::Id(id) => {
+                            // This should not happen after update_task_property_depends_on,
+                            // but we return an error instead of panicking for robustness.
+                            return Err(CoreError::internal(format!(
+                                "DependsOnIdentifier::Id({}) was not converted to UUID. \
+                                This indicates a bug in update_task_property_depends_on.",
+                                id
+                            )));
                         }
                         DependsOnIdentifier::Uuid(item_uuid) => deps_uuid.push(item_uuid),
                     }
@@ -283,7 +306,8 @@ impl TaskData {
             self.id_to_uuid.insert(task_id, owned_uuid.to_owned());
         }
         self.tasks.insert(owned_uuid, t);
-        Ok(self.tasks.get(&owned_uuid).unwrap())
+        // Safe: we just inserted this UUID on the line above
+        Ok(self.tasks.get(&owned_uuid).expect("task was just inserted"))
     }
 }
 

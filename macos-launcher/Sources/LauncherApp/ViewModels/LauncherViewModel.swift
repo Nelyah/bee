@@ -26,8 +26,7 @@ final class LauncherViewModel: ObservableObject {
     )
     @Published var reportConfig: ReportConfig?
     @Published var availableReports: [ReportSummary] = []
-    @Published var selectedReportName: String = UserDefaults.standard
-        .string(forKey: UserDefaultsKeys.selectedReportName) ?? ""
+    @Published var selectedReportName: String = ""
     @Published var reportFilterChips: [CriteriaChip] = []
     @Published var taskDetailState = TaskDetailState()
     @Published var externalLinksState = ExternalLinksState()
@@ -81,6 +80,7 @@ final class LauncherViewModel: ObservableObject {
 
     let actionService: LauncherActionService
     let apiClient: ApiClientProtocol
+    let settingsService: SettingsServiceProtocol
     private var requestCounter: Int = 0
     private var latestParse: ParseResponse?
     var lastSuccessfulParse: ParseResponse?
@@ -108,13 +108,18 @@ final class LauncherViewModel: ObservableObject {
     init(
         apiClient: ApiClientProtocol = ApiClient(),
         actionService: LauncherActionService? = nil,
+        settingsService: SettingsServiceProtocol = UserDefaultsSettingsService(),
         unexpectedTokenToastDelay: TimeInterval = Constants.defaultUnexpectedTokenToastDelay
     ) {
         self.apiClient = apiClient
         self.actionService = actionService ?? LauncherActionService(apiClient: apiClient)
+        self.settingsService = settingsService
         self.unexpectedTokenToastDelay = unexpectedTokenToastDelay
         commandPalette = CommandPaletteCoordinator()
         completion = CompletionCoordinator()
+
+        // Load persisted settings
+        selectedReportName = settingsService.selectedReportName
 
         commandPalette.objectWillChange
             .sink { [weak self] _ in

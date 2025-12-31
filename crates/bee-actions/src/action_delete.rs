@@ -39,7 +39,7 @@ impl TaskAction for DeleteTaskAction {
                 .get(&uuid)
                 .ok_or_else(|| ActionError::execution("Invalid UUID to delete"))?
                 .clone();
-            self.base.tasks.task_delete(&uuid);
+            self.base.tasks.task_delete(&uuid)?;
             let t = self
                 .base
                 .tasks

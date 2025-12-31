@@ -26,8 +26,12 @@ impl TaskAction for UndoTaskAction {
                 }
 
                 match current_undo.action_type {
-                    ActionUndoType::Add => self.base.tasks.task_delete(t.get_uuid()),
-                    ActionUndoType::Modify => self.base.tasks.set_task(t.to_owned()),
+                    ActionUndoType::Add => {
+                        self.base.tasks.task_delete(t.get_uuid())?;
+                    }
+                    ActionUndoType::Modify => {
+                        self.base.tasks.set_task(t.to_owned());
+                    }
                 }
             }
         }

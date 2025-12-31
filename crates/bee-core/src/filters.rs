@@ -184,8 +184,11 @@ fn downcast_and_compare<T: Filter + PartialEq>(
     ) {
         self_concrete == other_concrete
     } else {
-        error!("Unable to downcast Filter");
-        panic!("An error occurred");
+        // Downcast failure means the types don't match, so they're not equal.
+        // This shouldn't happen if get_kind() is correctly implemented, but
+        // we handle it gracefully rather than panicking in production.
+        error!("Unable to downcast Filter - returning false instead of panicking");
+        false
     }
 }
 

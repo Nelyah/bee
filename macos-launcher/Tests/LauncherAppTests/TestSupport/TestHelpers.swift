@@ -215,4 +215,114 @@ enum TestHelpers {
             history: history
         )
     }
+
+    // MARK: - Token Helpers
+
+    /// Create a test TokenSpan for syntax highlighting tests.
+    static func makeToken(
+        type: TokenType,
+        literal: String,
+        start: Int,
+        end: Int
+    ) -> TokenSpan {
+        TokenSpan(tokenType: type, literal: literal, start: start, end: end)
+    }
+
+    /// Sample tokens for "list +work project:api" input.
+    static let sampleTokens: [TokenSpan] = [
+        TokenSpan(tokenType: .wordString, literal: "list", start: 0, end: 4),
+        TokenSpan(tokenType: .blank, literal: " ", start: 4, end: 5),
+        TokenSpan(tokenType: .tagPlusPrefix, literal: "+", start: 5, end: 6),
+        TokenSpan(tokenType: .wordString, literal: "work", start: 6, end: 10),
+        TokenSpan(tokenType: .blank, literal: " ", start: 10, end: 11),
+        TokenSpan(tokenType: .projectPrefix, literal: "project:", start: 11, end: 19),
+        TokenSpan(tokenType: .wordString, literal: "api", start: 19, end: 22),
+    ]
+
+    // MARK: - Group Helpers
+
+    /// Create a test GroupHeader for grouped list tests.
+    static func makeGroupHeader(
+        key: String? = "project",
+        displayName: String = "Test Project",
+        isCollapsed: Bool = false
+    ) -> GroupHeader {
+        GroupHeader(key: key, displayName: displayName, isCollapsed: isCollapsed)
+    }
+
+    // MARK: - Criteria Chip Helpers
+
+    /// Create a test CriteriaChip for filter display tests.
+    static func makeCriteriaChip(
+        kind: CriteriaChipKind = .filter,
+        label: String = "status:pending",
+        systemImage: String = "line.3.horizontal.decrease.circle",
+        tone: CriteriaChipTone = .blue
+    ) -> CriteriaChip {
+        CriteriaChip(kind: kind, label: label, systemImage: systemImage, tone: tone)
+    }
+
+    /// Sample criteria chips for testing criteria strip display.
+    static let sampleFilterChips: [CriteriaChip] = [
+        CriteriaChip(
+            kind: .filter,
+            label: "status:pending",
+            systemImage: "line.3.horizontal.decrease.circle",
+            tone: .blue
+        ),
+        CriteriaChip(
+            kind: .filter,
+            label: "+work",
+            systemImage: "tag",
+            tone: .teal
+        ),
+    ]
+
+    /// Sample property chips for testing criteria strip display.
+    static let samplePropertyChips: [CriteriaChip] = [
+        CriteriaChip(
+            kind: .property,
+            label: "project:api",
+            systemImage: "folder",
+            tone: .green
+        ),
+    ]
+
+    // MARK: - Report Helpers
+
+    /// Create a test ReportSummary.
+    static func makeReportSummary(
+        name: String = "default",
+        staticFilters: [String] = [],
+        columns: [String] = ["id", "summary"],
+        columnNames: [String] = ["ID", "Summary"],
+        isDefault: Bool = true,
+        isUserReport: Bool = false
+    ) -> ReportSummary {
+        ReportSummary(
+            name: name,
+            staticFilters: staticFilters,
+            columns: columns,
+            columnNames: columnNames,
+            isDefault: isDefault,
+            isUserReport: isUserReport
+        )
+    }
+
+    // MARK: - Settings Service Helpers
+
+    /// Create a MockSettingsService for testing.
+    static func makeSettingsService(
+        selectedReportName: String = "",
+        selectedGroupBy: String? = nil,
+        collapsedGroups: [String] = [],
+        collapsedNilGroup: Bool = false
+    ) -> MockSettingsService {
+        let service = MockSettingsService()
+        service.selectedReportName = selectedReportName
+        service.selectedGroupBy = selectedGroupBy
+        service.collapsedGroups = collapsedGroups
+        service.collapsedNilGroup = collapsedNilGroup
+        return service
+    }
 }

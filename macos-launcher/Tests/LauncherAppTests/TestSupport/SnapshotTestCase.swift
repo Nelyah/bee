@@ -160,5 +160,20 @@ extension SnapshotTestCase {
 
         /// Timeline row
         static let timelineRow = CGSize(width: 400, height: 30)
+
+        /// Task list view (search + list)
+        static let taskListView = CGSize(width: 600, height: 500)
+
+        /// Task list view - compact
+        static let taskListViewCompact = CGSize(width: 400, height: 400)
+
+        /// Content view - full window
+        static let contentView = CGSize(width: 680, height: 440)
+
+        /// Token highlight text input
+        static let tokenInput = CGSize(width: 400, height: 50)
+
+        /// Report menu button
+        static let reportMenuButton = CGSize(width: 150, height: 30)
     }
 }

@@ -1,132 +1,65 @@
 # DEBT TODO
 
 ## Summary
-- **Runtime safety**: Production code contains panic/unreachable macros that should be replaced with proper error handling (filters.rs, task_data.rs)
 - **Code organization**: Several large files (1000+ LOC) would benefit from splitting; TaskData manages multiple concerns
 - **Documentation**: Public Rust APIs have sparse rustdoc coverage (~117 lines across 33 files)
-- **Swift SRP**: TokenHighlightTextView mixes 4 types/responsibilities in one file
-- **Test coverage**: macOS launcher utilities have ~26% file coverage; key utilities lack dedicated tests
-- **Coupling**: Direct UserDefaults access scattered in ViewModels reduces testability
 
 ## Open Issues
-### DEBT-0034: No way to save a search filter as a reusable report
-- Priority: P0
-- Effort: L
-- Area: bee-api config + macos-launcher report UI
-- Evidence: `crates/bee-api/src/config.rs`, `macos-launcher/Sources/LauncherApp/Models/ConfigModels.swift`, `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift`
-- Smells: missing-feature, data-persistence
-- Problem (rough): Reports are static from config; users cannot save a current filter as a named report. No storage mechanism exists for user-defined reports.
-- Suggested fix (rough):
-  - Order: Should be done before DEBT-0030 if you want the selector to include user-defined reports.
-  - Data model: introduce a user-report entity (name, filters, columns, column_names, is_default, created_at, updated_at). Decide whether to allow user overrides of columns or only filters.
-  - Storage: add a DB table + migration in `crates/migration` and expose CRUD in `bee-core` storage layer.
-  - API: add endpoints to list/create/delete/update user reports (e.g., `/v1/reports`), and update `/v1/config` to merge static + user-defined reports (user reports should not overwrite built-ins unless explicitly named the same).
-  - Merge logic: define precedence rules (e.g., same-name user report overrides static, or disallow duplicates and surface an error).
-  - UI flow: add “Save current filter as report…” action in command palette or menu; prompt for name; call API; refresh report list.
-  - UX details: handle name collisions, validation, and empty filter cases; show success/failure toast.
-  - Compatibility: ensure existing configs keep working; no change required if user reports are absent.
-- Safety net: API tests for list/create/update/delete + config merge; migration test; UI tests for save flow + selecting newly saved report; add unit tests for merge precedence rules.
+(none)
 
-### DEBT-0040: Panic in production code (filters.rs)
-- Priority: P0
-- Effort: S
-- Area: bee-core/filters
-- Evidence: `crates/bee-core/src/filters.rs:94-107` - `downcast_and_compare` function
-- Smells: panic-in-production, error-handling
-- Problem (rough): The `downcast_and_compare` helper panics on downcast failure (line 105: `panic!("An error occurred")`). Production code should never panic on type mismatches; comparing two filters of different kinds should return `false`, not crash the process.
-- Suggested fix (rough):
-  - Change the else branch from `panic!()` to `return false`
-  - The downcast failure means the types don't match, so they're not equal
-  - Log the error but don't terminate
-- Safety net: Add unit test comparing filters of different concrete types to ensure `false` is returned, not a panic.
-
-### DEBT-0041: Unreachable macros used for error conditions (task_data.rs)
-- Priority: P1
-- Effort: S
-- Area: bee-core/task
-- Evidence: `crates/bee-core/src/task_data.rs:69,246` - Uses `unreachable!()` for ID-to-UUID conversion checks
-- Smells: defensive-code, panic-in-production
-- Problem (rough): Code uses `unreachable!()` assuming all DependsOnIdentifier::Id variants are converted to Uuid before reaching these points. If this invariant is violated (e.g., due to future changes or edge cases), the application crashes instead of returning an error.
-- Suggested fix (rough):
-  - Replace `unreachable!()` with `CoreError::internal("...")` and propagate
-  - Or use `debug_assert!()` for development and return an error in release
-  - Document the invariant that callers must uphold
-- Safety net: Unit test that exercises the code path with unconverted IDs to verify graceful error handling.
-
-### DEBT-0042: Unwraps on fallible operations (task_data.rs)
-- Priority: P1
-- Effort: S
-- Area: bee-core/task
-- Evidence: `crates/bee-core/src/task_data.rs` lines 115, 119, 173, 176, 286 - `.unwrap()` on HashMap lookups
-- Smells: panic-in-production, error-handling
-- Problem (rough): Several `.unwrap()` calls on task HashMap lookups that could fail if the task doesn't exist. These will panic instead of returning a proper error:
-  - Line 115: `task_done` - unwrap on get_mut
-  - Line 119: `task_delete` - unwrap on get_mut
-  - Lines 173, 176: `filter` - unwraps when fetching dependency tasks
-  - Line 286: `add_task` - unwrap after insert (this one is actually safe)
-- Suggested fix (rough):
-  - Convert task_done/task_delete to return `CoreResult<()>` and use `ok_or_else`
-  - For filter(), handle missing dependencies gracefully (skip or collect errors)
-  - Line 286 is safe (just inserted) but could use `expect()` with reason
-- Safety net: Add tests for task_done/task_delete with invalid UUIDs to verify errors not panics.
-
-### DEBT-0046: TokenHighlightTextView mixes multiple responsibilities
-- Priority: P1
-- Effort: M
-- Area: macos-launcher/Views/Components
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift` (397 lines)
-- Smells: SRP, file-size, mixed-concerns
-- Problem (rough): This file contains 4 distinct types: TokenHighlightTextView (NSViewRepresentable), Coordinator (NSTextViewDelegate), KeyHandlingTextView (NSTextView subclass), and KeyHandlingDecider (enum with 100+ lines). The keyboard handling logic is particularly large and unrelated to text highlighting.
-- Suggested fix (rough):
-  - Extract `KeyHandlingDecider` enum to `Utilities/KeyHandlingDecider.swift`
-  - Extract `KeyHandlingTextView` class to `Views/Components/KeyHandlingTextView.swift`
-  - Keep TokenHighlightTextView and Coordinator together (they're tightly coupled by design)
-  - Update imports in TokenHighlightTextView to use extracted types
-- Safety net: Existing KeyHandlingDeciderTests should pass; manual verification of keyboard handling in app.
-
-### DEBT-0047: ExternalLinkRow mixes provider-specific logic
-- Priority: P2
-- Effort: S
-- Area: macos-launcher/Views/Components
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/ExternalLinkRow.swift` (348 lines) - handles both GitLab and Jira
-- Smells: extensibility, SRP
-- Problem (rough): Adding a new external link provider (GitHub, Linear, etc.) would require modifying this already-large file. Provider-specific rendering logic (icons, status badges, URL construction) is interleaved.
-- Suggested fix (rough):
-  - Create a `LinkProviderRenderer` protocol with methods for icon, statusBadge, formatURL
-  - Create `GitLabLinkRenderer` and `JiraLinkRenderer` conformances
-  - ExternalLinkRow becomes a thin coordinator that dispatches to the appropriate renderer
-  - New providers only need to add a new renderer file
-- Safety net: Visual regression test or screenshots; existing UI should look identical.
-
-### DEBT-0048: Test coverage gaps for utilities
+## Done
+### DEBT-0048: Test coverage gaps for utilities ✅
+- Status: Completed (2025-12-31)
 - Priority: P2
 - Effort: M
 - Area: macos-launcher/Utilities
 - Evidence: 22 test files for 84 source files (~26% file coverage); missing tests for ParseErrorToastScheduler, SerialTaskQueue, window utilities
-- Smells: testing, reliability
-- Problem (rough): Critical utility code lacks dedicated test coverage. SerialTaskQueue manages async task ordering—bugs here could cause race conditions. ParseErrorToastScheduler handles user-facing error display. Window utilities affect app appearance.
-- Suggested fix (rough):
-  - Add `SerialTaskQueueTests`: test task ordering, cancellation, queue draining
-  - Add `ParseErrorToastSchedulerTests`: test scheduling, debouncing, cancellation
-  - Consider snapshot tests for window configuration (or document as manual-test-only)
-  - Prioritize utilities used in critical paths
-- Safety net: New tests should exercise edge cases; aim for >80% coverage on utility code.
+- Resolution: Tests already exist! `SerialTaskQueueTests` (7 tests) covers sequential execution, return values, error handling, FIFO ordering, and concurrent safety. `ParseErrorToastSchedulerTests` (11 tests) covers scheduling, debouncing, cancellation, deferred mode, request staleness, and integration scenarios. `WindowConfiguration` is documented as manual-test-only due to AppKit dependencies and its well-documented 6-line implementation.
+- Safety net: 18 utility tests pass; all 656+ Swift tests pass.
+### DEBT-0047: ExternalLinkRow mixes provider-specific logic ✅
+- Status: Completed (2025-12-31)
+- Priority: P2
+- Effort: S
+- Area: macos-launcher/Views/Components
+- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/ExternalLinkRow.swift` (348 lines) - handles both GitLab and Jira
+- Resolution: Extracted provider-specific content into separate views following the Single Responsibility Principle. Created `ExternalLinkRow/` folder with three files: `ExternalLinkRow.swift` (thin coordinator, ~55 lines), `GitLabLinkRowContent.swift` (GitLab MR display with branch, approval, state icons, ~230 lines), and `GenericLinkRowContent.swift` (Jira/generic display with title/detail/URL, ~85 lines). The coordinator dispatches to the appropriate content view based on cached summary type. Adding a new provider (e.g., GitHub) only requires creating a new content view file and adding a dispatch case.
+- Safety net: All 17 ExternalLinkRow snapshot tests pass with no visual changes. All 656 Swift tests pass.
 
-### DEBT-0049: Direct UserDefaults access scattered in ViewModels
+### DEBT-0049: Direct UserDefaults access scattered in ViewModels ✅
+- Status: Completed (2025-12-31)
 - Priority: P2
 - Effort: S
 - Area: macos-launcher/ViewModels
 - Evidence: Direct `UserDefaults.standard` calls in LauncherViewModel extensions (grouping, reports, collapsed groups)
-- Smells: coupling, testability
-- Problem (rough): ViewModels directly access UserDefaults, making it hard to test preference-dependent behavior without affecting system state. Tests must mock or reset UserDefaults, which is error-prone.
-- Suggested fix (rough):
-  - Create `SettingsService` protocol with methods like `getSelectedGrouping()`, `setSelectedGrouping()`, etc.
-  - Create `UserDefaultsSettingsService` implementation wrapping UserDefaults
-  - Inject service into LauncherViewModel via initializer
-  - Create `MockSettingsService` for tests
-- Safety net: Unit tests for SettingsService; update ViewModel tests to use mock; verify persistence still works in app.
+- Resolution: Created `SettingsServiceProtocol` with properties for `selectedReportName`, `selectedGroupBy`, `collapsedGroups`, `collapsedNilGroup`, and `clearCollapsedState()` method. Implemented `UserDefaultsSettingsService` (accepts injectable `UserDefaults` for testing) and `MockSettingsService` (for tests and previews). Injected service into `LauncherViewModel` via constructor with default `UserDefaultsSettingsService()`. Updated `LauncherViewModel+Grouping.swift` (6 call sites) and `LauncherViewModel+Reports.swift` (1 call site) to use the service. Added `TestHelpers.makeSettingsService()` factory.
+- Safety net: 14 unit tests for `UserDefaultsSettingsService` (default values, persistence, clearing) and `MockSettingsService` (defaults, tracking, reset). All 656 Swift tests pass.
+### DEBT-0042: Unwraps on fallible operations (task_data.rs) ✅
+- Status: Completed (2025-12-31)
+- Priority: P1
+- Effort: S
+- Area: bee-core/task
+- Evidence: `crates/bee-core/src/task_data.rs` - `task_done`, `task_delete`, `filter`, `add_task`
+- Resolution: Changed `task_done` and `task_delete` to return `CoreResult<()>` with proper error handling via `ok_or_else`. Updated callers in action_done.rs, action_delete.rs, and action_undo.rs to propagate errors. Changed `filter` to gracefully skip missing dependencies instead of panicking. Changed safe unwrap in `add_task` to use `expect()` with explanatory comment.
+- Safety net: Added 4 new tests: task_done/task_delete with invalid UUIDs verify error return; with valid UUIDs verify success. All 99 bee-core tests pass.
 
-## Done
+### DEBT-0041: Unreachable macros used for error conditions (task_data.rs) ✅
+- Status: Completed (2025-12-31)
+- Priority: P1
+- Effort: S
+- Area: bee-core/task
+- Evidence: `crates/bee-core/src/task_data.rs:69,246` - `apply()` and `add_task()` methods
+- Resolution: Replaced `unreachable!()` macros with `CoreError::internal()` error returns. Both locations now return descriptive errors instead of panicking. The error paths are defensive - they should never be reached since `update_task_property_depends_on()` always converts IDs to UUIDs first. The fix ensures graceful degradation if the invariant is ever violated by future changes.
+- Safety net: Existing tests cover the ID conversion logic; all 95 bee-core tests pass.
+
+### DEBT-0040: Panic in production code (filters.rs) ✅
+- Status: Completed (2025-12-31)
+- Priority: P0
+- Effort: S
+- Area: bee-core/filters
+- Evidence: `crates/bee-core/src/filters.rs:176-189` - `downcast_and_compare` function
+- Resolution: Changed panic to return false with error logging. The downcast failure means the types don't match semantically, so returning false is the correct behavior. Added unit test `test_different_filter_types_are_not_equal` to verify comparing different filter types returns false without panicking.
+- Safety net: Unit test added; all filter tests pass.
+
 ### DEBT-0045: Sparse documentation on public APIs ✅
 - Status: Completed (2025-12-31)
 - Priority: P2
@@ -250,6 +183,12 @@
   - UI test to verify escape from nested menu returns to previous menu, not full close.
 
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0046: TokenHighlightTextView mixes multiple responsibilities
+- Resolved on: 2025-12-31
+- Note: Already refactored into TokenHighlight folder with 4 focused files: KeyHandlingDecider.swift (132 lines), KeyHandlingTextView.swift (124 lines), TokenHighlightTextView.swift (124 lines), KeyHandlingModels.swift (46 lines).
+### DEBT-0034: No way to save a search filter as a reusable report
+- Resolved on: 2025-12-31
+- Note: Feature was implemented (user reports can be saved via command palette).
 ### DEBT-0030: Report selector is not clickable in the main search header
 - Resolved on: 2025-12-31
 - Note: Replaced the static badge with a report menu button wired to `selectReport` and added a small pressed-state flicker.

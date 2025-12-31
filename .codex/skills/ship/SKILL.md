@@ -17,7 +17,7 @@ You run an end-to-end delivery pipeline.
 ### Phase 2 — Implementation
 - Implement according to the plan. This should be done by the relevant language skill
 - Add/update tests and docs.
-- 
+-
 
 ### Phase 3 — Review & Commit
 - Re-check diff for scope/quality.

@@ -72,8 +72,8 @@ Manages navigation stack:
 protocol CommandPaletteSectionContributor {
     var contributorId: String { get }  // Unique ID for registration
     var priority: Int { get }          // Lower values appear first (0-100+)
-    
-    func buildSections(context: CommandPaletteContext, query: String) 
+
+    func buildSections(context: CommandPaletteContext, query: String)
         -> [CommandPaletteSection]
 }
 ```
@@ -100,7 +100,7 @@ Always shows:
 struct ActionsSectionContributor: CommandPaletteSectionContributor {
     var contributorId: String { "actions" }
     var priority: Int { 0 }
-    
+
     private let actionHandler: CommandPaletteActionHandling
     // ...
 }
@@ -120,7 +120,7 @@ Shows grouping options:
 struct GroupBySectionContributor: CommandPaletteSectionContributor {
     var contributorId: String { "groupBy" }
     var priority: Int { 10 }
-    
+
     private let currentGroupBy: () -> GroupByOption
     private let onGroupBySelect: (GroupByOption) -> Void
 }
@@ -152,13 +152,13 @@ struct ShortcutsSectionContributor: CommandPaletteSectionContributor {
 struct GoToSectionContributor: CommandPaletteSectionContributor {
     var contributorId: String { "goTo" }
     var priority: Int { 20 }
-    
+
     private let onProjectSelect: (String) -> Void
-    
-    func buildSections(context: CommandPaletteContext, query: String) 
+
+    func buildSections(context: CommandPaletteContext, query: String)
         -> [CommandPaletteSection] {
         guard !context.projects.isEmpty else { return [] }
-        
+
         let items: [CommandPaletteItem] = context.projects.map { project in
             .action(
                 CommandPaletteActionItem(
@@ -169,15 +169,15 @@ struct GoToSectionContributor: CommandPaletteSectionContributor {
                 )
             )
         }
-        
+
         return [CommandPaletteSection(id: "goTo", title: "Go To", items: items)]
     }
 }
 ```
 
-**To enable**: 
+**To enable**:
 1. Wire `onProjectSelect` callback to view model
-2. Populate `context.projects` 
+2. Populate `context.projects`
 3. Register with data source
 
 ---
@@ -192,16 +192,16 @@ Manages contributor registration and filtering:
 @MainActor
 final class CommandPaletteDataSource: ObservableObject {
     private var contributors: [CommandPaletteSectionContributor] = []
-    
+
     func register(_ contributor: CommandPaletteSectionContributor) {
         contributors.append(contributor)
         contributors.sort { $0.priority < $1.priority }
     }
-    
+
     func unregister(contributorId: String) { ... }
     func clearContributors() { ... }
-    
-    func buildSections(context: CommandPaletteContext, query: String) 
+
+    func buildSections(context: CommandPaletteContext, query: String)
         -> [CommandPaletteSection] {
         // 1. Call each contributor in priority order
         // 2. Filter/rank items using fuzzy scorer
@@ -232,16 +232,16 @@ final class CommandPaletteCoordinator: ObservableObject {
     @Published var selectionIndex: Int
     let dataSource: CommandPaletteDataSource
     @Published var navigationStack: CommandPaletteStack
-    
+
     var currentSections: [CommandPaletteSection] {
         // If nested: filter current menu sections by query
         // If root: build sections from context via dataSource
     }
-    
+
     var selectableItems: [CommandPaletteItem] {
         currentSections.flatMap { $0.items.filter { $0.isSelectable } }
     }
-    
+
     func open(context: CommandPaletteContext) -> String?
     func close()
     func handleEscape() -> Bool    // Pops stack, returns true if handled
@@ -262,16 +262,16 @@ final class CommandPaletteCoordinator: ObservableObject {
 private func setupCommandPaletteContributors() {
     // Register shortcuts first (highest priority 100)
     commandPalette.dataSource.register(ShortcutsSectionContributor())
-    
+
     // Register action handler with callbacks
     let actionHandler = CommandPaletteActionHandler(
-        viewModel: self, 
+        viewModel: self,
         apiClient: apiClient
     )
     commandPalette.dataSource.register(
         ActionsSectionContributor(actionHandler: actionHandler)
     )
-    
+
     // Register group-by with closures
     commandPalette.dataSource.register(GroupBySectionContributor(
         currentGroupBy: { [weak self] in self?.currentGroupByOption ?? .project },
@@ -317,7 +317,7 @@ Command Palette > Submenu > Sub-submenu
 
 Weighted scoring:
 1. Exact match: 1000 points
-2. Prefix match: 800 points  
+2. Prefix match: 800 points
 3. Word prefix: 600 points
 4. Substring: 400 points
 5. Fuzzy match: 200-300 points
@@ -336,18 +336,18 @@ Search targets:
 struct MyNewSectionContributor: CommandPaletteSectionContributor {
     var contributorId: String { "myId" }
     var priority: Int { 15 }  // Position in menu
-    
+
     // Optional: store closures for callbacks
     private let onItemSelected: (String) -> Void
-    
+
     init(onItemSelected: @escaping (String) -> Void) {
         self.onItemSelected = onItemSelected
     }
-    
-    func buildSections(context: CommandPaletteContext, query: String) 
+
+    func buildSections(context: CommandPaletteContext, query: String)
         -> [CommandPaletteSection] {
         // Return [] if not applicable (e.g., !context.hasSelectedTask)
-        
+
         let items: [CommandPaletteItem] = ...
         return [CommandPaletteSection(id: "myId", title: "Section Title", items: items)]
     }
@@ -358,7 +358,7 @@ struct MyNewSectionContributor: CommandPaletteSectionContributor {
 ```swift
 private func setupCommandPaletteContributors() {
     // ... existing contributors ...
-    
+
     commandPalette.dataSource.register(MyNewSectionContributor(
         onItemSelected: { [weak self] itemId in
             self?.handleMySelection(itemId)

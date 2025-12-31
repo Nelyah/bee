@@ -1,8 +1,8 @@
 ---
 name: software-architect
-description: > 
-  Use after requirements or user stories are provided; designs a high-level solution 
-  and architecture. Ensures that the design follows SOLID principles and is as simple as possible (KISS), 
+description: >
+  Use after requirements or user stories are provided; designs a high-level solution
+  and architecture. Ensures that the design follows SOLID principles and is as simple as possible (KISS),
   implementing only what's needed (YAGNI). Produces an Architecture Decision Record or design document and asks for clarification if requirements are unclear.
 tools: Search, Read, Edit  # e.g., can search documentation, read code, and create design docs
 ---

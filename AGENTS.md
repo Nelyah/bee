@@ -10,7 +10,7 @@ Guidance for Codex when working in this repository.
 - If you think the user is missing something, let them know.
 - If you are looking for the macOS version or Xcode/Swift toolchain, look in the ./macos-launcher/ folder
 - NEVER EVER EVER commit with `--no-verify`. If there are issues, you need to fix them before commiting
-- NEVER disable swiftlint warnings without asking first 
+- NEVER disable swiftlint warnings without asking first
 
 - When you encounter flaky tests, do the following:
     - Look at the flaky test, and fix it. It may require being run multiple times
@@ -55,7 +55,7 @@ cargo run -p bee-api
 
 ## Test & Dev commands
 ```bash
-pre-commit run --all-files
+lefthook run pre-commit --all-files
 ```
 
 ## Repo layout (high level)

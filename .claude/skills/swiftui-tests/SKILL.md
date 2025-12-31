@@ -24,18 +24,15 @@ dependencies: [
 
 ## Writing ViewInspector Tests
 
-### Step 1: Add Inspectable Conformance
+### Important: Inspectable Conformance (Deprecated)
 
-Every view you want to test must conform to `Inspectable`. Add extensions in `Tests/LauncherAppTests/TestSupport/ViewInspectorExtensions.swift`:
+**As of ViewInspector 0.10.0+, explicit `Inspectable` conformance is NO LONGER REQUIRED.**
 
-```swift
-import ViewInspector
-@testable import LauncherApp
+The existing `ViewInspectorExtensions.swift` file contains legacy conformances that generate deprecation warnings. These can be safely removed in future cleanup, but they don't break functionality.
 
-extension MyNewView: Inspectable {}
-```
+You do NOT need to add `Inspectable` extensions for new views - just use them directly with ViewInspector.
 
-### Step 2: Write the Test
+### Write the Test
 
 Create a test file following the naming convention `*UITests.swift`:
 

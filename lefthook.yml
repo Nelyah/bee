@@ -1,0 +1,33 @@
+pre-commit:
+  parallel: true
+  commands:
+    cargo-fmt:
+      run: cargo fmt --all -- --check
+      glob: "*.rs"
+    cargo-check:
+      run: cargo check --workspace
+      glob: "*.rs"
+    cargo-clippy:
+      run: cargo clippy --all-targets --all-features -- -D warnings
+      glob: "*.rs"
+    cargo-test:
+      run: cargo test --workspace
+      glob: "*.rs"
+    swiftformat:
+      run: swiftformat --swiftversion 5.9 {staged_files}
+      glob: "*.swift"
+    swiftlint:
+      run: swiftlint --strict {staged_files}
+      glob: "*.swift"
+    swift-test:
+      run: cd macos-launcher && swift test -Xswiftc -warnings-as-errors
+      glob: "*.swift"
+    check-yaml:
+      run: yamllint {staged_files}
+      glob: "*.{yaml,yml}"
+    check-toml:
+      run: taplo check {staged_files}
+      glob: "*.toml"
+    check-merge-conflict:
+      run: rg "^<<<<<<< " {staged_files} && exit 1 || exit 0
+      glob: "*"

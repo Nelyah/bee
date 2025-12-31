@@ -15,6 +15,9 @@ protocol CommandPaletteActionHandling {
 
     /// Builds a submenu for adding Jira links
     func buildJiraMenu(taskUUID: String) -> CommandPaletteMenu
+
+    /// Clears the current project scope
+    func clearProjectScope()
 }
 
 // MARK: - Actions Section Contributor
@@ -81,6 +84,23 @@ struct ActionsSectionContributor: CommandPaletteSectionContributor {
                         icon: .jira,
                         menuBuilder: { [actionHandler] in
                             actionHandler.buildJiraMenu(taskUUID: taskUUID)
+                        }
+                    )
+                )
+            )
+        }
+
+        // Clear Project Scope (only when scope is set)
+        if let scopedProject = context.currentProjectScope {
+            items.append(
+                .action(
+                    CommandPaletteActionItem(
+                        id: "clear-project-scope",
+                        title: "Clear Project Scope",
+                        subtitle: scopedProject,
+                        icon: .system("xmark.circle"),
+                        handler: { [actionHandler] in
+                            Task { @MainActor in actionHandler.clearProjectScope() }
                         }
                     )
                 )
@@ -211,30 +231,32 @@ struct GroupBySectionContributor: CommandPaletteSectionContributor {
     }
 }
 
-/// Placeholder contributor for go-to project navigation (DEBT-0033).
-///
-/// This is a stub for future implementation. To enable:
-/// 1. Wire up `onProjectSelect` callback to view model
-/// 2. Populate `context.projects` with available projects
-/// 3. Register with data source
+/// Provides a "Go To" section for navigating to project-scoped views.
 struct GoToSectionContributor: CommandPaletteSectionContributor {
     var contributorId: String { "goTo" }
     var priority: Int { 20 }
 
+    private let currentProjectScope: () -> String?
     private let onProjectSelect: (String) -> Void
 
-    init(onProjectSelect: @escaping (String) -> Void) {
+    init(
+        currentProjectScope: @escaping () -> String?,
+        onProjectSelect: @escaping (String) -> Void
+    ) {
+        self.currentProjectScope = currentProjectScope
         self.onProjectSelect = onProjectSelect
     }
 
     func buildSections(context: CommandPaletteContext, query: String) -> [CommandPaletteSection] {
         guard !context.projects.isEmpty else { return [] }
 
+        let current = currentProjectScope()
         let items: [CommandPaletteItem] = context.projects.map { project in
             .action(
                 CommandPaletteActionItem(
                     id: "goto-\(project)",
                     title: project,
+                    subtitle: project == current ? "Current" : nil,
                     icon: .system("folder"),
                     handler: { [onProjectSelect] in onProjectSelect(project) }
                 )

@@ -83,6 +83,162 @@ final class LauncherActionServiceTests: XCTestCase {
         let maxConcurrent = await client.counter.maxConcurrent()
         XCTAssertEqual(maxConcurrent, 1)
     }
+
+    // MARK: - Project Scope Filter Tests
+
+    /// Regression test: ProjectFilter.name must be a Project struct (not a plain string).
+    /// Backend structs:
+    ///   - `pub struct ProjectFilter { pub name: Project }` in filters_impl.rs
+    ///   - `pub struct Project { id: Option<i32>, name: String }` in task_model.rs
+    func testProjectFilterNameIsProjectStructNotString() async {
+        let mock = MockApiClient()
+        let service = LauncherActionService(apiClient: mock)
+
+        let parsed = ParseResponse(action: "list", properties: nil, filter: nil, tokens: [])
+        let filter = await service.resolveDefaultFilterIfNeeded(
+            parsed: parsed,
+            actionName: "list",
+            projectScope: "testproject"
+        )
+
+        guard case let .object(obj)? = filter,
+              case let .object(valueObj)? = obj["value"],
+              case let .object(projectStruct)? = valueObj["name"]
+        else {
+            return XCTFail("Expected ProjectFilter.name to be a Project struct object, not a string")
+        }
+
+        // Project struct must have "name" field with the project name string
+        guard case let .string(projectName)? = projectStruct["name"] else {
+            return XCTFail("Project struct must have 'name' field")
+        }
+        XCTAssertEqual(projectName, "testproject")
+
+        // Project struct should have "id" field (null for scope filter)
+        if let idValue = projectStruct["id"] {
+            guard case .null = idValue else {
+                return XCTFail("Project.id should be null for scope filter, got: \(idValue)")
+            }
+        }
+        // id can be absent or null - both are valid
+    }
+
+    func testResolveFilterWithProjectScopeOnly() async {
+        let mock = MockApiClient()
+        let service = LauncherActionService(apiClient: mock)
+
+        let parsed = ParseResponse(action: "list", properties: nil, filter: nil, tokens: [])
+        let filter = await service.resolveDefaultFilterIfNeeded(
+            parsed: parsed,
+            actionName: "list",
+            projectScope: "myproject"
+        )
+
+        guard case let .object(obj)? = filter,
+              case let .string(type)? = obj["type"], type == "ProjectFilter",
+              case let .object(valueObj)? = obj["value"],
+              case let .object(projectStruct)? = valueObj["name"],
+              case let .string(projectName)? = projectStruct["name"]
+        else {
+            return XCTFail("Expected ProjectFilter wrapper with Project struct")
+        }
+
+        XCTAssertEqual(projectName, "myproject")
+    }
+
+    func testResolveFilterWithScopeAndUserInput() async {
+        let mock = MockApiClient()
+        let service = LauncherActionService(apiClient: mock)
+
+        let parsed = ParseResponse(action: "list", properties: nil, filter: .string("user-filter"), tokens: [])
+        let filter = await service.resolveDefaultFilterIfNeeded(
+            parsed: parsed,
+            actionName: "list",
+            projectScope: "myproject"
+        )
+
+        guard case let .object(obj)? = filter,
+              case let .string(type)? = obj["type"], type == "AndFilter",
+              case let .object(valueObj)? = obj["value"],
+              case let .array(children)? = valueObj["children"]
+        else {
+            return XCTFail("Expected AndFilter wrapper")
+        }
+
+        XCTAssertEqual(children.count, 2)
+
+        // First child should be ProjectFilter
+        guard case let .object(scopeObj) = children[0],
+              case let .string(scopeType)? = scopeObj["type"]
+        else {
+            return XCTFail("Expected first child to be ProjectFilter")
+        }
+        XCTAssertEqual(scopeType, "ProjectFilter")
+    }
+
+    func testResolveFilterThreeWay() async {
+        let mock = MockApiClient()
+        mock.parseResult = .success(ParseResponse(
+            action: "list",
+            properties: nil,
+            filter: .string("from-default"),
+            tokens: []
+        ))
+
+        let service = LauncherActionService(apiClient: mock)
+        service.setReportConfig(ReportConfig(
+            filters: ["status:pending"],
+            columns: ["id"],
+            columnNames: ["ID"]
+        ))
+
+        let parsed = ParseResponse(action: "list", properties: nil, filter: .string("from-user"), tokens: [])
+        let filter = await service.resolveDefaultFilterIfNeeded(
+            parsed: parsed,
+            actionName: "list",
+            projectScope: "myproject"
+        )
+
+        // Should be nested AndFilter: ((defaults AND scope) AND user)
+        guard case let .object(outerObj)? = filter,
+              case let .string(outerType)? = outerObj["type"], outerType == "AndFilter",
+              case let .object(outerValue)? = outerObj["value"],
+              case let .array(outerChildren)? = outerValue["children"]
+        else {
+            return XCTFail("Expected outer AndFilter wrapper")
+        }
+
+        XCTAssertEqual(outerChildren.count, 2)
+
+        // First child should be the inner AndFilter (defaults AND scope)
+        guard case let .object(innerObj) = outerChildren[0],
+              case let .string(innerType)? = innerObj["type"], innerType == "AndFilter",
+              case let .object(innerValue)? = innerObj["value"],
+              case let .array(innerChildren)? = innerValue["children"]
+        else {
+            return XCTFail("Expected inner AndFilter")
+        }
+
+        XCTAssertEqual(innerChildren.count, 2)
+    }
+
+    func testResolveFilterWithNoScopePassesThrough() async {
+        let mock = MockApiClient()
+        let service = LauncherActionService(apiClient: mock)
+
+        let parsed = ParseResponse(action: "list", properties: nil, filter: .string("user-filter"), tokens: [])
+        let filter = await service.resolveDefaultFilterIfNeeded(
+            parsed: parsed,
+            actionName: "list",
+            projectScope: nil
+        )
+
+        guard case let .string(value)? = filter else {
+            return XCTFail("Expected user filter to pass through")
+        }
+
+        XCTAssertEqual(value, "user-filter")
+    }
 }
 
 private actor ActionCounter {

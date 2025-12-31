@@ -1,19 +1,6 @@
 # DEBT TODO
 
 ## Open Issues
-### DEBT-0033: Missing “Go to…” menu for project-scoped views
-- Priority: P1
-- Effort: M
-- Area: macos-launcher command palette + filters
-- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/CommandPaletteCoordinator.swift`, `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift`, `macos-launcher/Sources/LauncherApp/Utilities/Services/LauncherActionService.swift`
-- Smells: missing-feature, UX-gap
-- Problem (rough): There’s no quick navigation to a project view that layers on top of the report default filter. Users must manually type project filters.
-- Suggested fix (rough):
-  - Add a "Go to…" section in the command palette with project suggestions.
-  - Selecting a project should inject a project filter and keep the report defaults (AND).
-  - Consider a clear/exit path to return to the previous scope.
-- Safety net: Unit tests for command palette selection to ensure the composed filter is correct.
-
 ### DEBT-0034: No way to save a search filter as a reusable report
 - Priority: P0
 - Effort: L
@@ -60,6 +47,15 @@
 - Safety net: Unit tests for expanded state tracking; UI snapshot tests for collapsed vs expanded row.
 
 ## Done
+### DEBT-0033: Missing "Go to…" menu for project-scoped views ✅
+- Status: Completed (2025-12-31)
+- Priority: P1
+- Effort: M
+- Area: macos-launcher command palette + filters
+- Evidence: `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift`, `macos-launcher/Sources/LauncherApp/Utilities/Services/LauncherActionService.swift`, `macos-launcher/Sources/LauncherApp/Utilities/CommandPalette/SectionContributors.swift`
+- Resolution: Added "Go To" section in command palette showing all projects with "Current" indicator. Selecting a project sets a scope that layers as three-way AND: (report defaults) AND (project scope) AND (user input). Two clear mechanisms: clickable ProjectScopeChipView in header and "Clear Project Scope" command palette action. Filter composition handled in LauncherActionService with ProjectFilter type.
+- Safety net: Unit tests for filter composition (4 tests), GoToSectionContributor (5 tests), and ActionsSectionContributor scope actions (2 tests).
+
 ### DEBT-0029: Bottom hint bar overlaps last list row ✅
 - Status: Completed (2025-12-31)
 - Priority: P1

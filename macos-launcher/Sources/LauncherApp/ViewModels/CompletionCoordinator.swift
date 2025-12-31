@@ -16,6 +16,16 @@ final class CompletionCoordinator: ObservableObject {
         (projects: cache.projects.count, tags: cache.tags.count, actions: cache.actions.count)
     }
 
+    /// Project names from completion cache.
+    var projectNames: [String] {
+        cache.projects.map { $0.value }
+    }
+
+    /// Tag names from completion cache.
+    var tagNames: [String] {
+        cache.tags.map { $0.value }
+    }
+
     func loadData(actionService: LauncherActionService) async -> String? {
         guard !isLoaded else { return nil }
         do {

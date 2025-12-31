@@ -47,6 +47,10 @@ final class LauncherViewModel: ObservableObject {
     /// Set of collapsed group keys.
     @Published var collapsedGroups: Set<String?> = []
 
+    // MARK: - Project Scope State
+    /// The currently scoped project (layers on top of report filters).
+    @Published var projectScope: String?
+
     /// The current grouping option for UI display.
     var currentGroupByOption: GroupByOption {
         switch groupingStrategy {
@@ -132,6 +136,15 @@ final class LauncherViewModel: ObservableObject {
         commandPalette.dataSource.register(GroupBySectionContributor(
             currentGroupBy: { [weak self] in self?.currentGroupByOption ?? .project },
             onGroupBySelect: { [weak self] option in self?.setGroupingStrategy(option) }
+        ))
+
+        // Register the go-to section for project navigation
+        commandPalette.dataSource.register(GoToSectionContributor(
+            currentProjectScope: { [weak self] in self?.projectScope },
+            onProjectSelect: { [weak self] project in
+                self?.setProjectScope(project)
+                self?.closeCommandPalette()
+            }
         ))
     }
 
@@ -304,7 +317,11 @@ final class LauncherViewModel: ObservableObject {
             let parsed = parsed ?? actionService.emptyParse()
             let actionName = parsed.action.isEmpty ? "list" : parsed.action
             logger.debug("Action request start. id=\(requestId), action=\(actionName)")
-            let response = try await actionService.runAction(parsed: parsed, actionName: actionName)
+            let response = try await actionService.runAction(
+                parsed: parsed,
+                actionName: actionName,
+                projectScope: projectScope
+            )
             guard requestId == requestCounter else { return }
             tasks = response.tasks
             syncSelectionAfterTasksUpdate()
@@ -538,6 +555,20 @@ final class LauncherViewModel: ObservableObject {
         groupingStrategy = option.makeStrategy()
     }
 
+    // MARK: - Project Scope Methods
+
+    /// Set the project scope and refresh the task list.
+    func setProjectScope(_ project: String) {
+        projectScope = project
+        handleInputChange(input)
+    }
+
+    /// Clear the project scope and refresh the task list.
+    func clearProjectScope() {
+        projectScope = nil
+        handleInputChange(input)
+    }
+
     /// Keep selection within bounds after tasks update.
     func syncSelectionAfterTasksUpdate() {
         selectedIndex = TaskListCoordinator.syncSelection(tasks: tasks, selectedIndex: selectedIndex)
@@ -610,6 +641,12 @@ final class LauncherViewModel: ObservableObject {
     var criteriaPropertyChips: [CriteriaChip] {
         guard let parsed = lastSuccessfulParse else { return [] }
         return CriteriaChipBuilder.propertyChips(from: parsed.properties)
+    }
+
+    /// Chip representing the current project scope, if any.
+    var projectScopeChip: CriteriaChip? {
+        guard let project = projectScope else { return nil }
+        return CriteriaChip(kind: .filter, label: project, systemImage: "folder", tone: .teal)
     }
 
     func refreshReportFilterChips() async {
@@ -794,7 +831,10 @@ final class LauncherViewModel: ObservableObject {
             hasSelectedTask: selectedTask != nil,
             selectedTaskUUID: selectedTask?.uuid,
             currentReportName: selectedReportName,
-            availableReports: availableReports
+            availableReports: availableReports,
+            projects: completion.projectNames,
+            tags: completion.tagNames,
+            currentProjectScope: projectScope
         )
         if let message = commandPalette.open(context: context) {
             showToast(message: message)

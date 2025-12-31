@@ -40,23 +40,55 @@ final class LauncherActionService {
         apiClient.emptyParse()
     }
 
-    func resolveDefaultFilterIfNeeded(parsed: ParseResponse, actionName: String) async -> JSONValue? {
+    func resolveDefaultFilterIfNeeded(
+        parsed: ParseResponse,
+        actionName: String,
+        projectScope: String? = nil
+    ) async -> JSONValue? {
         guard actionName.lowercased() == "list" else { return parsed.filter }
-        guard let defaults = reportConfig?.filters, !defaults.isEmpty else { return parsed.filter }
+
+        // Build project scope filter if set
+        // Backend expects: ProjectFilter { name: Project { id: Option<i32>, name: String } }
+        let scopeFilter: JSONValue? = projectScope.map { project in
+            .object([
+                "type": .string("ProjectFilter"),
+                "value": .object([
+                    "name": .object([
+                        "id": .null,
+                        "name": .string(project),
+                    ]),
+                ]),
+            ])
+        }
+
+        guard let defaults = reportConfig?.filters, !defaults.isEmpty else {
+            // No report defaults - just combine scope and user filter
+            return combineFilters(defaults: scopeFilter, user: parsed.filter)
+        }
 
         let filterExpr = defaults.joined(separator: " or ")
         do {
             let parsedDefaults = try await apiClient.parse(input: "list \(filterExpr)")
-            return combineFilters(defaults: parsedDefaults.filter, user: parsed.filter)
+            // Three-way composition: (defaults AND scope) AND user
+            let defaultsAndScope = combineFilters(defaults: parsedDefaults.filter, user: scopeFilter)
+            return combineFilters(defaults: defaultsAndScope, user: parsed.filter)
         } catch {
             logger.error("Failed to parse default filters: \(error.localizedDescription, privacy: .public)")
-            return parsed.filter
+            return combineFilters(defaults: scopeFilter, user: parsed.filter)
         }
     }
 
-    func runAction(parsed: ParseResponse, actionName: String) async throws -> ActionResponse {
+    func runAction(
+        parsed: ParseResponse,
+        actionName: String,
+        projectScope: String? = nil
+    ) async throws -> ActionResponse {
         try await actionQueue.run {
-            let filter = await self.resolveDefaultFilterIfNeeded(parsed: parsed, actionName: actionName)
+            let filter = await self.resolveDefaultFilterIfNeeded(
+                parsed: parsed,
+                actionName: actionName,
+                projectScope: projectScope
+            )
             return try await self.apiClient.runAction(
                 action: actionName,
                 properties: parsed.properties,

@@ -74,6 +74,11 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
         )
     }
 
+    func clearProjectScope() {
+        viewModel?.clearProjectScope()
+        viewModel?.closeCommandPalette()
+    }
+
     // MARK: - Private Methods
 
     private func loadGitlabSuggestions(taskUUID: String) async {

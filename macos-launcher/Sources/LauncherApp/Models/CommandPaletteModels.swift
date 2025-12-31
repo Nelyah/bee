@@ -233,6 +233,7 @@ struct CommandPaletteContext {
     let availableReports: [ReportSummary]
     let projects: [String]
     let tags: [String]
+    let currentProjectScope: String?
 
     init(
         hasSelectedTask: Bool = false,
@@ -240,7 +241,8 @@ struct CommandPaletteContext {
         currentReportName: String? = nil,
         availableReports: [ReportSummary] = [],
         projects: [String] = [],
-        tags: [String] = []
+        tags: [String] = [],
+        currentProjectScope: String? = nil
     ) {
         self.hasSelectedTask = hasSelectedTask
         self.selectedTaskUUID = selectedTaskUUID
@@ -248,5 +250,6 @@ struct CommandPaletteContext {
         self.availableReports = availableReports
         self.projects = projects
         self.tags = tags
+        self.currentProjectScope = currentProjectScope
     }
 }

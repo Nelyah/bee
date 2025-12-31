@@ -127,6 +127,12 @@ struct TaskListView: View {
                             viewModel.selectReport(name)
                         }
                     }
+
+                    if let project = viewModel.projectScope {
+                        ProjectScopeChipView(project: project) {
+                            viewModel.clearProjectScope()
+                        }
+                    }
                 }
 
                 CriteriaStripView(

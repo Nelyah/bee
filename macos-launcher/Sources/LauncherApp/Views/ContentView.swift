@@ -8,6 +8,10 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
+            WindowAccessor { window in
+                WindowConfiguration.applyBorderlessStyle(to: window)
+            }
+
             launcherBackground
 
             if viewModel.mode == .detail, let task = viewModel.selectedTask {
@@ -56,9 +60,9 @@ struct ContentView: View {
         .onReceive(viewModel.windowClose) { _ in
             closeWindow()
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: WindowConfiguration.cornerRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: WindowConfiguration.cornerRadius, style: .continuous)
                 .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
         )
         .frame(minWidth: 680, minHeight: 440)
@@ -67,7 +71,6 @@ struct ContentView: View {
             DispatchQueue.main.async {
                 NSApplication.shared.setActivationPolicy(.regular)
                 NSApplication.shared.activate(ignoringOtherApps: true)
-                configureWindowAppearance()
                 installEscapeMonitor()
                 installNormalModeMonitor()
             }
@@ -80,32 +83,6 @@ struct ContentView: View {
 
     private var launcherBackground: some View {
         ThemeManager.current.base
-    }
-
-    /// Apply Raycast-style window appearance (no visible title bar, clear background).
-    /// SwiftUI's `.windowStyle(.hiddenTitleBar)` hides the title bar, but we still need
-    /// `.fullSizeContentView` to make content extend into that area.
-    private func configureWindowAppearance() {
-        let windows = NSApplication.shared.windows
-        guard !windows.isEmpty else { return }
-        for window in windows {
-            // Essential: Make content extend into title bar area
-            window.styleMask.insert(.fullSizeContentView)
-            window.titlebarAppearsTransparent = true
-            window.titleVisibility = .hidden
-
-            window.isMovableByWindowBackground = true
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            if let contentView = window.contentView {
-                contentView.wantsLayer = true
-                contentView.layer?.cornerRadius = 18
-                contentView.layer?.masksToBounds = true
-            }
-            window.standardWindowButton(.closeButton)?.isHidden = true
-            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-            window.standardWindowButton(.zoomButton)?.isHidden = true
-        }
     }
 
     /// Capture Escape at the window level to close detail view or exit insert mode.

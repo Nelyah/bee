@@ -70,8 +70,12 @@ struct CommandPaletteView: View {
             )
         }
         .onAppear {
-            isSearchFocused = true
             installCommandPaletteMonitor()
+            // Set focus on next run loop iteration, after AppKit's makeFirstResponder(nil)
+            // has cleared focus from TokenHighlightTextView
+            DispatchQueue.main.async {
+                isSearchFocused = true
+            }
         }
         .onDisappear {
             removeCommandPaletteMonitor()

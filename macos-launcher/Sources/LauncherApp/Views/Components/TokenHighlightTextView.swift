@@ -78,7 +78,7 @@ struct TokenHighlightTextView: NSViewRepresentable {
         if isFocused, let window = textView.window, window.firstResponder !== textView {
             window.makeFirstResponder(textView)
         } else if !isFocused, let window = textView.window, window.firstResponder === textView {
-            // Resign first responder in normal mode
+            // Resign first responder when not focused (normal mode or command palette open)
             window.makeFirstResponder(nil)
         }
     }

@@ -9,16 +9,20 @@ final class SerialTaskQueueTests: XCTestCase {
         var executionOrder: [Int] = []
         let lock = NSLock()
 
-        // Start multiple operations concurrently
+        // Start multiple operations with small delays between submissions
+        // to ensure deterministic submission order (async let spawns concurrent
+        // child tasks whose scheduling order is otherwise non-deterministic)
         async let result1: Void = queue.run {
             try? await Task.sleep(for: .milliseconds(50))
             lock.withLock { executionOrder.append(1) }
         }
+        try? await Task.sleep(for: .milliseconds(1))
 
         async let result2: Void = queue.run {
             try? await Task.sleep(for: .milliseconds(10))
             lock.withLock { executionOrder.append(2) }
         }
+        try? await Task.sleep(for: .milliseconds(1))
 
         async let result3: Void = queue.run {
             lock.withLock { executionOrder.append(3) }

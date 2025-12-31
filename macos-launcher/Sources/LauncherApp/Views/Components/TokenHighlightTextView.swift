@@ -17,6 +17,8 @@ struct TokenHighlightTextView: NSViewRepresentable {
     let onAcceptGhost: () -> Void
     let onMenuNavigation: (Int) -> Void
     let onAcceptCompletion: () -> Void
+    /// Returns whether the text view should take focus when clicked.
+    let onRequestFocus: () -> Bool
 
     /// Create the underlying AppKit view.
     func makeNSView(context: Context) -> NSScrollView {
@@ -44,6 +46,7 @@ struct TokenHighlightTextView: NSViewRepresentable {
         textView.onAcceptGhost = onAcceptGhost
         textView.onMenuNavigation = onMenuNavigation
         textView.onAcceptCompletion = onAcceptCompletion
+        textView.onRequestFocus = onRequestFocus
 
         let scrollView = NSScrollView()
         scrollView.borderType = .noBorder
@@ -312,6 +315,7 @@ final class KeyHandlingTextView: NSTextView {
     var onAcceptCompletion: (() -> Void)?
     var showCompletionMenu: Bool = false
     var ghostText: String?
+    var onRequestFocus: (() -> Bool)?
 
     /// Handle key presses for navigation and submit.
     override func keyDown(with event: NSEvent) {
@@ -324,6 +328,22 @@ final class KeyHandlingTextView: NSTextView {
         }
 
         super.keyDown(with: event)
+    }
+
+    /// Enter insert mode when the user clicks into the text view.
+    override func mouseDown(with event: NSEvent) {
+        let shouldFocus = onRequestFocus?() ?? true
+        super.mouseDown(with: event)
+        guard shouldFocus, let window else { return }
+        if !NSApplication.shared.isActive {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
+        if !window.isKeyWindow {
+            window.makeKeyAndOrderFront(nil)
+        }
+        if window.firstResponder !== self {
+            window.makeFirstResponder(self)
+        }
     }
 
     /// Draw ghost text after the current input without mutating the backing string.

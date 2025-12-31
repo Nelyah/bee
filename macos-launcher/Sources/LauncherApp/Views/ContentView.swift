@@ -94,12 +94,14 @@ struct ContentView: View {
         let windows = NSApplication.shared.windows
         guard !windows.isEmpty else { return }
         for window in windows {
-            // Remove title bar completely
-            window.styleMask.remove(.titled)
+            // Keep titled style so the window can become key while hiding the title bar.
+            window.styleMask.insert(.titled)
             window.styleMask.insert(.fullSizeContentView)
             window.isMovableByWindowBackground = true
             window.isOpaque = false
             window.backgroundColor = .clear
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
             if let contentView = window.contentView {
                 contentView.wantsLayer = true
                 contentView.layer?.cornerRadius = 18

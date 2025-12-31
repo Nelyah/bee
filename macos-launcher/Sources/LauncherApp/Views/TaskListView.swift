@@ -82,6 +82,11 @@ struct TaskListView: View {
                                 },
                                 onAcceptCompletion: {
                                     viewModel.acceptCompletion()
+                                },
+                                onRequestFocus: {
+                                    guard !viewModel.commandPalette.isPresented else { return false }
+                                    viewModel.enterInsertMode()
+                                    return true
                                 }
                             )
                         }

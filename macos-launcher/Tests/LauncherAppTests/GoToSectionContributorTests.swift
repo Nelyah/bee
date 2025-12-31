@@ -138,6 +138,215 @@ final class ActionsSectionContributorScopeTests: XCTestCase {
     }
 }
 
+// MARK: - SaveReportSectionContributor Tests
+
+@MainActor
+final class SaveReportSectionContributorTests: XCTestCase {
+    func testShowsSaveActionWhenFiltersExist() {
+        let handler = MockActionHandler()
+        let contributor = SaveReportSectionContributor(
+            actionHandler: handler,
+            getCurrentFilters: { ["status:pending", "project:work"] },
+            getUserReports: { [] }
+        )
+
+        let context = CommandPaletteContext()
+        let sections = contributor.buildSections(context: context, query: "")
+
+        XCTAssertEqual(sections.count, 1)
+        let items = sections[0].items
+
+        // Find the save action
+        let saveItem = items.first {
+            if case let .action(action) = $0 {
+                return action.id == "save-report"
+            }
+            return false
+        }
+        XCTAssertNotNil(saveItem, "Save report action should be present when filters exist")
+    }
+
+    func testHidesSaveActionWhenNoFilters() {
+        let handler = MockActionHandler()
+        let contributor = SaveReportSectionContributor(
+            actionHandler: handler,
+            getCurrentFilters: { [] },
+            getUserReports: { [] }
+        )
+
+        let context = CommandPaletteContext()
+        let sections = contributor.buildSections(context: context, query: "")
+
+        // Should be empty since no filters and no user reports
+        XCTAssertTrue(sections.isEmpty, "No sections should appear when no filters and no user reports")
+    }
+
+    func testShowsDeleteSubmenuWhenUserReportsExist() {
+        let handler = MockActionHandler()
+        let userReport = ReportSummary(
+            name: "MyCustomReport",
+            staticFilters: ["tag:urgent"],
+            columns: ["summary"],
+            columnNames: ["Summary"],
+            isDefault: false,
+            isUserReport: true
+        )
+        let contributor = SaveReportSectionContributor(
+            actionHandler: handler,
+            getCurrentFilters: { [] },
+            getUserReports: { [userReport] }
+        )
+
+        let context = CommandPaletteContext()
+        let sections = contributor.buildSections(context: context, query: "")
+
+        XCTAssertEqual(sections.count, 1)
+        let items = sections[0].items
+
+        // Find the delete submenu
+        let deleteItem = items.first {
+            if case let .submenu(submenu) = $0 {
+                return submenu.id == "delete-report-menu"
+            }
+            return false
+        }
+        XCTAssertNotNil(deleteItem, "Delete report submenu should be present when user reports exist")
+    }
+
+    func testHidesDeleteSubmenuWhenNoUserReports() {
+        let handler = MockActionHandler()
+        let contributor = SaveReportSectionContributor(
+            actionHandler: handler,
+            getCurrentFilters: { ["status:pending"] },
+            getUserReports: { [] }
+        )
+
+        let context = CommandPaletteContext()
+        let sections = contributor.buildSections(context: context, query: "")
+
+        XCTAssertEqual(sections.count, 1)
+        let items = sections[0].items
+
+        // Should not find delete submenu
+        let deleteItem = items.first {
+            if case let .submenu(submenu) = $0 {
+                return submenu.id == "delete-report-menu"
+            }
+            return false
+        }
+        XCTAssertNil(deleteItem, "Delete report submenu should not be present when no user reports")
+    }
+
+    func testDeleteSubmenuOnlyShowsUserReports() {
+        let handler = MockActionHandler()
+        let staticReport = ReportSummary(
+            name: "BuiltIn",
+            staticFilters: ["status:pending"],
+            columns: ["summary"],
+            columnNames: ["Summary"],
+            isDefault: true,
+            isUserReport: false
+        )
+        let userReport = ReportSummary(
+            name: "MyCustomReport",
+            staticFilters: ["tag:urgent"],
+            columns: ["summary"],
+            columnNames: ["Summary"],
+            isDefault: false,
+            isUserReport: true
+        )
+        let contributor = SaveReportSectionContributor(
+            actionHandler: handler,
+            getCurrentFilters: { [] },
+            getUserReports: { [staticReport, userReport] }
+        )
+
+        let context = CommandPaletteContext()
+        let sections = contributor.buildSections(context: context, query: "")
+
+        XCTAssertEqual(sections.count, 1)
+
+        // Verify delete submenu exists (only user reports should be deletable)
+        let deleteItem = sections[0].items.first {
+            if case let .submenu(submenu) = $0 {
+                return submenu.id == "delete-report-menu"
+            }
+            return false
+        }
+        XCTAssertNotNil(deleteItem, "Delete report submenu should be present")
+    }
+
+    func testContributorPriority() {
+        let handler = MockActionHandler()
+        let contributor = SaveReportSectionContributor(
+            actionHandler: handler,
+            getCurrentFilters: { [] },
+            getUserReports: { [] }
+        )
+
+        XCTAssertEqual(contributor.contributorId, "saveReport")
+        XCTAssertEqual(contributor.priority, 5)
+    }
+}
+
+// MARK: - ReportSummary Decoding Tests
+
+final class ReportSummaryDecodingTests: XCTestCase {
+    func testDecodesIsUserReportTrue() throws {
+        let json = """
+        {
+            "name": "custom-report",
+            "filters": ["status:pending"],
+            "columns": ["summary", "due"],
+            "column_names": ["Summary", "Due Date"],
+            "is_default": false,
+            "is_user_report": true
+        }
+        """
+        let data = Data(json.utf8)
+        let report = try JSONDecoder().decode(ReportSummary.self, from: data)
+
+        XCTAssertEqual(report.name, "custom-report")
+        XCTAssertTrue(report.isUserReport)
+    }
+
+    func testDecodesIsUserReportFalse() throws {
+        let json = """
+        {
+            "name": "built-in-report",
+            "filters": ["status:pending"],
+            "columns": ["summary"],
+            "column_names": ["Summary"],
+            "is_default": true,
+            "is_user_report": false
+        }
+        """
+        let data = Data(json.utf8)
+        let report = try JSONDecoder().decode(ReportSummary.self, from: data)
+
+        XCTAssertEqual(report.name, "built-in-report")
+        XCTAssertFalse(report.isUserReport)
+    }
+
+    func testDefaultsIsUserReportToFalse() throws {
+        // When is_user_report is not present, it should default to false
+        let json = """
+        {
+            "name": "legacy-report",
+            "filters": [],
+            "columns": ["summary"],
+            "column_names": ["Summary"],
+            "is_default": false
+        }
+        """
+        let data = Data(json.utf8)
+        let report = try JSONDecoder().decode(ReportSummary.self, from: data)
+
+        XCTAssertEqual(report.name, "legacy-report")
+        XCTAssertFalse(report.isUserReport, "isUserReport should default to false when not present in JSON")
+    }
+}
+
 // MARK: - Mock Action Handler
 
 @MainActor
@@ -158,5 +367,13 @@ private final class MockActionHandler: CommandPaletteActionHandling {
 
     func clearProjectScope() {
         clearProjectScopeCalled = true
+    }
+
+    func showSaveReportSheet() {
+        // No-op for test
+    }
+
+    func deleteUserReport(name: String) {
+        // No-op for test
     }
 }

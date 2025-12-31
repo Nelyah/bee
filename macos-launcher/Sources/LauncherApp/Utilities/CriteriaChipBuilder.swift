@@ -2,10 +2,16 @@ import Foundation
 
 enum CriteriaChipBuilder {
     static func reportFilterChips(from reportConfig: ReportConfig?) -> [CriteriaChip] {
-        guard let reportConfig, !reportConfig.filters.isEmpty else {
-            return []
+        guard let reportConfig else { return [] }
+
+        // User reports have pre-parsed filter JSON - parse chips from it
+        if let userFilter = reportConfig.userFilter {
+            return filterChips(from: userFilter)
         }
-        return reportConfig.filters.map {
+
+        // Static reports have filter expressions - show them as-is
+        guard !reportConfig.staticFilters.isEmpty else { return [] }
+        return reportConfig.staticFilters.map {
             CriteriaChip(
                 kind: .filter,
                 label: $0,
@@ -18,6 +24,24 @@ enum CriteriaChipBuilder {
     static func filterChips(from value: JSONValue?) -> [CriteriaChip] {
         guard let value else { return [] }
         return parseFilterValue(value)
+    }
+
+    /// Build a human-readable subtitle for a report (used in command palette menus).
+    static func reportSubtitle(for report: ReportSummary) -> String {
+        // User reports: build subtitle from filter JSON chips
+        if let userFilter = report.userFilter {
+            let chips = filterChips(from: userFilter)
+            if chips.isEmpty {
+                return "No filters"
+            }
+            return chips.map(\.label).joined(separator: " • ")
+        }
+
+        // Static reports: use filter expressions directly
+        if report.staticFilters.isEmpty {
+            return "No filters"
+        }
+        return report.staticFilters.joined(separator: " • ")
     }
 
     static func filterChips(from tokens: [TokenSpan], actionName: String) -> [CriteriaChip] {

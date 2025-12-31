@@ -7,6 +7,7 @@ mod tables;
 mod task_read;
 mod task_write;
 mod undo;
+mod user_reports;
 
 use crate::{
     CoreResult,
@@ -20,10 +21,14 @@ use crate::{
             task_read::{get_projects_with_counts, get_tags_with_counts, load_tasks_impl},
             task_write::write_tasks_impl,
             undo::{append_undo_action_impl, load_undos_impl},
+            user_reports as user_reports_db,
         },
     },
     task::{ActionUndo, Task, TaskData, TaskProperties},
 };
+use serde_json::Value;
+
+pub use user_reports::UserReport;
 
 pub use task_read::CompletionRow;
 
@@ -114,6 +119,60 @@ impl DbStore {
         let db = get_database(None).await?;
         external_links_db::update_sync_error(&db, link_id, sync_error).await?;
         Ok(())
+    }
+
+    // User Reports CRUD methods
+
+    /// List all user-created reports.
+    pub async fn list_user_reports() -> CoreResult<Vec<UserReport>> {
+        let db = get_database(None).await?;
+        let reports = user_reports_db::list_all(&db).await?;
+        Ok(reports)
+    }
+
+    /// Get a user report by name.
+    pub async fn get_user_report_by_name(name: &str) -> CoreResult<Option<UserReport>> {
+        let db = get_database(None).await?;
+        let report = user_reports_db::get_by_name(&db, name).await?;
+        Ok(report)
+    }
+
+    /// Create a new user report.
+    pub async fn insert_user_report(
+        name: String,
+        filter: Option<Value>,
+        columns: Vec<String>,
+        column_names: Vec<String>,
+    ) -> CoreResult<UserReport> {
+        let db = get_database(None).await?;
+        let report = user_reports_db::insert(&db, name, filter, columns, column_names).await?;
+        Ok(report)
+    }
+
+    /// Update an existing user report.
+    pub async fn update_user_report(
+        name: &str,
+        filter: Option<Value>,
+        columns: Vec<String>,
+        column_names: Vec<String>,
+    ) -> CoreResult<UserReport> {
+        let db = get_database(None).await?;
+        let report = user_reports_db::update(&db, name, filter, columns, column_names).await?;
+        Ok(report)
+    }
+
+    /// Delete a user report by name.
+    pub async fn delete_user_report(name: &str) -> CoreResult<()> {
+        let db = get_database(None).await?;
+        user_reports_db::delete_by_name(&db, name).await?;
+        Ok(())
+    }
+
+    /// List all user report names (for startup collision detection).
+    pub async fn list_user_report_names() -> CoreResult<Vec<String>> {
+        let db = get_database(None).await?;
+        let names = user_reports_db::list_names(&db).await?;
+        Ok(names)
     }
 }
 

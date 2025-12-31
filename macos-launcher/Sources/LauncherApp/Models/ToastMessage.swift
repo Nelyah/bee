@@ -21,6 +21,7 @@ struct ToastMessage: Identifiable, Equatable {
 }
 
 enum ToastIcon: Equatable {
+    case success
     case warning
     case gitlab
 }

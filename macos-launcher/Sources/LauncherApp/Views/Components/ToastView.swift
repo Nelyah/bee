@@ -28,6 +28,9 @@ struct ToastView: View {
     @ViewBuilder
     private var toastIcon: some View {
         switch toast.icon {
+        case .success:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(ThemeManager.current.green)
         case .warning:
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(ThemeManager.current.red)

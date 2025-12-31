@@ -39,6 +39,9 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             syncError: nil
         )
     )
+    var createUserReportResult: Result<UserReportDto, Error> = .success(MockApiClient.sampleUserReport)
+    var updateUserReportResult: Result<UserReportDto, Error> = .success(MockApiClient.sampleUserReport)
+    var deleteUserReportResult: Result<Void, Error> = .success(())
     var lastParseInput: String?
     var lastRunActionFilter: JSONValue?
 
@@ -95,25 +98,39 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         ParseResponse(action: "list", properties: nil, filter: nil, tokens: [])
     }
 
+    // MARK: - User Reports
+
+    func createUserReport(_ request: UserReportRequest) async throws -> UserReportDto {
+        try createUserReportResult.get()
+    }
+
+    func updateUserReport(name: String, _ request: UserReportRequest) async throws -> UserReportDto {
+        try updateUserReportResult.get()
+    }
+
+    func deleteUserReport(name: String) async throws {
+        _ = try deleteUserReportResult.get()
+    }
+
     // MARK: - Sample Data
 
     static let sampleConfig = ConfigResponse(
         report: ReportConfig(
-            filters: ["status:pending or status:active"],
+            staticFilters: ["status:pending or status:active"],
             columns: ["id", "summary", "tags", "status", "urgency"],
             columnNames: ["ID", "Summary", "Tags", "Status", "Urgency"]
         ),
         reports: [
             ReportSummary(
                 name: "default",
-                filters: ["status:pending or status:active"],
+                staticFilters: ["status:pending or status:active"],
                 columns: ["id", "summary", "tags", "status", "urgency"],
                 columnNames: ["ID", "Summary", "Tags", "Status", "Urgency"],
                 isDefault: true
             ),
             ReportSummary(
                 name: "all",
-                filters: [],
+                staticFilters: [],
                 columns: ["id", "summary", "status"],
                 columnNames: ["ID", "Summary", "Status"],
                 isDefault: false
@@ -254,4 +271,16 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             updatedAt: "2024-09-21T14:05:00Z"
         ),
     ]
+
+    static let sampleUserReport = UserReportDto(
+        name: "my-report",
+        filter: .object([
+            "type": .string("StatusFilter"),
+            "value": .object(["status": .string("pending")]),
+        ]),
+        columns: ["id", "summary", "status"],
+        columnNames: ["ID", "Summary", "Status"],
+        createdAt: "2024-12-31T10:00:00Z",
+        updatedAt: "2024-12-31T10:00:00Z"
+    )
 }

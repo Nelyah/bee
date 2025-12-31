@@ -38,6 +38,9 @@ async fn run() -> error_type::ApiResult<()> {
 
     log::info!("beed listening on {}", config.bind_addr);
 
+    // Validate no static/user report name collisions before serving
+    api::AppState::validate_report_name_collisions().await;
+
     let app = api::router(api::AppState::from_config(config));
     axum::serve(listener, app)
         .await

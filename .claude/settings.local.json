@@ -71,8 +71,11 @@
       "Bash(grep:*)",
       "Bash(git checkout:*)",
       "mcp__serena__insert_before_symbol",
-      "Bash(swiftformat --help:*)"
+      "Bash(swiftformat --help:*)",
+      "Bash(tree:*)",
+      "Bash(tokei:*)",
+      "mcp__serena__think_about_whether_you_are_done"
     ]
   },
-  "outputStyle": "default"
+  "outputStyle": "Explanatory"
 }

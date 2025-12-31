@@ -14,4 +14,9 @@ protocol ApiClientProtocol: Sendable {
     func resolveExternalLink(provider: ExternalLinkProvider, input: String) async throws -> ExternalLinkResolveResponse
     func addExternalLink(taskUUID: String, url: String) async throws -> ExternalLinkDto
     func emptyParse() -> ParseResponse
+
+    // User Reports
+    func createUserReport(_ request: UserReportRequest) async throws -> UserReportDto
+    func updateUserReport(name: String, _ request: UserReportRequest) async throws -> UserReportDto
+    func deleteUserReport(name: String) async throws
 }

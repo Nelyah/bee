@@ -18,6 +18,8 @@ pub enum ApiError {
     BadRequest { message: String },
     #[error("Not found: {message}")]
     NotFound { message: String },
+    #[error("Conflict: {message}")]
+    Conflict { message: String },
     #[error("Configuration error: {message}")]
     Config { message: String },
     #[error("External link error: {message}")]
@@ -43,6 +45,12 @@ impl ApiError {
 
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::NotFound {
+            message: message.into(),
+        }
+    }
+
+    pub fn conflict(message: impl Into<String>) -> Self {
+        Self::Conflict {
             message: message.into(),
         }
     }
@@ -75,6 +83,7 @@ impl ApiError {
         match self {
             ApiError::BadRequest { .. } => StatusCode::BAD_REQUEST,
             ApiError::NotFound { .. } => StatusCode::NOT_FOUND,
+            ApiError::Conflict { .. } => StatusCode::CONFLICT,
             ApiError::Config { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::ExternalLink { .. } => StatusCode::BAD_REQUEST,
             ApiError::Http { .. } => StatusCode::BAD_GATEWAY,
@@ -98,6 +107,7 @@ impl UserFacingError for ApiError {
         match self {
             ApiError::BadRequest { .. } => ErrorCode::ParseError,
             ApiError::NotFound { .. } => ErrorCode::NotFound,
+            ApiError::Conflict { .. } => ErrorCode::InvalidInput,
             ApiError::Config { .. } => ErrorCode::ConfigError,
             ApiError::ExternalLink { .. } => ErrorCode::ExternalLinkError,
             ApiError::Http { .. } => ErrorCode::ExternalLinkError,
@@ -111,6 +121,7 @@ impl UserFacingError for ApiError {
         match self {
             ApiError::BadRequest { message } => message.to_string(),
             ApiError::NotFound { .. } => "The requested item was not found.".to_string(),
+            ApiError::Conflict { message } => message.to_string(),
             ApiError::Config { .. } => "Configuration could not be loaded.".to_string(),
             ApiError::ExternalLink { .. } => "External link operation failed.".to_string(),
             ApiError::Http { .. } => "External service error.".to_string(),

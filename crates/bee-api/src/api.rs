@@ -7,6 +7,7 @@ use crate::{
         ExternalLinkResolveRequest, ExternalLinkResolveResponse, ExternalLinkSyncRequest,
         ExternalLinkSyncResponse, GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse,
         ReportConfigDto, ReportSummary, TaskAnnotationDto, TaskHistoryDto, TokenSpan,
+        UserReportDto, UserReportRequest, UserReportsListResponse,
     },
     error_type::{ApiError, ApiErrorResponse, ApiResult},
     parse::{parse_input, tokenize_with_spans},
@@ -16,7 +17,7 @@ use axum::{
     Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
 };
 use bee_actions::{ActionRegistry, command_parser::ParsedCommand};
 use bee_core::{
@@ -53,6 +54,41 @@ impl AppState {
             external_links: bee_core::config::get_config().external_links.clone(),
             external_links_sync: config.external_links.sync,
             http_client: reqwest::Client::new(),
+        }
+    }
+
+    /// Validate that no static reports collide with user reports.
+    /// Panics if a collision is detected.
+    /// Call this at startup before serving requests.
+    pub async fn validate_report_name_collisions() {
+        let core_config = bee_core::config::get_config();
+        let static_names: HashSet<String> = core_config
+            .get_all_reports()
+            .map(|(name, _)| name.to_owned())
+            .collect();
+
+        let user_report_names = match DbStore::list_user_report_names().await {
+            Ok(names) => names,
+            Err(e) => {
+                log::warn!(
+                    "Could not load user report names for collision check: {}",
+                    e
+                );
+                return;
+            }
+        };
+
+        let collisions: Vec<String> = user_report_names
+            .into_iter()
+            .filter(|name| static_names.contains(name))
+            .collect();
+
+        if !collisions.is_empty() {
+            panic!(
+                "Startup failed: Static report(s) {} conflict with existing user report(s). \
+                 Either rename the static report(s) in bee.toml or delete the user report(s).",
+                collisions.join(", ")
+            );
         }
     }
 }
@@ -92,6 +128,15 @@ pub fn router(state: AppState) -> Router {
             "/v1/external-links/resolve",
             post(resolve_external_link_handler),
         )
+        // User reports CRUD
+        .route(
+            "/v1/reports",
+            get(list_user_reports_handler).post(create_user_report_handler),
+        )
+        .route(
+            "/v1/reports/:name",
+            put(update_user_report_handler).delete(delete_user_report_handler),
+        )
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
         .layer(
             TraceLayer::new_for_http()
@@ -130,16 +175,36 @@ async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
     let core_config = bee_core::config::get_config();
     let default_report_name = &core_config.default_report;
 
-    let reports: Vec<ReportSummary> = core_config
+    // Build static reports from config (is_user_report: false)
+    // Static reports use `filters` (Vec<String>) - still need parsing at runtime
+    let mut reports: Vec<ReportSummary> = core_config
         .get_all_reports()
         .map(|(name, report)| ReportSummary {
             name: name.to_string(),
             filters: report.filters.clone(),
+            filter: None, // Static reports don't have pre-parsed filter
             columns: report.columns.clone(),
             column_names: report.column_names.clone(),
             is_default: name == default_report_name,
+            is_user_report: false,
         })
         .collect();
+
+    // Load user reports from database and merge
+    // User reports use `filter` (JSON Value) - no re-parsing needed
+    if let Ok(user_reports) = DbStore::list_user_reports().await {
+        for report in user_reports {
+            reports.push(ReportSummary {
+                name: report.name,
+                filters: vec![], // User reports use `filter` field instead
+                filter: report.filter,
+                columns: report.columns,
+                column_names: report.column_names,
+                is_default: false,
+                is_user_report: true,
+            });
+        }
+    }
 
     Json(ConfigResponse {
         report: ReportConfigDto {
@@ -526,6 +591,144 @@ async fn resolve_external_link_handler(
     Ok(Json(resolved))
 }
 
+// User Reports Handlers
+
+#[utoipa::path(
+    get,
+    path = "/v1/reports",
+    responses((status = 200, description = "List of user reports", body = UserReportsListResponse))
+)]
+async fn list_user_reports_handler() -> ApiResult<Json<UserReportsListResponse>> {
+    let reports = DbStore::list_user_reports().await?;
+    let dtos: Vec<UserReportDto> = reports
+        .into_iter()
+        .map(UserReportDto::from_user_report)
+        .collect();
+    Ok(Json(UserReportsListResponse { reports: dtos }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/reports",
+    request_body = UserReportRequest,
+    responses(
+        (status = 201, description = "User report created", body = UserReportDto),
+        (status = 400, description = "Invalid request", body = ApiErrorResponse),
+        (status = 409, description = "Name conflict", body = ApiErrorResponse)
+    )
+)]
+async fn create_user_report_handler(
+    Json(payload): Json<UserReportRequest>,
+) -> ApiResult<(StatusCode, Json<UserReportDto>)> {
+    // Validate name
+    validate_report_name(&payload.name)?;
+
+    // Check collision with static reports
+    let core_config = bee_core::config::get_config();
+    if core_config.get_report(&payload.name).is_some() {
+        return Err(ApiError::conflict(format!(
+            "Report name '{}' conflicts with a built-in report",
+            payload.name
+        )));
+    }
+
+    // Check if user report already exists
+    if DbStore::get_user_report_by_name(&payload.name)
+        .await?
+        .is_some()
+    {
+        return Err(ApiError::conflict(format!(
+            "User report '{}' already exists. Use PUT to update.",
+            payload.name
+        )));
+    }
+
+    let report = DbStore::insert_user_report(
+        payload.name,
+        payload.filter,
+        payload.columns,
+        payload.column_names,
+    )
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(UserReportDto::from_user_report(report)),
+    ))
+}
+
+#[utoipa::path(
+    put,
+    path = "/v1/reports/{name}",
+    params(("name" = String, Path, description = "Report name")),
+    request_body = UserReportRequest,
+    responses(
+        (status = 200, description = "User report updated", body = UserReportDto),
+        (status = 400, description = "Invalid request", body = ApiErrorResponse),
+        (status = 404, description = "Report not found", body = ApiErrorResponse)
+    )
+)]
+async fn update_user_report_handler(
+    Path(name): Path<String>,
+    Json(payload): Json<UserReportRequest>,
+) -> ApiResult<Json<UserReportDto>> {
+    // Ensure the report exists
+    if DbStore::get_user_report_by_name(&name).await?.is_none() {
+        return Err(ApiError::not_found(format!(
+            "User report '{}' not found",
+            name
+        )));
+    }
+
+    let report =
+        DbStore::update_user_report(&name, payload.filter, payload.columns, payload.column_names)
+            .await?;
+
+    Ok(Json(UserReportDto::from_user_report(report)))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/reports/{name}",
+    params(("name" = String, Path, description = "Report name")),
+    responses(
+        (status = 204, description = "User report deleted"),
+        (status = 404, description = "Report not found", body = ApiErrorResponse)
+    )
+)]
+async fn delete_user_report_handler(Path(name): Path<String>) -> ApiResult<StatusCode> {
+    // Ensure the report exists
+    if DbStore::get_user_report_by_name(&name).await?.is_none() {
+        return Err(ApiError::not_found(format!(
+            "User report '{}' not found",
+            name
+        )));
+    }
+
+    DbStore::delete_user_report(&name).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Validate report name: non-empty, <= 64 chars, no control characters
+fn validate_report_name(name: &str) -> ApiResult<()> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(ApiError::bad_request("Report name cannot be empty"));
+    }
+    if trimmed.len() > 64 {
+        return Err(ApiError::bad_request(
+            "Report name must be 64 characters or fewer",
+        ));
+    }
+    // Allow any printable Unicode, reject only control characters
+    if trimmed.chars().any(|c| c.is_control()) {
+        return Err(ApiError::bad_request(
+            "Report name cannot contain control characters",
+        ));
+    }
+    Ok(())
+}
+
 #[utoipa::path(
     post,
     path = "/v1/parse",
@@ -811,5 +1014,63 @@ mod tests {
         let serialized = serialize_properties(Some(props.clone())).unwrap();
         let deserialized = deserialize_properties(serialized).unwrap();
         assert_eq!(deserialized, Some(props));
+    }
+
+    // MARK: - Report Name Validation Tests
+
+    #[test]
+    fn test_validate_report_name_valid() {
+        // Basic names
+        assert!(validate_report_name("my-report").is_ok());
+        assert!(validate_report_name("My_Report_123").is_ok());
+        assert!(validate_report_name("a").is_ok());
+        assert!(validate_report_name("report-with-dashes").is_ok());
+        assert!(validate_report_name("report_with_underscores").is_ok());
+        // Names with spaces
+        assert!(validate_report_name("My Report").is_ok());
+        // Unicode names (CJK, accented, etc.)
+        assert!(validate_report_name("日本語レポート").is_ok());
+        assert!(validate_report_name("Ñoño café").is_ok());
+        // Special characters
+        assert!(validate_report_name("Report #1 (draft)").is_ok());
+        assert!(validate_report_name("report.name").is_ok());
+        assert!(validate_report_name("report@v2!").is_ok());
+    }
+
+    #[test]
+    fn test_validate_report_name_empty() {
+        let result = validate_report_name("");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, ApiError::BadRequest { .. }));
+    }
+
+    #[test]
+    fn test_validate_report_name_whitespace_only() {
+        // Whitespace-only should be invalid (trims to empty)
+        assert!(validate_report_name("   ").is_err());
+        assert!(validate_report_name("\t\n").is_err());
+    }
+
+    #[test]
+    fn test_validate_report_name_too_long() {
+        let long_name = "a".repeat(65);
+        let result = validate_report_name(&long_name);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, ApiError::BadRequest { .. }));
+
+        // Exactly 64 chars should be valid
+        let max_name = "a".repeat(64);
+        assert!(validate_report_name(&max_name).is_ok());
+    }
+
+    #[test]
+    fn test_validate_report_name_control_chars() {
+        // Only control characters should be rejected
+        assert!(validate_report_name("report\nname").is_err());
+        assert!(validate_report_name("report\tname").is_err());
+        assert!(validate_report_name("report\x00name").is_err());
+        assert!(validate_report_name("report\x1Fname").is_err());
     }
 }

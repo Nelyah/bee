@@ -9,3 +9,4 @@ pub mod tags;
 pub mod tasks;
 pub mod tasks_tags;
 pub mod undo_actions;
+pub mod user_reports;

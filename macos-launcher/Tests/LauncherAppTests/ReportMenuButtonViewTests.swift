@@ -8,14 +8,14 @@ final class ReportMenuButtonViewTests: XCTestCase {
         let reports = [
             ReportSummary(
                 name: "default",
-                filters: [],
+                staticFilters: [],
                 columns: [],
                 columnNames: [],
                 isDefault: true
             ),
             ReportSummary(
                 name: "work",
-                filters: [],
+                staticFilters: [],
                 columns: [],
                 columnNames: [],
                 isDefault: false

@@ -19,7 +19,7 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     func buildReportMenu(reports: [ReportSummary], currentReportName: String?) -> CommandPaletteMenu {
         let items: [CommandPaletteItem] = reports.map { report in
             let isCurrent = report.name == currentReportName
-            let subtitle = report.filters.isEmpty ? "No filters" : report.filters.joined(separator: " • ")
+            let subtitle = CriteriaChipBuilder.reportSubtitle(for: report)
 
             return .suggestion(
                 CommandPaletteSuggestionItem(
@@ -77,6 +77,27 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     func clearProjectScope() {
         viewModel?.clearProjectScope()
         viewModel?.closeCommandPalette()
+    }
+
+    func showSaveReportSheet() {
+        viewModel?.closeCommandPalette()
+        viewModel?.showingSaveReportSheet = true
+    }
+
+    func deleteUserReport(name: String) {
+        guard let viewModel else { return }
+
+        Task {
+            do {
+                try await apiClient.deleteUserReport(name: name)
+                viewModel.showToast(message: "Report '\(name)' deleted", icon: .success)
+                // Reload config to refresh reports list
+                await viewModel.refreshConfig()
+            } catch {
+                viewModel.showToast(message: "Failed to delete report: \(error.localizedDescription)")
+            }
+        }
+        viewModel.closeCommandPalette()
     }
 
     // MARK: - Private Methods

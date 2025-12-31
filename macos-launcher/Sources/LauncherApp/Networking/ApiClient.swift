@@ -127,6 +127,20 @@ final class ApiClient: ApiClientProtocol, Sendable {
         return try await send(request, path: "/v1/tasks/\(taskUUID)/external-links")
     }
 
+    // MARK: - User Reports
+
+    func createUserReport(_ request: UserReportRequest) async throws -> UserReportDto {
+        try await send(request, path: "/v1/reports")
+    }
+
+    func updateUserReport(name: String, _ request: UserReportRequest) async throws -> UserReportDto {
+        try await put(request, path: "/v1/reports/\(name)")
+    }
+
+    func deleteUserReport(name: String) async throws {
+        try await delete(path: "/v1/reports/\(name)")
+    }
+
     /// Send a JSON POST request to the API and decode the response type.
     private func send<Response: Decodable>(
         _ body: some Encodable,
@@ -194,6 +208,34 @@ final class ApiClient: ApiClientProtocol, Sendable {
         let (data, response) = try await session.data(for: request)
         try validateResponse(response, data: data, path: path)
         return try JSONDecoder().decode(Response.self, from: data)
+    }
+
+    /// Send a JSON PUT request to the API and decode the response type.
+    private func put<Response: Decodable>(
+        _ body: some Encodable,
+        path: String
+    ) async throws -> Response {
+        let url = baseURL.appendingPathComponent(path)
+        logger.info("HTTP PUT \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data, path: path)
+        return try JSONDecoder().decode(Response.self, from: data)
+    }
+
+    /// Send a DELETE request to the API.
+    private func delete(path: String) async throws {
+        let url = baseURL.appendingPathComponent(path)
+        logger.info("HTTP DELETE \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data, path: path)
     }
 
     /// Validate HTTP response and throw on non-2xx status codes.

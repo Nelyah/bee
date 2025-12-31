@@ -57,6 +57,11 @@ final class LauncherViewModel: ObservableObject {
     /// The currently scoped project (layers on top of report filters).
     @Published var projectScope: String?
 
+    // MARK: - Save Report Sheet State
+
+    /// Whether to show the save report sheet.
+    @Published var showingSaveReportSheet: Bool = false
+
     /// The current grouping option for UI display.
     var currentGroupByOption: GroupByOption {
         switch groupingStrategy {
@@ -150,6 +155,13 @@ final class LauncherViewModel: ObservableObject {
                 self?.closeCommandPalette()
             }
         ))
+
+        // Register the save report section
+        commandPalette.dataSource.register(SaveReportSectionContributor(
+            actionHandler: actionHandler,
+            getCurrentFilters: { [weak self] in self?.criteriaFilterChips.map(\.label) ?? [] },
+            getUserReports: { [weak self] in self?.availableReports ?? [] }
+        ))
     }
 
     private func setupInteractionContextUpdates() {
@@ -212,7 +224,8 @@ final class LauncherViewModel: ObservableObject {
 
             if let selected = configResponse.reports.first(where: { $0.name == reportName }) {
                 reportConfig = ReportConfig(
-                    filters: selected.filters,
+                    staticFilters: selected.staticFilters,
+                    userFilter: selected.userFilter,
                     columns: selected.columns,
                     columnNames: selected.columnNames
                 )
@@ -231,11 +244,72 @@ final class LauncherViewModel: ObservableObject {
             showToast(message: error.localizedDescription)
             // Use default config on failure
             reportConfig = ReportConfig(
-                filters: ["status:pending or status:active"],
+                staticFilters: ["status:pending or status:active"],
                 columns: ["id", "summary", "tags", "status"],
                 columnNames: ["ID", "Summary", "Tags", "Status"]
             )
             await refreshReportFilterChips()
+        }
+    }
+
+    /// Force-reload the configuration (used after saving/deleting reports).
+    func refreshConfig() async {
+        do {
+            let configResponse = try await actionService.loadFullConfig()
+            availableReports = configResponse.reports
+
+            // Preserve current selection if still valid
+            if let selected = configResponse.reports.first(where: { $0.name == selectedReportName }) {
+                reportConfig = ReportConfig(
+                    staticFilters: selected.staticFilters,
+                    userFilter: selected.userFilter,
+                    columns: selected.columns,
+                    columnNames: selected.columnNames
+                )
+            } else if let defaultReport = configResponse.reports.first(where: { $0.isDefault }) {
+                // Fall back to default if current selection no longer exists
+                reportConfig = ReportConfig(
+                    staticFilters: defaultReport.staticFilters,
+                    userFilter: defaultReport.userFilter,
+                    columns: defaultReport.columns,
+                    columnNames: defaultReport.columnNames
+                )
+                selectedReportName = defaultReport.name
+            }
+
+            actionService.setReportConfig(reportConfig)
+            await refreshReportFilterChips()
+        } catch {
+            logger.error("Failed to refresh config: \(error.localizedDescription, privacy: .public)")
+            showToast(message: "Failed to refresh reports: \(error.localizedDescription)")
+        }
+    }
+
+    /// Save the current filter configuration as a named report.
+    func saveReport(
+        name: String,
+        filter: JSONValue?,
+        columns: [String],
+        columnNames: [String],
+        isUpdate: Bool
+    ) async {
+        let request = UserReportRequest(
+            name: name,
+            filter: filter,
+            columns: columns,
+            columnNames: columnNames
+        )
+
+        do {
+            if isUpdate {
+                _ = try await apiClient.updateUserReport(name: name, request)
+            } else {
+                _ = try await apiClient.createUserReport(request)
+            }
+            showToast(message: "Report '\(name)' saved", icon: .success)
+            await refreshConfig()
+        } catch {
+            showToast(message: "Failed to save report: \(error.localizedDescription)")
         }
     }
 

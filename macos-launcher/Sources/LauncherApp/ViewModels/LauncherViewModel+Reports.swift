@@ -43,7 +43,17 @@ extension LauncherViewModel {
             reportFilterChips = []
             return
         }
-        let filterExpr = reportConfig.filters.joined(separator: " or ").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // User reports have pre-parsed filter JSON - use it directly
+        if let userFilter = reportConfig.userFilter {
+            let chips = CriteriaChipBuilder.filterChips(from: userFilter)
+            reportFilterChips = deduplicateChips(chips)
+            return
+        }
+
+        // Static reports have filter expression strings - need to parse them
+        let filterExpr = reportConfig.staticFilters.joined(separator: " or ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !filterExpr.isEmpty else {
             reportFilterChips = []
             return
@@ -75,7 +85,8 @@ extension LauncherViewModel {
         selectedReportName = name
         UserDefaults.standard.set(name, forKey: UserDefaultsKeys.selectedReportName)
         reportConfig = ReportConfig(
-            filters: report.filters,
+            staticFilters: report.staticFilters,
+            userFilter: report.userFilter,
             columns: report.columns,
             columnNames: report.columnNames
         )

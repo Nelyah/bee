@@ -1,5 +1,13 @@
 # DEBT TODO
 
+## Summary
+- **Runtime safety**: Production code contains panic/unreachable macros that should be replaced with proper error handling (filters.rs, task_data.rs)
+- **Code organization**: Several large files (1000+ LOC) would benefit from splitting; TaskData manages multiple concerns
+- **Documentation**: Public Rust APIs have sparse rustdoc coverage (~117 lines across 33 files)
+- **Swift SRP**: TokenHighlightTextView mixes 4 types/responsibilities in one file
+- **Test coverage**: macOS launcher utilities have ~26% file coverage; key utilities lack dedicated tests
+- **Coupling**: Direct UserDefaults access scattered in ViewModels reduces testability
+
 ## Open Issues
 ### DEBT-0034: No way to save a search filter as a reusable report
 - Priority: P0
@@ -18,6 +26,150 @@
   - UX details: handle name collisions, validation, and empty filter cases; show success/failure toast.
   - Compatibility: ensure existing configs keep working; no change required if user reports are absent.
 - Safety net: API tests for list/create/update/delete + config merge; migration test; UI tests for save flow + selecting newly saved report; add unit tests for merge precedence rules.
+
+### DEBT-0040: Panic in production code (filters.rs)
+- Priority: P0
+- Effort: S
+- Area: bee-core/filters
+- Evidence: `crates/bee-core/src/filters.rs:94-107` - `downcast_and_compare` function
+- Smells: panic-in-production, error-handling
+- Problem (rough): The `downcast_and_compare` helper panics on downcast failure (line 105: `panic!("An error occurred")`). Production code should never panic on type mismatches; comparing two filters of different kinds should return `false`, not crash the process.
+- Suggested fix (rough):
+  - Change the else branch from `panic!()` to `return false`
+  - The downcast failure means the types don't match, so they're not equal
+  - Log the error but don't terminate
+- Safety net: Add unit test comparing filters of different concrete types to ensure `false` is returned, not a panic.
+
+### DEBT-0041: Unreachable macros used for error conditions (task_data.rs)
+- Priority: P1
+- Effort: S
+- Area: bee-core/task
+- Evidence: `crates/bee-core/src/task_data.rs:69,246` - Uses `unreachable!()` for ID-to-UUID conversion checks
+- Smells: defensive-code, panic-in-production
+- Problem (rough): Code uses `unreachable!()` assuming all DependsOnIdentifier::Id variants are converted to Uuid before reaching these points. If this invariant is violated (e.g., due to future changes or edge cases), the application crashes instead of returning an error.
+- Suggested fix (rough):
+  - Replace `unreachable!()` with `CoreError::internal("...")` and propagate
+  - Or use `debug_assert!()` for development and return an error in release
+  - Document the invariant that callers must uphold
+- Safety net: Unit test that exercises the code path with unconverted IDs to verify graceful error handling.
+
+### DEBT-0042: Unwraps on fallible operations (task_data.rs)
+- Priority: P1
+- Effort: S
+- Area: bee-core/task
+- Evidence: `crates/bee-core/src/task_data.rs` lines 115, 119, 173, 176, 286 - `.unwrap()` on HashMap lookups
+- Smells: panic-in-production, error-handling
+- Problem (rough): Several `.unwrap()` calls on task HashMap lookups that could fail if the task doesn't exist. These will panic instead of returning a proper error:
+  - Line 115: `task_done` - unwrap on get_mut
+  - Line 119: `task_delete` - unwrap on get_mut
+  - Lines 173, 176: `filter` - unwraps when fetching dependency tasks
+  - Line 286: `add_task` - unwrap after insert (this one is actually safe)
+- Suggested fix (rough):
+  - Convert task_done/task_delete to return `CoreResult<()>` and use `ok_or_else`
+  - For filter(), handle missing dependencies gracefully (skip or collect errors)
+  - Line 286 is safe (just inserted) but could use `expect()` with reason
+- Safety net: Add tests for task_done/task_delete with invalid UUIDs to verify errors not panics.
+
+### DEBT-0043: Large files could be split for maintainability
+- Priority: P2
+- Effort: M
+- Area: bee-core, bee-api
+- Evidence:
+  - `crates/bee-core/src/storage/db/task_read.rs` (1,132 lines) - database query logic
+  - `crates/bee-core/src/filters/filters_impl.rs` (923 lines) - 14 filter type implementations
+  - `crates/bee-api/src/api.rs` (825 lines) - 17+ HTTP handler functions
+- Smells: complexity, maintainability, merge-conflicts
+- Problem (rough): Large files increase cognitive load, make code review harder, and increase likelihood of merge conflicts. Each file has multiple logical groupings that could be separated.
+- Suggested fix (rough):
+  - `task_read.rs`: Split into query_builders.rs (SQL construction) + hydration.rs (entity loading) + completions.rs (project/tag counts)
+  - `filters_impl.rs`: Create filters/types/ directory with one file per filter category (composite, date, string, task-id)
+  - `api.rs`: Extract handlers into domain modules (tasks.rs, config.rs, external_links.rs, undo.rs)
+  - Keep re-exports in original files for backwards compatibility
+- Safety net: Existing tests should continue passing; no behavior changes, only file reorganization.
+
+### DEBT-0044: TaskData manages multiple concerns
+- Priority: P2
+- Effort: M
+- Area: bee-core/task
+- Evidence: `crates/bee-core/src/task_data.rs` (288 lines) - manages tasks, undos, ID-to-UUID mapping, extra_tasks
+- Smells: SRP, god-object, coupling
+- Problem (rough): TaskData acts as a god object handling: task storage, undo storage, ID mapping, extra task caching, task creation, and filtering. This makes it hard to test individual concerns and increases coupling.
+- Suggested fix (rough):
+  - Extract `TaskIndex` for ID-to-UUID mapping and max_id tracking
+  - Extract `UndoRegistry` for undo task storage
+  - Keep `TaskData` focused on primary task storage and filtering
+  - Consider builder pattern for task creation (currently in `add_task`)
+- Safety net: Refactor incrementally with tests; ensure serialization/deserialization still works correctly.
+
+### DEBT-0045: Sparse documentation on public APIs
+- Priority: P2
+- Effort: M
+- Area: All Rust crates
+- Evidence: Only ~117 doc comment lines (`///` or `//!`) across 33 files; public traits like `Filter`, `TaskAction`, `Store` lack usage examples
+- Smells: docs, maintainability, onboarding
+- Problem (rough): New contributors and future maintainers lack guidance on how to use public APIs. Complex algorithms (filter parsing, blocking status detection) have no high-level explanations. Module-level documentation is absent.
+- Suggested fix (rough):
+  - Add `//!` module docs to each crate's lib.rs explaining purpose
+  - Add doc comments with examples to public traits: Filter, TaskAction, Store, Printer
+  - Document complex algorithms in task_read.rs (batched hydration) and blocking.rs
+  - Use `#[doc(hidden)]` for internal APIs to clarify public surface
+- Safety net: Run `cargo doc --no-deps` to verify documentation builds; review generated docs for completeness.
+
+### DEBT-0046: TokenHighlightTextView mixes multiple responsibilities
+- Priority: P1
+- Effort: M
+- Area: macos-launcher/Views/Components
+- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift` (397 lines)
+- Smells: SRP, file-size, mixed-concerns
+- Problem (rough): This file contains 4 distinct types: TokenHighlightTextView (NSViewRepresentable), Coordinator (NSTextViewDelegate), KeyHandlingTextView (NSTextView subclass), and KeyHandlingDecider (enum with 100+ lines). The keyboard handling logic is particularly large and unrelated to text highlighting.
+- Suggested fix (rough):
+  - Extract `KeyHandlingDecider` enum to `Utilities/KeyHandlingDecider.swift`
+  - Extract `KeyHandlingTextView` class to `Views/Components/KeyHandlingTextView.swift`
+  - Keep TokenHighlightTextView and Coordinator together (they're tightly coupled by design)
+  - Update imports in TokenHighlightTextView to use extracted types
+- Safety net: Existing KeyHandlingDeciderTests should pass; manual verification of keyboard handling in app.
+
+### DEBT-0047: ExternalLinkRow mixes provider-specific logic
+- Priority: P2
+- Effort: S
+- Area: macos-launcher/Views/Components
+- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/ExternalLinkRow.swift` (348 lines) - handles both GitLab and Jira
+- Smells: extensibility, SRP
+- Problem (rough): Adding a new external link provider (GitHub, Linear, etc.) would require modifying this already-large file. Provider-specific rendering logic (icons, status badges, URL construction) is interleaved.
+- Suggested fix (rough):
+  - Create a `LinkProviderRenderer` protocol with methods for icon, statusBadge, formatURL
+  - Create `GitLabLinkRenderer` and `JiraLinkRenderer` conformances
+  - ExternalLinkRow becomes a thin coordinator that dispatches to the appropriate renderer
+  - New providers only need to add a new renderer file
+- Safety net: Visual regression test or screenshots; existing UI should look identical.
+
+### DEBT-0048: Test coverage gaps for utilities
+- Priority: P2
+- Effort: M
+- Area: macos-launcher/Utilities
+- Evidence: 22 test files for 84 source files (~26% file coverage); missing tests for ParseErrorToastScheduler, SerialTaskQueue, window utilities
+- Smells: testing, reliability
+- Problem (rough): Critical utility code lacks dedicated test coverage. SerialTaskQueue manages async task ordering—bugs here could cause race conditions. ParseErrorToastScheduler handles user-facing error display. Window utilities affect app appearance.
+- Suggested fix (rough):
+  - Add `SerialTaskQueueTests`: test task ordering, cancellation, queue draining
+  - Add `ParseErrorToastSchedulerTests`: test scheduling, debouncing, cancellation
+  - Consider snapshot tests for window configuration (or document as manual-test-only)
+  - Prioritize utilities used in critical paths
+- Safety net: New tests should exercise edge cases; aim for >80% coverage on utility code.
+
+### DEBT-0049: Direct UserDefaults access scattered in ViewModels
+- Priority: P2
+- Effort: S
+- Area: macos-launcher/ViewModels
+- Evidence: Direct `UserDefaults.standard` calls in LauncherViewModel extensions (grouping, reports, collapsed groups)
+- Smells: coupling, testability
+- Problem (rough): ViewModels directly access UserDefaults, making it hard to test preference-dependent behavior without affecting system state. Tests must mock or reset UserDefaults, which is error-prone.
+- Suggested fix (rough):
+  - Create `SettingsService` protocol with methods like `getSelectedGrouping()`, `setSelectedGrouping()`, etc.
+  - Create `UserDefaultsSettingsService` implementation wrapping UserDefaults
+  - Inject service into LauncherViewModel via initializer
+  - Create `MockSettingsService` for tests
+- Safety net: Unit tests for SettingsService; update ViewModel tests to use mock; verify persistence still works in app.
 
 ## Done
 ### DEBT-0035: Task list rows cannot expand to show links/annotations ✅

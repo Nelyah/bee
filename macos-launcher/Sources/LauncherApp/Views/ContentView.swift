@@ -67,6 +67,29 @@ struct ContentView: View {
         )
         .frame(minWidth: 680, minHeight: 440)
         .ignoresSafeArea()
+        .sheet(isPresented: $viewModel.showingSaveReportSheet) {
+            SaveReportSheet(
+                isPresented: $viewModel.showingSaveReportSheet,
+                currentFilter: viewModel.lastSuccessfulParse?.filter,
+                filterChipLabels: viewModel.criteriaFilterChips.map(\.label),
+                currentColumns: viewModel.reportConfig?.columns ?? [],
+                currentColumnNames: viewModel.reportConfig?.columnNames ?? [],
+                staticReportNames: Set(viewModel.availableReports.filter { !$0.isUserReport }.map(\.name)),
+                existingUserReportNames: Set(viewModel.availableReports.filter(\.isUserReport).map(\.name)),
+                onSave: { name, filter, columns, columnNames in
+                    let isUpdate = viewModel.availableReports.contains { $0.name == name && $0.isUserReport }
+                    Task {
+                        await viewModel.saveReport(
+                            name: name,
+                            filter: filter,
+                            columns: columns,
+                            columnNames: columnNames,
+                            isUpdate: isUpdate
+                        )
+                    }
+                }
+            )
+        }
         .onAppear {
             DispatchQueue.main.async {
                 NSApplication.shared.setActivationPolicy(.regular)

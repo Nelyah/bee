@@ -333,6 +333,15 @@ struct CommandPaletteView: View {
             guard commandPalette.isPresented else { return event }
 
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+            // Handle Return/Enter key explicitly to select current item
+            if modifiers.isEmpty || modifiers == .numericPad {
+                if event.keyCode == KeyCode.returnKey || event.keyCode == KeyCode.keypadEnter {
+                    commandPalette.handleEnter()
+                    return nil
+                }
+            }
+
             if modifiers.contains(.control) {
                 switch event.keyCode {
                 case KeyCode.keyN:

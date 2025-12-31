@@ -61,7 +61,15 @@ final class LauncherActionService {
             ])
         }
 
-        guard let defaults = reportConfig?.filters, !defaults.isEmpty else {
+        // User reports have pre-parsed filter JSON - use it directly
+        if let filterJson = reportConfig?.userFilter {
+            // Three-way composition: (report filter AND scope) AND user filter
+            let defaultsAndScope = combineFilters(defaults: filterJson, user: scopeFilter)
+            return combineFilters(defaults: defaultsAndScope, user: parsed.filter)
+        }
+
+        // Static reports have filter expression strings - need to parse them
+        guard let defaults = reportConfig?.staticFilters, !defaults.isEmpty else {
             // No report defaults - just combine scope and user filter
             return combineFilters(defaults: scopeFilter, user: parsed.filter)
         }

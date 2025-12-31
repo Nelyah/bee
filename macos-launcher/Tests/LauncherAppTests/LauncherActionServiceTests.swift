@@ -24,7 +24,7 @@ final class LauncherActionServiceTests: XCTestCase {
 
         let service = LauncherActionService(apiClient: mock)
         service.setReportConfig(ReportConfig(
-            filters: ["status:pending or status:active"],
+            staticFilters: ["status:pending or status:active"],
             columns: ["id"],
             columnNames: ["ID"]
         ))
@@ -52,7 +52,7 @@ final class LauncherActionServiceTests: XCTestCase {
 
         let service = LauncherActionService(apiClient: mock)
         service.setReportConfig(ReportConfig(
-            filters: ["status:pending or status:active"],
+            staticFilters: ["status:pending or status:active"],
             columns: ["id"],
             columnNames: ["ID"]
         ))
@@ -187,7 +187,7 @@ final class LauncherActionServiceTests: XCTestCase {
 
         let service = LauncherActionService(apiClient: mock)
         service.setReportConfig(ReportConfig(
-            filters: ["status:pending"],
+            staticFilters: ["status:pending"],
             columns: ["id"],
             columnNames: ["ID"]
         ))
@@ -270,13 +270,18 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func runAction(action: String, properties: JSONValue?, filter: JSONValue?) async throws -> ActionResponse {
         await counter.increment()
-        defer { Task { await self.counter.decrement() } }
-        try await Task.sleep(nanoseconds: 150_000_000)
-        return ActionResponse(action: action, tasks: [], events: [])
+        do {
+            try await Task.sleep(nanoseconds: 150_000_000)
+            await counter.decrement()
+            return ActionResponse(action: action, tasks: [], events: [])
+        } catch {
+            await counter.decrement()
+            throw error
+        }
     }
 
     func fetchConfig() async throws -> ConfigResponse {
-        ConfigResponse(report: ReportConfig(filters: [], columns: [], columnNames: []), reports: [])
+        ConfigResponse(report: ReportConfig(staticFilters: [], columns: [], columnNames: []), reports: [])
     }
 
     func fetchCompletions(type: String) async throws -> CompletionsResponse {
@@ -337,5 +342,31 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func emptyParse() -> ParseResponse {
         ParseResponse(action: "", properties: nil, filter: nil, tokens: [])
+    }
+
+    func createUserReport(_ request: UserReportRequest) async throws -> UserReportDto {
+        UserReportDto(
+            name: request.name,
+            filter: request.filter,
+            columns: request.columns,
+            columnNames: request.columnNames,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+        )
+    }
+
+    func updateUserReport(name: String, _ request: UserReportRequest) async throws -> UserReportDto {
+        UserReportDto(
+            name: name,
+            filter: request.filter,
+            columns: request.columns,
+            columnNames: request.columnNames,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+        )
+    }
+
+    func deleteUserReport(name: String) async throws {
+        // No-op for test
     }
 }

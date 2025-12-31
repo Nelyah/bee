@@ -318,7 +318,7 @@ final class LauncherViewModelTests: XCTestCase {
         ))
         let service = LauncherActionService(apiClient: mock)
         service.setReportConfig(ReportConfig(
-            filters: ["status:pending or status:active"],
+            staticFilters: ["status:pending or status:active"],
             columns: ["id"],
             columnNames: ["ID"]
         ))

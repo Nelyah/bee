@@ -312,14 +312,78 @@ pub struct ReportConfigDto {
 pub struct ReportSummary {
     /// Report name (identifier).
     pub name: String,
-    /// Filter expressions to apply by default.
+    /// Filter expressions for static reports (from config).
+    /// Deprecated for user reports - use `filter` instead.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub filters: Vec<String>,
+    /// Serialized filter JSON for user reports (from parse API).
+    /// This replaces filter expression strings and avoids re-parsing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter: Option<serde_json::Value>,
     /// Field names to display (technical names like "id", "summary").
     pub columns: Vec<String>,
     /// Display names for columns (human-readable like "ID", "Summary").
     pub column_names: Vec<String>,
     /// Whether this is the default report.
     pub is_default: bool,
+    /// Whether this is a user-created report (vs. static from config).
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_user_report: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
+// User Reports DTOs
+
+/// Request to create or update a user report.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UserReportRequest {
+    /// Report name (identifier). Any printable Unicode allowed.
+    pub name: String,
+    /// Serialized filter JSON from parse API.
+    pub filter: Option<serde_json::Value>,
+    /// Field names to display (technical names like "id", "summary").
+    pub columns: Vec<String>,
+    /// Display names for columns (human-readable like "ID", "Summary").
+    pub column_names: Vec<String>,
+}
+
+/// Response for user report operations.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UserReportDto {
+    /// Report name (identifier).
+    pub name: String,
+    /// Serialized filter JSON.
+    pub filter: Option<serde_json::Value>,
+    /// Field names to display.
+    pub columns: Vec<String>,
+    /// Display names for columns.
+    pub column_names: Vec<String>,
+    /// When the report was created.
+    pub created_at: String,
+    /// When the report was last updated.
+    pub updated_at: String,
+}
+
+impl UserReportDto {
+    pub fn from_user_report(report: bee_core::storage::db::UserReport) -> Self {
+        Self {
+            name: report.name,
+            filter: report.filter,
+            columns: report.columns,
+            column_names: report.column_names,
+            created_at: report.created_at.to_rfc3339(),
+            updated_at: report.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+/// Response for listing user reports.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UserReportsListResponse {
+    pub reports: Vec<UserReportDto>,
 }
 
 /// Response payload for completions endpoint.

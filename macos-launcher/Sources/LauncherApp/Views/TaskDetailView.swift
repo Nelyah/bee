@@ -35,6 +35,24 @@ struct TaskDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            // Back button
+            HStack {
+                Button {
+                    onClose()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                        Text("Back")
+                            .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                    }
+                    .foregroundColor(ThemeManager.current.subtext0)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+            }
+
             HStack(alignment: .top) {
                 Text(task.summary)
                     .font(.system(size: DesignTokens.TypeScale.title, weight: .bold, design: .rounded))

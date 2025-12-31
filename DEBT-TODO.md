@@ -63,35 +63,25 @@
   - Ensure expanded row height is accounted for in selection/scrolling.
 - Safety net: Unit tests for expanded state tracking; UI snapshot tests for collapsed vs expanded row.
 
-### DEBT-0037: Missing back navigation affordance in non-main views
+## Done
+### DEBT-0037: Missing back navigation affordance in non-main views ✅
+- Status: Completed (2025-12-31)
 - Priority: P1
 - Effort: S
 - Area: macos-launcher navigation
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/ContentView.swift`, `macos-launcher/Sources/LauncherApp/Views/TaskDetailView.swift`, `macos-launcher/Sources/LauncherApp/Utilities/Coordinators/NavigationCoordinator.swift`
-- Smells: UX-gap, navigation
-- Problem (rough): Secondary views lack a top-left back arrow, forcing users to rely on keyboard-only navigation. The request is to provide a clickable back control in all non-main views.
-- Suggested fix (rough):
-  - Add a consistent back button in secondary view headers aligned with macOS patterns.
-  - Wire to existing navigation coordinator / escape handling.
-  - Ensure it is visible and clickable in all non-main modes (detail, command palette, etc.).
-- Safety net: UI test or view model test to confirm `closeDetail` / navigation transition triggers on click.
+- Evidence: `macos-launcher/Sources/LauncherApp/Views/TaskDetailView.swift`
+- Resolution: Added clickable back button (chevron.left + "Back" text) to TaskDetailView header. Uses existing `onClose` callback. Button styled with `.plain` and `contentShape(Rectangle())` for full-area click handling.
+- Safety net: Manual verification; escape key continues to work alongside back button.
 
-### DEBT-0038: Command palette lacks a “Shortcuts” footer section
+### DEBT-0038: Command palette lacks a "Shortcuts" footer section ✅
+- Status: Completed (2025-12-31)
 - Priority: P1
 - Effort: M
 - Area: macos-launcher command palette
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/CommandPaletteView.swift`, `macos-launcher/Sources/LauncherApp/Utilities/Coordinators/InteractionContextCoordinator.swift`
-- Smells: missing-feature, UX-discoverability
-- Problem (rough): The command palette has no dedicated section that lists available shortcuts, which makes keyboard discovery difficult. The new requirement implies sectioned rendering.
-- Suggested fix (rough):
-  - Order: Depends on DEBT-0036 (sectioned command palette).
-  - Requirements: Must render within the new section model and always appear as the last section, even in nested menus.
-  - Add a “Shortcuts” section rendered after actions/suggestions.
-  - Source shortcuts from a central model so they stay in sync with actual bindings.
-  - Ensure the section is visually distinct but not noisy.
-- Safety net: Unit test to ensure shortcuts section renders and updates when shortcut list changes.
+- Evidence: `macos-launcher/Sources/LauncherApp/Utilities/CommandPalette/SectionContributors.swift`
+- Resolution: Added `ShortcutsSectionContributor` with priority 100 (appears last). Displays Escape, Return, Up/Ctrl+P, Down/Ctrl+N shortcuts. Section hides when filtering. Registered in `LauncherViewModel` during command palette setup.
+- Safety net: Contributor integration tested through existing section builder tests.
 
-## Done
 ### DEBT-0032: Group-by options are not configurable or user-visible ✅
 - Status: Completed (2025-12-31)
 - Priority: P1

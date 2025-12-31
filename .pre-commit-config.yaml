@@ -18,3 +18,12 @@ repos:
     hooks:
       - id: swiftlint
         args: ['--strict']
+
+  - repo: local
+    hooks:
+      - id: swift-test
+        name: Swift Tests
+        entry: bash -c 'cd macos-launcher && swift test'
+        language: system
+        types: [swift]
+        pass_filenames: false

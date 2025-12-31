@@ -32,6 +32,20 @@
   - Compatibility: ensure existing configs keep working; no change required if user reports are absent.
 - Safety net: API tests for list/create/update/delete + config merge; migration test; UI tests for save flow + selecting newly saved report; add unit tests for merge precedence rules.
 
+### DEBT-0039: Window configuration is scattered and fragile
+- Priority: P2
+- Effort: M
+- Area: macos-launcher window setup
+- Evidence: `macos-launcher/Sources/LauncherApp/LauncherApp.swift`, `macos-launcher/Sources/LauncherApp/Views/ContentView.swift`
+- Smells: scattered-responsibility, competing-mechanisms, no-single-source-of-truth
+- Problem (rough): Achieving a borderless Raycast-style window requires coordinating three separate mechanisms: SwiftUI's `.windowStyle(.hiddenTitleBar)` in LauncherApp, NSWindow properties in `configureWindowAppearance()`, and `.ignoresSafeArea()` on the view. These compete and can conflict, causing recurring "invisible title bar" bugs. No documentation explains which settings are required vs redundant.
+- Suggested fix (rough):
+  - Audit which NSWindow settings are actually needed now that `.ignoresSafeArea()` is at the outer view level. Settings like `.fullSizeContentView`, `titlebarAppearsTransparent`, `titleVisibility` may be redundant.
+  - Consolidate to either pure SwiftUI approach OR pure NSWindow approach, not both.
+  - Document the minimal "recipe" for the borderless window look in a single location.
+  - Consider extracting window configuration to a dedicated `WindowConfigurator` or extension with clear comments explaining each setting's purpose.
+- Safety net: Manual testing of window appearance across app lifecycle (launch, focus changes, minimize/restore). Document the verified minimal configuration.
+
 ### DEBT-0035: Task list rows cannot expand to show links/annotations
 - Priority: P1
 - Effort: M

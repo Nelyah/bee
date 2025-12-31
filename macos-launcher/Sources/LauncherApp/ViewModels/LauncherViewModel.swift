@@ -206,7 +206,7 @@ final class LauncherViewModel: ObservableObject {
 
             actionService.setReportConfig(reportConfig)
             await refreshReportFilterChips()
-            logger.info("Config loaded: \(reportConfig?.columns.count ?? 0) columns, \(availableReports.count) reports")
+            logger.info("Config loaded: \(self.reportConfig?.columns.count ?? 0) columns, \(self.availableReports.count) reports")
         } catch {
             logger.error("Failed to load config: \(error.localizedDescription, privacy: .public)")
             showToast(message: error.localizedDescription)

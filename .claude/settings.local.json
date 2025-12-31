@@ -63,7 +63,9 @@
       "mcp__serena__write_memory",
       "Bash(git log:*)",
       "WebFetch(domain:github.com)",
-      "Bash(pre-commit run:*)"
+      "Bash(pre-commit run:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git ls-files:*)"
     ]
   },
   "outputStyle": "default"

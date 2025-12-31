@@ -7,6 +7,7 @@ Never remove TODO comments unless the TODO has been fully addressed.
 If you think that what you are being asked is a bad idea, stop and say so. Explain why.
 If you think the user is missing something, let them know.
 If you are looking for the macOS version or Xcode/Swift toolchain, look in the ./macos-launcher/ folder
+NEVER EVER EVER commit with `--no-verify`. If there are issues, you need to fix them before commiting
 
 ## Quick start
 ```bash

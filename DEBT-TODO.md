@@ -21,19 +21,6 @@
   - Consider a layout container that reserves space for the bar while keeping the bar visually transparent.
 - Safety net: Add a UI test or view model test that verifies selected row index scrolls to a visible area above the bar; add snapshot or geometry assertions if available.
 
-### DEBT-0031: Clicking the input in normal mode doesn’t return to insert mode
-- Priority: P1
-- Effort: S
-- Area: macos-launcher input focus handling
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/TaskListView.swift`, `macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift`, `macos-launcher/Sources/LauncherApp/Utilities/Coordinators/InteractionCoordinator.swift`
-- Smells: UX-regression, focus-state
-- Problem (rough): When in normal mode, clicking the text input does not reliably set `isInsertMode = true` or focus the input. This breaks expected macOS behavior and frustrates mouse users.
-- Suggested fix (rough):
-  - Ensure the search field container captures clicks and explicitly calls `viewModel.enterInsertMode()`.
-  - Verify the focus state is applied to the text view and that it isn’t blocked by overlay views.
-  - Add a regression check for mouse click returning to insert mode.
-- Safety net: Add a view model test asserting `enterInsertMode` is triggered; optionally a UI test if available.
-
 ### DEBT-0032: Group-by options are not configurable or user-visible
 - Priority: P1
 - Effort: M
@@ -122,6 +109,16 @@
 - Safety net: Unit test to ensure shortcuts section renders and updates when shortcut list changes.
 
 ## Done
+### DEBT-0031: Clicking the input in normal mode doesn’t return to insert mode ✅
+- Status: Completed (2025-12-31)
+- Priority: P1
+- Effort: S
+- Area: macos-launcher input focus handling
+- Evidence: `macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift`, `macos-launcher/Sources/LauncherApp/Views/ContentView.swift`
+- Smells: UX-regression, focus-state
+- Problem (rough): When in normal mode, clicking the text input does not reliably set `isInsertMode = true` or focus the input. This breaks expected macOS behavior and frustrates mouse users.
+- Resolution: Keep the window keyable while hiding the title bar, and force focus on mouse-down when in insert mode.
+- Safety net: Added unit test coverage for mouse-down focus requests.
 ### DEBT-0036: Command palette architecture is hard to extend ✅
 - Status: Completed (2025-12-31)
 - Priority: P1

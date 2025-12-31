@@ -2,9 +2,7 @@
 
 ## Summary
 - Task list UX has multiple interaction gaps (selection vs input focus, bottom hint bar overlap).
-- Command palette is monolithic and hard to extend (no sections, no grouping/goto actions).
 - Report management is missing user-defined persistence and UI entry points.
-- Grouping logic is fixed to project and not exposed as a user-facing control.
 - List rows lack progressive disclosure for links/annotations in-place.
 
 ## Open Issues
@@ -21,20 +19,6 @@
   - Consider a layout container that reserves space for the bar while keeping the bar visually transparent.
 - Safety net: Add a UI test or view model test that verifies selected row index scrolls to a visible area above the bar; add snapshot or geometry assertions if available.
 
-### DEBT-0032: Group-by options are not configurable or user-visible
-- Priority: P1
-- Effort: M
-- Area: macos-launcher grouping + command palette
-- Evidence: `macos-launcher/Sources/LauncherApp/Utilities/TaskGroupingStrategy.swift`, `macos-launcher/Sources/LauncherApp/Utilities/Coordinators/TaskListCoordinator.swift`, `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift`, `macos-launcher/Sources/LauncherApp/ViewModels/CommandPaletteCoordinator.swift`
-- Smells: missing-feature, hard-coded-strategy, extensibility
-- Problem (rough): Grouping is hard-coded to project. There is no UI to switch group-by modes (project, due date buckets, tag).
-- Suggested fix (rough):
-  - Order: Depends on DEBT-0036 (command palette sections) if “Group by…” is exposed there.
-  - Add new grouping strategies (by due date bucket: past/today/tomorrow/future; by tag).
-  - Expose a “Group by…” menu in the command palette.
-  - Persist selected grouping in user defaults and refresh `groupedRows` when changed.
-- Safety net: Unit tests for grouping keys and ordering; add tests for switching strategy.
-
 ### DEBT-0033: Missing “Go to…” menu for project-scoped views
 - Priority: P1
 - Effort: M
@@ -43,8 +27,7 @@
 - Smells: missing-feature, UX-gap
 - Problem (rough): There’s no quick navigation to a project view that layers on top of the report default filter. Users must manually type project filters.
 - Suggested fix (rough):
-  - Order: Depends on DEBT-0036 (sectioned command palette) and should follow DEBT-0032 if grouping options are added to the palette.
-  - Add a “Go to…” section in the command palette with project suggestions.
+  - Add a "Go to…" section in the command palette with project suggestions.
   - Selecting a project should inject a project filter and keep the report defaults (AND).
   - Consider a clear/exit path to return to the previous scope.
 - Safety net: Unit tests for command palette selection to ensure the composed filter is correct.
@@ -109,7 +92,16 @@
 - Safety net: Unit test to ensure shortcuts section renders and updates when shortcut list changes.
 
 ## Done
-### DEBT-0031: Clicking the input in normal mode doesn’t return to insert mode ✅
+### DEBT-0032: Group-by options are not configurable or user-visible ✅
+- Status: Completed (2025-12-31)
+- Priority: P1
+- Effort: M
+- Area: macos-launcher grouping + command palette
+- Evidence: `macos-launcher/Sources/LauncherApp/Utilities/Grouping/`
+- Resolution: Extended TaskGroupingStrategy protocol with `groupKeys()` and `showsHeaders`. Added DueDateGroupingStrategy (overdue/today/tomorrow/future/no due date), TagGroupingStrategy (tasks appear in all tag groups), and NoGroupingStrategy (flat list). Exposed "Group By" menu in command palette with current selection indicator. Persisted selection in UserDefaults.
+- Safety net: Added GroupingStrategyTests with coverage for all strategies, bucket ordering, multi-group support, and coordinator integration.
+
+### DEBT-0031: Clicking the input in normal mode doesn't return to insert mode ✅
 - Status: Completed (2025-12-31)
 - Priority: P1
 - Effort: S

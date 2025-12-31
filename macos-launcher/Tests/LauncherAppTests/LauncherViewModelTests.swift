@@ -115,6 +115,46 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertTrue(UserDefaults.standard.bool(forKey: UserDefaultsKeys.collapsedNilGroup))
     }
 
+    func testSetGroupingStrategyClearsCollapsedState() {
+        defer { clearGroupingDefaults() }
+        let viewModel = LauncherViewModel()
+
+        viewModel.collapsedGroups = ["work", "personal", nil]
+        viewModel.setGroupingStrategy(.dueDate)
+
+        XCTAssertTrue(viewModel.collapsedGroups.isEmpty)
+    }
+
+    func testSetGroupingStrategyPersistsSelection() {
+        defer { clearGroupingDefaults() }
+        let viewModel = LauncherViewModel()
+
+        viewModel.setGroupingStrategy(.tag)
+
+        let saved = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedGroupBy)
+        XCTAssertEqual(saved, "tag")
+    }
+
+    func testLoadGroupingStrategyRestoresSelection() {
+        defer { clearGroupingDefaults() }
+        UserDefaults.standard.set("dueDate", forKey: UserDefaultsKeys.selectedGroupBy)
+
+        let viewModel = LauncherViewModel()
+
+        XCTAssertEqual(viewModel.currentGroupByOption, .dueDate)
+        XCTAssertTrue(viewModel.groupingStrategy is DueDateGroupingStrategy)
+    }
+
+    func testLoadGroupingStrategyDefaultsToProject() {
+        defer { clearGroupingDefaults() }
+        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.selectedGroupBy)
+
+        let viewModel = LauncherViewModel()
+
+        XCTAssertEqual(viewModel.currentGroupByOption, .project)
+        XCTAssertTrue(viewModel.groupingStrategy is ProjectGroupingStrategy)
+    }
+
     func testBuildHighlightSpansActionProjectTag() {
         let tokens = [
             TokenSpan(tokenType: .wordString, literal: "this", start: 0, end: 4),
@@ -299,6 +339,13 @@ final class LauncherViewModelTests: XCTestCase {
 
 private func clearCollapsedDefaults() {
     let defaults = UserDefaults.standard
+    defaults.removeObject(forKey: UserDefaultsKeys.collapsedGroups)
+    defaults.removeObject(forKey: UserDefaultsKeys.collapsedNilGroup)
+}
+
+private func clearGroupingDefaults() {
+    let defaults = UserDefaults.standard
+    defaults.removeObject(forKey: UserDefaultsKeys.selectedGroupBy)
     defaults.removeObject(forKey: UserDefaultsKeys.collapsedGroups)
     defaults.removeObject(forKey: UserDefaultsKeys.collapsedNilGroup)
 }

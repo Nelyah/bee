@@ -40,9 +40,20 @@ final class LauncherViewModel: ObservableObject {
 
     // MARK: - Grouping State
     /// The current grouping strategy.
-    let groupingStrategy: TaskGroupingStrategy = ProjectGroupingStrategy()
+    @Published var groupingStrategy: TaskGroupingStrategy = ProjectGroupingStrategy()
     /// Set of collapsed group keys.
     @Published var collapsedGroups: Set<String?> = []
+
+    /// The current grouping option for UI display.
+    var currentGroupByOption: GroupByOption {
+        switch groupingStrategy {
+        case is ProjectGroupingStrategy: return .project
+        case is DueDateGroupingStrategy: return .dueDate
+        case is TagGroupingStrategy: return .tag
+        case is NoGroupingStrategy: return .none
+        default: return .project
+        }
+    }
     /// Currently hovered row index (for collapse toggle).
     @Published var hoveredRowIndex: Int?
     /// Currently selected row index in grouped view.
@@ -100,6 +111,7 @@ final class LauncherViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        loadGroupingStrategy()
         setupInteractionContextUpdates()
         setupCommandPaletteContributors()
     }
@@ -111,6 +123,12 @@ final class LauncherViewModel: ObservableObject {
         // Register the actions section with handlers
         let actionHandler = CommandPaletteActionHandler(viewModel: self, apiClient: apiClient)
         commandPalette.dataSource.register(ActionsSectionContributor(actionHandler: actionHandler))
+
+        // Register the group-by section
+        commandPalette.dataSource.register(GroupBySectionContributor(
+            currentGroupBy: { [weak self] in self?.currentGroupByOption ?? .project },
+            onGroupBySelect: { [weak self] option in self?.setGroupingStrategy(option) }
+        ))
     }
 
     private func setupInteractionContextUpdates() {
@@ -482,6 +500,31 @@ final class LauncherViewModel: ObservableObject {
         let includesNil = UserDefaults.standard.bool(forKey: UserDefaultsKeys.collapsedNilGroup)
         collapsedGroups = Set(keys.map { Optional($0) })
         if includesNil { collapsedGroups.insert(nil) }
+    }
+
+    /// Set the grouping strategy and persist the selection.
+    func setGroupingStrategy(_ option: GroupByOption) {
+        // Clear collapsed state - keys won't match new strategy
+        collapsedGroups.removeAll()
+
+        groupingStrategy = option.makeStrategy()
+
+        // Persist selection
+        UserDefaults.standard.set(option.rawValue, forKey: UserDefaultsKeys.selectedGroupBy)
+
+        // Clear old collapsed state persistence
+        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.collapsedGroups)
+        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.collapsedNilGroup)
+
+        // Close command palette after selection
+        commandPalette.close()
+    }
+
+    /// Load the persisted grouping strategy.
+    func loadGroupingStrategy() {
+        let rawValue = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedGroupBy)
+        let option = rawValue.flatMap { GroupByOption(rawValue: $0) } ?? .project
+        groupingStrategy = option.makeStrategy()
     }
 
     /// Keep selection within bounds after tasks update.

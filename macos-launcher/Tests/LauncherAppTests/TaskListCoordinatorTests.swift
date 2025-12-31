@@ -61,8 +61,8 @@ final class TaskListCoordinatorTests: XCTestCase {
     func testMoveGroupedSelectionClampsAtEnd() {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
-            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0)),
-            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1))
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
+            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A"))
         ]
 
         // At last row, moving forward should stay at last row (clamp)
@@ -77,7 +77,7 @@ final class TaskListCoordinatorTests: XCTestCase {
     func testMoveGroupedSelectionClampsAtStart() {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
-            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0))
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A"))
         ]
 
         // At first row, moving backward should stay at first row (clamp)
@@ -92,8 +92,8 @@ final class TaskListCoordinatorTests: XCTestCase {
     func testMoveGroupedSelectionNavigatesNormally() {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
-            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0)),
-            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1))
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
+            .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A"))
         ]
 
         var selection = TaskListCoordinator.moveGroupedSelection(
@@ -114,7 +114,7 @@ final class TaskListCoordinatorTests: XCTestCase {
     func testMoveGroupedSelectionInitialSelection() {
         let rows: [GroupedListRow] = [
             .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
-            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0))
+            .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A"))
         ]
 
         // Initial selection when moving down

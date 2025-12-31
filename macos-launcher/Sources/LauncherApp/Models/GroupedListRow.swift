@@ -8,7 +8,7 @@ enum GroupedListRow: Identifiable {
     var id: String {
         switch self {
         case .header(let h): return "header-\(h.id)"
-        case .task(let t): return "task-\(t.task.uuid)"
+        case .task(let t): return t.id
         }
     }
 }
@@ -30,6 +30,11 @@ struct GroupedTask: Identifiable {
     let task: ApiTask
     /// Index in the original (non-grouped) task array.
     let flatIndex: Int
+    /// The group key this task belongs to (for unique ID when task appears in multiple groups).
+    let groupKey: String?
 
-    var id: String { task.uuid }
+    var id: String {
+        let keyPart = groupKey ?? "__none__"
+        return "\(keyPart)-task-\(task.uuid)"
+    }
 }

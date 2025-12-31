@@ -5,6 +5,10 @@ protocol TaskGroupingStrategy {
     /// Extract the grouping key from a task.
     func groupKey(for task: ApiTask) -> String?
 
+    /// Extract all grouping keys for a task.
+    /// Override this for strategies where a task can belong to multiple groups (e.g., tags).
+    func groupKeys(for task: ApiTask) -> [String?]
+
     /// Display name for a group key (nil key = ungrouped items).
     func displayName(for key: String?) -> String
 
@@ -17,6 +21,31 @@ protocol TaskGroupingStrategy {
     /// Check if any ancestor (parent) of this key is collapsed.
     /// Returns false for the key itself - only checks parents.
     func isParentCollapsed(_ key: String?, collapsedKeys: Set<String?>) -> Bool
+
+    /// Whether this strategy shows group headers. Return false for flat list display.
+    var showsHeaders: Bool { get }
+}
+
+// MARK: - Default Implementations
+
+extension TaskGroupingStrategy {
+    /// Default: returns single key from groupKey().
+    func groupKeys(for task: ApiTask) -> [String?] {
+        [groupKey(for: task)]
+    }
+
+    /// Default: show group headers.
+    var showsHeaders: Bool { true }
+
+    /// Default: check direct collapse only (no hierarchy).
+    func isCollapsed(_ key: String?, collapsedKeys: Set<String?>) -> Bool {
+        collapsedKeys.contains(key)
+    }
+
+    /// Default: no hierarchy, so no parent collapse.
+    func isParentCollapsed(_ key: String?, collapsedKeys: Set<String?>) -> Bool {
+        false
+    }
 }
 
 /// Groups tasks by their project field.

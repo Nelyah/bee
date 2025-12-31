@@ -140,49 +140,72 @@ struct ShortcutsSectionContributor: CommandPaletteSectionContributor {
     }
 }
 
-// MARK: - Placeholder Contributors for Future Features
+// MARK: - Group By Section Contributor
 
-/// Grouping option identifier for DEBT-0032.
-enum GroupByOption: String {
+/// Grouping option for task list display.
+enum GroupByOption: String, CaseIterable {
     case project
+    case dueDate
+    case tag
     case none
+
+    var displayName: String {
+        switch self {
+        case .project: return "Project"
+        case .dueDate: return "Due Date"
+        case .tag: return "Tag"
+        case .none: return "None"
+        }
+    }
+
+    var icon: CommandPaletteIcon {
+        switch self {
+        case .project: return .system("folder")
+        case .dueDate: return .system("calendar")
+        case .tag: return .system("tag")
+        case .none: return .system("list.bullet")
+        }
+    }
+
+    func makeStrategy() -> TaskGroupingStrategy {
+        switch self {
+        case .project: return ProjectGroupingStrategy()
+        case .dueDate: return DueDateGroupingStrategy()
+        case .tag: return TagGroupingStrategy()
+        case .none: return NoGroupingStrategy()
+        }
+    }
 }
 
-/// Placeholder contributor for group-by options (DEBT-0032).
-///
-/// This is a stub for future implementation. To enable:
-/// 1. Wire up `onGroupBySelect` callback to view model
-/// 2. Map option to actual TaskGroupingStrategy in handler
-/// 3. Register with data source
+/// Contributes group-by options to the command palette.
 struct GroupBySectionContributor: CommandPaletteSectionContributor {
     var contributorId: String { "groupBy" }
     var priority: Int { 10 }
 
+    private let currentGroupBy: () -> GroupByOption
     private let onGroupBySelect: (GroupByOption) -> Void
 
-    init(onGroupBySelect: @escaping (GroupByOption) -> Void) {
+    init(
+        currentGroupBy: @escaping () -> GroupByOption,
+        onGroupBySelect: @escaping (GroupByOption) -> Void
+    ) {
+        self.currentGroupBy = currentGroupBy
         self.onGroupBySelect = onGroupBySelect
     }
 
     func buildSections(context: CommandPaletteContext, query: String) -> [CommandPaletteSection] {
-        let items: [CommandPaletteItem] = [
+        let current = currentGroupBy()
+        let items: [CommandPaletteItem] = GroupByOption.allCases.map { option in
             .action(
                 CommandPaletteActionItem(
-                    id: "group-by-project",
-                    title: "Group by Project",
-                    icon: .system("folder"),
-                    handler: { [onGroupBySelect] in onGroupBySelect(.project) }
+                    id: "group-by-\(option.rawValue)",
+                    title: option.displayName,
+                    subtitle: option == current ? "Current" : nil,
+                    icon: option.icon,
+                    handler: { [onGroupBySelect] in onGroupBySelect(option) }
                 )
-            ),
-            .action(
-                CommandPaletteActionItem(
-                    id: "group-by-none",
-                    title: "No Grouping",
-                    icon: .system("list.bullet"),
-                    handler: { [onGroupBySelect] in onGroupBySelect(.none) }
-                )
-            ),
-        ]
+            )
+        }
 
         return [CommandPaletteSection(id: "groupBy", title: "Group By", items: items)]
     }

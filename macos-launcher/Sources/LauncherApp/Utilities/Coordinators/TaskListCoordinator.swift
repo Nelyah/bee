@@ -54,11 +54,20 @@ struct TaskListCoordinator {
         using strategy: TaskGroupingStrategy,
         collapsedKeys: Set<String?>
     ) -> [GroupedListRow] {
-        // Group tasks by key
+        // If strategy doesn't show headers, return flat list sorted by urgency
+        guard strategy.showsHeaders else {
+            return sortTasksByUrgency(tasks).enumerated().map { _, task in
+                let flatIndex = tasks.firstIndex(where: { $0.uuid == task.uuid }) ?? 0
+                return .task(GroupedTask(task: task, flatIndex: flatIndex, groupKey: nil))
+            }
+        }
+
+        // Group tasks by key(s) - a task can belong to multiple groups
         var groups: [String?: [(Int, ApiTask)]] = [:]
         for (index, task) in tasks.enumerated() {
-            let key = strategy.groupKey(for: task)
-            groups[key, default: []].append((index, task))
+            for key in strategy.groupKeys(for: task) {
+                groups[key, default: []].append((index, task))
+            }
         }
 
         // Sort group keys using the strategy
@@ -85,7 +94,7 @@ struct TaskListCoordinator {
                     compareByUrgency(lhs.1, rhs.1)
                 }
                 for (flatIndex, task) in sortedGroupTasks {
-                    rows.append(.task(GroupedTask(task: task, flatIndex: flatIndex)))
+                    rows.append(.task(GroupedTask(task: task, flatIndex: flatIndex, groupKey: key)))
                 }
             }
         }

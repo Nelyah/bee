@@ -117,7 +117,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         )
         return [
             .header(header),
-            .task(GroupedTask(task: task, flatIndex: 0))
+            .task(GroupedTask(task: task, flatIndex: 0, groupKey: "project"))
         ]
     }
 }

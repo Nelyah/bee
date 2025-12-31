@@ -109,19 +109,10 @@ final class SmallModelsTests: XCTestCase {
         let listMode = LauncherMode.list
         let detailMode = LauncherMode.detail
 
-        switch listMode {
-        case .list:
-            XCTAssert(true)
-        case .detail:
-            XCTFail("Expected list mode")
-        }
-
-        switch detailMode {
-        case .list:
-            XCTFail("Expected detail mode")
-        case .detail:
-            XCTAssert(true)
-        }
+        // Verify enum case creation works correctly
+        XCTAssertEqual(listMode, LauncherMode.list)
+        XCTAssertEqual(detailMode, LauncherMode.detail)
+        XCTAssertNotEqual(listMode, detailMode)
     }
 
     // MARK: - GroupedListRow Tests

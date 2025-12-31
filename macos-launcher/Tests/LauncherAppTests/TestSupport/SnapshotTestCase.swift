@@ -124,5 +124,41 @@ extension SnapshotTestCase {
 
         /// Command palette
         static let commandPalette = CGSize(width: 520, height: 400)
+
+        /// Task detail view - compact (single column)
+        static let detailViewCompact = CGSize(width: 400, height: 600)
+
+        /// Task detail view - wide (two columns)
+        static let detailViewWide = CGSize(width: 800, height: 600)
+
+        /// Completion menu dropdown
+        static let completionMenu = CGSize(width: 300, height: 200)
+
+        /// External link row
+        static let externalLinkRow = CGSize(width: 500, height: 80)
+
+        /// External link row - GitLab MR with full details
+        static let externalLinkRowExpanded = CGSize(width: 500, height: 120)
+
+        /// Criteria strip for filters
+        static let criteriaStrip = CGSize(width: 600, height: 60)
+
+        /// Save report sheet dialog
+        static let saveReportSheet = CGSize(width: 400, height: 300)
+
+        /// Flow layout for wrapping items
+        static let flowLayout = CGSize(width: 400, height: 150)
+
+        /// Task row links preview
+        static let linksPreview = CGSize(width: 500, height: 40)
+
+        /// Task row annotations preview
+        static let annotationsPreview = CGSize(width: 500, height: 60)
+
+        /// Simple button/chip components
+        static let smallComponent = CGSize(width: 200, height: 40)
+
+        /// Timeline row
+        static let timelineRow = CGSize(width: 400, height: 30)
     }
 }

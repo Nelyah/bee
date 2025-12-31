@@ -63,7 +63,7 @@ final class ParseErrorToastSchedulerTests: XCTestCase {
 
     func testDeferredSchedulingDoesNotShowImmediately() async {
         var shownMessages: [String] = []
-        var shouldDefer = true
+        let shouldDefer = true
 
         let scheduler = ParseErrorToastScheduler(
             delay: 0.01,

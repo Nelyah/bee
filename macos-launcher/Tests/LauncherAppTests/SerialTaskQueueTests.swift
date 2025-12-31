@@ -6,33 +6,32 @@ final class SerialTaskQueueTests: XCTestCase {
 
     func testOperationsRunSequentially() async throws {
         let queue = SerialTaskQueue()
-        var executionOrder: [Int] = []
-        let lock = NSLock()
+        let executionOrder = AtomicArray<Int>()
 
         // Start multiple operations with small delays between submissions
         // to ensure deterministic submission order (async let spawns concurrent
         // child tasks whose scheduling order is otherwise non-deterministic)
         async let result1: Void = queue.run {
             try? await Task.sleep(for: .milliseconds(50))
-            lock.withLock { executionOrder.append(1) }
+            executionOrder.append(1)
         }
         try? await Task.sleep(for: .milliseconds(1))
 
         async let result2: Void = queue.run {
             try? await Task.sleep(for: .milliseconds(10))
-            lock.withLock { executionOrder.append(2) }
+            executionOrder.append(2)
         }
         try? await Task.sleep(for: .milliseconds(1))
 
         async let result3: Void = queue.run {
-            lock.withLock { executionOrder.append(3) }
+            executionOrder.append(3)
         }
 
         // Wait for all to complete
         _ = try await (result1, result2, result3)
 
         // Despite different sleep times, operations should run in submission order
-        XCTAssertEqual(executionOrder, [1, 2, 3])
+        XCTAssertEqual(executionOrder.get(), [1, 2, 3])
     }
 
     func testOperationReturnsValue() async throws {
@@ -80,8 +79,7 @@ final class SerialTaskQueueTests: XCTestCase {
 
     func testOperationsCompleteInFIFOOrder() async throws {
         let queue = SerialTaskQueue()
-        var completionOrder: [String] = []
-        let lock = NSLock()
+        let completionOrder = AtomicArray<String>()
 
         let operations = ["A", "B", "C", "D", "E"]
 
@@ -89,7 +87,7 @@ final class SerialTaskQueueTests: XCTestCase {
             for op in operations {
                 group.addTask {
                     try? await queue.run {
-                        lock.withLock { completionOrder.append(op) }
+                        completionOrder.append(op)
                     }
                 }
                 // Small delay to ensure ordering
@@ -97,29 +95,28 @@ final class SerialTaskQueueTests: XCTestCase {
             }
         }
 
-        XCTAssertEqual(completionOrder, operations)
+        XCTAssertEqual(completionOrder.get(), operations)
     }
 
     func testConcurrentAccessIsSafe() async throws {
         let queue = SerialTaskQueue()
-        var counter = 0
-        let lock = NSLock()
+        let counter = AtomicCounter(0)
 
         await withTaskGroup(of: Void.self) { group in
             for _ in 0 ..< 100 {
                 group.addTask {
                     try? await queue.run {
                         // Simulate some work
-                        let current = lock.withLock { counter }
+                        let current = counter.get()
                         try? await Task.sleep(for: .microseconds(10))
-                        lock.withLock { counter = current + 1 }
+                        counter.set(current + 1)
                     }
                 }
             }
         }
 
         // With serial execution, counter should be exactly 100
-        XCTAssertEqual(counter, 100)
+        XCTAssertEqual(counter.get(), 100)
     }
 
     func testAsyncOperationWithDelay() async throws {
@@ -139,4 +136,42 @@ final class SerialTaskQueueTests: XCTestCase {
 
 private enum TestError: Error {
     case intentional
+}
+
+/// A thread-safe counter for use in concurrent test code.
+/// Marked as `@unchecked Sendable` because we manually ensure thread safety with NSLock.
+private final class AtomicCounter: @unchecked Sendable {
+    private var value: Int
+    private let lock = NSLock()
+
+    init(_ initialValue: Int = 0) {
+        value = initialValue
+    }
+
+    /// Gets the current value.
+    func get() -> Int {
+        lock.withLock { value }
+    }
+
+    /// Sets a new value.
+    func set(_ newValue: Int) {
+        lock.withLock { value = newValue }
+    }
+}
+
+/// A thread-safe array for use in concurrent test code.
+/// Marked as `@unchecked Sendable` because we manually ensure thread safety with NSLock.
+private final class AtomicArray<Element>: @unchecked Sendable {
+    private var values: [Element] = []
+    private let lock = NSLock()
+
+    /// Appends an element to the array.
+    func append(_ element: Element) {
+        lock.withLock { values.append(element) }
+    }
+
+    /// Gets a copy of the current array.
+    func get() -> [Element] {
+        lock.withLock { values }
+    }
 }

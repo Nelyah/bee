@@ -2,13 +2,14 @@
 
 Guidance for Codex when working in this repository.
 
-Keep changes minimal and focused. Prefer existing conventions and keep instructions actionable.
-Never remove TODO comments unless the TODO has been fully addressed.
-If you think that what you are being asked is a bad idea, stop and say so. Explain why.
-If you think the user is missing something, let them know.
-If you are looking for the macOS version or Xcode/Swift toolchain, look in the ./macos-launcher/ folder
-NEVER EVER EVER commit with `--no-verify`. If there are issues, you need to fix them before commiting
-NEVER disable swiftlint warnings without asking first 
+- Keep changes minimal and focused. Prefer existing conventions and keep instructions actionable.
+- Never remove TODO comments unless the TODO has been fully addressed.
+- If you think that what you are being asked is a bad idea, stop and say so. Explain why.
+- If you think the user is missing something, let them know.
+- If you are looking for the macOS version or Xcode/Swift toolchain, look in the ./macos-launcher/ folder
+- NEVER EVER EVER commit with `--no-verify`. If there are issues, you need to fix them before commiting
+- NEVER disable swiftlint warnings without asking first 
+- When you encounter flaky tests, you should stop to fix them. Run them multiple times to figure out why they are flaky.
 
 ## Quick start
 ```bash
@@ -24,23 +25,7 @@ cargo run -p bee-api
 
 ## Test & Dev commands
 ```bash
-# Run all tests
-cargo test
-
-# Run tests for a specific crate
-cargo test -p <crate_name>
-
-# Run tests with output
-cargo test -- --nocapture
-
-# Run clippy for lints
-cargo clippy
-
-# Format code
-cargo fmt
-
-# Generate code coverage report
-./code_coverage.sh
+pre-commit run --all-files
 ```
 
 ## Repo layout (high level)

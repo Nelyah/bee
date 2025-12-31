@@ -21,20 +21,6 @@
   - Consider a layout container that reserves space for the bar while keeping the bar visually transparent.
 - Safety net: Add a UI test or view model test that verifies selected row index scrolls to a visible area above the bar; add snapshot or geometry assertions if available.
 
-### DEBT-0030: Report selector is not clickable in the main search header
-- Priority: P1
-- Effort: S
-- Area: macos-launcher main search header
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/TaskListView.swift` (ReportBadgeView), `macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift` (selectReport)
-- Smells: missing-affordance, UI-incomplete
-- Problem (rough): The report badge on the right of the search bar is purely decorative, so users cannot change reports from the main view.
-- Suggested fix (rough):
-  - Order: Can be done independently, but will pair well with DEBT-0034 (user reports) once persistence exists.
-  - Replace the badge with a `Menu` or clickable button that lists `availableReports`.
-  - Wire selection to `viewModel.selectReport` and update badge label accordingly.
-  - Add hover/pressed feedback consistent with other clickable controls.
-- Safety net: Add a unit test for `selectReport` behavior or UI test for report switch if possible.
-
 ### DEBT-0031: Clicking the input in normal mode doesn’t return to insert mode
 - Priority: P1
 - Effort: S
@@ -177,6 +163,9 @@
   - UI test to verify escape from nested menu returns to previous menu, not full close.
 
 ## Archive (Resolved / No longer reproducible)
+### DEBT-0030: Report selector is not clickable in the main search header
+- Resolved on: 2025-12-31
+- Note: Replaced the static badge with a report menu button wired to `selectReport` and added a small pressed-state flicker.
 ### DEBT-0028: Utilities/ folder is flat with 21 files
 - Resolved on: 2025-12-30
 - Note: Created Coordinators/, Services/, Design/, Formatters/ subfolders. Moved 17 files to appropriate locations. Utilities/ root now has 5 misc files.

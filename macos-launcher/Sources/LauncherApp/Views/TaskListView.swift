@@ -30,6 +30,7 @@ fileprivate enum TaskListLayout {
 struct TaskListView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @ObservedObject var completion: CompletionCoordinator
+    @State private var reportBadgeFlash = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -109,7 +110,13 @@ struct TaskListView: View {
                     .onTapGesture { viewModel.enterInsertMode() }
 
                     if !viewModel.availableReports.isEmpty {
-                        ReportBadgeView(name: viewModel.currentReportDisplayName)
+                        ReportMenuButton(
+                            name: viewModel.currentReportDisplayName,
+                            reports: viewModel.availableReports,
+                            flash: $reportBadgeFlash
+                        ) { name in
+                            viewModel.selectReport(name)
+                        }
                     }
                 }
 
@@ -231,25 +238,6 @@ struct TaskListView: View {
     }
 }
 
-private struct ReportBadgeView: View {
-    let name: String
-
-    var body: some View {
-        Text("Report: \(name)")
-            .font(.system(size: DesignTokens.TypeScale.label, weight: .semibold, design: .rounded))
-            .foregroundColor(ThemeManager.current.subtext0)
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Spacing.xs)
-            .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                    .fill(ThemeManager.current.surface1)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                    .stroke(ThemeManager.current.surface2.opacity(0.7), lineWidth: 1)
-            )
-    }
-}
 
 #Preview {
     let viewModel = makePreviewViewModel()

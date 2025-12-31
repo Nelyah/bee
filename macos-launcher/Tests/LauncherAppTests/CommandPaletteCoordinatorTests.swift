@@ -3,68 +3,136 @@ import XCTest
 
 @MainActor
 final class CommandPaletteCoordinatorTests: XCTestCase {
-    func testOpenAlwaysSucceeds() {
+
+    // MARK: - Lifecycle Tests
+
+    func testOpenWithContextInitializesStack() {
         let coordinator = CommandPaletteCoordinator()
-        let message = coordinator.open(hasSelectedTask: false)
-        XCTAssertNil(message)
+        let context = CommandPaletteContext(hasSelectedTask: true)
+
+        _ = coordinator.open(context: context)
+
         XCTAssertTrue(coordinator.isPresented)
-    }
-
-    func testFilteredActionsWithoutSelectedTask() {
-        let coordinator = CommandPaletteCoordinator()
-        let actions = coordinator.filteredActions(hasSelectedTask: false)
-        // Only selectReport should be available without a selected task
-        XCTAssertEqual(actions, [.selectReport])
-    }
-
-    func testFilteredActionsWithSelectedTask() {
-        let coordinator = CommandPaletteCoordinator()
-        let actions = coordinator.filteredActions(hasSelectedTask: true)
-        // All actions should be available with a selected task
-        XCTAssertEqual(actions, CommandPaletteAction.allCases)
+        XCTAssertFalse(coordinator.navigationStack.stack.isEmpty)
+        XCTAssertTrue(coordinator.isAtRoot)
     }
 
     func testOpenResetsState() {
         let coordinator = CommandPaletteCoordinator()
-        coordinator.mode = .addGitlab
         coordinator.query = "foo"
         coordinator.selectionIndex = 2
 
-        let message = coordinator.open(hasSelectedTask: true)
-        XCTAssertNil(message)
+        _ = coordinator.open(context: CommandPaletteContext())
+
         XCTAssertTrue(coordinator.isPresented)
-        XCTAssertEqual(coordinator.mode, .root)
         XCTAssertEqual(coordinator.query, "")
         XCTAssertEqual(coordinator.selectionIndex, 0)
     }
 
-    func testFilteredSuggestionsAddsRawInput() {
+    func testClosesClearsStack() {
         let coordinator = CommandPaletteCoordinator()
-        coordinator.mode = .addJira
-        coordinator.query = "ABC-1"
-        coordinator.setJiraSuggestions([
-            JiraIssueSuggestion(
-                key: "ABC-1",
-                summary: "Fix regression",
-                status: "In Progress",
-                webURL: "https://example.com",
-                updatedAt: "2025-01-01T00:00:00Z"
-            )
-        ])
+        _ = coordinator.open(context: CommandPaletteContext())
 
-        let suggestions = coordinator.filteredSuggestions
-        XCTAssertEqual(suggestions.first?.id, "raw-ABC-1")
-        XCTAssertEqual(suggestions.count, 2)
+        coordinator.close()
+
+        XCTAssertFalse(coordinator.isPresented)
+        XCTAssertTrue(coordinator.navigationStack.stack.isEmpty)
     }
 
-    func testMoveSelectionClampsToBounds() {
+    // MARK: - Navigation Tests
+
+    func testHandleEscapeAtRootReturnsFalse() {
+        let coordinator = CommandPaletteCoordinator()
+        _ = coordinator.open(context: CommandPaletteContext())
+
+        let handled = coordinator.handleEscape()
+
+        XCTAssertFalse(handled)
+        XCTAssertTrue(coordinator.isAtRoot)
+    }
+
+    func testHandleEscapeFromNestedMenuPopsStack() {
+        let coordinator = CommandPaletteCoordinator()
+        _ = coordinator.open(context: CommandPaletteContext())
+
+        // Push a submenu
+        let submenu = CommandPaletteMenu(
+            id: "submenu",
+            title: "Submenu",
+            sections: []
+        )
+        coordinator.pushMenu(submenu)
+        XCTAssertFalse(coordinator.isAtRoot)
+        XCTAssertEqual(coordinator.navigationStack.depth, 2)
+
+        // Escape should pop back to root
+        let handled = coordinator.handleEscape()
+
+        XCTAssertTrue(handled)
+        XCTAssertTrue(coordinator.isAtRoot)
+        XCTAssertEqual(coordinator.query, "")
+        XCTAssertEqual(coordinator.selectionIndex, 0)
+    }
+
+    func testNavigateBackPopsStack() {
+        let coordinator = CommandPaletteCoordinator()
+        _ = coordinator.open(context: CommandPaletteContext())
+
+        let submenu = CommandPaletteMenu(id: "sub", title: "Sub", sections: [])
+        coordinator.pushMenu(submenu)
+        coordinator.query = "test"
+        coordinator.selectionIndex = 3
+
+        coordinator.navigateBack()
+
+        XCTAssertTrue(coordinator.isAtRoot)
+        XCTAssertEqual(coordinator.query, "")
+        XCTAssertEqual(coordinator.selectionIndex, 0)
+    }
+
+    func testPushMenuAddsToStack() {
+        let coordinator = CommandPaletteCoordinator()
+        _ = coordinator.open(context: CommandPaletteContext())
+
+        let menu = CommandPaletteMenu(id: "new", title: "New Menu", sections: [])
+        coordinator.pushMenu(menu)
+
+        XCTAssertEqual(coordinator.navigationStack.depth, 2)
+        XCTAssertEqual(coordinator.breadcrumb, ["Command Palette", "New Menu"])
+    }
+
+    // MARK: - Selection Tests
+
+    func testMoveSelectionWithEmptyItems() {
         let coordinator = CommandPaletteCoordinator()
         coordinator.selectionIndex = 0
-        coordinator.moveSelection(delta: -1, maxCount: 3)
-        XCTAssertEqual(coordinator.selectionIndex, 0)
 
-        coordinator.selectionIndex = 2
-        coordinator.moveSelection(delta: 1, maxCount: 3)
-        XCTAssertEqual(coordinator.selectionIndex, 2)
+        // Without any items, should stay at 0
+        coordinator.moveSelection(delta: 1)
+        XCTAssertEqual(coordinator.selectionIndex, 0)
+    }
+
+    func testResetSelection() {
+        let coordinator = CommandPaletteCoordinator()
+        coordinator.selectionIndex = 5
+
+        coordinator.resetSelection()
+
+        XCTAssertEqual(coordinator.selectionIndex, 0)
+    }
+
+    // MARK: - Context Tests
+
+    func testContextIsUpdated() {
+        let coordinator = CommandPaletteCoordinator()
+        let context1 = CommandPaletteContext(hasSelectedTask: false)
+        let context2 = CommandPaletteContext(hasSelectedTask: true, selectedTaskUUID: "abc-123")
+
+        _ = coordinator.open(context: context1)
+        XCTAssertFalse(coordinator.context.hasSelectedTask)
+
+        coordinator.updateContext(context2)
+        XCTAssertTrue(coordinator.context.hasSelectedTask)
+        XCTAssertEqual(coordinator.context.selectedTaskUUID, "abc-123")
     }
 }

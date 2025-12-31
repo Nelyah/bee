@@ -101,6 +101,16 @@ final class LauncherViewModel: ObservableObject {
             .store(in: &cancellables)
 
         setupInteractionContextUpdates()
+        setupCommandPaletteContributors()
+    }
+
+    private func setupCommandPaletteContributors() {
+        // Register the shortcuts section (always visible)
+        commandPalette.dataSource.register(ShortcutsSectionContributor())
+
+        // Register the actions section with handlers
+        let actionHandler = CommandPaletteActionHandler(viewModel: self, apiClient: apiClient)
+        commandPalette.dataSource.register(ActionsSectionContributor(actionHandler: actionHandler))
     }
 
     private func setupInteractionContextUpdates() {
@@ -155,7 +165,6 @@ final class LauncherViewModel: ObservableObject {
         do {
             let configResponse = try await actionService.loadFullConfig()
             availableReports = configResponse.reports
-            commandPalette.availableReports = configResponse.reports
 
             // Determine which report to use
             let reportName = selectedReportName.isEmpty
@@ -724,7 +733,13 @@ final class LauncherViewModel: ObservableObject {
     // MARK: - Command Palette
 
     func openCommandPalette() {
-        if let message = commandPalette.open(hasSelectedTask: selectedTask != nil) {
+        let context = CommandPaletteContext(
+            hasSelectedTask: selectedTask != nil,
+            selectedTaskUUID: selectedTask?.uuid,
+            currentReportName: selectedReportName,
+            availableReports: availableReports
+        )
+        if let message = commandPalette.open(context: context) {
             showToast(message: message)
         }
     }
@@ -733,100 +748,12 @@ final class LauncherViewModel: ObservableObject {
         commandPalette.close()
     }
 
-    var filteredCommandPaletteActions: [CommandPaletteAction] {
-        commandPalette.filteredActions(hasSelectedTask: selectedTask != nil)
-    }
-
-    var filteredCommandPaletteSuggestions: [CommandPaletteSuggestion] {
-        commandPalette.filteredSuggestions
-    }
-
-    func loadCommandPaletteSuggestions() {
-        guard commandPalette.mode != .root else { return }
-
-        Task {
-            if let errorMessage = await commandPalette.loadSuggestions(apiClient: apiClient) {
-                showToast(message: errorMessage)
-            }
-        }
-    }
-
-    func selectCommandPaletteAction(_ action: CommandPaletteAction) {
-        commandPalette.selectAction(action)
-        loadCommandPaletteSuggestions()
-    }
-
     func submitCommandPaletteSelection() {
-        switch commandPalette.mode {
-        case .root:
-            let actions = filteredCommandPaletteActions
-            guard let action = actions[safe: commandPalette.selectionIndex] else { return }
-            selectCommandPaletteAction(action)
-        case .selectReport:
-            let items = filteredCommandPaletteSuggestions
-            guard let item = items[safe: commandPalette.selectionIndex],
-                  case .report(let summary) = item else { return }
-            selectReport(summary.name)
-            closeCommandPalette()
-        case .addGitlab, .addJira:
-            guard let task = selectedTask else {
-                showToast(message: "Select a task to add a link.")
-                closeCommandPalette()
-                return
-            }
-            let items = filteredCommandPaletteSuggestions
-            guard let item = items[safe: commandPalette.selectionIndex] else { return }
-            let provider: ExternalLinkProvider = commandPalette.mode == .addGitlab ? .gitlab : .jira
-            handleCommandPaletteSelection(item: item, provider: provider, taskUUID: task.uuid)
-        }
+        commandPalette.handleEnter()
     }
 
-    func moveCommandPaletteSelection(delta: Int, maxCount: Int) {
-        commandPalette.moveSelection(delta: delta, maxCount: maxCount)
-    }
-
-    private func handleCommandPaletteSelection(
-        item: CommandPaletteSuggestion,
-        provider: ExternalLinkProvider,
-        taskUUID: String
-    ) {
-        let pendingToastId = showToast(
-            message: provider == .gitlab ? "Adding Gitlab link…" : "Adding link…",
-            icon: provider == .gitlab ? .gitlab : .warning,
-            duration: Constants.defaultToastDuration
-        )
-        Task {
-            do {
-                let url: String
-                switch item {
-                case .gitlab(let mr):
-                    url = mr.webURL
-                case .jira(let issue):
-                    url = issue.webURL
-                case .rawInput(let value):
-                    let resolved = try await apiClient.resolveExternalLink(provider: provider, input: value)
-                    url = resolved.url
-                case .report:
-                    // Reports are handled in submitCommandPaletteSelection, not here
-                    return
-                }
-
-                _ = try await apiClient.addExternalLink(taskUUID: taskUUID, url: url)
-                removeToast(id: pendingToastId)
-                if provider == .gitlab {
-                    showToast(message: "Gitlab link added", icon: .gitlab)
-                } else {
-                    showToast(message: "Link added.")
-                }
-                if mode == .detail {
-                    loadExternalLinks(taskUUID: taskUUID)
-                }
-                closeCommandPalette()
-            } catch {
-                removeToast(id: pendingToastId)
-                showToast(message: error.localizedDescription)
-            }
-        }
+    func moveCommandPaletteSelection(delta: Int) {
+        commandPalette.moveSelection(delta: delta)
     }
 
     // MARK: - Completion Methods
@@ -891,6 +818,14 @@ final class LauncherViewModel: ObservableObject {
 
     @discardableResult
     func handleEscape() -> Bool {
+        if interactionContext == .commandPalette {
+            if commandPalette.handleEscape() {
+                return true
+            }
+            closeCommandPalette()
+            return true
+        }
+
         let action = InteractionCoordinator.escapeAction(for: interactionContext)
         switch action {
         case .closeCommandPalette:

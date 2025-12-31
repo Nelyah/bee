@@ -216,17 +216,6 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.toasts.first?.message, "parse error")
     }
 
-    func testSubmitCommandPaletteSelectionWithoutTaskShowsToast() {
-        let viewModel = LauncherViewModel(apiClient: MockApiClient())
-        viewModel.commandPalette.isPresented = true
-        viewModel.commandPalette.mode = .addGitlab
-
-        viewModel.submitCommandPaletteSelection()
-
-        XCTAssertEqual(viewModel.toasts.first?.message, "Select a task to add a link.")
-        XCTAssertFalse(viewModel.commandPalette.isPresented)
-    }
-
     func testDetectCompletionContextDetectsDatePrefixWithValue() {
         let viewModel = LauncherViewModel()
         viewModel.input = "due:tom"

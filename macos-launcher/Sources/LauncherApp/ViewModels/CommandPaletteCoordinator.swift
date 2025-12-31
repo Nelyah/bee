@@ -1,153 +1,178 @@
+import Combine
 import Foundation
 
 @MainActor
 final class CommandPaletteCoordinator: ObservableObject {
+    // MARK: - Published State
+
     @Published var isPresented: Bool = false
-    @Published var mode: CommandPaletteMode = .root
     @Published var query: String = ""
     @Published var selectionIndex: Int = 0
     @Published var isLoading: Bool = false
-    @Published private(set) var gitlabSuggestions: [GitlabMergeRequestSuggestion] = []
-    @Published private(set) var jiraSuggestions: [JiraIssueSuggestion] = []
-    @Published var availableReports: [ReportSummary] = []
 
-    /// Opens the command palette. Returns an error message if it cannot be opened.
-    func open(hasSelectedTask: Bool) -> String? {
+    // MARK: - Navigation Stack
+
+    @Published private(set) var navigationStack = CommandPaletteStack()
+
+    // MARK: - Dependencies
+
+    let dataSource: CommandPaletteDataSource
+
+    // MARK: - Context
+
+    private(set) var context: CommandPaletteContext = CommandPaletteContext()
+
+    // MARK: - Computed Properties
+
+    /// All sections for the current menu, filtered by query.
+    var currentSections: [CommandPaletteSection] {
+        if let menu = navigationStack.currentMenu, !navigationStack.isAtRoot {
+            return dataSource.filterSections(menu.sections, query: query)
+        }
+
+        return dataSource.buildSections(context: context, query: query)
+    }
+
+    /// Flat list of all selectable items for keyboard navigation.
+    var selectableItems: [CommandPaletteItem] {
+        currentSections.flatMap { $0.items.filter { $0.isSelectable } }
+    }
+
+    /// The currently selected item based on selection index.
+    var selectedItem: CommandPaletteItem? {
+        guard selectionIndex >= 0, selectionIndex < selectableItems.count else { return nil }
+        return selectableItems[selectionIndex]
+    }
+
+    /// Whether the navigation stack is at root level.
+    var isAtRoot: Bool { navigationStack.isAtRoot }
+
+    /// Breadcrumb path for display in nested menus.
+    var breadcrumb: [String] { navigationStack.breadcrumb }
+
+    // MARK: - Initialization
+
+    init(dataSource: CommandPaletteDataSource) {
+        self.dataSource = dataSource
+    }
+
+    convenience init() {
+        self.init(dataSource: CommandPaletteDataSource())
+    }
+
+    // MARK: - Lifecycle
+
+    /// Opens the command palette with the given context.
+    ///
+    /// - Parameter context: The context containing task selection, reports, etc.
+    /// - Returns: An error message if it cannot be opened, or nil on success.
+    func open(context: CommandPaletteContext) -> String? {
+        self.context = context
         resetForOpen()
+        let rootMenu = buildRootMenu()
+        navigationStack.reset(to: rootMenu)
         isPresented = true
         return nil
     }
 
+    /// Closes the command palette and resets state.
     func close() {
         isPresented = false
+        navigationStack.clear()
         resetForOpen()
     }
 
+    /// Resets state for opening the palette.
     func resetForOpen() {
-        mode = .root
         query = ""
         selectionIndex = 0
+        isLoading = false
     }
 
+    /// Resets selection index to 0.
     func resetSelection() {
         selectionIndex = 0
     }
 
-    /// Returns filtered actions based on query and task selection.
-    func filteredActions(hasSelectedTask: Bool) -> [CommandPaletteAction] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let available = CommandPaletteAction.allCases.filter { action in
-            !action.requiresSelectedTask || hasSelectedTask
+    // MARK: - Navigation (New Architecture)
+
+    /// Handles escape key press.
+    ///
+    /// - Returns: True if escape was handled (popped stack), false if at root (should close).
+    func handleEscape() -> Bool {
+        if navigationStack.pop() {
+            query = ""
+            selectionIndex = 0
+            return true
         }
-        guard !trimmed.isEmpty else { return available }
-        return available.filter { fuzzyMatches(trimmed, in: $0.rawValue.lowercased()) }
+        return false
     }
 
-    /// Backwards compatible property for tests.
-    var filteredActions: [CommandPaletteAction] {
-        filteredActions(hasSelectedTask: true)
+    /// Handles enter key press on the selected item.
+    func handleEnter() {
+        guard let item = selectedItem else { return }
+
+        switch item {
+        case .submenu(let submenu):
+            let menu = submenu.menuBuilder()
+            navigationStack.push(menu)
+            query = ""
+            selectionIndex = 0
+
+        case .action(let action):
+            action.handler()
+
+        case .suggestion(let suggestion):
+            suggestion.handler()
+
+        case .shortcut:
+            // Shortcuts are display-only
+            break
+        }
     }
 
-    var filteredSuggestions: [CommandPaletteSuggestion] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lower = trimmed.lowercased()
-        var items: [CommandPaletteSuggestion]
-
-        switch mode {
-        case .addGitlab:
-            items = gitlabSuggestions
-                .filter {
-                    lower.isEmpty
-                        || fuzzyMatches(lower, in: $0.title.lowercased())
-                        || fuzzyMatches(lower, in: "\($0.id)")
-                }
-                .map { .gitlab($0) }
-        case .addJira:
-            items = jiraSuggestions
-                .filter {
-                    lower.isEmpty
-                        || fuzzyMatches(lower, in: $0.summary.lowercased())
-                        || fuzzyMatches(lower, in: $0.key.lowercased())
-                }
-                .map { .jira($0) }
-        case .selectReport:
-            items = availableReports
-                .filter {
-                    lower.isEmpty || fuzzyMatches(lower, in: $0.name.lowercased())
-                }
-                .map { .report($0) }
-        case .root:
-            items = []
-        }
-
-        if !trimmed.isEmpty && mode != .root && mode != .selectReport {
-            items.insert(.rawInput(trimmed), at: 0)
-        }
-
-        return items
-    }
-
-    func selectAction(_ action: CommandPaletteAction) {
-        switch action {
-        case .addGitlab:
-            mode = .addGitlab
-        case .addJira:
-            mode = .addJira
-        case .selectReport:
-            mode = .selectReport
-        }
+    /// Navigates back one level in the stack.
+    func navigateBack() {
+        _ = navigationStack.pop()
         query = ""
         selectionIndex = 0
     }
 
-    func loadSuggestions(apiClient: ApiClientProtocol) async -> String? {
-        guard mode != .root && mode != .selectReport else { return nil }
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            switch mode {
-            case .addGitlab:
-                let items = try await apiClient.fetchRecentGitlabMergeRequests(limit: 20)
-                setGitlabSuggestions(items)
-            case .addJira:
-                let items = try await apiClient.fetchRecentJiraIssues(limit: 20, scope: .both)
-                setJiraSuggestions(items)
-            case .root, .selectReport:
-                break
-            }
-            return nil
-        } catch {
-            return error.localizedDescription
-        }
+    /// Pushes a new menu onto the navigation stack.
+    func pushMenu(_ menu: CommandPaletteMenu) {
+        navigationStack.push(menu)
+        query = ""
+        selectionIndex = 0
     }
 
-    func setGitlabSuggestions(_ items: [GitlabMergeRequestSuggestion]) {
-        gitlabSuggestions = items
-    }
+    // MARK: - Selection
 
-    func setJiraSuggestions(_ items: [JiraIssueSuggestion]) {
-        jiraSuggestions = items
-    }
-
-    func moveSelection(delta: Int, maxCount: Int) {
-        guard maxCount > 0 else {
+    /// Moves selection by the given delta.
+    func moveSelection(delta: Int) {
+        let count = selectableItems.count
+        guard count > 0 else {
             selectionIndex = 0
             return
         }
-        let next = max(0, min(selectionIndex + delta, maxCount - 1))
+        let next = max(0, min(selectionIndex + delta, count - 1))
         selectionIndex = next
     }
 
-    private func fuzzyMatches(_ query: String, in value: String) -> Bool {
-        guard !query.isEmpty else { return true }
-        var remaining = value[...]
-        for char in query {
-            guard let idx = remaining.firstIndex(of: char) else {
-                return false
-            }
-            remaining = remaining[remaining.index(after: idx)...]
-        }
-        return true
+    // MARK: - Context Updates
+
+    /// Updates the palette context.
+    func updateContext(_ context: CommandPaletteContext) {
+        self.context = context
+    }
+
+    // MARK: - Private Helpers
+
+    private func buildRootMenu() -> CommandPaletteMenu {
+        let sections = dataSource.buildSections(context: context, query: query)
+        return CommandPaletteMenu(
+            id: "root",
+            title: "Command Palette",
+            sections: sections
+        )
     }
 }

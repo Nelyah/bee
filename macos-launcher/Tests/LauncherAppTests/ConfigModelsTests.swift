@@ -12,7 +12,7 @@ final class ConfigModelsTests: XCTestCase {
             "column_names": ["ID", "Summary"]
         }
         """
-        let config = try decode(ReportConfig.self, from: json)
+        let config = try TestHelpers.decode(ReportConfig.self, from: json)
         XCTAssertEqual(config.staticFilters, ["status:active"])
         XCTAssertEqual(config.columns, ["id", "summary"])
         XCTAssertEqual(config.columnNames, ["ID", "Summary"])
@@ -28,7 +28,7 @@ final class ConfigModelsTests: XCTestCase {
             "column_names": ["ID"]
         }
         """
-        let config = try decode(ReportConfig.self, from: json)
+        let config = try TestHelpers.decode(ReportConfig.self, from: json)
         XCTAssertTrue(config.staticFilters.isEmpty)
         XCTAssertNotNil(config.userFilter)
     }
@@ -40,7 +40,7 @@ final class ConfigModelsTests: XCTestCase {
             "column_names": ["ID"]
         }
         """
-        let config = try decode(ReportConfig.self, from: json)
+        let config = try TestHelpers.decode(ReportConfig.self, from: json)
         XCTAssertTrue(config.staticFilters.isEmpty)
     }
 
@@ -68,7 +68,7 @@ final class ConfigModelsTests: XCTestCase {
             "is_default": true
         }
         """
-        let summary = try decode(ReportSummary.self, from: json)
+        let summary = try TestHelpers.decode(ReportSummary.self, from: json)
         XCTAssertEqual(summary.name, "active")
         XCTAssertEqual(summary.staticFilters, ["status:active"])
         XCTAssertEqual(summary.columns, ["id", "summary"])
@@ -90,7 +90,7 @@ final class ConfigModelsTests: XCTestCase {
             "is_user_report": true
         }
         """
-        let summary = try decode(ReportSummary.self, from: json)
+        let summary = try TestHelpers.decode(ReportSummary.self, from: json)
         XCTAssertEqual(summary.name, "my-report")
         XCTAssertTrue(summary.isUserReport)
         XCTAssertNotNil(summary.userFilter)
@@ -132,7 +132,7 @@ final class ConfigModelsTests: XCTestCase {
             ]
         }
         """
-        let response = try decode(ConfigResponse.self, from: json)
+        let response = try TestHelpers.decode(ConfigResponse.self, from: json)
         XCTAssertEqual(response.report.staticFilters, ["status:active"])
         XCTAssertEqual(response.reports.count, 1)
         XCTAssertEqual(response.reports.first?.name, "active")
@@ -183,7 +183,7 @@ final class ConfigModelsTests: XCTestCase {
             "updated_at": "2024-01-16T11:00:00Z"
         }
         """
-        let dto = try decode(UserReportDto.self, from: json)
+        let dto = try TestHelpers.decode(UserReportDto.self, from: json)
         XCTAssertEqual(dto.name, "my-report")
         XCTAssertNotNil(dto.filter)
         XCTAssertEqual(dto.columns, ["id"])
@@ -209,15 +209,8 @@ final class ConfigModelsTests: XCTestCase {
             ]
         }
         """
-        let response = try decode(UserReportsListResponse.self, from: json)
+        let response = try TestHelpers.decode(UserReportsListResponse.self, from: json)
         XCTAssertEqual(response.reports.count, 1)
         XCTAssertEqual(response.reports.first?.name, "report1")
-    }
-
-    // MARK: - Helpers
-
-    private func decode<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
-        let data = try XCTUnwrap(json.data(using: .utf8))
-        return try JSONDecoder().decode(type, from: data)
     }
 }

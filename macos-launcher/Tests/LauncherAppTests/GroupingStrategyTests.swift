@@ -252,18 +252,7 @@ private func makeTask(
     tags: [String] = [],
     dateDue: String? = nil
 ) -> ApiTask {
-    ApiTask(
-        dbId: nil,
-        uuid: id,
-        status: "pending",
-        summary: "Task \(id)",
-        project: project,
-        tags: tags,
-        dateCreated: "2024-01-01T00:00:00Z",
-        dateCompleted: nil,
-        dateDue: dateDue,
-        urgency: urgency
-    )
+    TestHelpers.makeTask(id: id, urgency: urgency, project: project, tags: tags, dateDue: dateDue)
 }
 
 private func formatDate(_ date: Date) -> String {

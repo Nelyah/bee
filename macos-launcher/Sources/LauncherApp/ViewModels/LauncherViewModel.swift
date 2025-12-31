@@ -324,7 +324,7 @@ final class LauncherViewModel: ObservableObject {
 
         logger.debug("Input change -> parse only. id=\(requestId), text=\(newValue, privacy: .private)")
         selectedIndex = nil
-        mode = NavigationCoordinator.modeForInputChange()
+        mode = .list
         statusMessage = nil
 
         Task {

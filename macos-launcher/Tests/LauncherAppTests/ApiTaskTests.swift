@@ -19,7 +19,7 @@ final class ApiTaskTests: XCTestCase {
             "urgency": 5
         }
         """
-        let task = try decode(ApiTask.self, from: json)
+        let task = try TestHelpers.decode(ApiTask.self, from: json)
         XCTAssertEqual(task.dbId, 42)
         XCTAssertEqual(task.uuid, "550e8400-e29b-41d4-a716-446655440000")
         XCTAssertEqual(task.status, "active")
@@ -47,7 +47,7 @@ final class ApiTaskTests: XCTestCase {
             "urgency": null
         }
         """
-        let task = try decode(ApiTask.self, from: json)
+        let task = try TestHelpers.decode(ApiTask.self, from: json)
         XCTAssertEqual(task.id, "test-uuid")
     }
 
@@ -66,7 +66,7 @@ final class ApiTaskTests: XCTestCase {
             "urgency": null
         }
         """
-        let task = try decode(ApiTask.self, from: json)
+        let task = try TestHelpers.decode(ApiTask.self, from: json)
         XCTAssertNil(task.dbId)
     }
 
@@ -79,7 +79,7 @@ final class ApiTaskTests: XCTestCase {
             "time": "2024-01-15T10:30:00Z"
         }
         """
-        let annotation = try decode(TaskAnnotationDto.self, from: json)
+        let annotation = try TestHelpers.decode(TaskAnnotationDto.self, from: json)
         XCTAssertEqual(annotation.value, "Added new feature")
         XCTAssertEqual(annotation.time, "2024-01-15T10:30:00Z")
     }
@@ -91,7 +91,7 @@ final class ApiTaskTests: XCTestCase {
             "time": "2024-01-15T10:30:00Z"
         }
         """
-        let annotation = try decode(TaskAnnotationDto.self, from: json)
+        let annotation = try TestHelpers.decode(TaskAnnotationDto.self, from: json)
         XCTAssertEqual(annotation.id, "2024-01-15T10:30:00Z-Test annotation")
     }
 
@@ -104,7 +104,7 @@ final class ApiTaskTests: XCTestCase {
             "datetime": "2024-01-16T14:00:00Z"
         }
         """
-        let history = try decode(TaskHistoryDto.self, from: json)
+        let history = try TestHelpers.decode(TaskHistoryDto.self, from: json)
         XCTAssertEqual(history.value, "status changed to completed")
         XCTAssertEqual(history.datetime, "2024-01-16T14:00:00Z")
     }
@@ -116,7 +116,7 @@ final class ApiTaskTests: XCTestCase {
             "datetime": "2024-01-15T10:30:00Z"
         }
         """
-        let history = try decode(TaskHistoryDto.self, from: json)
+        let history = try TestHelpers.decode(TaskHistoryDto.self, from: json)
         XCTAssertEqual(history.id, "2024-01-15T10:30:00Z-created")
     }
 
@@ -143,7 +143,7 @@ final class ApiTaskTests: XCTestCase {
             ]
         }
         """
-        let detail = try decode(ApiTaskDetail.self, from: json)
+        let detail = try TestHelpers.decode(ApiTaskDetail.self, from: json)
         XCTAssertEqual(detail.dbId, 42)
         XCTAssertEqual(detail.uuid, "550e8400-e29b-41d4-a716-446655440000")
         XCTAssertEqual(detail.status, "active")
@@ -170,7 +170,7 @@ final class ApiTaskTests: XCTestCase {
             "history": []
         }
         """
-        let detail = try decode(ApiTaskDetail.self, from: json)
+        let detail = try TestHelpers.decode(ApiTaskDetail.self, from: json)
         XCTAssertEqual(detail.id, "detail-uuid")
     }
 
@@ -191,15 +191,8 @@ final class ApiTaskTests: XCTestCase {
             "history": []
         }
         """
-        let detail = try decode(ApiTaskDetail.self, from: json)
+        let detail = try TestHelpers.decode(ApiTaskDetail.self, from: json)
         XCTAssertTrue(detail.annotations.isEmpty)
         XCTAssertTrue(detail.history.isEmpty)
-    }
-
-    // MARK: - Helpers
-
-    private func decode<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
-        let data = json.data(using: .utf8)!
-        return try JSONDecoder().decode(type, from: data)
     }
 }

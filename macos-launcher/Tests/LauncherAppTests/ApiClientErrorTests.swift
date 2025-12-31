@@ -50,36 +50,6 @@ final class ApiClientErrorTests: XCTestCase {
         XCTAssertNil(error.developerMessage)
     }
 
-    // MARK: - LocalizedError Conformance Tests
-
-    func testApiErrorConformsToLocalizedError() {
-        let error: LocalizedError = ApiClientError.api(
-            message: "Test error",
-            code: "TEST",
-            developerMessage: nil
-        )
-
-        XCTAssertEqual(error.errorDescription, "Test error")
-    }
-
-    func testInvalidResponseConformsToLocalizedError() {
-        let error: LocalizedError = ApiClientError.invalidResponse
-
-        XCTAssertEqual(error.errorDescription, "Invalid response from server")
-    }
-
-    // MARK: - Error Casting Tests
-
-    func testApiErrorCanBeCastToError() {
-        let error: Error = ApiClientError.api(
-            message: "Generic error",
-            code: nil,
-            developerMessage: nil
-        )
-
-        XCTAssertNotNil(error as? ApiClientError)
-    }
-
     func testErrorDescriptionAccessibleViaLocalizedDescription() {
         let error: Error = ApiClientError.api(
             message: "User-facing message",

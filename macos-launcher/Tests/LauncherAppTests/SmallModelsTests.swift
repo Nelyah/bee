@@ -6,7 +6,7 @@ final class SmallModelsTests: XCTestCase {
 
     func testJSONValueDecodesString() throws {
         let json = #""hello""#
-        let value = try decode(JSONValue.self, from: json)
+        let value = try TestHelpers.decode(JSONValue.self, from: json)
         if case let .string(str) = value {
             XCTAssertEqual(str, "hello")
         } else {
@@ -16,7 +16,7 @@ final class SmallModelsTests: XCTestCase {
 
     func testJSONValueDecodesNumber() throws {
         let json = "42.5"
-        let value = try decode(JSONValue.self, from: json)
+        let value = try TestHelpers.decode(JSONValue.self, from: json)
         if case let .number(num) = value {
             XCTAssertEqual(num, 42.5, accuracy: 0.001)
         } else {
@@ -26,7 +26,7 @@ final class SmallModelsTests: XCTestCase {
 
     func testJSONValueDecodesBool() throws {
         let jsonTrue = "true"
-        let valueTrue = try decode(JSONValue.self, from: jsonTrue)
+        let valueTrue = try TestHelpers.decode(JSONValue.self, from: jsonTrue)
         if case let .bool(b) = valueTrue {
             XCTAssertTrue(b)
         } else {
@@ -34,7 +34,7 @@ final class SmallModelsTests: XCTestCase {
         }
 
         let jsonFalse = "false"
-        let valueFalse = try decode(JSONValue.self, from: jsonFalse)
+        let valueFalse = try TestHelpers.decode(JSONValue.self, from: jsonFalse)
         if case let .bool(b) = valueFalse {
             XCTAssertFalse(b)
         } else {
@@ -44,7 +44,7 @@ final class SmallModelsTests: XCTestCase {
 
     func testJSONValueDecodesNull() throws {
         let json = "null"
-        let value = try decode(JSONValue.self, from: json)
+        let value = try TestHelpers.decode(JSONValue.self, from: json)
         if case .null = value {
             // Success
         } else {
@@ -54,7 +54,7 @@ final class SmallModelsTests: XCTestCase {
 
     func testJSONValueDecodesObject() throws {
         let json = #"{"key": "value"}"#
-        let value = try decode(JSONValue.self, from: json)
+        let value = try TestHelpers.decode(JSONValue.self, from: json)
         if case let .object(obj) = value {
             if case let .string(str)? = obj["key"] {
                 XCTAssertEqual(str, "value")
@@ -68,7 +68,7 @@ final class SmallModelsTests: XCTestCase {
 
     func testJSONValueDecodesArray() throws {
         let json = "[1, 2, 3]"
-        let value = try decode(JSONValue.self, from: json)
+        let value = try TestHelpers.decode(JSONValue.self, from: json)
         if case let .array(arr) = value {
             XCTAssertEqual(arr.count, 3)
         } else {
@@ -223,7 +223,7 @@ final class SmallModelsTests: XCTestCase {
             "developer_message": "Field 'name' is required"
         }
         """
-        let error = try decode(ApiErrorResponse.self, from: json)
+        let error = try TestHelpers.decode(ApiErrorResponse.self, from: json)
         XCTAssertEqual(error.code, "VALIDATION_ERROR")
         XCTAssertEqual(error.userMessage, "Invalid input provided")
         XCTAssertEqual(error.developerMessage, "Field 'name' is required")
@@ -301,7 +301,7 @@ final class SmallModelsTests: XCTestCase {
             ]
         }
         """
-        let response = try decode(ActionResponse.self, from: json)
+        let response = try TestHelpers.decode(ActionResponse.self, from: json)
         XCTAssertEqual(response.action, "done")
         XCTAssertEqual(response.tasks.count, 1)
         XCTAssertEqual(response.events.count, 1)
@@ -316,38 +316,14 @@ final class SmallModelsTests: XCTestCase {
             "message": "Task already completed"
         }
         """
-        let event = try decode(ApiEvent.self, from: json)
+        let event = try TestHelpers.decode(ApiEvent.self, from: json)
         XCTAssertEqual(event.kind, "warning")
         XCTAssertEqual(event.message, "Task already completed")
     }
 
     // MARK: - Helpers
 
-    private func decode<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
-        let data = try XCTUnwrap(json.data(using: .utf8))
-        return try JSONDecoder().decode(type, from: data)
-    }
-
     private func makeApiTask(uuid: String) -> ApiTask {
-        let json = """
-        {
-            "id": 1,
-            "uuid": "\(uuid)",
-            "status": "active",
-            "summary": "Test",
-            "project": null,
-            "tags": [],
-            "date_created": "2024-01-15T10:30:00Z",
-            "date_completed": null,
-            "date_due": null,
-            "urgency": null
-        }
-        """
-        guard let data = json.data(using: .utf8),
-              let task = try? JSONDecoder().decode(ApiTask.self, from: data)
-        else {
-            fatalError("Failed to create test ApiTask - this is a test helper bug")
-        }
-        return task
+        TestHelpers.makeTask(id: uuid, status: "active", summary: "Test")
     }
 }

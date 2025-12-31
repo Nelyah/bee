@@ -477,16 +477,5 @@ private struct SampleError: LocalizedError {
 
 /// Build a minimal ApiTask for view model tests.
 private func makeTask(id: String, urgency: Int? = nil) -> ApiTask {
-    ApiTask(
-        dbId: nil,
-        uuid: id,
-        status: "pending",
-        summary: "Task \(id)",
-        project: nil,
-        tags: [],
-        dateCreated: "2024-01-01T00:00:00Z",
-        dateCompleted: nil,
-        dateDue: nil,
-        urgency: urgency
-    )
+    TestHelpers.makeTask(id: id, urgency: urgency)
 }

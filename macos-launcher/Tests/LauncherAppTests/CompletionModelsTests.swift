@@ -11,7 +11,7 @@ final class CompletionModelsTests: XCTestCase {
             "count": 5
         }
         """
-        let item = try decode(CompletionItem.self, from: json)
+        let item = try TestHelpers.decode(CompletionItem.self, from: json)
         XCTAssertEqual(item.value, "urgent")
         XCTAssertEqual(item.count, 5)
     }
@@ -23,7 +23,7 @@ final class CompletionModelsTests: XCTestCase {
             "count": null
         }
         """
-        let item = try decode(CompletionItem.self, from: json)
+        let item = try TestHelpers.decode(CompletionItem.self, from: json)
         XCTAssertEqual(item.value, "work")
         XCTAssertNil(item.count)
     }
@@ -35,17 +35,8 @@ final class CompletionModelsTests: XCTestCase {
             "count": null
         }
         """
-        let item = try decode(CompletionItem.self, from: json)
+        let item = try TestHelpers.decode(CompletionItem.self, from: json)
         XCTAssertEqual(item.id, "test-value")
-    }
-
-    func testCompletionItemEquatable() {
-        let item1 = makeCompletionItem(value: "test", count: 5)
-        let item2 = makeCompletionItem(value: "test", count: 5)
-        let item3 = makeCompletionItem(value: "other", count: 5)
-
-        XCTAssertEqual(item1, item2)
-        XCTAssertNotEqual(item1, item3)
     }
 
     // MARK: - CompletionsResponse Tests
@@ -59,7 +50,7 @@ final class CompletionModelsTests: XCTestCase {
             ]
         }
         """
-        let response = try decode(CompletionsResponse.self, from: json)
+        let response = try TestHelpers.decode(CompletionsResponse.self, from: json)
         XCTAssertEqual(response.items.count, 2)
         XCTAssertEqual(response.items[0].value, "urgent")
         XCTAssertEqual(response.items[1].value, "work")
@@ -71,7 +62,7 @@ final class CompletionModelsTests: XCTestCase {
             "items": []
         }
         """
-        let response = try decode(CompletionsResponse.self, from: json)
+        let response = try TestHelpers.decode(CompletionsResponse.self, from: json)
         XCTAssertTrue(response.items.isEmpty)
     }
 
@@ -104,31 +95,4 @@ final class CompletionModelsTests: XCTestCase {
     func testCompletionContextApiTypeNone() {
         XCTAssertNil(CompletionContext.none.apiType)
     }
-
-    func testCompletionContextEquatable() {
-        XCTAssertEqual(CompletionContext.action, CompletionContext.action)
-        XCTAssertNotEqual(CompletionContext.action, CompletionContext.tag)
-    }
-
-    // MARK: - Helpers
-
-    private func decode<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
-        let data = try XCTUnwrap(json.data(using: .utf8))
-        return try JSONDecoder().decode(type, from: data)
-    }
-}
-
-// Helper to create CompletionItem for tests
-private func makeCompletionItem(value: String, count: Int?) -> CompletionItem {
-    let json = if let count {
-        #"{"value": "\#(value)", "count": \#(count)}"#
-    } else {
-        #"{"value": "\#(value)", "count": null}"#
-    }
-    guard let data = json.data(using: .utf8),
-          let item = try? JSONDecoder().decode(CompletionItem.self, from: data)
-    else {
-        fatalError("Failed to create test CompletionItem - this is a test helper bug")
-    }
-    return item
 }

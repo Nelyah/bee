@@ -31,14 +31,14 @@ final class ParseModelsTests: XCTestCase {
 
         for (rawValue, expected) in knownTypes {
             let json = #""\#(rawValue)""#
-            let tokenType = try decode(TokenType.self, from: json)
+            let tokenType = try TestHelpers.decode(TokenType.self, from: json)
             XCTAssertEqual(tokenType, expected, "Failed for \(rawValue)")
         }
     }
 
     func testTokenTypeDecodesUnknown() throws {
         let json = #""UnknownTokenType""#
-        let tokenType = try decode(TokenType.self, from: json)
+        let tokenType = try TestHelpers.decode(TokenType.self, from: json)
         XCTAssertEqual(tokenType, .unknown("UnknownTokenType"))
     }
 
@@ -63,7 +63,7 @@ final class ParseModelsTests: XCTestCase {
             "end": 1
         }
         """
-        let span = try decode(TokenSpan.self, from: json)
+        let span = try TestHelpers.decode(TokenSpan.self, from: json)
         XCTAssertEqual(span.tokenType, .tagPlusPrefix)
         XCTAssertEqual(span.literal, "+")
         XCTAssertEqual(span.start, 0)
@@ -79,7 +79,7 @@ final class ParseModelsTests: XCTestCase {
             "end": 7
         }
         """
-        let span = try decode(TokenSpan.self, from: json)
+        let span = try TestHelpers.decode(TokenSpan.self, from: json)
         XCTAssertEqual(span.tokenType, .wordString)
         XCTAssertEqual(span.literal, "urgent")
         XCTAssertEqual(span.start, 1)
@@ -95,7 +95,7 @@ final class ParseModelsTests: XCTestCase {
             "end": 4
         }
         """
-        let span = try decode(TokenSpan.self, from: json)
+        let span = try TestHelpers.decode(TokenSpan.self, from: json)
         XCTAssertEqual(span.tokenType, .unknown("NewTokenType"))
     }
 
@@ -122,7 +122,7 @@ final class ParseModelsTests: XCTestCase {
             ]
         }
         """
-        let response = try decode(ParseResponse.self, from: json)
+        let response = try TestHelpers.decode(ParseResponse.self, from: json)
         XCTAssertEqual(response.action, "list")
         XCTAssertNil(response.properties)
         XCTAssertNotNil(response.filter)
@@ -139,7 +139,7 @@ final class ParseModelsTests: XCTestCase {
             "tokens": []
         }
         """
-        let response = try decode(ParseResponse.self, from: json)
+        let response = try TestHelpers.decode(ParseResponse.self, from: json)
         XCTAssertEqual(response.action, "add")
         XCTAssertNotNil(response.properties)
         XCTAssertNil(response.filter)
@@ -159,15 +159,8 @@ final class ParseModelsTests: XCTestCase {
             ]
         }
         """
-        let response = try decode(ParseResponse.self, from: json)
+        let response = try TestHelpers.decode(ParseResponse.self, from: json)
         XCTAssertEqual(response.tokens.count, 4)
         XCTAssertEqual(response.tokens[2].tokenType, .tagPlusPrefix)
-    }
-
-    // MARK: - Helpers
-
-    private func decode<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
-        let data = try XCTUnwrap(json.data(using: .utf8))
-        return try JSONDecoder().decode(type, from: data)
     }
 }

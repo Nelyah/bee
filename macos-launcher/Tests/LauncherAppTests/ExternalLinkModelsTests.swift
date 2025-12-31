@@ -4,34 +4,19 @@ import XCTest
 final class ExternalLinkModelsTests: XCTestCase {
     // MARK: - GitlabMergeRequestState Tests
 
-    func testGitlabMergeRequestStateDecodesOpened() throws {
-        let json = #""opened""#
-        let state = try decode(GitlabMergeRequestState.self, from: json)
-        XCTAssertEqual(state, .opened)
-    }
+    func testGitlabMergeRequestStateDecodesAllStates() throws {
+        let cases: [(String, GitlabMergeRequestState)] = [
+            ("opened", .opened),
+            ("open", .opened),
+            ("merged", .merged),
+            ("closed", .closed),
+            ("draft", .unknown("draft")),
+        ]
 
-    func testGitlabMergeRequestStateDecodesOpen() throws {
-        let json = #""open""#
-        let state = try decode(GitlabMergeRequestState.self, from: json)
-        XCTAssertEqual(state, .opened)
-    }
-
-    func testGitlabMergeRequestStateDecodesMerged() throws {
-        let json = #""merged""#
-        let state = try decode(GitlabMergeRequestState.self, from: json)
-        XCTAssertEqual(state, .merged)
-    }
-
-    func testGitlabMergeRequestStateDecodesClosed() throws {
-        let json = #""closed""#
-        let state = try decode(GitlabMergeRequestState.self, from: json)
-        XCTAssertEqual(state, .closed)
-    }
-
-    func testGitlabMergeRequestStateDecodesUnknown() throws {
-        let json = #""draft""#
-        let state = try decode(GitlabMergeRequestState.self, from: json)
-        XCTAssertEqual(state, .unknown("draft"))
+        for (json, expected) in cases {
+            let state = try TestHelpers.decode(GitlabMergeRequestState.self, from: #""\#(json)""#)
+            XCTAssertEqual(state, expected, "Failed for \(json)")
+        }
     }
 
     func testGitlabMergeRequestStateIconName() {
@@ -63,14 +48,14 @@ final class ExternalLinkModelsTests: XCTestCase {
         ]
 
         for (json, expected) in states {
-            let status = try decode(GitlabPipelineStatus.self, from: #""\#(json)""#)
+            let status = try TestHelpers.decode(GitlabPipelineStatus.self, from: #""\#(json)""#)
             XCTAssertEqual(status, expected, "Failed for \(json)")
         }
     }
 
     func testGitlabPipelineStatusDecodesUnknown() throws {
         let json = #""manual""#
-        let status = try decode(GitlabPipelineStatus.self, from: json)
+        let status = try TestHelpers.decode(GitlabPipelineStatus.self, from: json)
         XCTAssertEqual(status, .unknown("manual"))
     }
 
@@ -113,7 +98,7 @@ final class ExternalLinkModelsTests: XCTestCase {
             "updated_at": "2024-01-15T10:30:00Z"
         }
         """
-        let suggestion = try decode(JiraIssueSuggestion.self, from: json)
+        let suggestion = try TestHelpers.decode(JiraIssueSuggestion.self, from: json)
         XCTAssertEqual(suggestion.key, "BEE-123")
         XCTAssertEqual(suggestion.summary, "Add dark mode")
         XCTAssertEqual(suggestion.status, "In Progress")
@@ -137,7 +122,7 @@ final class ExternalLinkModelsTests: XCTestCase {
             "pipeline_status": "success"
         }
         """
-        let suggestion = try decode(GitlabMergeRequestSuggestion.self, from: json)
+        let suggestion = try TestHelpers.decode(GitlabMergeRequestSuggestion.self, from: json)
         XCTAssertEqual(suggestion.id, 42)
         XCTAssertEqual(suggestion.title, "Fix bug")
         XCTAssertEqual(suggestion.projectPath, "group/project")
@@ -161,7 +146,7 @@ final class ExternalLinkModelsTests: XCTestCase {
             "sync_error": null
         }
         """
-        let dto = try decode(ExternalLinkDto.self, from: json)
+        let dto = try TestHelpers.decode(ExternalLinkDto.self, from: json)
         XCTAssertEqual(dto.id, 1)
         XCTAssertEqual(dto.provider, "gitlab")
         XCTAssertEqual(dto.externalKey, "mr:group/project:42")
@@ -213,7 +198,7 @@ final class ExternalLinkModelsTests: XCTestCase {
             "errors": ["Connection timeout"]
         }
         """
-        let response = try decode(ExternalLinkSyncResponse.self, from: json)
+        let response = try TestHelpers.decode(ExternalLinkSyncResponse.self, from: json)
         XCTAssertEqual(response.attempted, 5)
         XCTAssertEqual(response.succeeded, 4)
         XCTAssertEqual(response.failed, 1)
@@ -236,11 +221,6 @@ final class ExternalLinkModelsTests: XCTestCase {
     }
 
     // MARK: - Helpers
-
-    private func decode<T: Decodable>(_ type: T.Type, from json: String) throws -> T {
-        let data = json.data(using: .utf8)!
-        return try JSONDecoder().decode(type, from: data)
-    }
 
     private func makeExternalLinkDto(
         lastSyncedAt: String?,

@@ -197,16 +197,5 @@ final class TaskListCoordinatorTests: XCTestCase {
 }
 
 private func makeTask(id: String, urgency: Int? = nil, project: String? = nil) -> ApiTask {
-    ApiTask(
-        dbId: nil,
-        uuid: id,
-        status: "pending",
-        summary: "Task \(id)",
-        project: project,
-        tags: [],
-        dateCreated: "2024-01-01T00:00:00Z",
-        dateCompleted: nil,
-        dateDue: nil,
-        urgency: urgency
-    )
+    TestHelpers.makeTask(id: id, urgency: urgency, project: project)
 }

@@ -10,18 +10,17 @@ extension LauncherViewModel {
 
     /// Open the detail view for the currently selected task.
     func openDetail() {
-        if let newMode = NavigationCoordinator.modeForOpenDetail(selectedIndex: selectedIndex) {
-            mode = newMode
-            if let task = selectedTask {
-                loadTaskDetail(taskUUID: task.uuid)
-                loadExternalLinks(taskUUID: task.uuid)
-            }
+        guard selectedIndex != nil else { return }
+        mode = .detail
+        if let task = selectedTask {
+            loadTaskDetail(taskUUID: task.uuid)
+            loadExternalLinks(taskUUID: task.uuid)
         }
     }
 
     /// Close the detail view and return to the list.
     func closeDetail() {
-        mode = NavigationCoordinator.modeForCloseDetail()
+        mode = .list
         taskDetailState = TaskDetailState()
         externalLinksState = ExternalLinksState()
     }

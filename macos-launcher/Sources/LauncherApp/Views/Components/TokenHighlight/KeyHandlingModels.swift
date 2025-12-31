@@ -1,0 +1,46 @@
+import AppKit
+
+/// Input event data for key handling decisions.
+struct KeyInput {
+    let keyCode: UInt16
+    let charactersIgnoringModifiers: String?
+    let modifierFlags: NSEvent.ModifierFlags
+
+    init(event: NSEvent) {
+        keyCode = event.keyCode
+        charactersIgnoringModifiers = event.charactersIgnoringModifiers
+        modifierFlags = event.modifierFlags
+    }
+
+    init(keyCode: UInt16, charactersIgnoringModifiers: String?, modifierFlags: NSEvent.ModifierFlags) {
+        self.keyCode = keyCode
+        self.charactersIgnoringModifiers = charactersIgnoringModifiers
+        self.modifierFlags = modifierFlags
+    }
+}
+
+/// Actions that can be triggered in insert mode (text editing).
+enum KeyHandlingAction: Equatable {
+    case toggleMenu
+    case acceptGhost
+    case menuNavigate(Int)
+    case acceptCompletion
+    case escape
+    case moveWordForward
+    case moveWordBackward
+    case deleteWordBackward
+    case moveSelection(Int)
+    case submit
+}
+
+/// Actions that can be triggered in normal mode (vim-like navigation).
+enum NormalModeAction: Equatable {
+    case enterInsertMode
+    case moveSelection(Int)
+    case selectFirst
+    case selectLast
+    case activatePrimary
+    case toggleGroupCollapse
+    case toggleWithTab // Context-aware: collapse header or expand task
+    case openCommandPalette
+}

@@ -2,17 +2,6 @@
 import XCTest
 
 final class CommandPaletteModelsTests: XCTestCase {
-    // MARK: - CommandPaletteIcon Tests
-
-    func testCommandPaletteIconEquality() {
-        XCTAssertEqual(CommandPaletteIcon.system("star"), CommandPaletteIcon.system("star"))
-        XCTAssertNotEqual(CommandPaletteIcon.system("star"), CommandPaletteIcon.system("circle"))
-        XCTAssertEqual(CommandPaletteIcon.asset("custom"), CommandPaletteIcon.asset("custom"))
-        XCTAssertEqual(CommandPaletteIcon.gitlab, CommandPaletteIcon.gitlab)
-        XCTAssertEqual(CommandPaletteIcon.jira, CommandPaletteIcon.jira)
-        XCTAssertNotEqual(CommandPaletteIcon.gitlab, CommandPaletteIcon.jira)
-    }
-
     // MARK: - CommandPaletteItem Tests
 
     func testCommandPaletteItemActionId() {

@@ -9,6 +9,11 @@ let package = Package(
     products: [
         .executable(name: "macos-launcher", targets: ["LauncherApp"]),
     ],
+    dependencies: [
+        // UI Testing
+        .package(url: "https://github.com/nalexn/ViewInspector.git", from: "0.10.0"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.0"),
+    ],
     targets: [
         .executableTarget(
             name: "LauncherApp",
@@ -18,7 +23,11 @@ let package = Package(
         ),
         .testTarget(
             name: "LauncherAppTests",
-            dependencies: ["LauncherApp"]
+            dependencies: [
+                "LauncherApp",
+                "ViewInspector",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            ]
         ),
     ]
 )

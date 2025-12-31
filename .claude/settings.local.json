@@ -87,7 +87,8 @@
       "Bash(macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel.swift )",
       "Bash(macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel+TaskDetail.swift )",
       "Bash(macos-launcher/Tests/LauncherAppTests/TestSupport/ )",
-      "Bash(macos-launcher/Tests/LauncherAppTests/*.swift)"
+      "Bash(macos-launcher/Tests/LauncherAppTests/*.swift)",
+      "Skill(swiftui-tests)"
     ]
   },
   "outputStyle": "Explanatory"

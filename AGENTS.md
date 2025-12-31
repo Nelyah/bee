@@ -2,6 +2,8 @@
 
 Guidance for Codex when working in this repository.
 
+## Very important rules
+
 - Keep changes minimal and focused. Prefer existing conventions and keep instructions actionable.
 - Never remove TODO comments unless the TODO has been fully addressed.
 - If you think that what you are being asked is a bad idea, stop and say so. Explain why.
@@ -9,7 +11,35 @@ Guidance for Codex when working in this repository.
 - If you are looking for the macOS version or Xcode/Swift toolchain, look in the ./macos-launcher/ folder
 - NEVER EVER EVER commit with `--no-verify`. If there are issues, you need to fix them before commiting
 - NEVER disable swiftlint warnings without asking first 
-- When you encounter flaky tests, you should stop to fix them. Run them multiple times to figure out why they are flaky.
+
+- When you encounter flaky tests, do the following:
+    - Look at the flaky test, and fix it. It may require being run multiple times
+
+- When you explore a new folder that does NOT have an AGENTS.md in the code:
+    - Stop what you were doing
+    - Document VERY SHORTLY what this current folder is about and what the files do (one line per file)
+    - Make a CLAUDE.md symbolic link that points to that AGENTS.md
+    - Continue what you were doing
+
+- If you read an AGENTS.md and you realise it has outdated information:
+    - Stop what you were doing
+    - Update the outdated information in the AGENTS.md
+    - Continue what you were doing
+
+- When you learn to do something specific in the code base, or have understood a way to use a complicated pattern in the code base, do the following:
+    - Stop what you are doing
+    - Check whether you already have a skill for this specific thing
+    - If you do not, have the skill, make a new SKILL for yourself regarding that information
+    - Continue what you were doing
+
+- If you are using a skill to do something on the code base and you realise it is out of date, do the following:
+    - Stop what you are doing
+    - Update the skill content with up-to-date information
+    - Continue what you were doing
+
+- Always use Context7 when you need code generation, setup/configuration steps, or library/API documentation.
+
+- Initialise Serena and figure out what it can do
 
 ## Quick start
 ```bash
@@ -48,28 +78,3 @@ pre-commit run --all-files
 - `crates/bee-core/src/storage/mod.rs`
 - `crates/bee-actions/src/action_type.rs`
 - `crates/bee-cli/src/bee.rs`
-
-## Adding features (short)
-### New action
-1. Add `crates/bee-actions/src/action_<name>.rs`
-2. Implement `TaskAction` (often via `impl_taskaction_from_base!`)
-3. Register in `action_type.rs` and `lib.rs`
-
-### New filter
-1. Add filter struct in `crates/bee-core/src/filters/filters_impl.rs`
-2. Implement `Filter` with `#[typetag::serde]`
-3. Update `FilterKind` and parser
-
-## Testing pattern
-Unit tests are colocated with source files using:
-```rust
-#[path = "module_test.rs"]
-#[cfg(test)]
-mod module_test;
-```
-
-## Docs lookup
-Always use Context7 when you need code generation, setup/configuration steps, or library/API documentation.
-
-## Setup
-Initialise Serena and figure out what it can do

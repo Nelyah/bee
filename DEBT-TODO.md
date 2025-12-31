@@ -19,20 +19,16 @@
   - Compatibility: ensure existing configs keep working; no change required if user reports are absent.
 - Safety net: API tests for list/create/update/delete + config merge; migration test; UI tests for save flow + selecting newly saved report; add unit tests for merge precedence rules.
 
-### DEBT-0035: Task list rows cannot expand to show links/annotations
+## Done
+### DEBT-0035: Task list rows cannot expand to show links/annotations ✅
+- Status: Completed (2025-12-31)
 - Priority: P1
 - Effort: M
 - Area: macos-launcher list row UI
-- Evidence: `macos-launcher/Sources/LauncherApp/Views/TaskRow.swift`, `macos-launcher/Sources/LauncherApp/Views/TaskDetailView.swift`, `macos-launcher/Sources/LauncherApp/Models/ExternalLinkModels.swift`
-- Smells: missing-feature, UI-discoverability
-- Problem (rough): Users can’t expand a row inline to preview links/annotations; they must open the detail view, which slows scanning and triage.
-- Suggested fix (rough):
-  - Add an expand/collapse state per task row with a compact preview of links + annotations.
-  - Decide on interaction (e.g., disclosure chevron, space/enter toggle).
-  - Ensure expanded row height is accounted for in selection/scrolling.
-- Safety net: Unit tests for expanded state tracking; UI snapshot tests for collapsed vs expanded row.
+- Evidence: `macos-launcher/Sources/LauncherApp/Views/TaskRow.swift`, `macos-launcher/Sources/LauncherApp/Views/Components/TaskRowLinksPreview.swift`, `macos-launcher/Sources/LauncherApp/Views/Components/TaskRowAnnotationsPreview.swift`
+- Resolution: Added expandable task rows with condensed previews of links and annotations. Each row shows a chevron indicator that toggles expansion. Tab key (in normal mode) toggles expansion. Expanded content shows compact link chips (provider icon + title + sync status) and annotation rows (date + text), with "+N more" indicators when truncated. Data lazy-loads when expanding. Added hint bar update showing "Tab: Expand" when task selected in normal mode.
+- Safety net: Unit tests for expansion toggle (4 tests), Tab key mapping (1 test), and hint bar behavior (3 tests).
 
-## Done
 ### DEBT-0039: Window configuration is scattered and fragile ✅
 - Status: Completed (2025-12-31)
 - Priority: P2

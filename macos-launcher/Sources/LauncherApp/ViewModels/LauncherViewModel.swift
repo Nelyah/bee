@@ -47,6 +47,13 @@ final class LauncherViewModel: ObservableObject {
     /// Set of collapsed group keys.
     @Published var collapsedGroups: Set<String?> = []
 
+    // MARK: - Task Expansion State
+
+    /// Set of expanded task UUIDs (for inline link/annotation preview).
+    @Published var expandedTasks: Set<String> = []
+    /// Loaded expanded content per task UUID.
+    @Published var taskExpandedData: [String: TaskExpandedContent] = [:]
+
     // MARK: - Project Scope State
     /// The currently scoped project (layers on top of report filters).
     @Published var projectScope: String?
@@ -555,6 +562,82 @@ final class LauncherViewModel: ObservableObject {
         groupingStrategy = option.makeStrategy()
     }
 
+    // MARK: - Task Expansion Methods
+
+    /// Toggle expansion for a task. If expanding and data not loaded, triggers load.
+    func toggleTaskExpansion(_ taskUUID: String) {
+        if expandedTasks.contains(taskUUID) {
+            expandedTasks.remove(taskUUID)
+        } else {
+            expandedTasks.insert(taskUUID)
+            // Load data if not already loaded
+            if taskExpandedData[taskUUID] == nil {
+                loadExpandedContent(for: taskUUID)
+            }
+        }
+    }
+
+    /// Check if a task is expanded.
+    func isTaskExpanded(_ taskUUID: String) -> Bool {
+        expandedTasks.contains(taskUUID)
+    }
+
+    /// Toggle expansion for the currently selected or hovered task. Returns true if toggled.
+    func toggleSelectedOrHoveredTaskExpansion() -> Bool {
+        let rows = groupedRows
+        let idx = selectedRowIndex ?? hoveredRowIndex
+        guard let idx,
+              idx < rows.count,
+              case let .task(item) = rows[idx]
+        else {
+            return false
+        }
+        toggleTaskExpansion(item.task.uuid)
+        return true
+    }
+
+    /// Check if the currently selected or hovered row is an expandable task.
+    func canToggleSelectedOrHoveredTaskExpansion() -> Bool {
+        let rows = groupedRows
+        let idx = selectedRowIndex ?? hoveredRowIndex
+        guard let idx, idx < rows.count else { return false }
+        if case .task = rows[idx] {
+            return true
+        }
+        return false
+    }
+
+    /// Load expanded content (links + annotations) for a task.
+    private func loadExpandedContent(for taskUUID: String) {
+        // Mark as loading with timestamp for delayed indicator
+        taskExpandedData[taskUUID] = TaskExpandedContent(isLoading: true, loadingStartedAt: Date())
+
+        Task {
+            do {
+                // Load both detail (for annotations) and external links in parallel
+                async let detailTask = apiClient.fetchTaskDetail(taskUUID: taskUUID)
+                async let linksTask = apiClient.fetchExternalLinks(taskUUID: taskUUID)
+
+                let detail = try await detailTask
+                let links = try await linksTask
+
+                taskExpandedData[taskUUID] = TaskExpandedContent(
+                    isLoading: false,
+                    links: links,
+                    annotations: detail.annotations,
+                    errorMessage: nil
+                )
+            } catch {
+                taskExpandedData[taskUUID] = TaskExpandedContent(
+                    isLoading: false,
+                    links: [],
+                    annotations: [],
+                    errorMessage: error.localizedDescription
+                )
+            }
+        }
+    }
+
     // MARK: - Project Scope Methods
 
     /// Set the project scope and refresh the task list.
@@ -966,6 +1049,8 @@ final class LauncherViewModel: ObservableObject {
             return true
         case .toggleGroupCollapse:
             return toggleSelectedOrHoveredGroupCollapse()
+        case .toggleTaskExpansion:
+            return toggleSelectedOrHoveredTaskExpansion()
         case .openDetail:
             openDetail()
             return true
@@ -991,6 +1076,25 @@ struct ExternalLinksState {
     var links: [ExternalLinkDto] = []
     var errorMessage: String?
     var refreshingProviders: Set<ExternalLinkProvider> = []
+}
+
+/// Content loaded for an expanded task row (inline preview of links/annotations).
+struct TaskExpandedContent {
+    var isLoading: Bool = true
+    var loadingStartedAt: Date?
+    var links: [ExternalLinkDto] = []
+    var annotations: [TaskAnnotationDto] = []
+    var errorMessage: String?
+
+    var isEmpty: Bool {
+        links.isEmpty && annotations.isEmpty
+    }
+
+    /// Only show loading indicator after 1 second to avoid flicker for fast responses
+    var shouldShowLoading: Bool {
+        guard isLoading, let startedAt = loadingStartedAt else { return false }
+        return Date().timeIntervalSince(startedAt) >= 1.0
+    }
 }
 
 // MARK: - Array Safe Subscript

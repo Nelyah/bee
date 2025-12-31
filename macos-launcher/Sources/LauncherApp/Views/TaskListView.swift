@@ -194,7 +194,10 @@ struct TaskListView: View {
                                         task: item.task,
                                         columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
                                         isSelected: viewModel.selectedRowIndex == rowIndex,
-                                        isHovered: viewModel.hoveredRowIndex == rowIndex
+                                        isHovered: viewModel.hoveredRowIndex == rowIndex,
+                                        isExpanded: viewModel.isTaskExpanded(item.task.uuid),
+                                        expandedContent: viewModel.taskExpandedData[item.task.uuid],
+                                        onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) }
                                     )
                                     .id(row.id)
                                     .onHover { hovering in
@@ -211,6 +214,7 @@ struct TaskListView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, TaskListLayout.listVerticalPadding)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.expandedTasks)
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         // Reserve space for BottomHintBar overlay so scrollTo respects it

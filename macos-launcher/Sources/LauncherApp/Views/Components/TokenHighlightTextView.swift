@@ -161,6 +161,7 @@ enum NormalModeAction: Equatable {
     case selectLast
     case activatePrimary
     case toggleGroupCollapse
+    case toggleWithTab // Context-aware: collapse header or expand task
     case openCommandPalette
 }
 
@@ -269,6 +270,9 @@ enum KeyHandlingDecider {
             return .activatePrimary
         case KeyCode.space:
             return .toggleGroupCollapse
+        case KeyCode.tab:
+            // Tab works for both: collapse headers or expand tasks (context decides)
+            return .toggleWithTab
         default:
             return nil
         }

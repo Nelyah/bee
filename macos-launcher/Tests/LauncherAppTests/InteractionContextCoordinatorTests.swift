@@ -96,6 +96,50 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         XCTAssertFalse(model.left.contains { $0.key == "i" })
     }
 
+    func testTabHintForTaskInNormalMode() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .list(selection: .task),
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertTrue(model.right.contains { $0.key == "Tab" && $0.label == "Expand" })
+    }
+
+    func testTabHintForHeaderInNormalMode() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .list(selection: .groupHeader),
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertTrue(model.right.contains { $0.key == "Tab" && $0.label == "Collapse" })
+    }
+
+    func testNoTabHintForTaskInInsertMode() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .list(selection: .task),
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: true
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.right.contains { $0.key == "Tab" })
+    }
+
+    func testNoTabHintForNoSelection() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .list(selection: .none),
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.right.contains { $0.key == "Tab" })
+    }
+
     private func enterLabel(in context: InteractionContext) -> String? {
         let model = BottomHintModelBuilder.model(for: context)
         return model.right.first(where: { $0.key == "Enter" })?.label

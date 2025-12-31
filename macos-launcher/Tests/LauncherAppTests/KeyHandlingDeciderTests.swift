@@ -99,5 +99,8 @@ final class KeyHandlingDeciderTests: XCTestCase {
 
         let toggle = KeyInput(keyCode: KeyCode.space, charactersIgnoringModifiers: " ", modifierFlags: [])
         XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: toggle), .toggleGroupCollapse)
+
+        let tabKey = KeyInput(keyCode: KeyCode.tab, charactersIgnoringModifiers: "\t", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: tabKey), .toggleWithTab)
     }
 }

@@ -335,6 +335,122 @@ final class LauncherViewModelTests: XCTestCase {
             XCTFail("Expected default filter to be passed to runAction")
         }
     }
+
+    // MARK: - Task Expansion Tests
+
+    func testToggleTaskExpansion() {
+        let viewModel = LauncherViewModel()
+        let taskUUID = "test-task-uuid"
+
+        // Initially not expanded
+        XCTAssertFalse(viewModel.isTaskExpanded(taskUUID))
+        XCTAssertTrue(viewModel.expandedTasks.isEmpty)
+
+        // Toggle on
+        viewModel.toggleTaskExpansion(taskUUID)
+        XCTAssertTrue(viewModel.isTaskExpanded(taskUUID))
+        XCTAssertTrue(viewModel.expandedTasks.contains(taskUUID))
+
+        // Toggle off
+        viewModel.toggleTaskExpansion(taskUUID)
+        XCTAssertFalse(viewModel.isTaskExpanded(taskUUID))
+        XCTAssertFalse(viewModel.expandedTasks.contains(taskUUID))
+    }
+
+    func testToggleSelectedTaskExpansion() {
+        let viewModel = LauncherViewModel()
+        viewModel.tasks = [makeTask(id: "a"), makeTask(id: "b")]
+        // Grouped rows: [header("No Project"), task(a,0), task(b,1)]
+
+        // Select task row (index 1 is the first task)
+        viewModel.selectedRowIndex = 1
+
+        // Toggle expansion
+        let result = viewModel.toggleSelectedOrHoveredTaskExpansion()
+        XCTAssertTrue(result)
+        XCTAssertTrue(viewModel.isTaskExpanded("a"))
+    }
+
+    func testToggleExpansionOnHeaderReturnsFalse() {
+        let viewModel = LauncherViewModel()
+        viewModel.tasks = [makeTask(id: "a")]
+        // Grouped rows: [header("No Project"), task(a,0)]
+
+        // Select header row (index 0)
+        viewModel.selectedRowIndex = 0
+
+        // Toggle expansion should fail on header
+        let result = viewModel.toggleSelectedOrHoveredTaskExpansion()
+        XCTAssertFalse(result)
+    }
+
+    func testCanToggleExpansionOnTask() {
+        let viewModel = LauncherViewModel()
+        viewModel.tasks = [makeTask(id: "a")]
+        // Grouped rows: [header("No Project"), task(a,0)]
+
+        // Select task row
+        viewModel.selectedRowIndex = 1
+        XCTAssertTrue(viewModel.canToggleSelectedOrHoveredTaskExpansion())
+
+        // Select header row
+        viewModel.selectedRowIndex = 0
+        XCTAssertFalse(viewModel.canToggleSelectedOrHoveredTaskExpansion())
+
+        // No selection
+        viewModel.selectedRowIndex = nil
+        XCTAssertFalse(viewModel.canToggleSelectedOrHoveredTaskExpansion())
+    }
+
+    // MARK: - TaskExpandedContent Tests
+
+    func testTaskExpandedContentIsEmpty() {
+        let emptyContent = TaskExpandedContent(isLoading: false, links: [], annotations: [])
+        XCTAssertTrue(emptyContent.isEmpty)
+
+        let withLinks = TaskExpandedContent(
+            isLoading: false,
+            links: [ExternalLinkDto(
+                id: 1,
+                provider: "gitlab",
+                url: "https://example.com",
+                externalKey: "key",
+                cachedResponse: nil,
+                lastSyncedAt: nil,
+                syncError: nil
+            )],
+            annotations: []
+        )
+        XCTAssertFalse(withLinks.isEmpty)
+
+        let withAnnotations = TaskExpandedContent(
+            isLoading: false,
+            links: [],
+            annotations: [TaskAnnotationDto(value: "note", time: "2025-01-01T00:00:00Z")]
+        )
+        XCTAssertFalse(withAnnotations.isEmpty)
+    }
+
+    func testTaskExpandedContentShouldShowLoadingFalseWhenNotLoading() {
+        let content = TaskExpandedContent(isLoading: false, loadingStartedAt: Date())
+        XCTAssertFalse(content.shouldShowLoading)
+    }
+
+    func testTaskExpandedContentShouldShowLoadingFalseWithoutTimestamp() {
+        let content = TaskExpandedContent(isLoading: true, loadingStartedAt: nil)
+        XCTAssertFalse(content.shouldShowLoading)
+    }
+
+    func testTaskExpandedContentShouldShowLoadingFalseBeforeOneSecond() {
+        let content = TaskExpandedContent(isLoading: true, loadingStartedAt: Date())
+        XCTAssertFalse(content.shouldShowLoading)
+    }
+
+    func testTaskExpandedContentShouldShowLoadingTrueAfterOneSecond() {
+        let pastDate = Date().addingTimeInterval(-1.5) // 1.5 seconds ago
+        let content = TaskExpandedContent(isLoading: true, loadingStartedAt: pastDate)
+        XCTAssertTrue(content.shouldShowLoading)
+    }
 }
 
 private func clearCollapsedDefaults() {

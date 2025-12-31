@@ -29,7 +29,7 @@ struct GroupHeaderRow: View {
             Spacer()
 
             if isHovered || isSelected {
-                Text("Space to \(header.isCollapsed ? "expand" : "collapse")")
+                Text("Tab to \(header.isCollapsed ? "expand" : "collapse")")
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
                     .foregroundColor(ThemeManager.current.subtext0)
             }

@@ -95,6 +95,17 @@ enum BottomHintModelBuilder {
         if let enterLabel = enterLabel(for: context) {
             hints.append(BottomHint(key: "Enter", label: enterLabel))
         }
+        // Show Tab hint in normal mode (collapse for headers, expand for tasks)
+        if case let .list(selection, isInsertMode) = context, !isInsertMode {
+            switch selection {
+            case .groupHeader:
+                hints.append(BottomHint(key: "Tab", label: "Collapse"))
+            case .task:
+                hints.append(BottomHint(key: "Tab", label: "Expand"))
+            case .none:
+                break
+            }
+        }
         hints.append(BottomHint(key: "⌘K", label: "Command menu"))
         return hints
     }

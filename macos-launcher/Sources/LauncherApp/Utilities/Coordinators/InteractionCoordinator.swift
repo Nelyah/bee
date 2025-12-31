@@ -14,6 +14,7 @@ enum InteractionCoordinator {
         case selectFirst
         case selectLast
         case toggleGroupCollapse
+        case toggleTaskExpansion
         case openDetail
         case openCommandPalette
         case none
@@ -47,6 +48,9 @@ enum InteractionCoordinator {
             .selectLast
         case .toggleGroupCollapse:
             .toggleGroupCollapse
+        case .toggleWithTab:
+            // Tab toggles collapse on headers, expansion on tasks
+            canToggleGroupCollapse ? .toggleGroupCollapse : .toggleTaskExpansion
         case .activatePrimary:
             canToggleGroupCollapse ? .toggleGroupCollapse : .openDetail
         case .openCommandPalette:

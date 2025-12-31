@@ -48,4 +48,20 @@ final class InteractionCoordinatorTests: XCTestCase {
         )
         XCTAssertEqual(effect, .openDetail)
     }
+
+    func testToggleWithTabCollapsesHeaderWhenOnHeader() {
+        let effect = InteractionCoordinator.normalModeEffect(
+            action: .toggleWithTab,
+            canToggleGroupCollapse: true
+        )
+        XCTAssertEqual(effect, .toggleGroupCollapse)
+    }
+
+    func testToggleWithTabExpandsTaskWhenOnTask() {
+        let effect = InteractionCoordinator.normalModeEffect(
+            action: .toggleWithTab,
+            canToggleGroupCollapse: false
+        )
+        XCTAssertEqual(effect, .toggleTaskExpansion)
+    }
 }

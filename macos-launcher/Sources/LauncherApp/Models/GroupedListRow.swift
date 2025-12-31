@@ -7,8 +7,8 @@ enum GroupedListRow: Identifiable {
 
     var id: String {
         switch self {
-        case let .header(h): "header-\(h.id)"
-        case let .task(t): t.id
+        case let .header(header): "header-\(header.id)"
+        case let .task(groupedTask): groupedTask.id
         }
     }
 }

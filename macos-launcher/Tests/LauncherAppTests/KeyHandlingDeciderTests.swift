@@ -31,10 +31,10 @@ final class KeyHandlingDeciderTests: XCTestCase {
     }
 
     func testMenuNavigationWhenMenuOpen() {
-        let up = KeyInput(keyCode: 126, charactersIgnoringModifiers: nil, modifierFlags: [])
-        let down = KeyInput(keyCode: 125, charactersIgnoringModifiers: nil, modifierFlags: [])
-        XCTAssertEqual(KeyHandlingDecider.action(for: up, showCompletionMenu: true), .menuNavigate(-1))
-        XCTAssertEqual(KeyHandlingDecider.action(for: down, showCompletionMenu: true), .menuNavigate(1))
+        let upArrow = KeyInput(keyCode: 126, charactersIgnoringModifiers: nil, modifierFlags: [])
+        let downArrow = KeyInput(keyCode: 125, charactersIgnoringModifiers: nil, modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.action(for: upArrow, showCompletionMenu: true), .menuNavigate(-1))
+        XCTAssertEqual(KeyHandlingDecider.action(for: downArrow, showCompletionMenu: true), .menuNavigate(1))
     }
 
     func testMenuNavigationWithCtrlPN() {
@@ -61,10 +61,10 @@ final class KeyHandlingDeciderTests: XCTestCase {
     }
 
     func testSelectionNavigationWhenMenuClosed() {
-        let up = KeyInput(keyCode: 126, charactersIgnoringModifiers: nil, modifierFlags: [])
-        let down = KeyInput(keyCode: 125, charactersIgnoringModifiers: nil, modifierFlags: [])
-        XCTAssertEqual(KeyHandlingDecider.action(for: up, showCompletionMenu: false), .moveSelection(-1))
-        XCTAssertEqual(KeyHandlingDecider.action(for: down, showCompletionMenu: false), .moveSelection(1))
+        let upArrow = KeyInput(keyCode: 126, charactersIgnoringModifiers: nil, modifierFlags: [])
+        let downArrow = KeyInput(keyCode: 125, charactersIgnoringModifiers: nil, modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.action(for: upArrow, showCompletionMenu: false), .moveSelection(-1))
+        XCTAssertEqual(KeyHandlingDecider.action(for: downArrow, showCompletionMenu: false), .moveSelection(1))
     }
 
     func testSubmitWhenMenuClosed() {
@@ -73,25 +73,25 @@ final class KeyHandlingDeciderTests: XCTestCase {
     }
 
     func testNormalModeActions() {
-        let enterInsert = KeyInput(keyCode: KeyCode.i, charactersIgnoringModifiers: "i", modifierFlags: [])
+        let enterInsert = KeyInput(keyCode: KeyCode.keyI, charactersIgnoringModifiers: "i", modifierFlags: [])
         XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: enterInsert), .enterInsertMode)
 
-        let down = KeyInput(keyCode: KeyCode.j, charactersIgnoringModifiers: "j", modifierFlags: [])
-        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: down), .moveSelection(1))
+        let downKey = KeyInput(keyCode: KeyCode.keyJ, charactersIgnoringModifiers: "j", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: downKey), .moveSelection(1))
 
-        let up = KeyInput(keyCode: KeyCode.k, charactersIgnoringModifiers: "k", modifierFlags: [])
-        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: up), .moveSelection(-1))
+        let upKey = KeyInput(keyCode: KeyCode.keyK, charactersIgnoringModifiers: "k", modifierFlags: [])
+        XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: upKey), .moveSelection(-1))
 
-        let ctrlN = KeyInput(keyCode: KeyCode.j, charactersIgnoringModifiers: "n", modifierFlags: [.control])
+        let ctrlN = KeyInput(keyCode: KeyCode.keyJ, charactersIgnoringModifiers: "n", modifierFlags: [.control])
         XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: ctrlN), .moveSelection(1))
 
-        let ctrlP = KeyInput(keyCode: KeyCode.k, charactersIgnoringModifiers: "p", modifierFlags: [.control])
+        let ctrlP = KeyInput(keyCode: KeyCode.keyK, charactersIgnoringModifiers: "p", modifierFlags: [.control])
         XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: ctrlP), .moveSelection(-1))
 
-        let first = KeyInput(keyCode: KeyCode.g, charactersIgnoringModifiers: "g", modifierFlags: [])
+        let first = KeyInput(keyCode: KeyCode.keyG, charactersIgnoringModifiers: "g", modifierFlags: [])
         XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: first), .selectFirst)
 
-        let last = KeyInput(keyCode: KeyCode.g, charactersIgnoringModifiers: "G", modifierFlags: [.shift])
+        let last = KeyInput(keyCode: KeyCode.keyG, charactersIgnoringModifiers: "G", modifierFlags: [.shift])
         XCTAssertEqual(KeyHandlingDecider.normalModeAction(for: last), .selectLast)
 
         let activate = KeyInput(keyCode: KeyCode.returnKey, charactersIgnoringModifiers: "\r", modifierFlags: [])

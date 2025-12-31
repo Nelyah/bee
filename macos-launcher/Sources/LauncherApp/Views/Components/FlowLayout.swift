@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct FlowLayout: Layout {
-    var spacing: CGFloat = DesignTokens.Spacing.sm
-    var rowSpacing: CGFloat = DesignTokens.Spacing.sm
+    var spacing: CGFloat = DesignTokens.Spacing.small
+    var rowSpacing: CGFloat = DesignTokens.Spacing.small
 
     func sizeThatFits(
         proposal: ProposedViewSize,
@@ -41,25 +41,25 @@ struct FlowLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) {
-        var x = bounds.minX
-        var y = bounds.minY
+        var xPos = bounds.minX
+        var yPos = bounds.minY
         var currentRowHeight: CGFloat = 0
 
         for subview in subviews {
             let size = subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: proposal.height))
-            if x + size.width > bounds.maxX, x > bounds.minX {
-                x = bounds.minX
-                y += currentRowHeight + rowSpacing
+            if xPos + size.width > bounds.maxX, xPos > bounds.minX {
+                xPos = bounds.minX
+                yPos += currentRowHeight + rowSpacing
                 currentRowHeight = 0
             }
 
             subview.place(
-                at: CGPoint(x: x, y: y),
+                at: CGPoint(x: xPos, y: yPos),
                 anchor: .topLeading,
                 proposal: ProposedViewSize(size)
             )
 
-            x += size.width + spacing
+            xPos += size.width + spacing
             currentRowHeight = max(currentRowHeight, size.height)
         }
     }

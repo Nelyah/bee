@@ -26,11 +26,11 @@ struct CompletionMenuView: View {
             }
         }
         .frame(maxHeight: 8 * 30)
-        .padding(.vertical, DesignTokens.Spacing.xs)
+        .padding(.vertical, DesignTokens.Spacing.extraSmall)
         .background(ThemeManager.current.surface0)
-        .cornerRadius(DesignTokens.Radius.sm)
+        .cornerRadius(DesignTokens.Radius.small)
         .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                 .stroke(ThemeManager.current.surface1, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
@@ -56,8 +56,8 @@ struct CompletionRow: View {
                     .foregroundColor(isSelected ? ThemeManager.current.text : ThemeManager.current.overlay0)
             }
         }
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.sm)
+        .padding(.horizontal, DesignTokens.Spacing.medium)
+        .padding(.vertical, DesignTokens.Spacing.small)
         .background(isSelected ? ThemeManager.current.blue : Color.clear)
     }
 }

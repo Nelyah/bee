@@ -166,12 +166,6 @@ struct CommandPaletteShortcutItem: Identifiable {
     let id: String
     let title: String
     let keys: String
-
-    init(id: String, title: String, keys: String) {
-        self.id = id
-        self.title = title
-        self.keys = keys
-    }
 }
 
 /// Represents a menu level in the navigation stack

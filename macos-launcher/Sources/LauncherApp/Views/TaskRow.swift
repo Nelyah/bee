@@ -26,8 +26,8 @@ struct TaskRow: View {
                     ))
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.sm)
-        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.small)
+        .padding(.horizontal, DesignTokens.Spacing.medium)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(backgroundColor)
@@ -86,7 +86,7 @@ struct TaskRow: View {
 
     @ViewBuilder
     private var expandedSection: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
             if let content = expandedContent {
                 if content.isLoading {
                     // Only show loading indicator after delay
@@ -102,7 +102,7 @@ struct TaskRow: View {
                 }
             }
         }
-        .padding(.top, DesignTokens.Spacing.sm)
+        .padding(.top, DesignTokens.Spacing.small)
         .padding(.leading, 32) // Align with summary column (chevron + circle + spacing)
         .onChange(of: expandedContent?.isLoading) { _, isLoading in
             if isLoading == true {
@@ -121,7 +121,7 @@ struct TaskRow: View {
     }
 
     private var loadingIndicator: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
+        HStack(spacing: DesignTokens.Spacing.small) {
             ProgressView()
                 .scaleEffect(0.7)
                 .frame(width: 14, height: 14)
@@ -132,7 +132,7 @@ struct TaskRow: View {
     }
 
     private func errorView(_ message: String) -> some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
+        HStack(spacing: DesignTokens.Spacing.extraSmall) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: DesignTokens.TypeScale.caption))
                 .foregroundColor(ThemeManager.current.red)
@@ -174,30 +174,23 @@ struct TaskRow: View {
 
     /// Get the value for a column from the task.
     private func value(for column: String) -> String {
-        switch column {
-        case "id":
-            task.dbId.map(String.init) ?? "-"
-        case "uuid":
-            String(task.uuid.prefix(8))
-        case "summary":
-            task.summary
-        case "status":
-            task.status
-        case "project":
-            task.project ?? "-"
-        case "tags":
-            task.tags.isEmpty ? "-" : task.tags.joined(separator: ", ")
-        case "urgency":
-            task.urgency.map(String.init) ?? "-"
-        case "date_created":
-            formatDate(task.dateCreated)
-        case "date_completed":
-            task.dateCompleted.map(formatDate) ?? "-"
-        case "date_due":
-            task.dateDue.map(formatDate) ?? "-"
-        default:
-            "-"
-        }
+        columnValues[column] ?? "-"
+    }
+
+    /// Dictionary mapping column names to their display values.
+    private var columnValues: [String: String] {
+        [
+            "id": task.dbId.map(String.init) ?? "-",
+            "uuid": String(task.uuid.prefix(8)),
+            "summary": task.summary,
+            "status": task.status,
+            "project": task.project ?? "-",
+            "tags": task.tags.isEmpty ? "-" : task.tags.joined(separator: ", "),
+            "urgency": task.urgency.map(String.init) ?? "-",
+            "date_created": formatDate(task.dateCreated),
+            "date_completed": task.dateCompleted.map(formatDate) ?? "-",
+            "date_due": task.dateDue.map(formatDate) ?? "-",
+        ]
     }
 
     /// Format an ISO date string to a relative or short format.

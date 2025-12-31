@@ -4,16 +4,11 @@ import XCTest
 
 @MainActor
 final class CommandPaletteDataSourceTests: XCTestCase {
-    private var dataSource: CommandPaletteDataSource!
+    private var dataSource = CommandPaletteDataSource()
 
     override func setUp() {
         super.setUp()
         dataSource = CommandPaletteDataSource()
-    }
-
-    override func tearDown() {
-        dataSource = nil
-        super.tearDown()
     }
 
     // MARK: - Registration Tests

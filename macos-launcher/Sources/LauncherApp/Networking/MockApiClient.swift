@@ -193,7 +193,9 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             url: "https://gitlab.example.com/group/project/-/merge_requests/42",
             externalKey: "mr:group/project:42",
             cachedResponse: """
-            {"merge_request":{"title":"Improve task sync","state":"opened","user_notes_count":12,"head_pipeline":{"status":"running"}},"approvals":{"approved":false}}
+            {"merge_request":{"title":"Improve task sync","state":"opened",\
+            "user_notes_count":12,"head_pipeline":{"status":"running"}},\
+            "approvals":{"approved":false}}
             """,
             lastSyncedAt: "2024-09-24T12:00:00Z",
             syncError: nil

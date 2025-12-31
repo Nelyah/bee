@@ -14,15 +14,17 @@ final class ApiClientTests: XCTestCase {
             XCTAssertEqual(request.url?.host, "example.com")
             XCTAssertEqual(request.url?.path, "/v1/config")
             expectation.fulfill()
-            return (
-                HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 200,
-                    httpVersion: nil,
-                    headerFields: nil
-                )!,
-                Self.configPayload()
-            )
+            guard let url = request.url,
+                  let response = HTTPURLResponse(
+                      url: url,
+                      statusCode: 200,
+                      httpVersion: nil,
+                      headerFields: nil
+                  )
+            else {
+                return (HTTPURLResponse(), Data())
+            }
+            return (response, Self.configPayload())
         }
 
         let client = ApiClient(
@@ -36,21 +38,26 @@ final class ApiClientTests: XCTestCase {
 
     func testParseReturnsApiErrorMessageForNon2xx() async {
         TestURLProtocol.requestHandler = { request in
-            let data = #"{"code":"parse_error","user_message":"bad things","developer_message":"details"}"#
-                .data(using: .utf8)!
-            return (
-                HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 400,
-                    httpVersion: nil,
-                    headerFields: nil
-                )!,
-                data
-            )
+            let data = Data(#"{"code":"parse_error","user_message":"bad things","developer_message":"details"}"#.utf8)
+            guard let url = request.url,
+                  let response = HTTPURLResponse(
+                      url: url,
+                      statusCode: 400,
+                      httpVersion: nil,
+                      headerFields: nil
+                  )
+            else {
+                return (HTTPURLResponse(), Data())
+            }
+            return (response, data)
         }
 
+        guard let baseURL = URL(string: "http://127.0.0.1:3000") else {
+            XCTFail("Invalid base URL")
+            return
+        }
         let client = ApiClient(
-            baseURL: URL(string: "http://127.0.0.1:3000")!,
+            baseURL: baseURL,
             session: makeSession()
         )
 
@@ -81,11 +88,11 @@ private func makeSession() -> URLSession {
 final class TestURLProtocol: URLProtocol {
     static var requestHandler: ((URLRequest) -> (HTTPURLResponse, Data))?
 
-    override class func canInit(with request: URLRequest) -> Bool {
+    override static func canInit(with request: URLRequest) -> Bool {
         true
     }
 
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
 

@@ -7,8 +7,8 @@ struct ProjectScopeChipView: View {
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: onClear) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
+        Button(action: { onClear() }) {
+            HStack(spacing: DesignTokens.Spacing.extraSmall) {
                 Image(systemName: "folder")
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
                 Text(project)
@@ -18,14 +18,14 @@ struct ProjectScopeChipView: View {
                     .opacity(isHovered ? 1.0 : 0.6)
             }
             .foregroundColor(ThemeManager.current.teal)
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Spacing.xs)
+            .padding(.horizontal, DesignTokens.Spacing.small)
+            .padding(.vertical, DesignTokens.Spacing.extraSmall)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                     .fill(ThemeManager.current.teal.opacity(0.15))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                     .stroke(ThemeManager.current.teal.opacity(isHovered ? 0.8 : 0.4), lineWidth: 1)
             )
         }

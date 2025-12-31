@@ -7,20 +7,29 @@ final class ApiClient: ApiClientProtocol, Sendable {
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "api")
 
     /// Initialize the API client, optionally using BEE_API_BASE_URL.
+    private static var defaultBaseURL: URL {
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = "127.0.0.1"
+        components.port = 3000
+        guard let url = components.url else {
+            fatalError("Invalid default API URL")
+        }
+        return url
+    }
+
     init(
         baseURL: URL? = nil,
         session: URLSession = .shared,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
-        let defaultURL = URL(string: "http://127.0.0.1:3000")!
         if let baseURL {
             self.baseURL = baseURL
         } else if let env = environment["BEE_API_BASE_URL"],
-                  let url = URL(string: env)
-        {
+                  let url = URL(string: env) {
             self.baseURL = url
         } else {
-            self.baseURL = defaultURL
+            self.baseURL = Self.defaultBaseURL
         }
         self.session = session
     }
@@ -140,7 +149,12 @@ final class ApiClient: ApiClientProtocol, Sendable {
         path: String,
         queryItems: [URLQueryItem] = []
     ) async throws -> Response {
-        var urlComponents = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        guard var urlComponents = URLComponents(
+            url: baseURL.appendingPathComponent(path),
+            resolvingAgainstBaseURL: false
+        ) else {
+            throw ApiClientError.invalidResponse
+        }
         if !queryItems.isEmpty {
             urlComponents.queryItems = queryItems
         }
@@ -161,7 +175,12 @@ final class ApiClient: ApiClientProtocol, Sendable {
         path: String,
         queryItems: [URLQueryItem] = []
     ) async throws -> Response {
-        var urlComponents = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        guard var urlComponents = URLComponents(
+            url: baseURL.appendingPathComponent(path),
+            resolvingAgainstBaseURL: false
+        ) else {
+            throw ApiClientError.invalidResponse
+        }
         if !queryItems.isEmpty {
             urlComponents.queryItems = queryItems
         }
@@ -188,10 +207,9 @@ final class ApiClient: ApiClientProtocol, Sendable {
             let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
             logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
             if let payload {
-                logger
-                    .error(
-                        "API error code=\(payload.code, privacy: .public) detail=\(payload.developerMessage, privacy: .public)"
-                    )
+                let code = payload.code
+                let detail = payload.developerMessage
+                logger.error("API error code=\(code, privacy: .public) detail=\(detail, privacy: .public)")
             }
             throw ApiClientError.api(
                 message: message,

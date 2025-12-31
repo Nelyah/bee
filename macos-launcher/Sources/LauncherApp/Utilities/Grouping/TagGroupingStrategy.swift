@@ -21,8 +21,8 @@ struct TagGroupingStrategy: TaskGroupingStrategy {
         case (nil, nil): return 0
         case (nil, _): return 1
         case (_, nil): return -1
-        case let (l?, r?):
-            let result = l.localizedCaseInsensitiveCompare(r)
+        case let (lhsTag?, rhsTag?):
+            let result = lhsTag.localizedCaseInsensitiveCompare(rhsTag)
             switch result {
             case .orderedAscending: return -1
             case .orderedDescending: return 1

@@ -6,7 +6,7 @@ struct TaskRowAnnotationsPreview: View {
     var maxVisible: Int = 2
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.extraSmall) {
             // Section header
             Text("Annotations")
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
@@ -45,7 +45,7 @@ struct CompactAnnotationRow: View {
     let annotation: TaskAnnotationDto
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.small) {
             // Date column (fixed width)
             Text(formattedDate)
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .monospaced))

@@ -34,8 +34,8 @@ struct GroupHeaderRow: View {
                     .foregroundColor(ThemeManager.current.subtext0)
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.sm)
-        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.small)
+        .padding(.horizontal, DesignTokens.Spacing.medium)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(backgroundColor)

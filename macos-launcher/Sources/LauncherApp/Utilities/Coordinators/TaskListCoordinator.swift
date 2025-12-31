@@ -27,11 +27,11 @@ enum TaskListCoordinator {
     /// Compare two tasks by urgency (higher first, nil last), with UUID as tiebreaker.
     private static func compareByUrgency(_ lhs: ApiTask, _ rhs: ApiTask) -> Bool {
         switch (lhs.urgency, rhs.urgency) {
-        case let (l?, r?):
-            if l == r {
+        case let (lhsUrgency?, rhsUrgency?):
+            if lhsUrgency == rhsUrgency {
                 return lhs.uuid < rhs.uuid
             }
-            return l > r
+            return lhsUrgency > rhsUrgency
         case (_?, nil):
             return true
         case (nil, _?):
@@ -56,7 +56,7 @@ enum TaskListCoordinator {
     ) -> [GroupedListRow] {
         // If strategy doesn't show headers, return flat list sorted by urgency
         guard strategy.showsHeaders else {
-            return sortTasksByUrgency(tasks).enumerated().map { _, task in
+            return sortTasksByUrgency(tasks).map { task in
                 let flatIndex = tasks.firstIndex(where: { $0.uuid == task.uuid }) ?? 0
                 return .task(GroupedTask(task: task, flatIndex: flatIndex, groupKey: nil))
             }
@@ -88,9 +88,9 @@ enum TaskListCoordinator {
                 displayName: strategy.displayName(for: key),
                 isCollapsed: isCollapsed
             )))
-            if !isCollapsed {
+            if !isCollapsed, let groupTasks = groups[key] {
                 // Sort tasks within this group by urgency
-                let sortedGroupTasks = groups[key]!.sorted { lhs, rhs in
+                let sortedGroupTasks = groupTasks.sorted { lhs, rhs in
                     compareByUrgency(lhs.1, rhs.1)
                 }
                 for (flatIndex, task) in sortedGroupTasks {

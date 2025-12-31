@@ -34,7 +34,7 @@ struct CommandPaletteView: View {
                 }
 
                 // Search header
-                HStack(spacing: DesignTokens.Spacing.md) {
+                HStack(spacing: DesignTokens.Spacing.medium) {
                     Image(systemName: "magnifyingglass")
                         .frame(width: 16, height: 16)
                         .foregroundColor(ThemeManager.current.subtext0)
@@ -46,12 +46,12 @@ struct CommandPaletteView: View {
                             commandPalette.handleEnter()
                         }
                 }
-                .padding(DesignTokens.Spacing.md)
+                .padding(DesignTokens.Spacing.medium)
                 .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.large, style: .continuous)
                         .fill(ThemeManager.current.surface0)
                 )
-                .padding(DesignTokens.Spacing.lg)
+                .padding(DesignTokens.Spacing.large)
 
                 Divider()
                     .overlay(ThemeManager.current.surface1.opacity(0.6))
@@ -60,12 +60,12 @@ struct CommandPaletteView: View {
             }
             .frame(width: 520)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
                     .fill(ThemeManager.current.base)
                     .shadow(color: ThemeManager.current.surface2.opacity(0.4), radius: 18, x: 0, y: 10)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
                     .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
             )
         }
@@ -100,7 +100,7 @@ struct CommandPaletteView: View {
 
     @ViewBuilder
     private var breadcrumbBar: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
+        HStack(spacing: DesignTokens.Spacing.small) {
             Button {
                 commandPalette.navigateBack()
             } label: {
@@ -117,8 +117,8 @@ struct CommandPaletteView: View {
 
             Spacer()
         }
-        .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.vertical, DesignTokens.Spacing.sm)
+        .padding(.horizontal, DesignTokens.Spacing.large)
+        .padding(.vertical, DesignTokens.Spacing.small)
         .background(ThemeManager.current.surface0.opacity(0.5))
     }
 
@@ -150,7 +150,7 @@ struct CommandPaletteView: View {
                         sectionView(section)
                     }
                 }
-                .padding(DesignTokens.Spacing.lg)
+                .padding(DesignTokens.Spacing.large)
             }
             .frame(maxHeight: 300)
             .onChange(of: commandPalette.selectionIndex) { _, newIndex in
@@ -170,9 +170,9 @@ struct CommandPaletteView: View {
             Text(title.uppercased())
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.top, DesignTokens.Spacing.md)
-                .padding(.bottom, DesignTokens.Spacing.xs)
+                .padding(.horizontal, DesignTokens.Spacing.large)
+                .padding(.top, DesignTokens.Spacing.medium)
+                .padding(.bottom, DesignTokens.Spacing.extraSmall)
         }
 
         // Section items
@@ -235,14 +235,14 @@ struct CommandPaletteView: View {
                 Text(shortcut.keys)
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .monospaced))
                     .foregroundColor(ThemeManager.current.subtext0)
-                    .padding(.horizontal, DesignTokens.Spacing.sm)
-                    .padding(.vertical, DesignTokens.Spacing.xs)
+                    .padding(.horizontal, DesignTokens.Spacing.small)
+                    .padding(.vertical, DesignTokens.Spacing.extraSmall)
                     .background(ThemeManager.current.surface1)
-                    .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm))
+                    .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.sm)
-        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.Spacing.small)
+        .padding(.horizontal, DesignTokens.Spacing.large)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(selectionBackground(isSelected: isSelected))
     }
@@ -298,8 +298,8 @@ struct CommandPaletteView: View {
                     .foregroundColor(ThemeManager.current.subtext0)
                 Spacer()
             }
-            .padding(.vertical, DesignTokens.Spacing.sm)
-            .padding(.horizontal, DesignTokens.Spacing.lg)
+            .padding(.vertical, DesignTokens.Spacing.small)
+            .padding(.horizontal, DesignTokens.Spacing.large)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
@@ -316,13 +316,13 @@ struct CommandPaletteView: View {
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)
         }
-        .padding(DesignTokens.Spacing.xxl)
+        .padding(DesignTokens.Spacing.extraExtraLarge)
     }
 
     // MARK: - Helpers
 
     private func selectionBackground(isSelected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+        RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
             .fill(isSelected ? ThemeManager.current.surface1 : ThemeManager.current.base)
     }
 
@@ -335,10 +335,10 @@ struct CommandPaletteView: View {
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             if modifiers.contains(.control) {
                 switch event.keyCode {
-                case KeyCode.n:
+                case KeyCode.keyN:
                     commandPalette.moveSelection(delta: 1)
                     return nil
-                case KeyCode.p:
+                case KeyCode.keyP:
                     commandPalette.moveSelection(delta: -1)
                     return nil
                 default:

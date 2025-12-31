@@ -6,14 +6,14 @@ struct BottomHintBar: View {
     static let height: CGFloat = 34
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
+        HStack(spacing: DesignTokens.Spacing.small) {
+            HStack(spacing: DesignTokens.Spacing.small) {
                 ForEach(leftHints) { hint in
                     HintChip(hint: hint)
                 }
             }
-            Spacer(minLength: DesignTokens.Spacing.lg)
-            HStack(spacing: DesignTokens.Spacing.sm) {
+            Spacer(minLength: DesignTokens.Spacing.large)
+            HStack(spacing: DesignTokens.Spacing.small) {
                 ForEach(rightHints) { hint in
                     HintChip(hint: hint)
                 }
@@ -22,17 +22,17 @@ struct BottomHintBar: View {
         .frame(maxWidth: .infinity)
         .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
         .foregroundColor(ThemeManager.current.subtext0)
-        .padding(.horizontal, DesignTokens.Spacing.xl)
-        .padding(.vertical, DesignTokens.Spacing.sm)
+        .padding(.horizontal, DesignTokens.Spacing.extraLarge)
+        .padding(.vertical, DesignTokens.Spacing.small)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                         .fill(ThemeManager.current.surface0.opacity(0.7))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                         .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
                 )
         )
@@ -43,18 +43,18 @@ private struct HintChip: View {
     let hint: BottomHint
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
+        HStack(spacing: DesignTokens.Spacing.extraSmall) {
             Text(hint.key)
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                         .fill(ThemeManager.current.surface1)
                 )
             Text(hint.label)
         }
-        .padding(.trailing, DesignTokens.Spacing.xs)
+        .padding(.trailing, DesignTokens.Spacing.extraSmall)
     }
 }
 

@@ -1,28 +1,28 @@
 import SwiftUI
 
 private enum TaskListLayout {
-    static let searchSpacing: CGFloat = DesignTokens.Spacing.md
-    static let searchRowSpacing: CGFloat = DesignTokens.Spacing.md
+    static let searchSpacing: CGFloat = DesignTokens.Spacing.medium
+    static let searchRowSpacing: CGFloat = DesignTokens.Spacing.medium
     static let inputHeight: CGFloat = 30
-    static let horizontalPadding: CGFloat = DesignTokens.Spacing.lg
-    static let verticalPadding: CGFloat = DesignTokens.Spacing.md
-    static let cornerRadius: CGFloat = DesignTokens.Radius.lg
+    static let horizontalPadding: CGFloat = DesignTokens.Spacing.large
+    static let verticalPadding: CGFloat = DesignTokens.Spacing.medium
+    static let cornerRadius: CGFloat = DesignTokens.Radius.large
     static let strokeOpacity: Double = 0.5
-    static let criteriaTopPadding: CGFloat = DesignTokens.Spacing.xs
-    static let criteriaBottomPadding: CGFloat = DesignTokens.Spacing.sm
-    static let headerSpacing: CGFloat = DesignTokens.Spacing.md
+    static let criteriaTopPadding: CGFloat = DesignTokens.Spacing.extraSmall
+    static let criteriaBottomPadding: CGFloat = DesignTokens.Spacing.small
+    static let headerSpacing: CGFloat = DesignTokens.Spacing.medium
     static let statusColumnWidth: CGFloat = 8
     static let firstColumnWidth: CGFloat = 30
     static let otherColumnWidth: CGFloat = 60
     static let headerFontSize: CGFloat = DesignTokens.TypeScale.caption
-    static let headerPaddingHorizontal: CGFloat = DesignTokens.Spacing.md
-    static let listSpacing: CGFloat = DesignTokens.Spacing.sm
-    static let listVerticalPadding: CGFloat = DesignTokens.Spacing.xs
+    static let headerPaddingHorizontal: CGFloat = DesignTokens.Spacing.medium
+    static let listSpacing: CGFloat = DesignTokens.Spacing.small
+    static let listVerticalPadding: CGFloat = DesignTokens.Spacing.extraSmall
     static let statusFontSize: CGFloat = DesignTokens.TypeScale.bodySm
     static let completionMenuWidth: CGFloat = 200
     static let completionMenuOffsetX: CGFloat = 34
     static let completionMenuOffsetY: CGFloat = 50
-    static let previewPadding: CGFloat = DesignTokens.Spacing.xl
+    static let previewPadding: CGFloat = DesignTokens.Spacing.extraLarge
     static let previewWidth: CGFloat = 600
     static let previewHeight: CGFloat = 400
 }
@@ -218,7 +218,7 @@ struct TaskListView: View {
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         // Reserve space for BottomHintBar overlay so scrollTo respects it
-                        Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.lg)
+                        Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.large)
                     }
                     .onChange(of: viewModel.selectedRowIndex) { _, newValue in
                         guard let index = newValue,

@@ -44,59 +44,47 @@ enum CompletionEngine {
         let beforeCursor = String(input.prefix(pos))
         let lastWord = lastWordBeforeCursor(beforeCursor)
 
-        if let lastToken = tokens.last(where: { $0.end <= pos }) {
-            let tokenType = lastToken.tokenType
-            if TokenClassifier.isTagPrefix(tokenType) {
-                return .tag
-            }
-            if TokenClassifier.isProjectPrefix(tokenType) {
-                return .project
-            }
-            if TokenClassifier.isStatusFilter(tokenType) {
-                return .status
-            }
-            if TokenClassifier.isDateFilter(tokenType) {
-                return .date
-            }
-            if TokenClassifier.isDependency(tokenType) {
-                return .taskRef
-            }
+        if let context = contextFromToken(at: pos, in: tokens) {
+            return context
         }
-
-        if hasSuffix(beforeCursor, in: tagSuffixes) {
-            return .tag
+        if let context = contextFromSuffix(beforeCursor) {
+            return context
         }
-        if hasSuffix(beforeCursor, in: projectPrefixes) {
-            return .project
+        if let context = contextFromPrefix(lastWord) {
+            return context
         }
-        if hasSuffix(beforeCursor, in: statusPrefixes) {
-            return .status
-        }
-        if hasSuffix(beforeCursor, in: datePrefixes) {
-            return .date
-        }
-        if hasSuffix(beforeCursor, in: dependencyPrefixes) {
-            return .taskRef
-        }
-
-        if hasPrefix(lastWord, in: projectPrefixes) {
-            return .project
-        }
-        if hasPrefix(lastWord, in: statusPrefixes) {
-            return .status
-        }
-        if hasPrefix(lastWord, in: datePrefixes) {
-            return .date
-        }
-        if hasPrefix(lastWord, in: dependencyPrefixes) {
-            return .taskRef
-        }
-
         if !lastWord.isEmpty, !lastWord.contains(":") {
             return .action
         }
-
         return .none
+    }
+
+    private static func contextFromToken(at pos: Int, in tokens: [TokenSpan]) -> CompletionContext? {
+        guard let lastToken = tokens.last(where: { $0.end <= pos }) else { return nil }
+        let tokenType = lastToken.tokenType
+        if TokenClassifier.isTagPrefix(tokenType) { return .tag }
+        if TokenClassifier.isProjectPrefix(tokenType) { return .project }
+        if TokenClassifier.isStatusFilter(tokenType) { return .status }
+        if TokenClassifier.isDateFilter(tokenType) { return .date }
+        if TokenClassifier.isDependency(tokenType) { return .taskRef }
+        return nil
+    }
+
+    private static func contextFromSuffix(_ text: String) -> CompletionContext? {
+        if hasSuffix(text, in: tagSuffixes) { return .tag }
+        if hasSuffix(text, in: projectPrefixes) { return .project }
+        if hasSuffix(text, in: statusPrefixes) { return .status }
+        if hasSuffix(text, in: datePrefixes) { return .date }
+        if hasSuffix(text, in: dependencyPrefixes) { return .taskRef }
+        return nil
+    }
+
+    private static func contextFromPrefix(_ word: String) -> CompletionContext? {
+        if hasPrefix(word, in: projectPrefixes) { return .project }
+        if hasPrefix(word, in: statusPrefixes) { return .status }
+        if hasPrefix(word, in: datePrefixes) { return .date }
+        if hasPrefix(word, in: dependencyPrefixes) { return .taskRef }
+        return nil
     }
 
     private static func hasSuffix(_ text: String, in candidates: [String]) -> Bool {
@@ -121,12 +109,12 @@ enum CompletionEngine {
         let beforeCursor = String(input.prefix(pos))
 
         var wordStart = beforeCursor.count
-        for (i, char) in beforeCursor.enumerated().reversed() {
+        for (index, char) in beforeCursor.enumerated().reversed() {
             if char == " " || char == ":" || char == "+" || char == "-" {
-                wordStart = i + 1
+                wordStart = index + 1
                 break
             }
-            if i == 0 {
+            if index == 0 {
                 wordStart = 0
             }
         }

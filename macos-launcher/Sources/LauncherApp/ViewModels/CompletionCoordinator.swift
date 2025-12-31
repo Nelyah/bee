@@ -1,5 +1,11 @@
 import Foundation
 
+struct CacheCounts {
+    let projects: Int
+    let tags: Int
+    let actions: Int
+}
+
 @MainActor
 final class CompletionCoordinator: ObservableObject {
     @Published var items: [CompletionItem] = []
@@ -12,8 +18,8 @@ final class CompletionCoordinator: ObservableObject {
     private var cache = CompletionCache()
     private var isLoaded = false
 
-    var cacheCounts: (projects: Int, tags: Int, actions: Int) {
-        (projects: cache.projects.count, tags: cache.tags.count, actions: cache.actions.count)
+    var cacheCounts: CacheCounts {
+        CacheCounts(projects: cache.projects.count, tags: cache.tags.count, actions: cache.actions.count)
     }
 
     /// Project names from completion cache.

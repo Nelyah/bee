@@ -139,16 +139,16 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
         suggestions: [GitlabMergeRequestSuggestion],
         taskUUID: String
     ) -> [CommandPaletteItem] {
-        suggestions.map { mr in
+        suggestions.map { mergeRequest in
             .suggestion(
                 CommandPaletteSuggestionItem(
-                    id: "gitlab-\(mr.id)",
-                    title: mr.title,
-                    subtitle: "MR !\(mr.id) • \(mr.projectPath)",
+                    id: "gitlab-\(mergeRequest.id)",
+                    title: mergeRequest.title,
+                    subtitle: "MR !\(mergeRequest.id) • \(mergeRequest.projectPath)",
                     icon: .gitlab,
-                    metadata: .gitlab(mr),
+                    metadata: .gitlab(mergeRequest),
                     handler: { [weak self] in
-                        self?.handleGitlabSelection(mr: mr, taskUUID: taskUUID)
+                        self?.handleGitlabSelection(mergeRequest: mergeRequest, taskUUID: taskUUID)
                     }
                 )
             )
@@ -175,14 +175,14 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
         }
     }
 
-    private func handleGitlabSelection(mr: GitlabMergeRequestSuggestion, taskUUID: String) {
+    private func handleGitlabSelection(mergeRequest: GitlabMergeRequestSuggestion, taskUUID: String) {
         guard let viewModel else { return }
 
         Task {
             do {
                 _ = try await apiClient.addExternalLink(
                     taskUUID: taskUUID,
-                    url: mr.webURL
+                    url: mergeRequest.webURL
                 )
                 viewModel.showToast(message: "GitLab link added")
                 viewModel.loadExternalLinks(taskUUID: taskUUID)

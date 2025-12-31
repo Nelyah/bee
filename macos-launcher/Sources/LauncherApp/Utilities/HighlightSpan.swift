@@ -28,130 +28,83 @@ func buildHighlightSpans(tokens: [TokenSpan], actionName: String) -> [HighlightS
 
     while index < tokens.count {
         let token = tokens[index]
-        let tokenType = token.tokenType
-
-        // Tags: +tag or -tag (prefix + following WordStrings)
-        if TokenClassifier.isTagPrefix(tokenType) {
-            let start = token.start
-            var end = token.end
-            var nextIndex = index + 1
-            while nextIndex < tokens.count,
-                  tokens[nextIndex].tokenType == .wordString,
-                  tokens[nextIndex].start == end
-            {
-                end = tokens[nextIndex].end
-                nextIndex += 1
-            }
-            if end > start {
-                spans.append(HighlightSpan(start: start, end: end, kind: .tag))
-            }
-            index = nextIndex
-            continue
+        let result = processToken(token, at: index, in: tokens, lowerAction: lowerAction)
+        if let span = result.span {
+            spans.append(span)
         }
-
-        // Projects: project:value or proj:value
-        if TokenClassifier.isProjectPrefix(tokenType) {
-            let start = token.start
-            var end = token.end
-            var nextIndex = index + 1
-            while nextIndex < tokens.count,
-                  tokens[nextIndex].tokenType == .wordString,
-                  tokens[nextIndex].start == end
-            {
-                end = tokens[nextIndex].end
-                nextIndex += 1
-            }
-            if end > start {
-                spans.append(HighlightSpan(start: start, end: end, kind: .project))
-            }
-            index = nextIndex
-            continue
-        }
-
-        // Date filters: due:, due.before:, due.after:, created.*, end.*
-        if TokenClassifier.isDateFilter(tokenType) {
-            let start = token.start
-            var end = token.end
-            var nextIndex = index + 1
-            // Include following value tokens
-            while nextIndex < tokens.count,
-                  tokens[nextIndex].start == end,
-                  tokens[nextIndex].tokenType != .blank
-            {
-                end = tokens[nextIndex].end
-                nextIndex += 1
-            }
-            spans.append(HighlightSpan(start: start, end: end, kind: .dateFilter))
-            index = nextIndex
-            continue
-        }
-
-        // Status filter: status:value
-        if TokenClassifier.isStatusFilter(tokenType) {
-            let start = token.start
-            var end = token.end
-            var nextIndex = index + 1
-            while nextIndex < tokens.count,
-                  tokens[nextIndex].start == end,
-                  tokens[nextIndex].tokenType == .wordString
-            {
-                end = tokens[nextIndex].end
-                nextIndex += 1
-            }
-            spans.append(HighlightSpan(start: start, end: end, kind: .status))
-            index = nextIndex
-            continue
-        }
-
-        // Dependencies: depends:uuid
-        if TokenClassifier.isDependency(tokenType) {
-            let start = token.start
-            var end = token.end
-            var nextIndex = index + 1
-            while nextIndex < tokens.count,
-                  tokens[nextIndex].start == end,
-                  tokens[nextIndex].tokenType != .blank
-            {
-                end = tokens[nextIndex].end
-                nextIndex += 1
-            }
-            spans.append(HighlightSpan(start: start, end: end, kind: .dependency))
-            index = nextIndex
-            continue
-        }
-
-        // Logical operators: and, or, xor
-        if TokenClassifier.isLogicalOperator(tokenType) {
-            spans.append(HighlightSpan(start: token.start, end: token.end, kind: .logicalOp))
-            index += 1
-            continue
-        }
-
-        // Parentheses
-        if TokenClassifier.isParenthesis(tokenType) {
-            spans.append(HighlightSpan(start: token.start, end: token.end, kind: .parenthesis))
-            index += 1
-            continue
-        }
-
-        // Identifiers: UUID and Int
-        if TokenClassifier.isIdentifier(tokenType) {
-            spans.append(HighlightSpan(start: token.start, end: token.end, kind: .identifier))
-            index += 1
-            continue
-        }
-
-        // Action name match
-        if tokenType == .wordString,
-           !lowerAction.isEmpty,
-           token.literal.lowercased() == lowerAction
-        {
-            spans.append(HighlightSpan(start: token.start, end: token.end, kind: .action))
-        }
-
-        index += 1
+        index = result.nextIndex
     }
     return spans
+}
+
+private func processToken(
+    _ token: TokenSpan,
+    at index: Int,
+    in tokens: [TokenSpan],
+    lowerAction: String
+) -> (span: HighlightSpan?, nextIndex: Int) {
+    let tokenType = token.tokenType
+
+    // Prefix-based tokens that collect following WordStrings
+    if let kind = prefixTokenKind(tokenType) {
+        let (end, nextIndex) = collectContiguousTokens(from: index, in: tokens, matching: { $0 == .wordString })
+        let span = end > token.start ? HighlightSpan(start: token.start, end: end, kind: kind) : nil
+        return (span, nextIndex)
+    }
+
+    // Date/dependency filters that collect any non-blank tokens
+    if let kind = filterTokenKind(tokenType) {
+        let (end, nextIndex) = collectContiguousTokens(from: index, in: tokens, matching: { $0 != .blank })
+        return (HighlightSpan(start: token.start, end: end, kind: kind), nextIndex)
+    }
+
+    // Single-token highlights
+    if let kind = simpleTokenKind(tokenType) {
+        return (HighlightSpan(start: token.start, end: token.end, kind: kind), index + 1)
+    }
+
+    // Action name match
+    if tokenType == .wordString, !lowerAction.isEmpty, token.literal.lowercased() == lowerAction {
+        return (HighlightSpan(start: token.start, end: token.end, kind: .action), index + 1)
+    }
+
+    return (nil, index + 1)
+}
+
+private func prefixTokenKind(_ tokenType: TokenType) -> HighlightKind? {
+    if TokenClassifier.isTagPrefix(tokenType) { return .tag }
+    if TokenClassifier.isProjectPrefix(tokenType) { return .project }
+    if TokenClassifier.isStatusFilter(tokenType) { return .status }
+    return nil
+}
+
+private func filterTokenKind(_ tokenType: TokenType) -> HighlightKind? {
+    if TokenClassifier.isDateFilter(tokenType) { return .dateFilter }
+    if TokenClassifier.isDependency(tokenType) { return .dependency }
+    return nil
+}
+
+private func simpleTokenKind(_ tokenType: TokenType) -> HighlightKind? {
+    if TokenClassifier.isLogicalOperator(tokenType) { return .logicalOp }
+    if TokenClassifier.isParenthesis(tokenType) { return .parenthesis }
+    if TokenClassifier.isIdentifier(tokenType) { return .identifier }
+    return nil
+}
+
+private func collectContiguousTokens(
+    from index: Int,
+    in tokens: [TokenSpan],
+    matching predicate: (TokenType) -> Bool
+) -> (end: Int, nextIndex: Int) {
+    var end = tokens[index].end
+    var nextIndex = index + 1
+    while nextIndex < tokens.count,
+          predicate(tokens[nextIndex].tokenType),
+          tokens[nextIndex].start == end {
+        end = tokens[nextIndex].end
+        nextIndex += 1
+    }
+    return (end, nextIndex)
 }
 
 /// Map highlight kinds to One Dark colors.

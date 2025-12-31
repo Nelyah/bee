@@ -26,279 +26,154 @@ enum CriteriaChipBuilder {
         var index = 0
 
         while index < tokens.count {
-            let token = tokens[index]
-            let tokenType = token.tokenType
-
-            if TokenClassifier.isTagPrefix(tokenType) {
-                var end = token.end
-                var nextIndex = index + 1
-                var tagValue = ""
-
-                while nextIndex < tokens.count,
-                      tokens[nextIndex].tokenType == .wordString,
-                      tokens[nextIndex].start == end
-                {
-                    tagValue += tokens[nextIndex].literal
-                    end = tokens[nextIndex].end
-                    nextIndex += 1
-                }
-
-                if !tagValue.isEmpty {
-                    let prefix = tokenType == .tagMinusPrefix ? "-" : "+"
-                    let icon = tokenType == .tagMinusPrefix ? "tag.slash" : "tag"
-                    chips.append(CriteriaChip(
-                        kind: .filter,
-                        label: "Tag \(prefix)\(tagValue)",
-                        systemImage: icon,
-                        tone: .peach
-                    ))
-                }
-
-                index = nextIndex
-                continue
-            }
-
-            if TokenClassifier.isProjectPrefix(tokenType) {
-                var end = token.end
-                var nextIndex = index + 1
-                var projectValue = ""
-
-                while nextIndex < tokens.count,
-                      tokens[nextIndex].tokenType == .wordString,
-                      tokens[nextIndex].start == end
-                {
-                    projectValue += tokens[nextIndex].literal
-                    end = tokens[nextIndex].end
-                    nextIndex += 1
-                }
-
-                if !projectValue.isEmpty {
-                    chips.append(CriteriaChip(
-                        kind: .filter,
-                        label: "Project: \(projectValue)",
-                        systemImage: "folder",
-                        tone: .mauve
-                    ))
-                }
-
-                index = nextIndex
-                continue
-            }
-
-            if TokenClassifier.isDateFilter(tokenType) {
-                var end = token.end
-                var nextIndex = index + 1
-                var value = ""
-
-                while nextIndex < tokens.count,
-                      tokens[nextIndex].start == end,
-                      tokens[nextIndex].tokenType != .blank
-                {
-                    value += tokens[nextIndex].literal
-                    end = tokens[nextIndex].end
-                    nextIndex += 1
-                }
-
-                let labelPrefix = dateLabelPrefix(for: tokenType)
-                let label = value.isEmpty ? labelPrefix : "\(labelPrefix): \(value)"
-                chips.append(CriteriaChip(kind: .filter, label: label, systemImage: "calendar", tone: .teal))
-                index = nextIndex
-                continue
-            }
-
-            if TokenClassifier.isStatusFilter(tokenType) {
-                var end = token.end
-                var nextIndex = index + 1
-                var value = ""
-
-                while nextIndex < tokens.count,
-                      tokens[nextIndex].start == end,
-                      tokens[nextIndex].tokenType == .wordString
-                {
-                    value += tokens[nextIndex].literal
-                    end = tokens[nextIndex].end
-                    nextIndex += 1
-                }
-
-                let label = value.isEmpty ? "Status" : "Status: \(value)"
-                chips.append(CriteriaChip(kind: .filter, label: label, systemImage: "circle.fill", tone: .pink))
-                index = nextIndex
-                continue
-            }
-
-            if TokenClassifier.isDependency(tokenType) {
-                var end = token.end
-                var nextIndex = index + 1
-                var value = ""
-
-                while nextIndex < tokens.count,
-                      tokens[nextIndex].start == end,
-                      tokens[nextIndex].tokenType != .blank
-                {
-                    value += tokens[nextIndex].literal
-                    end = tokens[nextIndex].end
-                    nextIndex += 1
-                }
-
-                let label = value.isEmpty ? "Depends on" : "Depends: \(truncate(value, limit: 10))"
-                chips.append(CriteriaChip(kind: .filter, label: label, systemImage: "link", tone: .lavender))
-                index = nextIndex
-                continue
-            }
-
-            if TokenClassifier.isIdentifier(tokenType) {
-                let labelPrefix = tokenType == .uuid ? "UUID" : "ID"
-                chips.append(CriteriaChip(
-                    kind: .filter,
-                    label: "\(labelPrefix): \(truncate(token.literal, limit: 10))",
-                    systemImage: "number",
-                    tone: .rosewater
-                ))
-                index += 1
-                continue
-            }
-
-            if tokenType == .wordString {
-                if !lowerAction.isEmpty, token.literal.lowercased() == lowerAction {
-                    index += 1
-                    continue
-                }
-                chips.append(CriteriaChip(
-                    kind: .filter,
-                    label: "Text: \(truncate(token.literal))",
-                    systemImage: "text.magnifyingglass",
-                    tone: .blue
-                ))
-                index += 1
-                continue
-            }
-
-            index += 1
+            let result = processTokenChip(tokens[index], at: index, in: tokens, lowerAction: lowerAction)
+            if let chip = result.chip { chips.append(chip) }
+            index = result.nextIndex
         }
-
         return chips
     }
 
+    private static func processTokenChip(
+        _ token: TokenSpan, at index: Int, in tokens: [TokenSpan], lowerAction: String
+    ) -> (chip: CriteriaChip?, nextIndex: Int) {
+        let tokenType = token.tokenType
+
+        if TokenClassifier.isTagPrefix(tokenType) {
+            let (value, nextIndex) = collectLiterals(from: index, in: tokens, matching: { $0 == .wordString })
+            let chip = value.isEmpty ? nil : CriteriaChip(
+                kind: .filter,
+                label: "Tag \(tokenType == .tagMinusPrefix ? "-" : "+")\(value)",
+                systemImage: tokenType == .tagMinusPrefix ? "tag.slash" : "tag",
+                tone: .peach
+            )
+            return (chip, nextIndex)
+        }
+        if TokenClassifier.isProjectPrefix(tokenType) {
+            let (value, nextIndex) = collectLiterals(from: index, in: tokens, matching: { $0 == .wordString })
+            let chip = value.isEmpty ? nil : CriteriaChip(
+                kind: .filter, label: "Project: \(value)", systemImage: "folder", tone: .mauve
+            )
+            return (chip, nextIndex)
+        }
+        if TokenClassifier.isDateFilter(tokenType) {
+            let (value, nextIndex) = collectLiterals(from: index, in: tokens, matching: { $0 != .blank })
+            let labelPrefix = dateLabelPrefix(for: tokenType)
+            let label = value.isEmpty ? labelPrefix : "\(labelPrefix): \(value)"
+            return (CriteriaChip(kind: .filter, label: label, systemImage: "calendar", tone: .teal), nextIndex)
+        }
+        if TokenClassifier.isStatusFilter(tokenType) {
+            let (value, nextIndex) = collectLiterals(from: index, in: tokens, matching: { $0 == .wordString })
+            let label = value.isEmpty ? "Status" : "Status: \(value)"
+            return (CriteriaChip(kind: .filter, label: label, systemImage: "circle.fill", tone: .pink), nextIndex)
+        }
+        if TokenClassifier.isDependency(tokenType) {
+            let (value, nextIndex) = collectLiterals(from: index, in: tokens, matching: { $0 != .blank })
+            let label = value.isEmpty ? "Depends on" : "Depends: \(truncate(value, limit: 10))"
+            return (CriteriaChip(kind: .filter, label: label, systemImage: "link", tone: .lavender), nextIndex)
+        }
+        if TokenClassifier.isIdentifier(tokenType) {
+            let labelPrefix = tokenType == .uuid ? "UUID" : "ID"
+            return (CriteriaChip(
+                kind: .filter, label: "\(labelPrefix): \(truncate(token.literal, limit: 10))",
+                systemImage: "number", tone: .rosewater
+            ), index + 1)
+        }
+        if tokenType == .wordString {
+            if !lowerAction.isEmpty, token.literal.lowercased() == lowerAction { return (nil, index + 1) }
+            return (CriteriaChip(
+                kind: .filter, label: "Text: \(truncate(token.literal))",
+                systemImage: "text.magnifyingglass", tone: .blue
+            ), index + 1)
+        }
+        return (nil, index + 1)
+    }
+
+    private static func collectLiterals(
+        from index: Int, in tokens: [TokenSpan], matching predicate: (TokenType) -> Bool
+    ) -> (value: String, nextIndex: Int) {
+        var end = tokens[index].end
+        var nextIndex = index + 1
+        var value = ""
+        while nextIndex < tokens.count,
+              predicate(tokens[nextIndex].tokenType),
+              tokens[nextIndex].start == end {
+            value += tokens[nextIndex].literal
+            end = tokens[nextIndex].end
+            nextIndex += 1
+        }
+        return (value, nextIndex)
+    }
+
     static func propertyChips(from value: JSONValue?) -> [CriteriaChip] {
-        guard let value,
-              case let .object(obj) = value
-        else {
-            return []
-        }
+        guard let value, case let .object(obj) = value else { return [] }
+        return propertyTextChips(from: obj) +
+            propertyTagChips(from: obj) +
+            propertyRelationChips(from: obj)
+    }
+
+    private static func propertyTextChips(from obj: [String: JSONValue]) -> [CriteriaChip] {
         var chips: [CriteriaChip] = []
-
         if let summary = obj["summary"]?.stringValue, !summary.isEmpty {
-            chips.append(CriteriaChip(
-                kind: .property,
-                label: "Summary: \(truncate(summary))",
-                systemImage: "text.alignleft",
-                tone: .blue
-            ))
+            chips.append(CriteriaChip(kind: .property, label: "Summary: \(truncate(summary))",
+                                      systemImage: "text.alignleft", tone: .blue))
         }
-
-        if let tagsAdd = obj["tags_add"]?.stringArray {
-            for tag in tagsAdd {
-                chips.append(CriteriaChip(kind: .property, label: "Tag +\(tag)", systemImage: "tag", tone: .peach))
-            }
-        }
-
-        if let tagsRemove = obj["tags_remove"]?.stringArray {
-            for tag in tagsRemove {
-                chips.append(CriteriaChip(
-                    kind: .property,
-                    label: "Tag -\(tag)",
-                    systemImage: "tag.slash",
-                    tone: .peach
-                ))
-            }
-        }
-
         if let status = obj["status"]?.stringValue, !status.isEmpty {
-            chips.append(CriteriaChip(
-                kind: .property,
-                label: "Status: \(status)",
-                systemImage: "circle.fill",
-                tone: .pink
-            ))
+            chips.append(CriteriaChip(kind: .property, label: "Status: \(status)",
+                                      systemImage: "circle.fill", tone: .pink))
         }
-
         if let annotation = obj["annotation"]?.stringValue, !annotation.isEmpty {
-            chips.append(CriteriaChip(
-                kind: .property,
-                label: "Note: \(truncate(annotation))",
-                systemImage: "note.text",
-                tone: .yellow
-            ))
+            chips.append(CriteriaChip(kind: .property, label: "Note: \(truncate(annotation))",
+                                      systemImage: "note.text", tone: .yellow))
         }
-
-        if let annotations = obj["annotations"]?.arrayValue {
-            let count = annotations.count
-            if count > 0 {
-                chips.append(CriteriaChip(
-                    kind: .property,
-                    label: "Annotations: \(count)",
-                    systemImage: "note.text",
-                    tone: .yellow
-                ))
-            }
+        if let annotations = obj["annotations"]?.arrayValue, annotations.count > 0 {
+            chips.append(CriteriaChip(kind: .property, label: "Annotations: \(annotations.count)",
+                                      systemImage: "note.text", tone: .yellow))
         }
-
         if let active = obj["active_status"]?.boolValue {
-            chips.append(CriteriaChip(
-                kind: .property,
-                label: "Active: \(active ? "true" : "false")",
-                systemImage: "bolt.fill",
-                tone: .green
-            ))
+            chips.append(CriteriaChip(kind: .property, label: "Active: \(active ? "true" : "false")",
+                                      systemImage: "bolt.fill", tone: .green))
         }
-
-        if let projectValue = obj["project"] {
-            let label = switch projectValue {
-            case let .string(name):
-                if name.lowercased() == "none" {
-                    "Project: none"
-                } else {
-                    "Project: \(name)"
-                }
-            case let .object(projectObj):
-                "Project: \(projectObj["name"]?.stringValue ?? "unknown")"
-            case .null:
-                ""
-            default:
-                ""
-            }
-            if !label.isEmpty {
-                chips.append(CriteriaChip(kind: .property, label: label, systemImage: "folder", tone: .mauve))
-            }
-        }
-
         if let due = obj["date_due"]?.stringValue, !due.isEmpty {
-            chips.append(CriteriaChip(
-                kind: .property,
-                label: "Due: \(formatDate(due))",
-                systemImage: "calendar",
-                tone: .teal
-            ))
+            chips.append(CriteriaChip(kind: .property, label: "Due: \(formatDate(due))",
+                                      systemImage: "calendar", tone: .teal))
         }
+        return chips
+    }
 
+    private static func propertyTagChips(from obj: [String: JSONValue]) -> [CriteriaChip] {
+        var chips: [CriteriaChip] = []
+        if let tagsAdd = obj["tags_add"]?.stringArray {
+            chips += tagsAdd.map { CriteriaChip(kind: .property, label: "Tag +\($0)", systemImage: "tag", tone: .peach) }
+        }
+        if let tagsRemove = obj["tags_remove"]?.stringArray {
+            chips += tagsRemove.map { CriteriaChip(kind: .property, label: "Tag -\($0)",
+                                                   systemImage: "tag.slash", tone: .peach) }
+        }
+        if let projectValue = obj["project"], let label = projectLabel(from: projectValue), !label.isEmpty {
+            chips.append(CriteriaChip(kind: .property, label: label, systemImage: "folder", tone: .mauve))
+        }
+        return chips
+    }
+
+    private static func projectLabel(from value: JSONValue) -> String? {
+        switch value {
+        case let .string(name): return name.lowercased() == "none" ? "Project: none" : "Project: \(name)"
+        case let .object(obj): return "Project: \(obj["name"]?.stringValue ?? "unknown")"
+        case .null: return nil
+        default: return nil
+        }
+    }
+
+    private static func propertyRelationChips(from obj: [String: JSONValue]) -> [CriteriaChip] {
+        var chips: [CriteriaChip] = []
         if let depends = obj["depends_on"]?.arrayValue, !depends.isEmpty {
-            chips.append(CriteriaChip(
-                kind: .property,
-                label: "Depends on: \(depends.count)",
-                systemImage: "link",
-                tone: .lavender
-            ))
+            chips.append(CriteriaChip(kind: .property, label: "Depends on: \(depends.count)",
+                                      systemImage: "link", tone: .lavender))
         }
-
         if let blocks = obj["blocks"]?.arrayValue, !blocks.isEmpty {
-            chips.append(CriteriaChip(
-                kind: .property,
-                label: "Blocks: \(blocks.count)",
-                systemImage: "arrow.triangle.branch",
-                tone: .lavender
-            ))
+            chips.append(CriteriaChip(kind: .property, label: "Blocks: \(blocks.count)",
+                                      systemImage: "arrow.triangle.branch", tone: .lavender))
         }
-
         return chips
     }
 

@@ -2,19 +2,19 @@ import SwiftUI
 
 enum DesignTokens {
     enum Spacing {
-        static let xs: CGFloat = 4
-        static let sm: CGFloat = 8
-        static let md: CGFloat = 12
-        static let lg: CGFloat = 16
-        static let xl: CGFloat = 20
-        static let xxl: CGFloat = 24
+        static let extraSmall: CGFloat = 4
+        static let small: CGFloat = 8
+        static let medium: CGFloat = 12
+        static let large: CGFloat = 16
+        static let extraLarge: CGFloat = 20
+        static let extraExtraLarge: CGFloat = 24
     }
 
     enum Radius {
-        static let sm: CGFloat = 6
-        static let md: CGFloat = 10
-        static let lg: CGFloat = 12
-        static let xl: CGFloat = 16
+        static let small: CGFloat = 6
+        static let medium: CGFloat = 10
+        static let large: CGFloat = 12
+        static let extraLarge: CGFloat = 16
     }
 
     enum TypeScale {

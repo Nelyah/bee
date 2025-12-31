@@ -12,14 +12,14 @@ struct ToastView: View {
                 .foregroundStyle(ThemeManager.current.text)
                 .multilineTextAlignment(.leading)
         }
-        .padding(.vertical, DesignTokens.Spacing.md)
-        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.Spacing.medium)
+        .padding(.horizontal, DesignTokens.Spacing.large)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(ThemeManager.current.surface0.opacity(0.95))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .stroke(ThemeManager.current.surface2.opacity(0.6), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 4)

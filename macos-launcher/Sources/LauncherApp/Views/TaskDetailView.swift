@@ -12,7 +12,7 @@ struct TaskDetailView: View {
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                     header
 
                     if isSingleColumn(for: proxy.size.width) {
@@ -34,7 +34,7 @@ struct TaskDetailView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
             // Back button
             HStack {
                 Button {
@@ -62,10 +62,10 @@ struct TaskDetailView: View {
                 Text(task.status.uppercased())
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
                     .foregroundColor(ThemeManager.current.text)
-                    .padding(.horizontal, DesignTokens.Spacing.md)
-                    .padding(.vertical, DesignTokens.Spacing.xs)
+                    .padding(.horizontal, DesignTokens.Spacing.medium)
+                    .padding(.vertical, DesignTokens.Spacing.extraSmall)
                     .background(
-                        RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                             .fill(ThemeManager.current.surface1)
                     )
             }
@@ -119,7 +119,7 @@ struct TaskDetailView: View {
     }
 
     private var metadataColumn: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
             DetailSection(title: "Overview") {
                 DetailRow(label: "UUID", value: shortUUID(task.uuid), helpText: task.uuid)
                 DetailRow(label: "Project", value: task.project ?? "None", helpText: nil)
@@ -170,7 +170,7 @@ struct TaskDetailView: View {
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
                     .foregroundColor(ThemeManager.current.subtext0)
             } else {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                     ForEach(annotations) { annotation in
                         TimelineRow(
                             timestamp: annotation.time,
@@ -190,7 +190,7 @@ struct TaskDetailView: View {
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
                     .foregroundColor(ThemeManager.current.subtext0)
             } else {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                     ForEach(history) { entry in
                         TimelineRow(
                             timestamp: entry.datetime,
@@ -278,7 +278,7 @@ struct TaskDetailView: View {
 private enum TaskDetailLayout {
     static let leftColumnFraction: CGFloat = 0.3
     static let rightColumnFraction: CGFloat = 0.7
-    static let columnSpacing: CGFloat = DesignTokens.Spacing.lg
+    static let columnSpacing: CGFloat = DesignTokens.Spacing.large
     static let collapseWidth: CGFloat = 760
 }
 
@@ -292,19 +292,19 @@ private struct DetailSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
             Text(title.uppercased())
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)
             content
         }
-        .padding(DesignTokens.Spacing.md)
+        .padding(DesignTokens.Spacing.medium)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(ThemeManager.current.surface0)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
         )
     }
@@ -321,8 +321,8 @@ private struct ExternalLinksProviderSection: View {
     let onCopyLink: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+            HStack(spacing: DesignTokens.Spacing.small) {
                 if let icon {
                     icon
                         .resizable()
@@ -363,7 +363,7 @@ private struct ExternalLinksProviderSection: View {
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
                     .foregroundColor(ThemeManager.current.subtext0)
             } else {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                     ForEach(links, id: \.id) { link in
                         ExternalLinkRow(
                             link: link,

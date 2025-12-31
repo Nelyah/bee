@@ -41,31 +41,32 @@ enum TokenType: Hashable, Decodable {
         self = TokenType.fromRawValue(rawValue)
     }
 
+    private static let tokenTypeMap: [String: TokenType] = [
+        "TagPlusPrefix": .tagPlusPrefix,
+        "TagMinusPrefix": .tagMinusPrefix,
+        "ProjectPrefix": .projectPrefix,
+        "FilterTokDateDue": .filterTokDateDue,
+        "FilterTokDateDueBefore": .filterTokDateDueBefore,
+        "FilterTokDateDueAfter": .filterTokDateDueAfter,
+        "FilterTokDateCreatedBefore": .filterTokDateCreatedBefore,
+        "FilterTokDateCreatedAfter": .filterTokDateCreatedAfter,
+        "FilterTokDateEndBefore": .filterTokDateEndBefore,
+        "FilterTokDateEndAfter": .filterTokDateEndAfter,
+        "FilterStatus": .filterStatus,
+        "DependsOn": .dependsOn,
+        "OperatorAnd": .operatorAnd,
+        "OperatorOr": .operatorOr,
+        "OperatorXor": .operatorXor,
+        "LeftParenthesis": .leftParenthesis,
+        "RightParenthesis": .rightParenthesis,
+        "Uuid": .uuid,
+        "Int": .int,
+        "WordString": .wordString,
+        "Blank": .blank,
+    ]
+
     private static func fromRawValue(_ rawValue: String) -> TokenType {
-        switch rawValue {
-        case "TagPlusPrefix": .tagPlusPrefix
-        case "TagMinusPrefix": .tagMinusPrefix
-        case "ProjectPrefix": .projectPrefix
-        case "FilterTokDateDue": .filterTokDateDue
-        case "FilterTokDateDueBefore": .filterTokDateDueBefore
-        case "FilterTokDateDueAfter": .filterTokDateDueAfter
-        case "FilterTokDateCreatedBefore": .filterTokDateCreatedBefore
-        case "FilterTokDateCreatedAfter": .filterTokDateCreatedAfter
-        case "FilterTokDateEndBefore": .filterTokDateEndBefore
-        case "FilterTokDateEndAfter": .filterTokDateEndAfter
-        case "FilterStatus": .filterStatus
-        case "DependsOn": .dependsOn
-        case "OperatorAnd": .operatorAnd
-        case "OperatorOr": .operatorOr
-        case "OperatorXor": .operatorXor
-        case "LeftParenthesis": .leftParenthesis
-        case "RightParenthesis": .rightParenthesis
-        case "Uuid": .uuid
-        case "Int": .int
-        case "WordString": .wordString
-        case "Blank": .blank
-        default: .unknown(rawValue)
-        }
+        tokenTypeMap[rawValue] ?? .unknown(rawValue)
     }
 }
 

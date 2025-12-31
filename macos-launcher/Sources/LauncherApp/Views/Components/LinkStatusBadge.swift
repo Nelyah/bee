@@ -7,7 +7,7 @@ struct LinkStatusBadge: View {
     var compact: Bool = false
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
+        HStack(spacing: DesignTokens.Spacing.extraSmall) {
             if let iconName {
                 Image(systemName: iconName)
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))

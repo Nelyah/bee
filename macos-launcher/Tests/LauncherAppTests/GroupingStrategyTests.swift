@@ -4,10 +4,10 @@ import XCTest
 final class GroupingStrategyTests: XCTestCase {
     // MARK: - DueDateGroupingStrategy Tests
 
-    func testDueDateBucketOverdue() {
+    func testDueDateBucketOverdue() throws {
         let calendar = Calendar.current
         let today = Date()
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
         let strategy = DueDateGroupingStrategy(calendar: calendar, today: today)
 
         let task = makeTask(id: "a", dateDue: formatDate(yesterday))
@@ -29,10 +29,10 @@ final class GroupingStrategyTests: XCTestCase {
         XCTAssertEqual(strategy.displayName(for: key), "Today")
     }
 
-    func testDueDateBucketTomorrow() {
+    func testDueDateBucketTomorrow() throws {
         let calendar = Calendar.current
         let today = Date()
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: today))
         let strategy = DueDateGroupingStrategy(calendar: calendar, today: today)
 
         let task = makeTask(id: "a", dateDue: formatDate(tomorrow))
@@ -42,10 +42,10 @@ final class GroupingStrategyTests: XCTestCase {
         XCTAssertEqual(strategy.displayName(for: key), "Tomorrow")
     }
 
-    func testDueDateBucketFuture() {
+    func testDueDateBucketFuture() throws {
         let calendar = Calendar.current
         let today = Date()
-        let nextWeek = calendar.date(byAdding: .day, value: 7, to: today)!
+        let nextWeek = try XCTUnwrap(calendar.date(byAdding: .day, value: 7, to: today))
         let strategy = DueDateGroupingStrategy(calendar: calendar, today: today)
 
         let task = makeTask(id: "a", dateDue: formatDate(nextWeek))
@@ -173,7 +173,7 @@ final class GroupingStrategyTests: XCTestCase {
         // Should have headers for: urgent, work, No Tags (in alphabetical order, No Tags last)
         // Task "a" appears in both urgent and work groups
         let headers = rows.compactMap { row -> String? in
-            if case let .header(h) = row { return h.displayName }
+            if case let .header(header) = row { return header.displayName }
             return nil
         }
 
@@ -208,17 +208,17 @@ final class GroupingStrategyTests: XCTestCase {
 
         // Should be sorted by urgency (highest first)
         let taskIds = rows.compactMap { row -> String? in
-            if case let .task(t) = row { return t.task.uuid }
+            if case let .task(groupedTask) = row { return groupedTask.task.uuid }
             return nil
         }
         XCTAssertEqual(taskIds, ["b", "a", "c"])
     }
 
-    func testGroupTasksWithDueDateStrategy() {
+    func testGroupTasksWithDueDateStrategy() throws {
         let calendar = Calendar.current
         let today = Date()
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: today))
 
         let tasks = [
             makeTask(id: "a", dateDue: formatDate(yesterday)),
@@ -235,7 +235,7 @@ final class GroupingStrategyTests: XCTestCase {
         )
 
         let headers = rows.compactMap { row -> String? in
-            if case let .header(h) = row { return h.displayName }
+            if case let .header(header) = row { return header.displayName }
             return nil
         }
 

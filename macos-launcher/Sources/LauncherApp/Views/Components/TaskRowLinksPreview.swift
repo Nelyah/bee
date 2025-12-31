@@ -6,14 +6,14 @@ struct TaskRowLinksPreview: View {
     var maxVisible: Int = 3
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.extraSmall) {
             // Section header
             Text("Links")
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
                 .foregroundColor(ThemeManager.current.subtext0)
 
             // Link chips in flow layout
-            FlowLayout(spacing: DesignTokens.Spacing.xs, rowSpacing: DesignTokens.Spacing.xs) {
+            FlowLayout(spacing: DesignTokens.Spacing.extraSmall, rowSpacing: DesignTokens.Spacing.extraSmall) {
                 ForEach(visibleLinks, id: \.id) { link in
                     CompactLinkChip(link: link)
                 }
@@ -38,10 +38,10 @@ struct TaskRowLinksPreview: View {
         Text("+\(remainingCount) more")
             .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
             .foregroundColor(ThemeManager.current.subtext0)
-            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.horizontal, DesignTokens.Spacing.small)
             .padding(.vertical, 4)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                     .fill(ThemeManager.current.surface0.opacity(0.5))
             )
     }
@@ -59,7 +59,7 @@ struct CompactLinkChip: View {
                 openURL(url)
             }
         } label: {
-            HStack(spacing: DesignTokens.Spacing.xs) {
+            HStack(spacing: DesignTokens.Spacing.extraSmall) {
                 providerIcon
                     .frame(width: 12, height: 12)
 
@@ -71,10 +71,10 @@ struct CompactLinkChip: View {
 
                 syncStatusIcon
             }
-            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.horizontal, DesignTokens.Spacing.small)
             .padding(.vertical, 4)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                     .fill(isHovering ? ThemeManager.current.surface1 : ThemeManager.current.surface1.opacity(0.7))
             )
         }

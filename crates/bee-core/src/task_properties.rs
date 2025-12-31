@@ -79,33 +79,6 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn project_serialization_omits_absent_and_encodes_none() {
-        let mut props = TaskProperties::default();
-        let value = serde_json::to_value(&props).expect("serialize properties");
-        let obj = value.as_object().expect("properties should be object");
-        assert!(!obj.contains_key("project"));
-
-        props.project = Some(None);
-        let value = serde_json::to_value(&props).expect("serialize properties");
-        assert_eq!(
-            value.get("project"),
-            Some(&Value::String("none".to_string()))
-        );
-    }
-
-    #[test]
-    fn project_deserialization_accepts_none_string() {
-        let value = serde_json::json!({ "project": "none" });
-        let props: TaskProperties = serde_json::from_value(value).expect("deserialize");
-        assert_eq!(props.project, Some(None));
-    }
-}
-
 // We implement a specific function for annotate because we cannot know how to differenciate
 // it from a description
 impl TaskProperties {
@@ -162,5 +135,32 @@ impl TaskProperties {
             Some(deps) => deps.to_owned(),
             None => Vec::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_serialization_omits_absent_and_encodes_none() {
+        let mut props = TaskProperties::default();
+        let value = serde_json::to_value(&props).expect("serialize properties");
+        let obj = value.as_object().expect("properties should be object");
+        assert!(!obj.contains_key("project"));
+
+        props.project = Some(None);
+        let value = serde_json::to_value(&props).expect("serialize properties");
+        assert_eq!(
+            value.get("project"),
+            Some(&Value::String("none".to_string()))
+        );
+    }
+
+    #[test]
+    fn project_deserialization_accepts_none_string() {
+        let value = serde_json::json!({ "project": "none" });
+        let props: TaskProperties = serde_json::from_value(value).expect("deserialize");
+        assert_eq!(props.project, Some(None));
     }
 }

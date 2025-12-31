@@ -15,19 +15,19 @@ struct ReportMenuButton: View {
             }
         }
         .fixedSize()
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .padding(.vertical, DesignTokens.Spacing.xs)
+        .padding(.horizontal, DesignTokens.Spacing.small)
+        .padding(.vertical, DesignTokens.Spacing.extraSmall)
         .opacity(flash ? 0.6 : 1.0)
         .animation(.easeOut(duration: 0.12), value: flash)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(ThemeManager.current.surface1.opacity(0.35))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .stroke(ThemeManager.current.surface2.opacity(0.5), lineWidth: 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous))
     }
 }
 
@@ -35,7 +35,7 @@ private struct ReportBadgeView: View {
     let name: String
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
+        HStack(spacing: DesignTokens.Spacing.extraSmall) {
             Text("Report: \(name)")
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .semibold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)

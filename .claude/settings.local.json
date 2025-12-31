@@ -65,7 +65,13 @@
       "WebFetch(domain:github.com)",
       "Bash(pre-commit run:*)",
       "Bash(git check-ignore:*)",
-      "Bash(git ls-files:*)"
+      "Bash(git ls-files:*)",
+      "Bash(rustc:*)",
+      "Bash(cargo --version:*)",
+      "Bash(grep:*)",
+      "Bash(git checkout:*)",
+      "mcp__serena__insert_before_symbol",
+      "Bash(swiftformat --help:*)"
     ]
   },
   "outputStyle": "default"

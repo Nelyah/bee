@@ -127,8 +127,7 @@ final class CommandPaletteDataSource: ObservableObject {
                 }
                 // Also check subtitle if available
                 if let subtitle = item.subtitle,
-                   let score = scorer.score(query: trimmedQuery, target: subtitle)
-                {
+                   let score = scorer.score(query: trimmedQuery, target: subtitle) {
                     return (item, score)
                 }
                 return nil

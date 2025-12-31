@@ -4,7 +4,9 @@ import XCTest
 final class ExternalLinkCachedResponseTests: XCTestCase {
     func testParsesGitlabCachedSummary() {
         let cached = """
-        {"merge_request":{"title":"Improve task sync","state":"opened","user_notes_count":12,"head_pipeline":{"status":"running"}},"approvals":{"approved":false}}
+        {"merge_request":{"title":"Improve task sync","state":"opened",\
+        "user_notes_count":12,"head_pipeline":{"status":"running"}},\
+        "approvals":{"approved":false}}
         """
         let link = ExternalLinkDto(
             id: 1,

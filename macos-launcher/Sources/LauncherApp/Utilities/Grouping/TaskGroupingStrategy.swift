@@ -64,8 +64,8 @@ struct ProjectGroupingStrategy: TaskGroupingStrategy {
         case (nil, nil): return 0
         case (nil, _): return -1 // No Project first
         case (_, nil): return 1
-        case let (l?, r?):
-            let result = l.localizedCaseInsensitiveCompare(r)
+        case let (lhsProject?, rhsProject?):
+            let result = lhsProject.localizedCaseInsensitiveCompare(rhsProject)
             switch result {
             case .orderedAscending: return -1
             case .orderedDescending: return 1

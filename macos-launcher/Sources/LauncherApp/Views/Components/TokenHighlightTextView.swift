@@ -167,104 +167,81 @@ enum NormalModeAction: Equatable {
 
 enum KeyHandlingDecider {
     static func action(for input: KeyInput, showCompletionMenu: Bool) -> KeyHandlingAction? {
-        if input.modifierFlags.contains(.control),
-           input.keyCode == KeyCode.space
-        {
-            return .toggleMenu
-        }
+        if isToggleMenu(input) { return .toggleMenu }
+        if input.keyCode == KeyCode.tab { return .acceptGhost }
+        if showCompletionMenu, let action = menuAction(for: input) { return action }
+        if let action = wordNavAction(for: input) { return action }
+        if !showCompletionMenu, let delta = selectionDelta(for: input) { return .moveSelection(delta) }
+        if isSubmit(input) { return .submit }
+        if isEscape(input) { return .escape }
+        return nil
+    }
 
+    private static func isToggleMenu(_ input: KeyInput) -> Bool {
+        if input.modifierFlags.contains(.control), input.keyCode == KeyCode.space { return true }
         if input.modifierFlags.contains(.command),
            !input.modifierFlags.contains(.control),
            !input.modifierFlags.contains(.option),
-           input.charactersIgnoringModifiers?.lowercased() == "i"
-        {
-            return .toggleMenu
-        }
+           input.charactersIgnoringModifiers?.lowercased() == "i" { return true }
+        return false
+    }
 
-        if input.keyCode == KeyCode.tab {
-            return .acceptGhost
-        }
+    private static func menuAction(for input: KeyInput) -> KeyHandlingAction? {
+        if let delta = menuNavigationDelta(for: input) { return .menuNavigate(delta) }
+        if isSubmit(input) { return .acceptCompletion }
+        if isEscape(input) { return .escape }
+        return nil
+    }
 
-        if showCompletionMenu {
-            if input.keyCode == KeyCode.arrowUp {
-                return .menuNavigate(-1)
-            }
-            if input.keyCode == KeyCode.arrowDown {
-                return .menuNavigate(1)
-            }
-            if input.modifierFlags.contains(.control) {
-                if input.charactersIgnoringModifiers == "p" {
-                    return .menuNavigate(-1)
-                }
-                if input.charactersIgnoringModifiers == "n" {
-                    return .menuNavigate(1)
-                }
-            }
-            if isSubmit(input) {
-                return .acceptCompletion
-            }
-            if isEscape(input) {
-                return .escape
-            }
+    private static func menuNavigationDelta(for input: KeyInput) -> Int? {
+        if input.keyCode == KeyCode.arrowUp { return -1 }
+        if input.keyCode == KeyCode.arrowDown { return 1 }
+        if input.modifierFlags.contains(.control) {
+            if input.charactersIgnoringModifiers == "p" { return -1 }
+            if input.charactersIgnoringModifiers == "n" { return 1 }
         }
+        return nil
+    }
 
+    private static func wordNavAction(for input: KeyInput) -> KeyHandlingAction? {
         if input.modifierFlags.contains(.option) {
-            if input.charactersIgnoringModifiers == "f" {
-                return .moveWordForward
-            }
-            if input.charactersIgnoringModifiers == "b" {
-                return .moveWordBackward
-            }
+            if input.charactersIgnoringModifiers == "f" { return .moveWordForward }
+            if input.charactersIgnoringModifiers == "b" { return .moveWordBackward }
         }
-
         if input.modifierFlags.contains(.control),
-           input.charactersIgnoringModifiers == "w"
-        {
-            return .deleteWordBackward
-        }
-
-        if !showCompletionMenu, let delta = selectionDelta(for: input) {
-            return .moveSelection(delta)
-        }
-
-        if isSubmit(input) {
-            return .submit
-        }
-
-        if isEscape(input) {
-            return .escape
-        }
-
+           input.charactersIgnoringModifiers == "w" { return .deleteWordBackward }
         return nil
     }
 
     static func normalModeAction(for input: KeyInput) -> NormalModeAction? {
-        // cmd+K opens command palette
-        if input.modifierFlags.contains(.command),
-           !input.modifierFlags.contains(.control),
-           !input.modifierFlags.contains(.option),
-           input.keyCode == KeyCode.k
-        {
-            return .openCommandPalette
-        }
+        if isOpenCommandPalette(input) { return .openCommandPalette }
+        if let delta = normalModeControlDelta(input) { return .moveSelection(delta) }
+        return normalModeKeyAction(input)
+    }
 
-        if input.modifierFlags.contains(.control) {
-            if input.charactersIgnoringModifiers == "n" {
-                return .moveSelection(1)
-            }
-            if input.charactersIgnoringModifiers == "p" {
-                return .moveSelection(-1)
-            }
-        }
+    private static func isOpenCommandPalette(_ input: KeyInput) -> Bool {
+        input.modifierFlags.contains(.command) &&
+            !input.modifierFlags.contains(.control) &&
+            !input.modifierFlags.contains(.option) &&
+            input.keyCode == KeyCode.keyK
+    }
 
+    private static func normalModeControlDelta(_ input: KeyInput) -> Int? {
+        guard input.modifierFlags.contains(.control) else { return nil }
+        if input.charactersIgnoringModifiers == "n" { return 1 }
+        if input.charactersIgnoringModifiers == "p" { return -1 }
+        return nil
+    }
+
+    private static func normalModeKeyAction(_ input: KeyInput) -> NormalModeAction? {
         switch input.keyCode {
-        case KeyCode.i:
+        case KeyCode.keyI:
             return .enterInsertMode
-        case KeyCode.j:
+        case KeyCode.keyJ:
             return .moveSelection(1)
-        case KeyCode.k:
+        case KeyCode.keyK:
             return .moveSelection(-1)
-        case KeyCode.g:
+        case KeyCode.keyG:
             return input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
         case KeyCode.returnKey, KeyCode.keypadEnter:
             return .activatePrimary

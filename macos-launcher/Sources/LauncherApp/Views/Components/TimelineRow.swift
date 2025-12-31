@@ -6,7 +6,7 @@ struct TimelineRow: View {
     let value: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.medium) {
             Text(RelativeDateFormatter.description(for: timestamp))
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)
@@ -17,9 +17,9 @@ struct TimelineRow: View {
                 .foregroundColor(ThemeManager.current.text)
         }
         .padding(.vertical, 6)
-        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.horizontal, DesignTokens.Spacing.small)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                 .fill(ThemeManager.current.surface1.opacity(0.6))
         )
     }

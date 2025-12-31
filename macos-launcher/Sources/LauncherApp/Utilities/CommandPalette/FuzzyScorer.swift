@@ -46,10 +46,8 @@ struct CommandPaletteFuzzyScorer {
 
         // Word-wise prefix match (matches start of any word)
         let words = targetLower.split(whereSeparator: { $0.isWhitespace || $0 == "-" || $0 == "_" })
-        for word in words {
-            if word.hasPrefix(queryLower) {
-                return MatchWeight.wordPrefixMatch.rawValue + max(0, 50 - query.count)
-            }
+        for word in words where word.hasPrefix(queryLower) {
+            return MatchWeight.wordPrefixMatch.rawValue + max(0, 50 - query.count)
         }
 
         // Substring match (query found within target)

@@ -10,10 +10,10 @@ enum KeyCode {
     static let keypadEnter: UInt16 = 76
     static let escape: UInt16 = 53
     // Vim mode keys
-    static let i: UInt16 = 34
-    static let j: UInt16 = 38
-    static let k: UInt16 = 40
-    static let g: UInt16 = 5
-    static let n: UInt16 = 45
-    static let p: UInt16 = 35
+    static let keyI: UInt16 = 34
+    static let keyJ: UInt16 = 38
+    static let keyK: UInt16 = 40
+    static let keyG: UInt16 = 5
+    static let keyN: UInt16 = 45
+    static let keyP: UInt16 = 35
 }

@@ -6,7 +6,7 @@ struct DetailRow: View {
     let helpText: String?
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.large) {
             Text(label.uppercased())
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)

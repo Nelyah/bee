@@ -226,7 +226,9 @@ final class LauncherViewModel: ObservableObject {
 
             actionService.setReportConfig(reportConfig)
             await refreshReportFilterChips()
-            logger.info("Config loaded: \(self.reportConfig?.columns.count ?? 0) columns, \(self.availableReports.count) reports")
+            let columnsCount = reportConfig?.columns.count ?? 0
+            let reportsCount = availableReports.count
+            logger.info("Config loaded: \(columnsCount) columns, \(reportsCount) reports")
         } catch {
             logger.error("Failed to load config: \(error.localizedDescription, privacy: .public)")
             showToast(message: error.localizedDescription)
@@ -506,11 +508,11 @@ final class LauncherViewModel: ObservableObject {
         let idx = selectedRowIndex ?? hoveredRowIndex
         guard let idx,
               idx < rows.count,
-              case let .header(h) = rows[idx]
+              case let .header(header) = rows[idx]
         else {
             return false
         }
-        toggleGroupCollapse(h.key)
+        toggleGroupCollapse(header.key)
         return true
     }
 
@@ -757,10 +759,8 @@ final class LauncherViewModel: ObservableObject {
     private func deduplicateChips(_ chips: [CriteriaChip]) -> [CriteriaChip] {
         var seen = Set<String>()
         var result: [CriteriaChip] = []
-        for chip in chips {
-            if seen.insert(chip.id).inserted {
-                result.append(chip)
-            }
+        for chip in chips where seen.insert(chip.id).inserted {
+            result.append(chip)
         }
         return result
     }

@@ -8,17 +8,17 @@ struct ExternalLinkRow: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.extraSmall) {
+            HStack(alignment: .top, spacing: DesignTokens.Spacing.small) {
                 if let statusIconName = gitlabStatusIconName {
                     statusIconView(name: statusIconName)
                 } else if gitlabSummary != nil {
                     statusIconView(name: "pr-open")
                 }
 
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.extraSmall) {
                     if isGitlabRow {
-                        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
+                        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.small) {
                             HoverableButton(action: openMergeRequest) { isHovering in
                                 Text(gitlabTitleLine)
                                     .font(.system(
@@ -33,7 +33,7 @@ struct ExternalLinkRow: View {
                             Spacer()
                         }
 
-                        HStack(spacing: DesignTokens.Spacing.sm) {
+                        HStack(spacing: DesignTokens.Spacing.small) {
                             Text(gitlabStateText)
                                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
                                 .foregroundColor(ThemeManager.current.subtext0)
@@ -48,8 +48,8 @@ struct ExternalLinkRow: View {
                         }
 
                         if let branch = gitlabBranchLine {
-                            HoverableButton(action: { onCopyBranch(branch) }) { isHovering in
-                                HStack(spacing: DesignTokens.Spacing.xs) {
+                            HoverableButton(action: { onCopyBranch(branch) }, label: { isHovering in
+                                HStack(spacing: DesignTokens.Spacing.extraSmall) {
                                     if let icon = AssetIcon.image(named: "git-branch") {
                                         icon
                                             .resizable()
@@ -69,27 +69,27 @@ struct ExternalLinkRow: View {
                                         ))
                                         .foregroundColor(ThemeManager.current.text)
                                 }
-                                .padding(.horizontal, DesignTokens.Spacing.sm)
+                                .padding(.horizontal, DesignTokens.Spacing.small)
                                 .padding(.vertical, 4)
                                 .background(
-                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                                         .fill(ThemeManager.current.surface2.opacity(isHovering ? 0.85 : 0.7))
                                 )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                                         .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
                                 )
-                            }
+                            })
                         }
                     } else {
-                        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
+                        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.small) {
                             Text(titleText)
                                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
                                 .foregroundColor(ThemeManager.current.text)
                             Spacer()
                         }
 
-                        HStack(spacing: DesignTokens.Spacing.sm) {
+                        HStack(spacing: DesignTokens.Spacing.small) {
                             if !detailText.isEmpty {
                                 Text(detailText)
                                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
@@ -119,16 +119,16 @@ struct ExternalLinkRow: View {
                 }
             }
         }
-        .padding(.top, DesignTokens.Spacing.sm)
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .padding(.bottom, DesignTokens.Spacing.sm)
+        .padding(.top, DesignTokens.Spacing.small)
+        .padding(.horizontal, DesignTokens.Spacing.small)
+        .padding(.bottom, DesignTokens.Spacing.small)
         .overlay(alignment: .topTrailing) {
             LinkStatusBadge(state: link.syncState(), timestamp: link.lastSyncedAt, compact: true)
-                .padding(.top, DesignTokens.Spacing.xs)
-                .padding(.trailing, DesignTokens.Spacing.xs)
+                .padding(.top, DesignTokens.Spacing.extraSmall)
+                .padding(.trailing, DesignTokens.Spacing.extraSmall)
         }
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                 .fill(ThemeManager.current.surface1.opacity(0.7))
         )
     }
@@ -139,7 +139,7 @@ struct ExternalLinkRow: View {
     }
 
     private var mrLinkLine: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
+        HStack(spacing: DesignTokens.Spacing.extraSmall) {
             if let url = URL(string: link.url) {
                 HoverableLink { isHovering in
                     Link(destination: url) {
@@ -159,11 +159,11 @@ struct ExternalLinkRow: View {
                     .truncationMode(.middle)
             }
 
-            HoverableButton(action: { onCopyLink(link.url) }) { isHovering in
+            HoverableButton(action: { onCopyLink(link.url) }, label: { isHovering in
                 Image(systemName: "doc.on.doc")
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
                     .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
-            }
+            })
             .help("Copy link")
         }
     }
@@ -290,8 +290,7 @@ struct ExternalLinkRow: View {
             return "!\(iid)"
         }
         if link.externalKey.contains(":"),
-           let last = link.externalKey.split(separator: ":").last
-        {
+           let last = link.externalKey.split(separator: ":").last {
             return "!\(last)"
         }
         return nil
@@ -332,10 +331,10 @@ struct ExternalLinkRow: View {
 
         return Text(text)
             .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Spacing.xs)
+            .padding(.horizontal, DesignTokens.Spacing.small)
+            .padding(.vertical, DesignTokens.Spacing.extraSmall)
             .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                     .fill(color.opacity(0.2))
             )
             .foregroundColor(color)

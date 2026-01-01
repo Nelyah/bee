@@ -196,51 +196,10 @@ Right-click on annotation/history entries to copy or (for annotations) delete.
 
 ---
 
-## UXUI-037: Fix TaskDetailView card alignment and visual consistency
-
-**Category:** Visual Polish
-**Priority:** High
-**Effort:** Medium (4-8 hours)
-**Component:** `TaskDetailView`, `DetailSection`, `DesignTokens`
-
-### Current State
-The TaskDetailView has inconsistent card widths and mixed visual treatments:
-- Overview and Dates cards have variable widths based on content
-- Overview uses `.primary` style (filled background), External Links uses `.tertiary` (no background)
-- In two-column layout, columns don't align at top
-- Section spacing is inconsistent (16px vs 8px vs 24px)
-
-### Problem
-Users perceive misaligned elements as "broken" or "unfinished." The mixed card treatments create false visual hierarchy where External Links appears less important than Overview/Dates when they should be peer sections.
-
-### Desired State
-All information cards should have consistent widths, padding, and visual treatment for a cohesive layout.
-
-### Acceptance Criteria
-- [ ] All cards in single-column mode have equal width
-- [ ] Consistent visual treatment for all sections (either all cards or all borderless)
-- [ ] Top alignment matches in two-column layout
-- [ ] Consistent spacing between peer sections
-- [ ] Section titles use same color regardless of style
-
-### Specific Fixes Needed
-1. **Card Width**: Set explicit widths or `maxWidth: .infinity` on single-column cards
-2. **Visual Hierarchy**: Either give all sections card treatment or remove from Overview/Dates
-3. **Top Alignment**: Match top padding in two-column HStack for External Links
-4. **Spacing**: Use consistent `DesignTokens.Spacing.large` between all peer sections
-5. **Title Color**: Use same foreground color for all section titles
-
-### Files Likely Affected
-- `Sources/LauncherApp/Views/TaskDetailView.swift` (lines 89-210, 302-344)
-- `Sources/LauncherApp/Utilities/Design/DesignTokens.swift` (consider adding `cardWidth` token)
-
----
-
 # Ticket Index
 
 | ID | Title | Priority | Effort | Status |
 |----|-------|----------|--------|--------|
-| UXUI-037 | TaskDetailView card alignment | High | Medium | Pending |
 | UXUI-028 | Add annotation creation functionality | High | Medium | Pending |
 | UXUI-031 | Section header visual hierarchy | Medium | Low | Pending |
 | UXUI-032 | Show copy icons persistently | Medium | Low | Pending |

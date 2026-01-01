@@ -399,8 +399,9 @@ Added Escape key handling to dismiss the Save Report sheet, matching standard ma
 | UXUI-029 | CopyableDetailRow Accessibility | High |
 | UXUI-030 | Detail-mode hints in BottomHintBar | High |
 | UXUI-027 | Keyboard navigation in detail view | Critical |
+| UXUI-037 | TaskDetailView card alignment | High |
 
-**Total: 27 tickets completed**
+**Total: 28 tickets completed**
 
 ---
 
@@ -447,3 +448,29 @@ Follows the pure-function pipeline pattern:
 - `DetailModeKeyHandlingTests` - 11 tests for key mapping
 - `InteractionContextCoordinatorTests` - Updated for new detail mode hints
 - `ContentViewSnapshotTests/testDetailModeWithKeyboardFocusOnLink` - Visual verification
+
+---
+
+## UXUI-037: Fix TaskDetailView card alignment and visual consistency
+
+**Priority:** High | **Effort:** Medium | **Status:** ✅ Complete
+**Completed:** 2026-01-01
+
+### Resolution
+Unified visual treatment for all TaskDetailView sections by removing the primary/tertiary style distinction.
+
+Key changes:
+- All sections now use consistent card styling (background + border)
+- All section titles use the same `subtext0` color
+- Added `maxWidth: .infinity` for consistent card widths
+- All sections use consistent `medium` padding
+
+### Acceptance Criteria Met
+- [x] All cards in single-column mode have equal width
+- [x] Consistent visual treatment for all sections (all use card treatment)
+- [x] Top alignment matches in two-column layout
+- [x] Consistent spacing between peer sections
+- [x] Section titles use same color regardless of style
+
+### Files Modified
+- `Sources/LauncherApp/Views/TaskDetailView.swift` (simplified `DetailSection` component)

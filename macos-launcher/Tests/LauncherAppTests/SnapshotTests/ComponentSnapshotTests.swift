@@ -126,6 +126,30 @@ final class ComponentSnapshotTests: SnapshotTestCase {
         assertViewSnapshot(view, size: CGSize(width: 400, height: 30))
     }
 
+    // MARK: - CopyableDetailRow Tests
+
+    func testCopyableDetailRowBasic() {
+        let view = CopyableDetailRow(
+            label: "UUID",
+            value: "...12345678",
+            fullValue: "abc-def-12345678",
+            onCopy: { _ in }
+        )
+
+        assertViewSnapshot(view, size: CGSize(width: 400, height: 36))
+    }
+
+    func testCopyableDetailRowLongValue() {
+        let view = CopyableDetailRow(
+            label: "UUID",
+            value: "abc-def-ghi-jkl-mno-pqr-stu-vwx-yz0-123-456",
+            fullValue: "abc-def-ghi-jkl-mno-pqr-stu-vwx-yz0-123-456-789",
+            onCopy: { _ in }
+        )
+
+        assertViewSnapshot(view, size: CGSize(width: 400, height: 60))
+    }
+
     // MARK: - LinkStatusBadge Tests
 
     func testLinkStatusBadgePending() {

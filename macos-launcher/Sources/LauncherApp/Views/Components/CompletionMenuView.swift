@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Dropdown menu for displaying completion suggestions.
@@ -25,15 +26,23 @@ struct CompletionMenuView: View {
                 }
             }
         }
-        .frame(maxHeight: 8 * 30)
+        .frame(maxHeight: 6 * 30) // Max 6 items visible, then scroll
         .padding(.vertical, DesignTokens.Spacing.extraSmall)
-        .background(ThemeManager.current.surface0)
-        .cornerRadius(DesignTokens.Radius.small)
+        .background(
+            // Use vibrancy effect for modern macOS feel
+            ZStack {
+                // Base dark layer for readability
+                ThemeManager.current.surface0.opacity(0.85)
+                // Subtle blur effect
+                VisualEffectBlur(material: .popover, blendingMode: .behindWindow)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
-                .stroke(ThemeManager.current.surface1, lineWidth: 1)
+                .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
     }
 }
 
@@ -59,6 +68,27 @@ struct CompletionRow: View {
         .padding(.horizontal, DesignTokens.Spacing.medium)
         .padding(.vertical, DesignTokens.Spacing.small)
         .background(isSelected ? ThemeManager.current.blue : Color.clear)
+    }
+}
+
+// MARK: - Visual Effect Blur
+
+/// A SwiftUI wrapper for NSVisualEffectView to provide native macOS blur effects.
+struct VisualEffectBlur: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
     }
 }
 

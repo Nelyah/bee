@@ -52,28 +52,39 @@ Orchestrates a multi-agent workflow for implementing tickets with quality gates.
              │
       ┌──────┴──────┐
       │ YES         │ NO
-      ▼             ▼
-┌───────────┐  ┌───────────┐
-│ Generate  │  │   DONE    │
-│Screenshots│  │  Commit   │
-└─────┬─────┘  └───────────┘
-      │
-      ▼
-┌───────────────┐
-│  UI/UX REVIEW │
-└───────┬───────┘
-        │
-   ┌────┴────┐
-   │APPROVED?│
-   └────┬────┘
-        │
-  ┌─────┴─────┐
-  │YES        │NO
-  ▼           ▼
-┌─────┐  ┌─────────┐
-│DONE │  │ Back to │
-│     │  │ENGINEER │
-└─────┘  └─────────┘
+      ▼             │
+┌───────────┐       │
+│ Generate  │       │
+│Screenshots│       │
+└─────┬─────┘       │
+      │             │
+      ▼             │
+┌───────────────┐   │
+│  UI/UX REVIEW │   │
+└───────┬───────┘   │
+        │           │
+   ┌────┴────┐      │
+   │APPROVED?│      │
+   └────┬────┘      │
+        │           │
+  ┌─────┴─────┐     │
+  │YES        │NO   │
+  │           ▼     │
+  │     ┌─────────┐ │
+  │     │ Back to │ │
+  │     │ENGINEER │ │
+  │     └─────────┘ │
+  │                 │
+  ▼                 │
+┌─────────────┐     │
+│   COMMIT    │◀────┘
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────┐
+│ UPDATE BACKLOG  │
+│ PENDING → DONE  │
+└─────────────────┘
 ```
 
 ## Communication Protocol
@@ -328,6 +339,32 @@ Please review and respond with:
 - Re-run UI/UX review
 - Repeat until approved
 
+### Step 7: Update Backlog
+
+**After ticket is fully completed (committed and approved):**
+
+1. Move the ticket entry from `backlog/UXUI/PENDING.md` to `backlog/UXUI/DONE.md`
+2. Update the ticket index table in PENDING.md (remove the row)
+3. Add completion date to the ticket in DONE.md
+
+If `backlog/UXUI/DONE.md` doesn't exist, create it with this header:
+```markdown
+# Completed UI/UX Improvements
+
+Tickets moved here after implementation and review.
+
+---
+```
+
+Then add the completed ticket:
+```markdown
+## UXUI-XXX: [Title]
+**Completed:** YYYY-MM-DD
+[Original ticket content from PENDING.md]
+```
+
+**Important:** This step is REQUIRED. A ticket is not complete until it has been moved to DONE.md.
+
 ## Quick Reference Commands
 
 ```bash
@@ -391,4 +428,8 @@ FIXED
 APPROVED
 ```
 
-**Done.** Committed.
+**Backlog Update:**
+- Moved UXUI-XXX from `backlog/UXUI/PENDING.md` to `backlog/UXUI/DONE.md`
+- Added completion date: 2026-01-01
+
+**Done.** Committed and tracked.

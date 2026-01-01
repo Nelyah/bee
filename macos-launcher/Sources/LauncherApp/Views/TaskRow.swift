@@ -33,12 +33,16 @@ struct TaskRow: View {
                 .fill(backgroundColor)
         )
         .overlay(alignment: .leading) {
-            // Selection accent bar
+            // Selection accent bar - full height, matches row's left corner radius
             if isSelected {
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                    .fill(ThemeManager.current.blue)
-                    .frame(width: 3)
-                    .padding(.vertical, DesignTokens.Spacing.extraSmall)
+                UnevenRoundedRectangle(
+                    topLeadingRadius: DesignTokens.Radius.medium,
+                    bottomLeadingRadius: DesignTokens.Radius.medium,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 0
+                )
+                .fill(ThemeManager.current.blue)
+                .frame(width: 3)
             }
         }
         .zIndex(isExpanded ? 1 : 0)

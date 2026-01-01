@@ -92,7 +92,9 @@
       "Bash(lefthook run:*)",
       "WebFetch(domain:github.blog)",
       "WebFetch(domain:www.anthropic.com)",
-      "Bash(swift package clean:*)"
+      "Bash(swift package clean:*)",
+      "Skill(ticket-workflow)",
+      "Skill(macos-launcher-architecture)"
     ]
   },
   "outputStyle": "Explanatory"

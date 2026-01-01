@@ -6,36 +6,6 @@
 
 ---
 
-## UXUI-027: Implement keyboard navigation in detail view
-
-**Category:** Accessibility
-**Priority:** Critical
-**Effort:** High (8+ hours)
-**Component:** `TaskDetailView`, `ContentView`, `LauncherViewModel`
-
-### Current State
-The detail view is essentially mouse-only with no keyboard navigation support.
-
-### Problem
-Users cannot navigate interactive elements (links, copy buttons) in the detail view using the keyboard. This is a critical accessibility gap that prevents keyboard-first users from efficiently using the application.
-
-### Desired State
-Add vim-style navigation (j/k) to detail view allowing users to focus interactive elements and trigger them with Enter or dedicated shortcuts (o=open, y=copy).
-
-### Acceptance Criteria
-- [ ] j/k moves focus between interactive elements in detail view
-- [ ] o opens focused link in browser
-- [ ] y copies focused item (branch/URL/UUID)
-- [ ] Focus ring visible on focused element
-- [ ] BottomHintBar shows detail-mode shortcuts
-
-### Files Likely Affected
-- `Sources/LauncherApp/Views/TaskDetailView.swift`
-- `Sources/LauncherApp/Views/ContentView.swift` (install detail-mode key monitor)
-- `Sources/LauncherApp/ViewModels/LauncherViewModel.swift` (add detail focus state)
-
----
-
 ## UXUI-028: Add annotation creation functionality
 
 **Category:** Feature
@@ -270,7 +240,6 @@ All information cards should have consistent widths, padding, and visual treatme
 
 | ID | Title | Priority | Effort | Status |
 |----|-------|----------|--------|--------|
-| UXUI-027 | Keyboard navigation in detail view | Critical | High | Pending |
 | UXUI-037 | TaskDetailView card alignment | High | Medium | Pending |
 | UXUI-028 | Add annotation creation functionality | High | Medium | Pending |
 | UXUI-031 | Section header visual hierarchy | Medium | Low | Pending |

@@ -10,6 +10,8 @@ struct TaskDetailView: View {
     let onCopyLink: (String) -> Void
     let onCopyUUID: (String) -> Void
     let onClose: () -> Void
+    /// The currently keyboard-focused item (for j/k navigation).
+    var focusedItem: DetailFocusableItem?
 
     var body: some View {
         GeometryReader { proxy in
@@ -87,7 +89,7 @@ struct TaskDetailView: View {
     }
 
     private var externalLinksSection: some View {
-        DetailSection(title: "External Links", style: .tertiary) {
+        DetailSection(title: "External Links") {
             if externalLinksLoading {
                 Text("Loading links…")
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
@@ -104,7 +106,8 @@ struct TaskDetailView: View {
                 links: externalLinksForTask.filter { $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue },
                 onRefresh: { onRefreshLinks(.gitlab) },
                 onCopyBranch: onCopyBranch,
-                onCopyLink: onCopyLink
+                onCopyLink: onCopyLink,
+                focusedLinkId: focusedLinkId
             )
 
             ExternalLinksProviderSection(
@@ -115,7 +118,8 @@ struct TaskDetailView: View {
                 links: externalLinksForTask.filter { $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue },
                 onRefresh: { onRefreshLinks(.jira) },
                 onCopyBranch: onCopyBranch,
-                onCopyLink: onCopyLink
+                onCopyLink: onCopyLink,
+                focusedLinkId: focusedLinkId
             )
         }
     }
@@ -127,7 +131,8 @@ struct TaskDetailView: View {
                     label: "UUID",
                     value: shortUUID(task.uuid),
                     fullValue: task.uuid,
-                    onCopy: onCopyUUID
+                    onCopy: onCopyUUID,
+                    isKeyboardFocused: isUUIDFocused
                 )
                 DetailRow(label: "Project", value: task.project ?? "None", helpText: nil)
                 DetailRow(
@@ -170,7 +175,7 @@ struct TaskDetailView: View {
     }
 
     private var annotationsSection: some View {
-        DetailSection(title: "Annotations", style: .tertiary) {
+        DetailSection(title: "Annotations") {
             let annotations = sortedAnnotations(detailForTask?.annotations ?? [])
             if annotations.isEmpty {
                 Text("—")
@@ -190,7 +195,7 @@ struct TaskDetailView: View {
     }
 
     private var historySection: some View {
-        DetailSection(title: "History", style: .tertiary) {
+        DetailSection(title: "History") {
             let history = sortedHistory(detailForTask?.history ?? [])
             if history.isEmpty {
                 Text("—")
@@ -280,6 +285,26 @@ struct TaskDetailView: View {
         guard externalLinksState.taskUUID == task.uuid else { return nil }
         return externalLinksState.errorMessage
     }
+
+    // MARK: - Focus Helpers
+
+    /// Whether the UUID row is currently keyboard-focused.
+    private var isUUIDFocused: Bool {
+        if case .uuid = focusedItem {
+            return true
+        }
+        return false
+    }
+
+    /// Returns the focused link ID if the current focused item is an external link.
+    private var focusedLinkId: Int? {
+        switch focusedItem {
+        case let .gitlabMR(link), let .jiraIssue(link):
+            link.id
+        default:
+            nil
+        }
+    }
 }
 
 private enum TaskDetailLayout {
@@ -291,22 +316,14 @@ private enum TaskDetailLayout {
     static let maxContentWidth: CGFloat = 900
 }
 
-/// Visual style for detail sections
-private enum DetailSectionStyle {
-    /// Primary sections with full card treatment (Overview, Dates)
-    case primary
-    /// Tertiary sections with minimal styling (External Links, Annotations, History)
-    case tertiary
-}
-
+/// A card-style container for detail view sections.
+/// All sections use consistent visual treatment for proper hierarchy.
 private struct DetailSection<Content: View>: View {
     let title: String
-    let style: DetailSectionStyle
     let content: Content
 
-    init(title: String, style: DetailSectionStyle = .primary, @ViewBuilder content: () -> Content) {
+    init(title: String, @ViewBuilder content: () -> Content) {
         self.title = title
-        self.style = style
         self.content = content()
     }
 
@@ -314,32 +331,19 @@ private struct DetailSection<Content: View>: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
             Text(title.uppercased())
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
-                .foregroundColor(style == .primary ? ThemeManager.current.subtext0 : ThemeManager.current.overlay0)
+                .foregroundColor(ThemeManager.current.subtext0)
             content
         }
-        .padding(style == .primary ? DesignTokens.Spacing.medium : DesignTokens.Spacing.small)
-        .background(cardBackground)
-        .overlay(cardBorder)
-    }
-
-    @ViewBuilder
-    private var cardBackground: some View {
-        if style == .primary {
+        .padding(DesignTokens.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(ThemeManager.current.surface0)
-        } else {
-            Color.clear
-        }
-    }
-
-    @ViewBuilder
-    private var cardBorder: some View {
-        if style == .primary {
+        )
+        .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
-        } else {
-            EmptyView()
-        }
+        )
     }
 }
 
@@ -352,6 +356,8 @@ private struct ExternalLinksProviderSection: View {
     let onRefresh: () -> Void
     let onCopyBranch: (String) -> Void
     let onCopyLink: (String) -> Void
+    /// The ID of the currently keyboard-focused link (if any).
+    var focusedLinkId: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
@@ -401,7 +407,8 @@ private struct ExternalLinksProviderSection: View {
                         ExternalLinkRow(
                             link: link,
                             onCopyBranch: onCopyBranch,
-                            onCopyLink: onCopyLink
+                            onCopyLink: onCopyLink,
+                            isKeyboardFocused: link.id == focusedLinkId
                         )
                     }
                 }

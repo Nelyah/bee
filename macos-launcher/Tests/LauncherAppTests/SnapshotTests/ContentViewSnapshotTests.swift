@@ -158,6 +158,27 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
         assertViewSnapshot(view, size: TestSizes.contentView)
     }
 
+    func testDetailModeWithKeyboardFocusOnLink() {
+        viewModel.tasks = MockApiClient.sampleTasks
+        viewModel.selectedIndex = 0
+        viewModel.mode = .detail
+        viewModel.taskDetailState = TaskDetailState(
+            isLoading: false,
+            taskUUID: MockApiClient.sampleTasks[0].uuid,
+            detail: MockApiClient.sampleTaskDetail
+        )
+        viewModel.externalLinksState = ExternalLinksState(
+            isLoading: false,
+            taskUUID: MockApiClient.sampleTasks[0].uuid,
+            links: MockApiClient.sampleExternalLinks
+        )
+        // Build focusable items and focus on first GitLab link (index 1, after UUID)
+        viewModel.buildDetailFocusableItems()
+        viewModel.detailFocusedIndex = 1
+        let view = makeContentView()
+        assertViewSnapshot(view, size: TestSizes.contentView)
+    }
+
     // MARK: - Helper
 
     private func makeContentView() -> some View {

@@ -84,8 +84,15 @@ enum BottomHintModelBuilder {
 
     private static func leftHints(for context: InteractionContext) -> [BottomHint] {
         var hints = [BottomHint(key: "Esc", label: escapeLabel(for: context))]
-        if case let .list(_, isInsertMode) = context, !isInsertMode {
-            hints.append(BottomHint(key: "i", label: "Insert"))
+        switch context {
+        case .detail:
+            hints.append(BottomHint(key: "j/k", label: "Navigate"))
+        case let .list(_, isInsertMode):
+            if !isInsertMode {
+                hints.append(BottomHint(key: "i", label: "Insert"))
+            }
+        default:
+            break
         }
         return hints
     }
@@ -95,17 +102,28 @@ enum BottomHintModelBuilder {
         if let enterLabel = enterLabel(for: context) {
             hints.append(BottomHint(key: "Enter", label: enterLabel))
         }
-        // Show Tab hint in normal mode (collapse for headers, expand for tasks)
-        if case let .list(selection, isInsertMode) = context, !isInsertMode {
-            switch selection {
-            case .groupHeader:
-                hints.append(BottomHint(key: "Tab", label: "Collapse"))
-            case .task:
-                hints.append(BottomHint(key: "Tab", label: "Expand"))
-            case .none:
-                break
+
+        switch context {
+        case .detail:
+            // Show open/copy hints for detail mode
+            hints.append(BottomHint(key: "o", label: "Open"))
+            hints.append(BottomHint(key: "y", label: "Copy"))
+        case let .list(selection, isInsertMode):
+            // Show Tab hint in normal mode (collapse for headers, expand for tasks)
+            if !isInsertMode {
+                switch selection {
+                case .groupHeader:
+                    hints.append(BottomHint(key: "Tab", label: "Collapse"))
+                case .task:
+                    hints.append(BottomHint(key: "Tab", label: "Expand"))
+                case .none:
+                    break
+                }
             }
+        default:
+            break
         }
+
         hints.append(BottomHint(key: "⌘K", label: "Command menu"))
         return hints
     }

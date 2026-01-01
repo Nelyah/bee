@@ -182,7 +182,7 @@ struct ExternalLinkCreateRequest: Encodable {
     let url: String
 }
 
-struct ExternalLinkDto: Decodable {
+struct ExternalLinkDto: Decodable, Equatable {
     let id: Int
     let provider: String
     let url: String

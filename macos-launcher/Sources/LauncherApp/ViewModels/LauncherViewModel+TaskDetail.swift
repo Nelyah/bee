@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 // MARK: - Task Detail Methods
@@ -12,6 +13,8 @@ extension LauncherViewModel {
     func openDetail() {
         guard selectedIndex != nil else { return }
         mode = .detail
+        detailFocusedIndex = 0
+        buildDetailFocusableItems()
         if let task = selectedTask {
             loadTaskDetail(taskUUID: task.uuid)
             loadExternalLinks(taskUUID: task.uuid)
@@ -71,6 +74,7 @@ extension LauncherViewModel {
                     errorMessage: nil,
                     refreshingProviders: []
                 )
+                buildDetailFocusableItems()
             } catch {
                 externalLinksState = ExternalLinksState(
                     isLoading: false,
@@ -128,5 +132,97 @@ extension LauncherViewModel {
     /// Sort tasks by urgency, highest first, keeping nil urgency last.
     func sortTasksByUrgency(_ items: [ApiTask]) -> [ApiTask] {
         TaskListCoordinator.sortTasksByUrgency(items)
+    }
+
+    // MARK: - Detail Focus Navigation
+
+    /// Builds the list of focusable items for the current detail view.
+    func buildDetailFocusableItems() {
+        var items: [DetailFocusableItem] = []
+
+        // 1. UUID is always first (if we have a task)
+        if let task = selectedTask {
+            items.append(.uuid(task.uuid))
+        }
+
+        // 2. GitLab MRs
+        let gitlabLinks = externalLinksState.links.filter {
+            $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
+        }
+        for link in gitlabLinks {
+            items.append(.gitlabMR(link))
+        }
+
+        // 3. Jira issues
+        let jiraLinks = externalLinksState.links.filter {
+            $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
+        }
+        for link in jiraLinks {
+            items.append(.jiraIssue(link))
+        }
+
+        detailFocusableItems = items
+
+        // Keep focus within bounds
+        if detailFocusedIndex >= items.count {
+            detailFocusedIndex = max(0, items.count - 1)
+        }
+    }
+
+    /// The currently focused item in detail view.
+    var focusedDetailItem: DetailFocusableItem? {
+        guard detailFocusedIndex >= 0, detailFocusedIndex < detailFocusableItems.count else {
+            return nil
+        }
+        return detailFocusableItems[detailFocusedIndex]
+    }
+
+    /// Handle a detail mode keyboard action.
+    @discardableResult
+    func handleDetailModeAction(_ action: DetailModeAction) -> Bool {
+        switch action {
+        case let .moveFocus(delta):
+            moveDetailFocus(delta: delta)
+            return true
+        case .openFocused:
+            return openFocusedDetailItem()
+        case .copyFocused:
+            return copyFocusedDetailItem()
+        case .selectFirst:
+            detailFocusedIndex = 0
+            return true
+        case .selectLast:
+            detailFocusedIndex = max(0, detailFocusableItems.count - 1)
+            return true
+        }
+    }
+
+    private func moveDetailFocus(delta: Int) {
+        guard !detailFocusableItems.isEmpty else { return }
+        let newIndex = detailFocusedIndex + delta
+        detailFocusedIndex = max(0, min(newIndex, detailFocusableItems.count - 1))
+    }
+
+    private func openFocusedDetailItem() -> Bool {
+        guard let item = focusedDetailItem,
+              let url = item.openURL
+        else {
+            return false
+        }
+
+        NSWorkspace.shared.open(url)
+        return true
+    }
+
+    private func copyFocusedDetailItem() -> Bool {
+        guard let item = focusedDetailItem else { return false }
+
+        let value = item.copyValue
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+
+        // Show toast with appropriate label
+        showToast(message: "\(item.copyLabel) copied", icon: .success)
+        return true
     }
 }

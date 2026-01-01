@@ -129,4 +129,41 @@ enum KeyHandlingDecider {
     private static func isEscape(_ input: KeyInput) -> Bool {
         input.keyCode == KeyCode.escape
     }
+
+    // MARK: - Detail Mode
+
+    /// Returns the detail mode action for the given input, if any.
+    /// Used for vim-style navigation in the task detail view.
+    static func detailModeAction(for input: KeyInput) -> DetailModeAction? {
+        // Check for Ctrl+N/P first (vim muscle memory)
+        if input.modifierFlags.contains(.control) {
+            switch input.charactersIgnoringModifiers {
+            case "n": return .moveFocus(1)
+            case "p": return .moveFocus(-1)
+            default: break
+            }
+        }
+
+        // Only allow shift modifier (for G), reject cmd/ctrl/option
+        let hasDisallowedModifier = input.modifierFlags.contains(.command) ||
+            input.modifierFlags.contains(.control) ||
+            input.modifierFlags.contains(.option)
+
+        guard !hasDisallowedModifier else { return nil }
+
+        switch input.keyCode {
+        case KeyCode.keyJ:
+            return .moveFocus(1)
+        case KeyCode.keyK:
+            return .moveFocus(-1)
+        case KeyCode.keyO:
+            return .openFocused
+        case KeyCode.keyY:
+            return .copyFocused
+        case KeyCode.keyG:
+            return input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
+        default:
+            return nil
+        }
+    }
 }

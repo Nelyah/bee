@@ -1,6 +1,6 @@
 ---
 name: macos-launcher-architecture
-description: macOS launcher SwiftUI architecture, patterns, and development workflows. Use when working on macos-launcher, SwiftUI views, ViewModels, services, command palette, or understanding the launcher codebase structure.
+description: macOS launcher SwiftUI architecture, patterns, and development workflows. Use when working on macos-launcher, SwiftUI views, ViewModels, services, command palette, keyboard navigation, vim-style shortcuts, or understanding the launcher codebase structure.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__serena__*
 ---
 
@@ -113,9 +113,13 @@ Pure functions for complex state transitions:
 | Coordinator | Purpose |
 |-------------|---------|
 | `InteractionCoordinator` | Escape key handling, normal-mode effects |
+| `InteractionContextCoordinator` | Context calculation, hint bar building |
+| `KeyHandlingDecider` | Pure key→action mapping for keyboard nav |
 | `TaskListCoordinator` | Task grouping, selection within groups |
 | `CompletionCoordinator` | Autocomplete state machine |
 | `CommandPaletteCoordinator` | Palette visibility, positioning |
+
+See [KEYBOARD-NAVIGATION.md](KEYBOARD-NAVIGATION.md) for keyboard navigation architecture.
 
 ## Design System
 
@@ -146,6 +150,7 @@ Read these when working on specific areas:
 | [ADDING-FEATURES.md](ADDING-FEATURES.md) | Adding new functionality end-to-end |
 | [VIEWMODEL-PATTERNS.md](VIEWMODEL-PATTERNS.md) | Working on state management |
 | [COMMAND-PALETTE.md](COMMAND-PALETTE.md) | Extending command palette |
+| [KEYBOARD-NAVIGATION.md](KEYBOARD-NAVIGATION.md) | Adding keyboard shortcuts, vim-style navigation |
 | [TESTING.md](TESTING.md) | Writing UI or snapshot tests |
 | [COMPONENTS.md](COMPONENTS.md) | Creating or modifying reusable components |
 

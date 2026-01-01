@@ -5,6 +5,7 @@ struct ContentView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @State private var escapeMonitor: Any?
     @State private var normalModeMonitor: Any?
+    @State private var detailModeMonitor: Any?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -36,7 +37,8 @@ struct ContentView: View {
                     },
                     onClose: {
                         viewModel.closeDetail()
-                    }
+                    },
+                    focusedItem: viewModel.focusedDetailItem
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)
             } else {
@@ -102,11 +104,13 @@ struct ContentView: View {
                 NSApplication.shared.activate(ignoringOtherApps: true)
                 installEscapeMonitor()
                 installNormalModeMonitor()
+                installDetailModeMonitor()
             }
         }
         .onDisappear {
             removeEscapeMonitor()
             removeNormalModeMonitor()
+            removeDetailModeMonitor()
         }
     }
 
@@ -155,6 +159,29 @@ struct ContentView: View {
         if let monitor = normalModeMonitor {
             NSEvent.removeMonitor(monitor)
             normalModeMonitor = nil
+        }
+    }
+
+    /// Handle keys in detail mode (j/k/o/y for vim-style navigation).
+    private func installDetailModeMonitor() {
+        guard detailModeMonitor == nil else { return }
+        detailModeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // Only handle keys in detail mode when command palette is closed
+            guard viewModel.mode == .detail,
+                  !viewModel.commandPalette.isPresented else { return event }
+            guard let action = KeyHandlingDecider.detailModeAction(for: KeyInput(event: event)) else {
+                return event
+            }
+
+            return viewModel.handleDetailModeAction(action) ? nil : event
+        }
+    }
+
+    /// Remove the detail mode key monitor.
+    private func removeDetailModeMonitor() {
+        if let monitor = detailModeMonitor {
+            NSEvent.removeMonitor(monitor)
+            detailModeMonitor = nil
         }
     }
 

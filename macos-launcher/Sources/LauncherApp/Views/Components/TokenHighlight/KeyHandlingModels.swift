@@ -44,3 +44,12 @@ enum NormalModeAction: Equatable {
     case toggleWithTab // Context-aware: collapse header or expand task
     case openCommandPalette
 }
+
+/// Actions that can be triggered in detail mode (keyboard navigation).
+enum DetailModeAction: Equatable {
+    case moveFocus(Int) // j/k navigation (+1/-1)
+    case openFocused // o - open in browser
+    case copyFocused // y - copy to clipboard
+    case selectFirst // g - jump to first
+    case selectLast // G - jump to last
+}

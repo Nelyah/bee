@@ -15,5 +15,7 @@ enum KeyCode {
     static let keyK: UInt16 = 40
     static let keyG: UInt16 = 5
     static let keyN: UInt16 = 45
+    static let keyO: UInt16 = 31
     static let keyP: UInt16 = 35
+    static let keyY: UInt16 = 16
 }

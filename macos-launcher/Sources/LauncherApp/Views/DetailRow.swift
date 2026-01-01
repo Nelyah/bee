@@ -30,9 +30,16 @@ struct CopyableDetailRow: View {
     let value: String
     let fullValue: String
     let onCopy: (String) -> Void
+    /// Whether this row is focused via detail view keyboard navigation (j/k keys).
+    var isKeyboardFocused: Bool = false
 
     @State private var isHovering = false
     @FocusState private var isFocused: Bool
+
+    /// Combined focus state: either SwiftUI Tab focus or keyboard nav focus.
+    private var showFocusRing: Bool {
+        isFocused || isKeyboardFocused
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.large) {
@@ -50,7 +57,7 @@ struct CopyableDetailRow: View {
                         .help(fullValue)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
-                    if isHovering || isFocused {
+                    if isHovering || showFocusRing {
                         Image(systemName: "doc.on.doc")
                             .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
                             .foregroundColor(ThemeManager.current.subtext0)
@@ -58,7 +65,7 @@ struct CopyableDetailRow: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(CopyableDetailRowButtonStyle(isFocused: isFocused))
+            .buttonStyle(CopyableDetailRowButtonStyle(isFocused: showFocusRing))
             .focused($isFocused)
             .onHover { hovering in
                 isHovering = hovering

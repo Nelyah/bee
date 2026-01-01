@@ -41,7 +41,13 @@ Orchestrates a multi-agent workflow for implementing tickets with quality gates.
     └────────┬────────┘                             │
              │ Approved                             │
              ▼                                      │
-    ┌─────────────────┐◀────────────────────────────┘
+    ┌─────────────────────────┐◀────────────────────┘
+    │   ENGINEER              │
+    │  Add test to reproduce  │
+    │   the issue             │
+    └────────┬────────────────┘
+             │
+    ┌────────┴────────┐
     │   ENGINEER      │
     │  Implements     │
     └────────┬────────┘

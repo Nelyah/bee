@@ -398,5 +398,52 @@ Added Escape key handling to dismiss the Save Report sheet, matching standard ma
 | UXUI-026 | Save Report Sheet Escape Key | Medium |
 | UXUI-029 | CopyableDetailRow Accessibility | High |
 | UXUI-030 | Detail-mode hints in BottomHintBar | High |
+| UXUI-027 | Keyboard navigation in detail view | Critical |
 
-**Total: 26 tickets completed**
+**Total: 27 tickets completed**
+
+---
+
+## UXUI-027: Implement keyboard navigation in detail view
+
+**Priority:** Critical | **Effort:** High | **Status:** ✅ Complete
+**Completed:** 2026-01-01
+
+### Resolution
+Implemented vim-style keyboard navigation (j/k) for the detail view, allowing users to focus and interact with UUID, GitLab MRs, and Jira links without using the mouse.
+
+Key features:
+- `j`/`k` or Ctrl+N/P moves focus between interactive elements
+- `o` opens focused link in browser (GitLab MR or Jira issue)
+- `y` copies focused item (UUID, branch name, or link URL)
+- `g`/`G` jumps to first/last focusable item
+- Blue focus ring indicates current selection
+- BottomHintBar shows navigation hints (`j/k → Navigate`, `o → Open`, `y → Copy`)
+
+### Architecture
+Follows the pure-function pipeline pattern:
+1. `KeyHandlingDecider.detailModeAction(for:)` - Maps keys to `DetailModeAction` enum
+2. `DetailFocusableItem` enum - Models focusable items (UUID, GitLab MR, Jira issue)
+3. `LauncherViewModel` - Manages focus state and handles actions
+4. `DetailFocusRing` ViewModifier - Visual focus indicator
+5. `ContentView` - Installs NSEvent monitor for detail mode
+
+### Files Modified/Created
+- New: `Sources/LauncherApp/Models/DetailFocusableItem.swift`
+- New: `Sources/LauncherApp/Views/Components/DetailFocusRing.swift`
+- New: `Tests/LauncherAppTests/DetailModeKeyHandlingTests.swift`
+- `Sources/LauncherApp/Views/Components/TokenHighlight/KeyHandlingModels.swift`
+- `Sources/LauncherApp/Views/Components/TokenHighlight/KeyHandlingDecider.swift`
+- `Sources/LauncherApp/ViewModels/LauncherViewModel.swift`
+- `Sources/LauncherApp/ViewModels/LauncherViewModel+TaskDetail.swift`
+- `Sources/LauncherApp/Views/DetailRow.swift`
+- `Sources/LauncherApp/Views/Components/ExternalLinkRow/ExternalLinkRow.swift`
+- `Sources/LauncherApp/Views/TaskDetailView.swift`
+- `Sources/LauncherApp/Views/ContentView.swift`
+- `Sources/LauncherApp/Utilities/Coordinators/InteractionContextCoordinator.swift`
+- `Sources/LauncherApp/Utilities/KeyCode.swift`
+
+### Tests Added
+- `DetailModeKeyHandlingTests` - 11 tests for key mapping
+- `InteractionContextCoordinatorTests` - Updated for new detail mode hints
+- `ContentViewSnapshotTests/testDetailModeWithKeyboardFocusOnLink` - Visual verification

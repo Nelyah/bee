@@ -14,6 +14,8 @@ struct ExternalLinkRow: View {
     let link: ExternalLinkDto
     let onCopyBranch: (String) -> Void
     let onCopyLink: (String) -> Void
+    /// Whether this row is focused via detail view keyboard navigation (j/k keys).
+    var isKeyboardFocused: Bool = false
 
     var body: some View {
         content
@@ -29,6 +31,7 @@ struct ExternalLinkRow: View {
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                     .fill(ThemeManager.current.surface1.opacity(0.7))
             )
+            .detailFocusRing(isFocused: isKeyboardFocused)
     }
 
     /// Dispatches to the appropriate provider-specific content view.

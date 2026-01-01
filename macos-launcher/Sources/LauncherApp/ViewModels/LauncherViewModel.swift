@@ -48,6 +48,13 @@ final class LauncherViewModel: ObservableObject {
 
     /// Set of expanded task UUIDs (for inline link/annotation preview).
     @Published var expandedTasks: Set<String> = []
+
+    // MARK: - Detail Focus State
+
+    /// Index of the currently focused item in detail view (for j/k navigation).
+    @Published var detailFocusedIndex: Int = 0
+    /// List of focusable items in the current detail view.
+    var detailFocusableItems: [DetailFocusableItem] = []
     /// Loaded expanded content per task UUID.
     @Published var taskExpandedData: [String: TaskExpandedContent] = [:]
 

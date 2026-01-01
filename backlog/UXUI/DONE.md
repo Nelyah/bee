@@ -308,6 +308,26 @@ Enhanced focus state with three signals:
 
 ---
 
+## UXUI-030: Add detail-mode hints to BottomHintBar
+
+**Priority:** High | **Effort:** Low | **Status:** ✅ Complete
+
+### Resolution
+The existing implementation already correctly shows detail-mode hints (Esc=Back on left, Cmd-K=Command menu on right). Added comprehensive tests to verify and document this behavior.
+
+### Tests Added
+- `testDetailModeLeftHintsShowEscapeBack`
+- `testDetailModeRightHintsShowCommandMenu`
+- `testDetailModeNoEnterHint`
+- `testDetailModeNoInsertHint`
+- `testBaseContextForDetailMode`
+- `testWithDetailModeHints` (snapshot)
+
+### Note
+Future hints (o=Open, y=Copy, j/k=Navigate) should be added once UXUI-027 (keyboard navigation in detail view) is implemented.
+
+---
+
 ## UXUI-029: Fix CopyableDetailRow accessibility
 
 **Priority:** High | **Effort:** Low | **Status:** ✅ Complete
@@ -377,5 +397,6 @@ Added Escape key handling to dismiss the Save Report sheet, matching standard ma
 | UXUI-025 | Search Input Focus | Low |
 | UXUI-026 | Save Report Sheet Escape Key | Medium |
 | UXUI-029 | CopyableDetailRow Accessibility | High |
+| UXUI-030 | Detail-mode hints in BottomHintBar | High |
 
-**Total: 25 tickets completed**
+**Total: 26 tickets completed**

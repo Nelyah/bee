@@ -66,32 +66,6 @@ Allow users to add annotations to tasks from the detail view, either via button 
 
 ---
 
-## UXUI-030: Add detail-mode hints to BottomHintBar
-
-**Category:** Discoverability
-**Priority:** High
-**Effort:** Low (1-2 hours)
-**Component:** `BottomHintModelBuilder`, `InteractionContextCoordinator`
-
-### Current State
-BottomHintBar does not show relevant shortcuts when in detail mode.
-
-### Problem
-Users don't discover available keyboard shortcuts for detail view actions.
-
-### Desired State
-Update hint model to show relevant shortcuts when in detail mode.
-
-### Acceptance Criteria
-- [ ] Detail mode shows: Esc=Back, o=Open, y=Copy, j/k=Navigate
-- [ ] Hints update when focus changes
-
-### Files Likely Affected
-- `Sources/LauncherApp/Utilities/BottomHintModelBuilder.swift`
-- `Sources/LauncherApp/Utilities/InteractionContextCoordinator.swift`
-
----
-
 ## UXUI-031: Improve section header visual hierarchy
 
 **Category:** Visual Polish
@@ -299,7 +273,6 @@ All information cards should have consistent widths, padding, and visual treatme
 | UXUI-027 | Keyboard navigation in detail view | Critical | High | Pending |
 | UXUI-037 | TaskDetailView card alignment | High | Medium | Pending |
 | UXUI-028 | Add annotation creation functionality | High | Medium | Pending |
-| UXUI-030 | Detail-mode hints in BottomHintBar | High | Low | Pending |
 | UXUI-031 | Section header visual hierarchy | Medium | Low | Pending |
 | UXUI-032 | Show copy icons persistently | Medium | Low | Pending |
 | UXUI-033 | Semantic status badge colors | Medium | Low | Pending |

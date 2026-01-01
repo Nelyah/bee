@@ -14,20 +14,24 @@ struct TaskDetailView: View {
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
+                // Constrain content width and center when view is wider
+                let effectiveWidth = min(proxy.size.width, TaskDetailLayout.maxContentWidth)
+
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                     header
 
-                    if isSingleColumn(for: proxy.size.width) {
+                    if isSingleColumn(for: effectiveWidth) {
                         metadataColumn
                         externalLinksSection
                     } else {
-                        twoColumnLayout(totalWidth: proxy.size.width)
+                        twoColumnLayout(totalWidth: effectiveWidth)
                     }
 
                     annotationsSection
                     historySection
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: TaskDetailLayout.maxContentWidth, alignment: .leading)
+                .frame(maxWidth: .infinity) // Centers content when view is wider
             }
             .onExitCommand {
                 onClose()
@@ -282,7 +286,9 @@ private enum TaskDetailLayout {
     static let leftColumnFraction: CGFloat = 0.3
     static let rightColumnFraction: CGFloat = 0.7
     static let columnSpacing: CGFloat = DesignTokens.Spacing.large
-    static let collapseWidth: CGFloat = 760
+    static let collapseWidth: CGFloat = 600
+    /// Maximum width for content - centers when view is wider
+    static let maxContentWidth: CGFloat = 900
 }
 
 private struct DetailSection<Content: View>: View {

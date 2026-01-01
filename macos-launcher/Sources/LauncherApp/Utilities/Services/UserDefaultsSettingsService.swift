@@ -46,7 +46,7 @@ final class UserDefaultsSettingsService: SettingsServiceProtocol {
     // MARK: - Bulk Operations
 
     func clearCollapsedState() {
-        defaults.removeObject(forKey: UserDefaultsKeys.collapsedGroups)
-        defaults.removeObject(forKey: UserDefaultsKeys.collapsedNilGroup)
+        defaults.set([String](), forKey: UserDefaultsKeys.collapsedGroups)
+        defaults.set(false, forKey: UserDefaultsKeys.collapsedNilGroup)
     }
 }

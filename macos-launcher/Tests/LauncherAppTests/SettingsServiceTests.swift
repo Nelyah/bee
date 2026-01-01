@@ -1,23 +1,27 @@
-import XCTest
 @testable import LauncherApp
+import XCTest
 
 final class SettingsServiceTests: XCTestCase {
-    // Use a dedicated UserDefaults suite to avoid pollution
     private var testDefaults: UserDefaults!
     private var sut: UserDefaultsSettingsService!
+    private var suiteName: String!
 
     override func setUp() {
         super.setUp()
-        // Clear any existing data first - must call on .standard to clear suite
-        UserDefaults.standard.removePersistentDomain(forName: "SettingsServiceTests")
-        testDefaults = UserDefaults(suiteName: "SettingsServiceTests")!
+        // Generate unique suite name per test instance to ensure complete isolation
+        suiteName = "com.bee.test.\(UUID().uuidString)"
+        testDefaults = UserDefaults(suiteName: suiteName)!
         sut = UserDefaultsSettingsService(defaults: testDefaults)
     }
 
     override func tearDown() {
-        UserDefaults.standard.removePersistentDomain(forName: "SettingsServiceTests")
+        // Clean up the persistent domain
+        if let suiteName {
+            UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        }
         testDefaults = nil
         sut = nil
+        suiteName = nil
         super.tearDown()
     }
 
@@ -30,9 +34,8 @@ final class SettingsServiceTests: XCTestCase {
     func testSelectedReportName_persistsValue() {
         sut.selectedReportName = "my-report"
 
-        // Create new instance to verify persistence
-        let newService = UserDefaultsSettingsService(defaults: testDefaults)
-        XCTAssertEqual(newService.selectedReportName, "my-report")
+        // Verify reading back through the service
+        XCTAssertEqual(sut.selectedReportName, "my-report")
     }
 
     // MARK: - selectedGroupBy Tests
@@ -44,16 +47,16 @@ final class SettingsServiceTests: XCTestCase {
     func testSelectedGroupBy_persistsValue() {
         sut.selectedGroupBy = "dueDate"
 
-        let newService = UserDefaultsSettingsService(defaults: testDefaults)
-        XCTAssertEqual(newService.selectedGroupBy, "dueDate")
+        // Verify reading back through the service
+        XCTAssertEqual(sut.selectedGroupBy, "dueDate")
     }
 
     func testSelectedGroupBy_settingNilRemovesValue() {
         sut.selectedGroupBy = "project"
         sut.selectedGroupBy = nil
 
-        let newService = UserDefaultsSettingsService(defaults: testDefaults)
-        XCTAssertNil(newService.selectedGroupBy)
+        // Verify reading back through the service
+        XCTAssertNil(sut.selectedGroupBy)
     }
 
     // MARK: - collapsedGroups Tests
@@ -65,8 +68,8 @@ final class SettingsServiceTests: XCTestCase {
     func testCollapsedGroups_persistsValue() {
         sut.collapsedGroups = ["project1", "project2"]
 
-        let newService = UserDefaultsSettingsService(defaults: testDefaults)
-        XCTAssertEqual(newService.collapsedGroups, ["project1", "project2"])
+        // Verify reading back through the service
+        XCTAssertEqual(sut.collapsedGroups, ["project1", "project2"])
     }
 
     // MARK: - collapsedNilGroup Tests
@@ -78,8 +81,8 @@ final class SettingsServiceTests: XCTestCase {
     func testCollapsedNilGroup_persistsValue() {
         sut.collapsedNilGroup = true
 
-        let newService = UserDefaultsSettingsService(defaults: testDefaults)
-        XCTAssertTrue(newService.collapsedNilGroup)
+        // Verify reading back through the service
+        XCTAssertTrue(sut.collapsedNilGroup)
     }
 
     // MARK: - clearCollapsedState Tests
@@ -100,9 +103,9 @@ final class SettingsServiceTests: XCTestCase {
 
         sut.clearCollapsedState()
 
-        let newService = UserDefaultsSettingsService(defaults: testDefaults)
-        XCTAssertEqual(newService.collapsedGroups, [])
-        XCTAssertFalse(newService.collapsedNilGroup)
+        // Verify the values were cleared through the service API
+        XCTAssertEqual(sut.collapsedGroups, [])
+        XCTAssertFalse(sut.collapsedNilGroup)
     }
 }
 

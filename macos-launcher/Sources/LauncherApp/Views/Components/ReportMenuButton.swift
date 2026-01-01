@@ -7,6 +7,8 @@ struct ReportMenuButton: View {
     @Binding var flash: Bool
     let onSelect: (String) -> Void
 
+    @State private var isHovering = false
+
     var body: some View {
         ReportMenuButtonRepresentable(name: name, reports: reports, onSelect: onSelect) {
             flash = true
@@ -21,13 +23,22 @@ struct ReportMenuButton: View {
         .animation(.easeOut(duration: 0.12), value: flash)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .fill(ThemeManager.current.surface1.opacity(0.35))
+                .fill(ThemeManager.current.surface1.opacity(isHovering ? 0.55 : 0.35))
         )
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .stroke(ThemeManager.current.surface2.opacity(0.5), lineWidth: 1)
+                .stroke(
+                    isHovering ? ThemeManager.current.blue.opacity(0.5) : ThemeManager.current.surface2.opacity(0.5),
+                    lineWidth: 1
+                )
         )
         .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous))
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+        .help("Switch between saved task views")
     }
 }
 
@@ -36,12 +47,15 @@ private struct ReportBadgeView: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.extraSmall) {
-            Text("Report: \(name)")
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                .foregroundColor(ThemeManager.current.subtext0)
+            Text(name)
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .semibold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)
             Image(systemName: "chevron.down")
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
-                .foregroundColor(ThemeManager.current.subtext0)
+                .foregroundColor(ThemeManager.current.overlay0)
         }
     }
 }

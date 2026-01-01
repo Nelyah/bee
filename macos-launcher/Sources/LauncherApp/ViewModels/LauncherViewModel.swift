@@ -228,9 +228,36 @@ final class LauncherViewModel: ObservableObject {
         .removeDuplicates()
         .sink { [weak self] context in
             self?.interactionContext = context
-            self?.hintModel = BottomHintModelBuilder.model(for: context)
+            self?.updateHintModel(for: context)
         }
         .store(in: &cancellables)
+
+        // Separately observe detail focus changes for dynamic copy label
+        Publishers.CombineLatest(
+            $detailKeyboardNavigationActive,
+            $detailFocusedIndex
+        )
+        .sink { [weak self] _, _ in
+            guard let self, case .detail = self.interactionContext else { return }
+            updateHintModel(for: interactionContext)
+        }
+        .store(in: &cancellables)
+    }
+
+    /// Updates the hint model for the given context.
+    private func updateHintModel(for context: InteractionContext) {
+        let copyLabel = computeDetailCopyLabel()
+        hintModel = BottomHintModelBuilder.model(for: context, detailCopyLabel: copyLabel)
+    }
+
+    /// Computes the copy label for the currently focused detail item.
+    private func computeDetailCopyLabel() -> String? {
+        guard detailKeyboardNavigationActive,
+              detailFocusedIndex >= 0,
+              detailFocusedIndex < detailFocusableItems.count else {
+            return nil
+        }
+        return detailFocusableItems[detailFocusedIndex].copyLabel
     }
 
     /// Fetch the report configuration from the API.

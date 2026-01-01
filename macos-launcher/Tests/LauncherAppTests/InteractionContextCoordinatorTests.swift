@@ -220,6 +220,32 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         XCTAssertEqual(base, .detail)
     }
 
+    // MARK: - Dynamic Copy Label Tests
+
+    func testDetailModeCopyLabelIsGenericByDefault() {
+        let model = BottomHintModelBuilder.model(for: .detail, detailCopyLabel: nil)
+        let copyHint = model.right.first { $0.key == "y" }
+        XCTAssertEqual(copyHint?.label, "Copy")
+    }
+
+    func testDetailModeCopyLabelShowsUUID() {
+        let model = BottomHintModelBuilder.model(for: .detail, detailCopyLabel: "UUID")
+        let copyHint = model.right.first { $0.key == "y" }
+        XCTAssertEqual(copyHint?.label, "Copy UUID")
+    }
+
+    func testDetailModeCopyLabelShowsBranch() {
+        let model = BottomHintModelBuilder.model(for: .detail, detailCopyLabel: "Branch")
+        let copyHint = model.right.first { $0.key == "y" }
+        XCTAssertEqual(copyHint?.label, "Copy Branch")
+    }
+
+    func testDetailModeCopyLabelShowsLink() {
+        let model = BottomHintModelBuilder.model(for: .detail, detailCopyLabel: "Link")
+        let copyHint = model.right.first { $0.key == "y" }
+        XCTAssertEqual(copyHint?.label, "Copy Link")
+    }
+
     private func enterLabel(in context: InteractionContext) -> String? {
         let model = BottomHintModelBuilder.model(for: context)
         return model.right.first(where: { $0.key == "Enter" })?.label

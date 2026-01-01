@@ -469,9 +469,19 @@ final class DetailFocusViewModelTests: XCTestCase {
 
     // MARK: - Focused Item Property
 
+    func testFocusedDetailItemReturnsNilWhenKeyboardNavigationInactive() {
+        setupDetailModeWithItems()
+        viewModel.detailFocusedIndex = 1
+        viewModel.detailKeyboardNavigationActive = false
+
+        // Focus ring only shows after user engages with hjkl
+        XCTAssertNil(viewModel.focusedDetailItem)
+    }
+
     func testFocusedDetailItemReturnsCorrectItem() {
         setupDetailModeWithItems()
         viewModel.detailFocusedIndex = 1
+        viewModel.detailKeyboardNavigationActive = true
 
         let focused = viewModel.focusedDetailItem
 
@@ -482,6 +492,7 @@ final class DetailFocusViewModelTests: XCTestCase {
     func testFocusedDetailItemReturnsNilWhenOutOfBounds() {
         setupDetailModeWithItems()
         viewModel.detailFocusedIndex = 999
+        viewModel.detailKeyboardNavigationActive = true
 
         XCTAssertNil(viewModel.focusedDetailItem)
     }

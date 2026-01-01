@@ -77,8 +77,13 @@ enum InteractionContextCoordinator {
 
 enum BottomHintModelBuilder {
     static func model(for context: InteractionContext) -> BottomHintModel {
+        model(for: context, detailCopyLabel: nil)
+    }
+
+    /// Builds hint model with optional detail copy label (e.g., "UUID", "Branch", "Link").
+    static func model(for context: InteractionContext, detailCopyLabel: String?) -> BottomHintModel {
         let left = leftHints(for: context)
-        let right = rightHints(for: context)
+        let right = rightHints(for: context, detailCopyLabel: detailCopyLabel)
         return BottomHintModel(left: left, right: right)
     }
 
@@ -97,7 +102,7 @@ enum BottomHintModelBuilder {
         return hints
     }
 
-    private static func rightHints(for context: InteractionContext) -> [BottomHint] {
+    private static func rightHints(for context: InteractionContext, detailCopyLabel: String?) -> [BottomHint] {
         var hints: [BottomHint] = []
         if let enterLabel = enterLabel(for: context) {
             hints.append(BottomHint(key: "Enter", label: enterLabel))
@@ -107,7 +112,9 @@ enum BottomHintModelBuilder {
         case .detail:
             // Show action hints for detail mode
             hints.append(BottomHint(key: "a", label: "Add note"))
-            hints.append(BottomHint(key: "y", label: "Copy"))
+            // Dynamic copy label based on focused item (e.g., "Copy UUID", "Copy Branch")
+            let copyLabel = detailCopyLabel.map { "Copy \($0)" } ?? "Copy"
+            hints.append(BottomHint(key: "y", label: copyLabel))
         case let .list(selection, isInsertMode):
             // Show Tab hint in normal mode (collapse for headers, expand for tasks)
             if !isInsertMode {

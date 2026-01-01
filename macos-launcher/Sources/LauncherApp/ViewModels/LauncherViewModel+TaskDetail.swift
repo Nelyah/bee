@@ -172,7 +172,12 @@ extension LauncherViewModel {
     }
 
     /// The currently focused item in detail view.
+    /// Returns nil if keyboard navigation is not active (focus ring is lazy).
     var focusedDetailItem: DetailFocusableItem? {
+        // Focus ring only shows after user engages with hjkl navigation
+        guard detailKeyboardNavigationActive else {
+            return nil
+        }
         guard detailFocusedIndex >= 0, detailFocusedIndex < detailFocusableItems.count else {
             return nil
         }
@@ -289,7 +294,11 @@ extension LauncherViewModel {
                 // Note: The field name must match TaskProperties.annotation in Rust
                 let properties: JSONValue = .object(["annotation": .string(text)])
                 // Build filter for this specific task
-                let filter: JSONValue = .object(["uuid": .string(task.uuid)])
+                // Note: Rust uses typetag::serde which requires a "type" discriminator
+                let filter: JSONValue = .object([
+                    "type": .string("UuidFilter"),
+                    "uuid": .string(task.uuid),
+                ])
 
                 _ = try await apiClient.runAction(
                     action: "annotate",

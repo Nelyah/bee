@@ -523,6 +523,51 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isAddingAnnotation)
         XCTAssertEqual(viewModel.mode, .detail, "Should remain in detail mode")
     }
+
+    // MARK: - Annotation Filter Format Tests
+
+    func testSubmitAnnotationSendsCorrectFilterFormat() async {
+        // Arrange: Set up a ViewModel with MockApiClient to capture the filter
+        let mock = MockApiClient()
+        let viewModel = LauncherViewModel(apiClient: mock)
+
+        // Set up task and select it
+        viewModel.tasks = [makeTask(id: "test-task-uuid")]
+        viewModel.selectedIndex = 0
+        viewModel.mode = .detail
+
+        // Set up annotation input
+        viewModel.isAddingAnnotation = true
+        viewModel.annotationInput = "Test annotation text"
+
+        // Act: Submit the annotation
+        viewModel.submitAnnotation()
+
+        // Wait for async task to complete
+        try? await Task.sleep(for: .milliseconds(50))
+
+        // Assert: Verify the filter format includes "type" discriminator
+        // The Rust backend uses typetag::serde which requires {"type": "UuidFilter", "uuid": "..."}
+        guard let filter = mock.lastRunActionFilter,
+              case let .object(dict) = filter else {
+            XCTFail("Expected filter to be an object, got: \(String(describing: mock.lastRunActionFilter))")
+            return
+        }
+
+        // Verify "type" field is present (required by typetag::serde)
+        guard case let .string(typeValue) = dict["type"] else {
+            XCTFail("Filter must contain 'type' field for typetag::serde deserialization. Got: \(dict)")
+            return
+        }
+        XCTAssertEqual(typeValue, "UuidFilter", "Type discriminator should be 'UuidFilter'")
+
+        // Verify "uuid" field is present
+        guard case let .string(uuidValue) = dict["uuid"] else {
+            XCTFail("Filter must contain 'uuid' field. Got: \(dict)")
+            return
+        }
+        XCTAssertEqual(uuidValue, "test-task-uuid")
+    }
 }
 
 private func clearCollapsedDefaults() {

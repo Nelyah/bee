@@ -41,18 +41,18 @@ extension LauncherViewModel {
     func copyBranchNameToClipboard(_ branch: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(branch, forType: .string)
-        showToast(message: "Copied branch name to clipboard", icon: .gitlab)
+        showToast(message: "Branch copied", icon: .success)
     }
 
     func copyLinkToClipboard(_ url: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(url, forType: .string)
-        showToast(message: "Copied link to clipboard", icon: .gitlab)
+        showToast(message: "Link copied", icon: .success)
     }
 
     func copyUUIDToClipboard(_ uuid: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(uuid, forType: .string)
-        showToast(message: "Copied UUID to clipboard", icon: .success)
+        showToast(message: "UUID copied", icon: .success)
     }
 }

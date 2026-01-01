@@ -142,10 +142,10 @@ struct TaskDetailView: View {
                 let created = formattedDate(task.dateCreated)
                 DetailRow(label: "Created", value: created.display, helpText: created.help)
 
-                let completed = formattedOptionalDate(task.dateCompleted, emptyLabel: "Not completed")
+                let completed = formattedOptionalDate(task.dateCompleted, emptyLabel: "—")
                 DetailRow(label: "Completed", value: completed.display, helpText: completed.help)
 
-                let due = formattedOptionalDate(task.dateDue, emptyLabel: "Not set")
+                let due = formattedOptionalDate(task.dateDue, emptyLabel: "—")
                 DetailRow(label: "Due", value: due.display, helpText: due.help)
             }
         }
@@ -173,9 +173,9 @@ struct TaskDetailView: View {
         DetailSection(title: "Annotations") {
             let annotations = sortedAnnotations(detailForTask?.annotations ?? [])
             if annotations.isEmpty {
-                Text("No annotations")
+                Text("—")
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(ThemeManager.current.overlay0)
             } else {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                     ForEach(annotations) { annotation in
@@ -193,9 +193,9 @@ struct TaskDetailView: View {
         DetailSection(title: "History") {
             let history = sortedHistory(detailForTask?.history ?? [])
             if history.isEmpty {
-                Text("No history yet")
+                Text("—")
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(ThemeManager.current.overlay0)
             } else {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                     ForEach(history) { entry in
@@ -368,9 +368,9 @@ private struct ExternalLinksProviderSection: View {
             }
 
             if links.isEmpty {
-                Text("No links yet")
+                Text("—")
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(ThemeManager.current.overlay0)
             } else {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                     ForEach(links, id: \.id) { link in

@@ -171,9 +171,9 @@ struct TaskRow: View {
     }
 
     private var emptyView: some View {
-        Text("No links or annotations")
+        Text("—")
             .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
-            .foregroundColor(ThemeManager.current.subtext0)
+            .foregroundColor(ThemeManager.current.overlay0)
     }
 
     @ViewBuilder

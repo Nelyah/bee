@@ -143,7 +143,7 @@ final class TaskRowUITests: XCTestCase {
 
     // MARK: - Expanded Content Tests
 
-    func testExpandedRowShowsEmptyMessage() throws {
+    func testExpandedRowShowsEmptyPlaceholder() throws {
         let task = makeTestTask()
         let emptyContent = TaskExpandedContent(
             isLoading: false,
@@ -162,8 +162,8 @@ final class TaskRowUITests: XCTestCase {
 
         let view = try sut.inspect()
 
-        // Should show "No links or annotations" message
-        _ = try view.find(text: "No links or annotations")
+        // Empty state shows a neutral dash instead of "No links or annotations"
+        _ = try view.find(text: "—")
     }
 
     func testExpandedRowShowsErrorMessage() throws {

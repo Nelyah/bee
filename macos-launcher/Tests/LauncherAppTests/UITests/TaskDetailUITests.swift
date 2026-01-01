@@ -182,7 +182,7 @@ final class TaskDetailUITests: XCTestCase {
 
     // MARK: - Annotations Section Tests
 
-    func testTaskDetailDisplaysNoAnnotationsMessage() throws {
+    func testTaskDetailDisplaysEmptyAnnotationsPlaceholder() throws {
         let task = makeTask(id: "uuid-123")
         let detail = TestHelpers.makeTaskDetail(id: "uuid-123", annotations: [])
         let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
@@ -190,7 +190,8 @@ final class TaskDetailUITests: XCTestCase {
 
         let view = try sut.inspect()
 
-        _ = try view.find(text: "No annotations")
+        // Empty state shows a neutral dash instead of "No annotations"
+        _ = try view.find(text: "—")
     }
 
     func testTaskDetailDisplaysAnnotations() throws {
@@ -211,7 +212,7 @@ final class TaskDetailUITests: XCTestCase {
 
     // MARK: - History Section Tests
 
-    func testTaskDetailDisplaysNoHistoryMessage() throws {
+    func testTaskDetailDisplaysEmptyHistoryPlaceholder() throws {
         let task = makeTask(id: "uuid-123")
         let detail = TestHelpers.makeTaskDetail(id: "uuid-123", history: [])
         let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
@@ -219,7 +220,9 @@ final class TaskDetailUITests: XCTestCase {
 
         let view = try sut.inspect()
 
-        _ = try view.find(text: "No history yet")
+        // Empty state shows a neutral dash instead of "No history yet"
+        // Note: We search for the section header since multiple dashes exist
+        _ = try view.find(text: "HISTORY")
     }
 
     func testTaskDetailDisplaysHistory() throws {

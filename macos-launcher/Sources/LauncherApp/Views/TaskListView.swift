@@ -32,6 +32,14 @@ struct TaskListView: View {
     @ObservedObject var completion: CompletionCoordinator
     @State private var reportBadgeFlash = false
 
+    /// Whether any filters are currently active (search input, filter chips, or project scope)
+    private var hasActiveFilters: Bool {
+        !viewModel.criteriaFilterChips.isEmpty
+            || !viewModel.criteriaPropertyChips.isEmpty
+            || viewModel.projectScope != nil
+            || !viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 16) {
@@ -171,61 +179,65 @@ struct TaskListView: View {
                     .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
                 }
 
-                // Task list (grouped by project)
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: TaskListLayout.listSpacing) {
-                            ForEach(Array(viewModel.groupedRows.enumerated()), id: \.element.id) { rowIndex, row in
-                                switch row {
-                                case let .header(header):
-                                    GroupHeaderRow(
-                                        header: header,
-                                        isHovered: viewModel.hoveredRowIndex == rowIndex,
-                                        isSelected: viewModel.selectedRowIndex == rowIndex
-                                    )
-                                    .id(row.id)
-                                    .onHover { hovering in
-                                        viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                    }
-                                    .onTapGesture { viewModel.activatePrimary(at: rowIndex) }
-
-                                case let .task(item):
-                                    TaskRow(
-                                        task: item.task,
-                                        columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
-                                        isSelected: viewModel.selectedRowIndex == rowIndex,
-                                        isHovered: viewModel.hoveredRowIndex == rowIndex,
-                                        isExpanded: viewModel.isTaskExpanded(item.task.uuid),
-                                        expandedContent: viewModel.taskExpandedData[item.task.uuid],
-                                        onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) }
-                                    )
-                                    .id(row.id)
-                                    .onHover { hovering in
-                                        viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                    }
-                                    .onTapGesture { viewModel.selectRow(rowIndex) }
-                                    .simultaneousGesture(
-                                        TapGesture(count: 2).onEnded {
-                                            viewModel.activatePrimary(at: rowIndex)
+                // Task list (grouped by project) or empty state
+                if viewModel.groupedRows.isEmpty {
+                    EmptyStateView(hasActiveFilters: hasActiveFilters)
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: TaskListLayout.listSpacing) {
+                                ForEach(Array(viewModel.groupedRows.enumerated()), id: \.element.id) { rowIndex, row in
+                                    switch row {
+                                    case let .header(header):
+                                        GroupHeaderRow(
+                                            header: header,
+                                            isHovered: viewModel.hoveredRowIndex == rowIndex,
+                                            isSelected: viewModel.selectedRowIndex == rowIndex
+                                        )
+                                        .id(row.id)
+                                        .onHover { hovering in
+                                            viewModel.hoveredRowIndex = hovering ? rowIndex : nil
                                         }
-                                    )
+                                        .onTapGesture { viewModel.activatePrimary(at: rowIndex) }
+
+                                    case let .task(item):
+                                        TaskRow(
+                                            task: item.task,
+                                            columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
+                                            isSelected: viewModel.selectedRowIndex == rowIndex,
+                                            isHovered: viewModel.hoveredRowIndex == rowIndex,
+                                            isExpanded: viewModel.isTaskExpanded(item.task.uuid),
+                                            expandedContent: viewModel.taskExpandedData[item.task.uuid],
+                                            onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) }
+                                        )
+                                        .id(row.id)
+                                        .onHover { hovering in
+                                            viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                        }
+                                        .onTapGesture { viewModel.selectRow(rowIndex) }
+                                        .simultaneousGesture(
+                                            TapGesture(count: 2).onEnded {
+                                                viewModel.activatePrimary(at: rowIndex)
+                                            }
+                                        )
+                                    }
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, TaskListLayout.listVerticalPadding)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.expandedTasks)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, TaskListLayout.listVerticalPadding)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.expandedTasks)
-                    }
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        // Reserve space for BottomHintBar overlay so scrollTo respects it
-                        Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.large)
-                    }
-                    .onChange(of: viewModel.selectedRowIndex) { _, newValue in
-                        guard let index = newValue,
-                              index < viewModel.groupedRows.count else { return }
-                        let rowId = viewModel.groupedRows[index].id
-                        // anchor: nil only scrolls if item is out of visible area
-                        proxy.scrollTo(rowId, anchor: nil)
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            // Reserve space for BottomHintBar overlay so scrollTo respects it
+                            Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.large)
+                        }
+                        .onChange(of: viewModel.selectedRowIndex) { _, newValue in
+                            guard let index = newValue,
+                                  index < viewModel.groupedRows.count else { return }
+                            let rowId = viewModel.groupedRows[index].id
+                            // anchor: nil only scrolls if item is out of visible area
+                            proxy.scrollTo(rowId, anchor: nil)
+                        }
                     }
                 }
 

@@ -69,7 +69,7 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: WindowConfiguration.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: WindowConfiguration.cornerRadius, style: .continuous)
-                .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
+                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
         )
         .frame(minWidth: 680, minHeight: 440)
         .ignoresSafeArea()

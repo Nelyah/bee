@@ -9,8 +9,6 @@ import XCTest
 /// - No tasks exist yet (first-run experience)
 /// - Filters are active but no tasks match
 final class EmptyStateViewSnapshotTests: SnapshotTestCase {
-    override var isRecording: Bool { false }
-
     // MARK: - Empty State Tests
 
     func testEmptyStateNoFilters() {

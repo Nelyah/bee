@@ -87,7 +87,7 @@ struct TaskDetailView: View {
     }
 
     private var externalLinksSection: some View {
-        DetailSection(title: "External Links") {
+        DetailSection(title: "External Links", style: .tertiary) {
             if externalLinksLoading {
                 Text("Loading links…")
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
@@ -170,7 +170,7 @@ struct TaskDetailView: View {
     }
 
     private var annotationsSection: some View {
-        DetailSection(title: "Annotations") {
+        DetailSection(title: "Annotations", style: .tertiary) {
             let annotations = sortedAnnotations(detailForTask?.annotations ?? [])
             if annotations.isEmpty {
                 Text("—")
@@ -190,7 +190,7 @@ struct TaskDetailView: View {
     }
 
     private var historySection: some View {
-        DetailSection(title: "History") {
+        DetailSection(title: "History", style: .tertiary) {
             let history = sortedHistory(detailForTask?.history ?? [])
             if history.isEmpty {
                 Text("—")
@@ -291,12 +291,22 @@ private enum TaskDetailLayout {
     static let maxContentWidth: CGFloat = 900
 }
 
+/// Visual style for detail sections
+private enum DetailSectionStyle {
+    /// Primary sections with full card treatment (Overview, Dates)
+    case primary
+    /// Tertiary sections with minimal styling (External Links, Annotations, History)
+    case tertiary
+}
+
 private struct DetailSection<Content: View>: View {
     let title: String
+    let style: DetailSectionStyle
     let content: Content
 
-    init(title: String, @ViewBuilder content: () -> Content) {
+    init(title: String, style: DetailSectionStyle = .primary, @ViewBuilder content: () -> Content) {
         self.title = title
+        self.style = style
         self.content = content()
     }
 
@@ -304,18 +314,32 @@ private struct DetailSection<Content: View>: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
             Text(title.uppercased())
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
-                .foregroundColor(ThemeManager.current.subtext0)
+                .foregroundColor(style == .primary ? ThemeManager.current.subtext0 : ThemeManager.current.overlay0)
             content
         }
-        .padding(DesignTokens.Spacing.medium)
-        .background(
+        .padding(style == .primary ? DesignTokens.Spacing.medium : DesignTokens.Spacing.small)
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    @ViewBuilder
+    private var cardBackground: some View {
+        if style == .primary {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(ThemeManager.current.surface0)
-        )
-        .overlay(
+        } else {
+            Color.clear
+        }
+    }
+
+    @ViewBuilder
+    private var cardBorder: some View {
+        if style == .primary {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
-        )
+                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
+        } else {
+            EmptyView()
+        }
     }
 }
 

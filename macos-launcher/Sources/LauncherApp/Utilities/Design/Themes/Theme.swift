@@ -22,6 +22,17 @@ protocol Theme {
     var surface2: Color { get }
     var surface2NS: NSColor { get }
 
+    // MARK: - Semantic Surface Colors (Interactive States)
+
+    /// Surface color for hover state - provides subtle highlight
+    var surfaceHover: Color { get }
+
+    /// Surface color for selected state - clearly indicates selection
+    var surfaceSelected: Color { get }
+
+    /// Surface color for selected + hover state - combines both states
+    var surfaceSelectedHover: Color { get }
+
     var text: Color { get }
     var textNS: NSColor { get }
 
@@ -69,4 +80,23 @@ protocol Theme {
 
     var rosewater: Color { get }
     var rosewaterNS: NSColor { get }
+}
+
+// MARK: - Default Semantic Surface Colors
+
+extension Theme {
+    /// Default hover state: surface0 blended with blue (8%) for subtle highlight
+    var surfaceHover: Color {
+        surface0.blended(with: blue, amount: 0.08)
+    }
+
+    /// Default selected state: surface1 blended with blue (15%) for clear selection
+    var surfaceSelected: Color {
+        surface1.blended(with: blue, amount: 0.15)
+    }
+
+    /// Default selected + hover: surface2 blended with blue (12%) for combined state
+    var surfaceSelectedHover: Color {
+        surface2.blended(with: blue, amount: 0.12)
+    }
 }

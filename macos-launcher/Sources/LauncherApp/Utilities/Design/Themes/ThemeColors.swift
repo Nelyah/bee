@@ -24,3 +24,33 @@ extension NSColor {
         self.init(srgbRed: red, green: green, blue: blue, alpha: 1.0)
     }
 }
+
+// MARK: - Color Blending
+
+extension Color {
+    /// Blend this color with another color by the given amount.
+    /// - Parameters:
+    ///   - other: The color to blend with
+    ///   - amount: Blend factor from 0.0 (all self) to 1.0 (all other)
+    /// - Returns: The blended color
+    func blended(with other: Color, amount: Double) -> Color {
+        let clampedAmount = max(0, min(1, amount))
+
+        // Convert to NSColor for component access
+        let selfNS = NSColor(self)
+        let otherNS = NSColor(other)
+
+        // Get RGB components (in sRGB color space)
+        guard let selfRGB = selfNS.usingColorSpace(.sRGB),
+              let otherRGB = otherNS.usingColorSpace(.sRGB)
+        else {
+            return self
+        }
+
+        let r = selfRGB.redComponent * (1 - clampedAmount) + otherRGB.redComponent * clampedAmount
+        let g = selfRGB.greenComponent * (1 - clampedAmount) + otherRGB.greenComponent * clampedAmount
+        let b = selfRGB.blueComponent * (1 - clampedAmount) + otherRGB.blueComponent * clampedAmount
+
+        return Color(red: r, green: g, blue: b)
+    }
+}

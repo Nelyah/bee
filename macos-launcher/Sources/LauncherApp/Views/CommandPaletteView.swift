@@ -62,11 +62,11 @@ struct CommandPaletteView: View {
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
                     .fill(ThemeManager.current.base)
-                    .shadow(color: ThemeManager.current.surface2.opacity(0.4), radius: 18, x: 0, y: 10)
+                    .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 12)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
-                    .stroke(ThemeManager.current.surface1.opacity(0.6), lineWidth: 1)
+                    .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
             )
         }
         .onAppear {
@@ -209,7 +209,7 @@ struct CommandPaletteView: View {
         HStack(spacing: 10) {
             // Icon
             if let icon = item.icon {
-                iconView(icon)
+                iconView(icon, isSelected: isSelected)
             }
 
             // Title + subtitle
@@ -252,12 +252,14 @@ struct CommandPaletteView: View {
     }
 
     @ViewBuilder
-    private func iconView(_ icon: CommandPaletteIcon) -> some View {
+    private func iconView(_ icon: CommandPaletteIcon, isSelected: Bool) -> some View {
+        let iconColor = isSelected ? ThemeManager.current.text : ThemeManager.current.subtext0
+
         switch icon {
         case let .system(name):
             Image(systemName: name)
                 .font(.system(size: DesignTokens.TypeScale.body))
-                .foregroundColor(ThemeManager.current.subtext0)
+                .foregroundColor(iconColor)
                 .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
         case let .asset(name):
             Image(name, bundle: .module)
@@ -272,6 +274,7 @@ struct CommandPaletteView: View {
                     .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
             } else {
                 Image(systemName: "link")
+                    .foregroundColor(iconColor)
                     .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
             }
         case .jira:
@@ -283,7 +286,7 @@ struct CommandPaletteView: View {
             } else {
                 Image(systemName: "ticket")
                     .font(.system(size: DesignTokens.TypeScale.body))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(iconColor)
                     .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
             }
         }
@@ -327,7 +330,7 @@ struct CommandPaletteView: View {
 
     private func selectionBackground(isSelected: Bool) -> some View {
         RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-            .fill(isSelected ? ThemeManager.current.surface1 : ThemeManager.current.base)
+            .fill(isSelected ? ThemeManager.current.surfaceSelected : ThemeManager.current.base)
     }
 
     /// Capture Ctrl+N/P to move selection in the command palette.

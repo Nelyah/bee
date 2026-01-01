@@ -1,6 +1,15 @@
 import SwiftUI
 
 enum DesignTokens {
+    /// Border opacity tokens for consistent stroke appearance
+    enum Border {
+        /// Container borders (windows, cards, panels) - visible but subtle
+        static let containerOpacity: Double = 0.8
+        /// Separator/divider borders - lighter for visual separation
+        static let separatorOpacity: Double = 0.5
+        /// Focus state borders use full accent color (no opacity token needed)
+    }
+
     enum Spacing {
         static let extraSmall: CGFloat = 4
         static let small: CGFloat = 8
@@ -32,6 +41,7 @@ enum DesignTokens {
 
     enum IconSize {
         static let mini: CGFloat = 8
+        static let statusIndicator: CGFloat = 10
         static let small: CGFloat = 12
         static let medium: CGFloat = 14
         static let standard: CGFloat = 16

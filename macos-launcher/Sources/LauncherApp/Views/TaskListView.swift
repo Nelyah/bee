@@ -7,16 +7,16 @@ private enum TaskListLayout {
     static let horizontalPadding: CGFloat = DesignTokens.Spacing.large
     static let verticalPadding: CGFloat = DesignTokens.Spacing.medium
     static let cornerRadius: CGFloat = DesignTokens.Radius.large
-    static let strokeOpacity: Double = 0.5
     static let criteriaTopPadding: CGFloat = DesignTokens.Spacing.extraSmall
     static let criteriaBottomPadding: CGFloat = DesignTokens.Spacing.small
     static let headerSpacing: CGFloat = DesignTokens.Spacing.medium
-    static let statusIndicatorWidth: CGFloat = 8
+    static let statusIndicatorWidth: CGFloat = DesignTokens.IconSize.statusIndicator
     static let firstColumnWidth: CGFloat = 30
     static let otherColumnWidth: CGFloat = 60
     static let statusColumnWidth: CGFloat = 80
     static let tagsColumnWidth: CGFloat = 80
-    static let headerFontSize: CGFloat = DesignTokens.TypeScale.caption
+    static let headerFontSize: CGFloat = DesignTokens.TypeScale.label
+    static let headerLetterSpacing: CGFloat = 1.5
     static let headerPaddingHorizontal: CGFloat = DesignTokens.Spacing.medium
     static let listSpacing: CGFloat = DesignTokens.Spacing.small
     static let listVerticalPadding: CGFloat = DesignTokens.Spacing.extraSmall
@@ -49,7 +49,12 @@ struct TaskListView: View {
                 HStack(spacing: TaskListLayout.searchRowSpacing) {
                     HStack(spacing: TaskListLayout.searchSpacing) {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(ThemeManager.current.subtext0)
+                            .foregroundColor(
+                                viewModel.isInsertMode
+                                    ? ThemeManager.current.text
+                                    : ThemeManager.current.subtext0
+                            )
+                            .animation(.easeInOut(duration: 0.15), value: viewModel.isInsertMode)
                         ZStack(alignment: .leading) {
                             if viewModel.input.isEmpty {
                                 Text("Search tasks…")
@@ -58,7 +63,7 @@ struct TaskListView: View {
                                         weight: .medium,
                                         design: .rounded
                                     ))
-                                    .foregroundColor(ThemeManager.current.overlay0)
+                                    .foregroundColor(ThemeManager.current.subtext0)
                                     .padding(.leading, 2)
                             }
                             TokenHighlightTextView(
@@ -120,11 +125,14 @@ struct TaskListView: View {
                                     .stroke(
                                         viewModel.isInsertMode
                                             ? ThemeManager.current.blue
-                                            : ThemeManager.current.surface1.opacity(TaskListLayout.strokeOpacity),
+                                            : ThemeManager.current.surface1
+                                            .opacity(DesignTokens.Border.separatorOpacity),
                                         lineWidth: viewModel.isInsertMode ? 2 : 1
                                     )
                             )
                     )
+                    .scaleEffect(viewModel.isInsertMode ? 1.01 : 1.0)
+                    .animation(.easeInOut(duration: 0.15), value: viewModel.isInsertMode)
                     .contentShape(Rectangle())
                     .onTapGesture { viewModel.enterInsertMode() }
 
@@ -185,8 +193,15 @@ struct TaskListView: View {
                         }
                     }
                     .font(.system(size: TaskListLayout.headerFontSize, weight: .bold, design: .rounded))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(ThemeManager.current.subtext1)
+                    .tracking(TaskListLayout.headerLetterSpacing)
                     .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
+                    .padding(.bottom, DesignTokens.Spacing.small)
+
+                    // Subtle divider below headers
+                    Divider()
+                        .background(ThemeManager.current.surface1.opacity(DesignTokens.Border.separatorOpacity))
+                        .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
                 }
 
                 // Task list (grouped by project) or empty state

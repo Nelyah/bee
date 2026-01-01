@@ -43,6 +43,7 @@ struct TaskRow: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.medium))
+        .opacity(rowOpacity)
         .zIndex(isExpanded ? 1 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
     }
@@ -52,10 +53,8 @@ struct TaskRow: View {
             // Expansion chevron
             chevronIndicator
 
-            // Status indicator
-            Circle()
-                .fill(statusColor(task.status))
-                .frame(width: DesignTokens.IconSize.mini, height: DesignTokens.IconSize.mini)
+            // Status indicator with glow effect
+            statusIndicator
 
             // Dynamic columns
             ForEach(Array(columns.enumerated()), id: \.offset) { index, column in
@@ -63,7 +62,7 @@ struct TaskRow: View {
                     // First column (usually ID) - small fixed width
                     Text(value(for: column))
                         .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .monospaced))
-                        .foregroundColor(ThemeManager.current.subtext0)
+                        .foregroundColor(ThemeManager.current.subtext1)
                         .frame(width: 30, alignment: .leading)
                 } else if column == "summary" {
                     // Summary column expands
@@ -101,12 +100,31 @@ struct TaskRow: View {
     private var chevronIndicator: some View {
         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
             .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
-            .foregroundColor(ThemeManager.current.subtext0)
+            .foregroundColor(ThemeManager.current.subtext1)
             .frame(width: DesignTokens.IconSize.small, height: DesignTokens.IconSize.small)
             .contentShape(Rectangle())
             .onTapGesture {
                 onChevronTap?()
             }
+    }
+
+    /// Status indicator with glow effect for better visibility
+    private var statusIndicator: some View {
+        let color = statusColor(task.status)
+        return Circle()
+            .fill(color)
+            .frame(width: DesignTokens.IconSize.statusIndicator, height: DesignTokens.IconSize.statusIndicator)
+            .shadow(color: color.opacity(0.5), radius: 4, x: 0, y: 0)
+    }
+
+    /// Whether this task is completed (for dimming effect)
+    private var isCompleted: Bool {
+        task.status.lowercased() == "completed"
+    }
+
+    /// Opacity for the row - completed tasks are dimmed
+    private var rowOpacity: Double {
+        isCompleted ? 0.65 : 1.0
     }
 
     @ViewBuilder
@@ -163,7 +181,7 @@ struct TaskRow: View {
                 .foregroundColor(ThemeManager.current.red)
             Text(message)
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
-                .foregroundColor(ThemeManager.current.subtext0)
+                .foregroundColor(ThemeManager.current.subtext1)
                 .lineLimit(1)
         }
     }
@@ -189,13 +207,13 @@ struct TaskRow: View {
 
     private var backgroundColor: Color {
         if isSelected, isHovered {
-            return ThemeManager.current.surface2
+            return ThemeManager.current.surfaceSelectedHover
         }
         if isSelected {
-            return ThemeManager.current.surface1
+            return ThemeManager.current.surfaceSelected
         }
         if isHovered {
-            return ThemeManager.current.surface0
+            return ThemeManager.current.surfaceHover
         }
         return ThemeManager.current.base
     }

@@ -7,9 +7,9 @@ struct GroupHeaderRow: View {
 
     private var backgroundColor: Color {
         if isSelected {
-            ThemeManager.current.surface1
+            ThemeManager.current.surfaceSelected
         } else if isHovered {
-            ThemeManager.current.surface0
+            ThemeManager.current.surfaceHover
         } else {
             // Subtle background tint for visual distinction
             ThemeManager.current.surface0.opacity(0.5)
@@ -20,13 +20,13 @@ struct GroupHeaderRow: View {
         HStack(spacing: 8) {
             Image(systemName: header.isCollapsed ? "chevron.right" : "chevron.down")
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .bold))
-                .foregroundColor(ThemeManager.current.subtext0)
+                .foregroundColor(ThemeManager.current.subtext1)
                 .frame(width: 12)
 
             // Folder icon for visual distinction
             Image(systemName: "folder.fill")
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                .foregroundColor(ThemeManager.current.overlay0)
+                .foregroundColor(ThemeManager.current.subtext0)
 
             Text(header.displayName)
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .bold, design: .rounded))
@@ -35,14 +35,14 @@ struct GroupHeaderRow: View {
             // Task count badge
             Text("(\(header.taskCount))")
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
-                .foregroundColor(ThemeManager.current.subtext0)
+                .foregroundColor(ThemeManager.current.subtext1)
 
             Spacer()
 
             if isHovered || isSelected {
                 Text("Tab to \(header.isCollapsed ? "expand" : "collapse")")
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(ThemeManager.current.subtext1)
             }
         }
         .padding(.vertical, DesignTokens.Spacing.small)

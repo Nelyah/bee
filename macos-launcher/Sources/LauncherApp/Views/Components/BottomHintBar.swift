@@ -5,6 +5,13 @@ struct BottomHintBar: View {
     let rightHints: [BottomHint]
     static let height: CGFloat = 34
 
+    @State private var isHovered = false
+
+    /// Opacity when not hovered - subtle but visible
+    private let restingOpacity: Double = 0.4
+    /// Opacity when hovered - full visibility
+    private let hoveredOpacity: Double = 1.0
+
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.small) {
             HStack(spacing: DesignTokens.Spacing.small) {
@@ -33,9 +40,17 @@ struct BottomHintBar: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                        .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
+                        .stroke(
+                            ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity),
+                            lineWidth: 1
+                        )
                 )
         )
+        .opacity(isHovered ? hoveredOpacity : restingOpacity)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 

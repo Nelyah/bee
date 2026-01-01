@@ -7,8 +7,6 @@ import XCTest
 ///
 /// Tests error banner display with and without retry action.
 final class ErrorBannerViewSnapshotTests: SnapshotTestCase {
-    override var isRecording: Bool { false }
-
     // MARK: - Error Banner Tests
 
     func testErrorBannerWithRetry() {

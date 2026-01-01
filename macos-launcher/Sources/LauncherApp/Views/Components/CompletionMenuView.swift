@@ -40,7 +40,7 @@ struct CompletionMenuView: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
-                .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
+                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
     }

@@ -18,14 +18,27 @@ import XCTest
 /// }
 /// ```
 ///
+/// ## Recording Snapshots
+/// To record new snapshots without code changes, use the environment variable:
+/// ```bash
+/// RECORD_SNAPSHOTS=1 swift test --filter "MyViewSnapshotTests"
+/// ```
+///
+/// Or record all snapshots:
+/// ```bash
+/// RECORD_SNAPSHOTS=1 swift test
+/// ```
+///
 /// ## Reference Images
 /// Reference images are stored in `__Snapshots__` directories alongside tests.
-/// On first run, or when `isRecording = true`, new reference images are created.
+/// On first run, or when recording is enabled, new reference images are created.
 class SnapshotTestCase: XCTestCase {
-    /// Set to `true` to record new reference snapshots.
-    /// After recording, set back to `false` for assertions.
+    /// Whether to record new reference snapshots.
+    ///
+    /// Checks `RECORD_SNAPSHOTS` environment variable first, then falls back to
+    /// subclass override. Set `RECORD_SNAPSHOTS=1` to record without code changes.
     var isRecording: Bool {
-        false
+        ProcessInfo.processInfo.environment["RECORD_SNAPSHOTS"] == "1"
     }
 
     // MARK: - Snapshot Helpers

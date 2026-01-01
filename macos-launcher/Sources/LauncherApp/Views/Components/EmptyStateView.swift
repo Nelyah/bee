@@ -9,15 +9,15 @@ struct EmptyStateView: View {
         VStack(spacing: DesignTokens.Spacing.medium) {
             Image(systemName: hasActiveFilters ? "magnifyingglass" : "checkmark.circle")
                 .font(.system(size: DesignTokens.TypeScale.display, weight: .light))
-                .foregroundColor(ThemeManager.current.overlay0)
+                .foregroundColor(ThemeManager.current.subtext0)
 
             Text(hasActiveFilters ? "No tasks match your filters" : "No tasks yet")
                 .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .rounded))
-                .foregroundColor(ThemeManager.current.subtext0)
+                .foregroundColor(ThemeManager.current.subtext1)
 
             Text(hasActiveFilters ? "Try removing some filters" : "Press ⌘I to create your first task")
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .regular, design: .rounded))
-                .foregroundColor(ThemeManager.current.overlay0)
+                .foregroundColor(ThemeManager.current.subtext0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(DesignTokens.Spacing.extraLarge)

@@ -67,9 +67,6 @@ import XCTest
 ///
 @MainActor
 final class ScreenshotCatalog: SnapshotTestCase {
-    // Set to true to regenerate all screenshots
-    override var isRecording: Bool { false }
-
     // MARK: - Setup
 
     private var viewModel: LauncherViewModel!

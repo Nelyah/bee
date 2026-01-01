@@ -508,19 +508,19 @@ Screenshot reference: `testWithReportBadge.1.png`, `testDefaultState.1.png` (Rep
 
 | ID | Title | Priority | Effort | Status |
 |----|-------|----------|--------|--------|
-| UXUI-001 | Empty State Lacks Guidance | High | Low | Pending |
-| UXUI-002 | Text Truncation Without Context | High | Medium | Pending |
-| UXUI-003 | Indistinguishable Row Selection States | Medium | Low | Pending |
-| UXUI-004 | Detail View Unbalanced Layout | Medium | Medium | Pending |
-| UXUI-005 | Error States Lack Visual Prominence | High | Low | Pending |
-| UXUI-006 | Save Report Sheet Missing Features | Medium | Low | Pending |
-| UXUI-007 | "Stale" Warning Unclear | Low | Low | Pending |
-| UXUI-008 | Group Headers Need Visual Distinction | Low | Low | Pending |
-| UXUI-009 | Completion Menu Overlay Issues | Medium | Medium | Pending |
-| UXUI-011 | "No filters" Placeholder Value | Low | Low | Pending |
-| UXUI-012 | Negative Phrasing in Detail View | Low | Low | Pending |
-| UXUI-014 | Visual Consistency Audit | Medium | Medium | Pending |
-| UXUI-015 | Report Dropdown Discoverability | Low | Low | Pending |
+| UXUI-001 | Empty State Lacks Guidance | High | Low | ✅ Complete |
+| UXUI-002 | Text Truncation Without Context | High | Medium | ✅ Complete |
+| UXUI-003 | Indistinguishable Row Selection States | Medium | Low | ✅ Complete |
+| UXUI-004 | Detail View Unbalanced Layout | Medium | Medium | ✅ Complete |
+| UXUI-005 | Error States Lack Visual Prominence | High | Low | ✅ Complete |
+| UXUI-006 | Save Report Sheet Missing Features | Medium | Low | ✅ Complete |
+| UXUI-007 | "Stale" Warning Unclear | Low | Low | ✅ Complete |
+| UXUI-008 | Group Headers Need Visual Distinction | Low | Low | ✅ Complete |
+| UXUI-009 | Completion Menu Overlay Issues | Medium | Medium | ✅ Complete |
+| UXUI-011 | "No filters" Placeholder Value | Low | Low | ✅ Complete |
+| UXUI-012 | Negative Phrasing in Detail View | Low | Low | ✅ Complete |
+| UXUI-014 | Visual Consistency Audit | Medium | Medium | ✅ Complete |
+| UXUI-015 | Report Dropdown Discoverability | Low | Low | ✅ Complete |
 
 ---
 

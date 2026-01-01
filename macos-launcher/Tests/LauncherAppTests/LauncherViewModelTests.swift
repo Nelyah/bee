@@ -568,6 +568,63 @@ final class LauncherViewModelTests: XCTestCase {
         }
         XCTAssertEqual(uuidValue, "test-task-uuid")
     }
+
+    // MARK: - Column Reorder Tests
+
+    func testReorderColumnMovesForward() {
+        let viewModel = LauncherViewModel()
+        viewModel.columnConfigs = [
+            ColumnConfig(key: "id", displayName: "ID", width: nil),
+            ColumnConfig(key: "summary", displayName: "Summary", width: nil),
+            ColumnConfig(key: "status", displayName: "Status", width: nil),
+        ]
+
+        // Move "id" to position 2 (after "summary")
+        viewModel.reorderColumn("id", to: 2)
+
+        XCTAssertEqual(viewModel.columnConfigs.map(\.key), ["summary", "id", "status"])
+    }
+
+    func testReorderColumnMovesBackward() {
+        let viewModel = LauncherViewModel()
+        viewModel.columnConfigs = [
+            ColumnConfig(key: "id", displayName: "ID", width: nil),
+            ColumnConfig(key: "summary", displayName: "Summary", width: nil),
+            ColumnConfig(key: "status", displayName: "Status", width: nil),
+        ]
+
+        // Move "status" to position 0 (before "id")
+        viewModel.reorderColumn("status", to: 0)
+
+        XCTAssertEqual(viewModel.columnConfigs.map(\.key), ["status", "id", "summary"])
+    }
+
+    func testReorderColumnSamePositionDoesNothing() {
+        let viewModel = LauncherViewModel()
+        viewModel.columnConfigs = [
+            ColumnConfig(key: "id", displayName: "ID", width: nil),
+            ColumnConfig(key: "summary", displayName: "Summary", width: nil),
+            ColumnConfig(key: "status", displayName: "Status", width: nil),
+        ]
+
+        // Move "summary" to position 1 (same position)
+        viewModel.reorderColumn("summary", to: 1)
+
+        XCTAssertEqual(viewModel.columnConfigs.map(\.key), ["id", "summary", "status"])
+    }
+
+    func testReorderColumnInvalidKeyDoesNothing() {
+        let viewModel = LauncherViewModel()
+        viewModel.columnConfigs = [
+            ColumnConfig(key: "id", displayName: "ID", width: nil),
+            ColumnConfig(key: "summary", displayName: "Summary", width: nil),
+        ]
+
+        // Try to move non-existent column
+        viewModel.reorderColumn("nonexistent", to: 0)
+
+        XCTAssertEqual(viewModel.columnConfigs.map(\.key), ["id", "summary"])
+    }
 }
 
 private func clearCollapsedDefaults() {

@@ -350,6 +350,9 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
             filter: request.filter,
             columns: request.columns,
             columnNames: request.columnNames,
+            columnWidths: request.columnWidths,
+            sortColumn: request.sortColumn,
+            sortDirection: request.sortDirection,
             createdAt: "2024-01-01T00:00:00Z",
             updatedAt: "2024-01-01T00:00:00Z"
         )
@@ -361,6 +364,9 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
             filter: request.filter,
             columns: request.columns,
             columnNames: request.columnNames,
+            columnWidths: request.columnWidths,
+            sortColumn: request.sortColumn,
+            sortDirection: request.sortDirection,
             createdAt: "2024-01-01T00:00:00Z",
             updatedAt: "2024-01-01T00:00:00Z"
         )

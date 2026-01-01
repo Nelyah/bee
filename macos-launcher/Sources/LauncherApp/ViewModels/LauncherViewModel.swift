@@ -24,7 +24,12 @@ final class LauncherViewModel: ObservableObject {
     @Published private(set) var hintModel: BottomHintModel = BottomHintModelBuilder.model(
         for: .list(selection: .none, isInsertMode: true)
     )
-    @Published var reportConfig: ReportConfig?
+    @Published var reportConfig: ReportConfig? {
+        didSet {
+            initializeColumnConfigs(from: reportConfig)
+        }
+    }
+
     @Published var availableReports: [ReportSummary] = []
     @Published var selectedReportName: String = ""
     @Published var reportFilterChips: [CriteriaChip] = []
@@ -43,6 +48,13 @@ final class LauncherViewModel: ObservableObject {
     @Published var groupingStrategy: TaskGroupingStrategy = ProjectGroupingStrategy()
     /// Set of collapsed group keys.
     @Published var collapsedGroups: Set<String?> = []
+
+    // MARK: - Column Customization State
+
+    /// Column configurations for the current report (order, widths).
+    @Published var columnConfigs: [ColumnConfig] = []
+    /// Current sort state: nil means sort by urgency (default).
+    @Published var sortState: ColumnSortState?
 
     // MARK: - Task Expansion State
 
@@ -155,37 +167,6 @@ final class LauncherViewModel: ObservableObject {
         loadGroupingStrategy()
         setupInteractionContextUpdates()
         setupCommandPaletteContributors()
-    }
-
-    private func setupCommandPaletteContributors() {
-        // Register the shortcuts section (always visible)
-        commandPalette.dataSource.register(ShortcutsSectionContributor())
-
-        // Register the actions section with handlers
-        let actionHandler = CommandPaletteActionHandler(viewModel: self, apiClient: apiClient)
-        commandPalette.dataSource.register(ActionsSectionContributor(actionHandler: actionHandler))
-
-        // Register the group-by section
-        commandPalette.dataSource.register(GroupBySectionContributor(
-            currentGroupBy: { [weak self] in self?.currentGroupByOption ?? .project },
-            onGroupBySelect: { [weak self] option in self?.setGroupingStrategy(option) }
-        ))
-
-        // Register the go-to section for project navigation
-        commandPalette.dataSource.register(GoToSectionContributor(
-            currentProjectScope: { [weak self] in self?.projectScope },
-            onProjectSelect: { [weak self] project in
-                self?.setProjectScope(project)
-                self?.closeCommandPalette()
-            }
-        ))
-
-        // Register the save report section
-        commandPalette.dataSource.register(SaveReportSectionContributor(
-            actionHandler: actionHandler,
-            getCurrentFilters: { [weak self] in self?.criteriaFilterChips.map(\.label) ?? [] },
-            getUserReports: { [weak self] in self?.availableReports ?? [] }
-        ))
     }
 
     private func setupInteractionContextUpdates() {
@@ -342,13 +323,19 @@ final class LauncherViewModel: ObservableObject {
         filter: JSONValue?,
         columns: [String],
         columnNames: [String],
+        columnWidths: JSONValue? = nil,
+        sortColumn: String? = nil,
+        sortDirection: String? = nil,
         isUpdate: Bool
     ) async {
         let request = UserReportRequest(
             name: name,
             filter: filter,
             columns: columns,
-            columnNames: columnNames
+            columnNames: columnNames,
+            columnWidths: columnWidths,
+            sortColumn: sortColumn,
+            sortDirection: sortDirection
         )
 
         do {

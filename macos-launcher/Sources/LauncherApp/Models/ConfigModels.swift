@@ -58,6 +58,12 @@ struct ReportSummary: Decodable, Identifiable {
     let columns: [String]
     /// Display names for columns (human-readable like "ID", "Summary").
     let columnNames: [String]
+    /// Custom column widths as JSON object: {"column_key": width_in_pixels}
+    let columnWidths: JSONValue?
+    /// Column key to sort by (e.g., "status"). Nil means default urgency sort.
+    let sortColumn: String?
+    /// Sort direction: "ascending" or "descending"
+    let sortDirection: String?
     /// Whether this is the default report.
     let isDefault: Bool
     /// Whether this is a user-created report (vs. static from config).
@@ -71,6 +77,9 @@ struct ReportSummary: Decodable, Identifiable {
         case userFilter = "filter"
         case columns
         case columnNames = "column_names"
+        case columnWidths = "column_widths"
+        case sortColumn = "sort_column"
+        case sortDirection = "sort_direction"
         case isDefault = "is_default"
         case isUserReport = "is_user_report"
     }
@@ -84,6 +93,9 @@ struct ReportSummary: Decodable, Identifiable {
         userFilter = try container.decodeIfPresent(JSONValue.self, forKey: .userFilter)
         columns = try container.decode([String].self, forKey: .columns)
         columnNames = try container.decode([String].self, forKey: .columnNames)
+        columnWidths = try container.decodeIfPresent(JSONValue.self, forKey: .columnWidths)
+        sortColumn = try container.decodeIfPresent(String.self, forKey: .sortColumn)
+        sortDirection = try container.decodeIfPresent(String.self, forKey: .sortDirection)
         isDefault = try container.decode(Bool.self, forKey: .isDefault)
         // API only sends is_user_report when true, so default to false
         isUserReport = try container.decodeIfPresent(Bool.self, forKey: .isUserReport) ?? false
@@ -96,6 +108,9 @@ struct ReportSummary: Decodable, Identifiable {
         userFilter: JSONValue? = nil,
         columns: [String],
         columnNames: [String],
+        columnWidths: JSONValue? = nil,
+        sortColumn: String? = nil,
+        sortDirection: String? = nil,
         isDefault: Bool,
         isUserReport: Bool = false
     ) {
@@ -104,6 +119,9 @@ struct ReportSummary: Decodable, Identifiable {
         self.userFilter = userFilter
         self.columns = columns
         self.columnNames = columnNames
+        self.columnWidths = columnWidths
+        self.sortColumn = sortColumn
+        self.sortDirection = sortDirection
         self.isDefault = isDefault
         self.isUserReport = isUserReport
     }
@@ -118,12 +136,21 @@ struct UserReportRequest: Encodable {
     let filter: JSONValue?
     let columns: [String]
     let columnNames: [String]
+    /// Custom column widths as JSON object: {"column_key": width_in_pixels}
+    let columnWidths: JSONValue?
+    /// Column key to sort by (e.g., "status"). Nil means default urgency sort.
+    let sortColumn: String?
+    /// Sort direction: "ascending" or "descending"
+    let sortDirection: String?
 
     enum CodingKeys: String, CodingKey {
         case name
         case filter
         case columns
         case columnNames = "column_names"
+        case columnWidths = "column_widths"
+        case sortColumn = "sort_column"
+        case sortDirection = "sort_direction"
     }
 }
 
@@ -134,6 +161,12 @@ struct UserReportDto: Decodable {
     let filter: JSONValue?
     let columns: [String]
     let columnNames: [String]
+    /// Custom column widths as JSON object.
+    let columnWidths: JSONValue?
+    /// Column key to sort by. Nil means default urgency sort.
+    let sortColumn: String?
+    /// Sort direction: "ascending" or "descending"
+    let sortDirection: String?
     let createdAt: String
     let updatedAt: String
 
@@ -142,6 +175,9 @@ struct UserReportDto: Decodable {
         case filter
         case columns
         case columnNames = "column_names"
+        case columnWidths = "column_widths"
+        case sortColumn = "sort_column"
+        case sortDirection = "sort_direction"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }

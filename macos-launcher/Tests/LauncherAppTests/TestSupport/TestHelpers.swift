@@ -310,6 +310,35 @@ enum TestHelpers {
         )
     }
 
+    // MARK: - Column Config Helpers
+
+    /// Create ColumnConfig array from column keys.
+    /// Useful for tests that previously used [String] for columns.
+    static func makeColumnConfigs(from columns: [String]) -> [ColumnConfig] {
+        columns.map { key in
+            let displayName = ColumnDefinition(rawValue: key)?.displayName ?? key.capitalized
+            return ColumnConfig(key: key, displayName: displayName, width: nil)
+        }
+    }
+
+    /// Standard column configs used in most tests.
+    static let standardColumnConfigs: [ColumnConfig] = [
+        ColumnConfig(key: "id", displayName: "ID", width: nil),
+        ColumnConfig(key: "summary", displayName: "Summary", width: nil),
+        ColumnConfig(key: "tags", displayName: "Tags", width: nil),
+        ColumnConfig(key: "status", displayName: "Status", width: nil),
+    ]
+
+    /// All-columns config for comprehensive tests.
+    static let allColumnConfigs: [ColumnConfig] = [
+        ColumnConfig(key: "id", displayName: "ID", width: nil),
+        ColumnConfig(key: "summary", displayName: "Summary", width: nil),
+        ColumnConfig(key: "status", displayName: "Status", width: nil),
+        ColumnConfig(key: "project", displayName: "Project", width: nil),
+        ColumnConfig(key: "tags", displayName: "Tags", width: nil),
+        ColumnConfig(key: "urgency", displayName: "Urgency", width: nil),
+    ]
+
     // MARK: - Settings Service Helpers
 
     /// Create a MockSettingsService for testing.

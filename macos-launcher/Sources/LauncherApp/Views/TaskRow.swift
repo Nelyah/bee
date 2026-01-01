@@ -2,7 +2,7 @@ import SwiftUI
 
 struct TaskRow: View {
     let task: ApiTask
-    let columns: [String]
+    let columnConfigs: [ColumnConfig]
     let isSelected: Bool
     let isHovered: Bool
     var isExpanded: Bool = false
@@ -57,44 +57,49 @@ struct TaskRow: View {
             statusIndicator
 
             // Dynamic columns
-            ForEach(Array(columns.enumerated()), id: \.offset) { index, column in
-                if index == 0 {
-                    // First column (usually ID) - small fixed width
-                    Text(value(for: column))
-                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .monospaced))
-                        .foregroundColor(ThemeManager.current.subtext1)
-                        .frame(width: 30, alignment: .leading)
-                } else if column == "summary" {
-                    // Summary column expands
-                    Text(value(for: column))
-                        .font(.system(size: DesignTokens.TypeScale.bodyLg, weight: .semibold, design: .rounded))
-                        .foregroundColor(ThemeManager.current.text)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .help(value(for: column))
-                } else if column == "tags" {
-                    // Tags column with overflow indicator (maxVisible: 1 to fit in 80px)
-                    TagsOverflowText(tags: task.tags, maxVisible: 1)
-                        .frame(width: 80, alignment: .leading)
-                } else if column == "status" {
-                    // Status column - wider to prevent mid-word truncation
-                    Text(value(for: column))
-                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
-                        .foregroundColor(ThemeManager.current.subtext1)
-                        .frame(width: 80, alignment: .leading)
-                        .lineLimit(1)
-                        .help(value(for: column))
-                } else {
-                    // Other columns
-                    Text(value(for: column))
-                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
-                        .foregroundColor(ThemeManager.current.subtext1)
-                        .frame(width: 60, alignment: .leading)
-                        .lineLimit(1)
-                        .help(value(for: column))
-                }
+            ForEach(columnConfigs) { config in
+                columnView(for: config)
             }
         }
+    }
+
+    @ViewBuilder
+    private func columnView(for config: ColumnConfig) -> some View {
+        let column = config.key
+
+        if config.isFlex {
+            // Summary column expands
+            Text(value(for: column))
+                .font(.system(size: DesignTokens.TypeScale.bodyLg, weight: .semibold, design: .rounded))
+                .foregroundColor(ThemeManager.current.text)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(value(for: column))
+        } else if column == "id" {
+            // ID column - monospaced
+            Text(value(for: column))
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .monospaced))
+                .foregroundColor(ThemeManager.current.subtext1)
+                .frame(width: config.effectiveWidth, alignment: .leading)
+        } else if column == "tags" {
+            // Tags column with overflow indicator
+            TagsOverflowText(tags: task.tags, maxVisible: maxTagsVisible(for: config.effectiveWidth))
+                .frame(width: config.effectiveWidth, alignment: .leading)
+        } else {
+            // Other columns
+            Text(value(for: column))
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
+                .foregroundColor(ThemeManager.current.subtext1)
+                .frame(width: config.effectiveWidth, alignment: .leading)
+                .lineLimit(1)
+                .help(value(for: column))
+        }
+    }
+
+    /// Calculate max visible tags based on column width.
+    private func maxTagsVisible(for width: CGFloat) -> Int {
+        // Roughly 40px per tag, minimum 1
+        max(1, Int(width / 40))
     }
 
     private var chevronIndicator: some View {
@@ -245,10 +250,18 @@ struct TaskRow: View {
     }
 }
 
+/// Helper for creating sample column configs in previews.
+private let sampleColumnConfigs = [
+    ColumnConfig(key: "id", displayName: "ID", width: nil),
+    ColumnConfig(key: "summary", displayName: "Summary", width: nil),
+    ColumnConfig(key: "tags", displayName: "Tags", width: nil),
+    ColumnConfig(key: "status", displayName: "Status", width: nil),
+]
+
 #Preview("Collapsed") {
     TaskRow(
         task: MockApiClient.sampleTasks[0],
-        columns: ["id", "summary", "tags", "status"],
+        columnConfigs: sampleColumnConfigs,
         isSelected: true,
         isHovered: false,
         isExpanded: false
@@ -260,7 +273,7 @@ struct TaskRow: View {
 #Preview("Expanded Loading") {
     TaskRow(
         task: MockApiClient.sampleTasks[1],
-        columns: ["id", "summary", "tags", "status"],
+        columnConfigs: sampleColumnConfigs,
         isSelected: false,
         isHovered: true,
         isExpanded: true,
@@ -273,7 +286,7 @@ struct TaskRow: View {
 #Preview("Expanded Empty") {
     TaskRow(
         task: MockApiClient.sampleTasks[0],
-        columns: ["id", "summary", "tags", "status"],
+        columnConfigs: sampleColumnConfigs,
         isSelected: true,
         isHovered: false,
         isExpanded: true,

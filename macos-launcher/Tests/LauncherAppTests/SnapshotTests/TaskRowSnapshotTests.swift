@@ -41,7 +41,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask()
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "project"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: false,
             isHovered: false
         )
@@ -53,7 +53,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask()
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "project"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: true,
             isHovered: false
         )
@@ -65,7 +65,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask()
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "project"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: false,
             isHovered: true
         )
@@ -77,7 +77,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask()
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "project"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: true,
             isHovered: true
         )
@@ -97,7 +97,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
 
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false,
             isExpanded: true,
@@ -114,7 +114,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
 
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false,
             isExpanded: true,
@@ -130,7 +130,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask()
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false
         )
@@ -142,7 +142,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask()
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "project", "tags", "urgency"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project", "tags", "urgency"]),
             isSelected: false,
             isHovered: false
         )
@@ -169,7 +169,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
 
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "status"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "status"]),
             isSelected: false,
             isHovered: false
         )
@@ -195,7 +195,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
 
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "tags"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "tags"]),
             isSelected: false,
             isHovered: false
         )
@@ -207,7 +207,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask(project: nil)
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "project"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: false,
             isHovered: false
         )
@@ -219,7 +219,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let task = makeTestTask(tags: [])
         let view = TaskRow(
             task: task,
-            columns: ["id", "summary", "tags"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "tags"]),
             isSelected: false,
             isHovered: false
         )

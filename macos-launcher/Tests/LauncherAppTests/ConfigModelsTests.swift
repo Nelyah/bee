@@ -145,7 +145,10 @@ final class ConfigModelsTests: XCTestCase {
             name: "my-report",
             filter: .object(["type": .string("project")]),
             columns: ["id", "summary"],
-            columnNames: ["ID", "Summary"]
+            columnNames: ["ID", "Summary"],
+            columnWidths: .object(["id": .number(80), "summary": .number(300)]),
+            sortColumn: "status",
+            sortDirection: "ascending"
         )
         let data = try JSONEncoder().encode(request)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -154,6 +157,9 @@ final class ConfigModelsTests: XCTestCase {
         XCTAssertEqual(json["columns"] as? [String], ["id", "summary"])
         XCTAssertEqual(json["column_names"] as? [String], ["ID", "Summary"])
         XCTAssertNotNil(json["filter"])
+        XCTAssertNotNil(json["column_widths"])
+        XCTAssertEqual(json["sort_column"] as? String, "status")
+        XCTAssertEqual(json["sort_direction"] as? String, "ascending")
     }
 
     func testUserReportRequestEncodesWithNilFilter() throws {
@@ -161,7 +167,10 @@ final class ConfigModelsTests: XCTestCase {
             name: "my-report",
             filter: nil,
             columns: ["id"],
-            columnNames: ["ID"]
+            columnNames: ["ID"],
+            columnWidths: nil,
+            sortColumn: nil,
+            sortDirection: nil
         )
         let data = try JSONEncoder().encode(request)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])

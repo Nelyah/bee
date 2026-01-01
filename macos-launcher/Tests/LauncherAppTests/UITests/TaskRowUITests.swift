@@ -32,7 +32,7 @@ final class TaskRowUITests: XCTestCase {
         let task = makeTestTask(summary: "Buy groceries")
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false
         )
@@ -52,7 +52,7 @@ final class TaskRowUITests: XCTestCase {
         )
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary", "project"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: false,
             isHovered: false
         )
@@ -68,7 +68,7 @@ final class TaskRowUITests: XCTestCase {
         let task = makeTestTask(status: "pending")
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false
         )
@@ -86,7 +86,7 @@ final class TaskRowUITests: XCTestCase {
         let task = makeTestTask()
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false,
             isExpanded: false
@@ -103,7 +103,7 @@ final class TaskRowUITests: XCTestCase {
         let task = makeTestTask()
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false,
             isExpanded: true,
@@ -125,7 +125,7 @@ final class TaskRowUITests: XCTestCase {
 
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false,
             onChevronTap: { tapCalled = true }
@@ -153,7 +153,7 @@ final class TaskRowUITests: XCTestCase {
 
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false,
             isExpanded: true,
@@ -173,7 +173,7 @@ final class TaskRowUITests: XCTestCase {
 
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
             isHovered: false,
             isExpanded: true,
@@ -192,7 +192,7 @@ final class TaskRowUITests: XCTestCase {
         let task = makeTestTask(tags: ["urgent", "work", "meeting"])
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary", "tags"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "tags"]),
             isSelected: false,
             isHovered: false
         )
@@ -207,7 +207,7 @@ final class TaskRowUITests: XCTestCase {
         let task = makeTestTask(project: nil)
         let sut = TaskRow(
             task: task,
-            columns: ["id", "summary", "project"],
+            columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: false,
             isHovered: false
         )

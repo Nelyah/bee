@@ -162,41 +162,23 @@ struct TaskListView: View {
                 .padding(.bottom, TaskListLayout.criteriaBottomPadding)
 
                 // Column headers
-                if let config = viewModel.reportConfig {
-                    HStack(spacing: TaskListLayout.headerSpacing) {
-                        // Status indicator column (fixed width)
-                        Text("")
-                            .frame(width: TaskListLayout.statusIndicatorWidth)
-
-                        ForEach(Array(config.columnNames.enumerated()), id: \.offset) { index, name in
-                            if index == 0 {
-                                // First column after status (usually ID) - small fixed width
-                                Text(name.uppercased())
-                                    .frame(width: TaskListLayout.firstColumnWidth, alignment: .leading)
-                            } else if config.columns[index] == "summary" {
-                                // Summary column expands
-                                Text(name.uppercased())
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            } else if config.columns[index] == "status" {
-                                // Status column - wider for full text
-                                Text(name.uppercased())
-                                    .frame(width: TaskListLayout.statusColumnWidth, alignment: .leading)
-                            } else if config.columns[index] == "tags" {
-                                // Tags column - wider for overflow text
-                                Text(name.uppercased())
-                                    .frame(width: TaskListLayout.tagsColumnWidth, alignment: .leading)
-                            } else {
-                                // Other columns - standard width
-                                Text(name.uppercased())
-                                    .frame(width: TaskListLayout.otherColumnWidth, alignment: .leading)
-                            }
+                if !viewModel.columnConfigs.isEmpty {
+                    ColumnHeaderRow(
+                        columnConfigs: viewModel.columnConfigs,
+                        sortState: viewModel.sortState,
+                        onSort: { column in
+                            viewModel.toggleSort(for: column)
+                        },
+                        onResize: { column, delta in
+                            viewModel.resizeColumn(column, delta: delta)
+                        },
+                        onResizeEnd: { column in
+                            viewModel.finishResizing(column)
+                        },
+                        onReorder: { column, targetIndex in
+                            viewModel.reorderColumn(column, to: targetIndex)
                         }
-                    }
-                    .font(.system(size: TaskListLayout.headerFontSize, weight: .bold, design: .rounded))
-                    .foregroundColor(ThemeManager.current.subtext1)
-                    .tracking(TaskListLayout.headerLetterSpacing)
-                    .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
-                    .padding(.bottom, DesignTokens.Spacing.small)
+                    )
 
                     // Subtle divider below headers
                     Divider()
@@ -228,7 +210,7 @@ struct TaskListView: View {
                                     case let .task(item):
                                         TaskRow(
                                             task: item.task,
-                                            columns: viewModel.reportConfig?.columns ?? ["summary", "status"],
+                                            columnConfigs: viewModel.columnConfigs,
                                             isSelected: viewModel.selectedRowIndex == rowIndex,
                                             isHovered: viewModel.hoveredRowIndex == rowIndex,
                                             isExpanded: viewModel.isTaskExpanded(item.task.uuid),

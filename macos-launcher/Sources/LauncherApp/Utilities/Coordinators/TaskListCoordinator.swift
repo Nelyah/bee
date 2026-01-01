@@ -24,8 +24,13 @@ enum TaskListCoordinator {
         items.sorted { compareByUrgency($0, $1) }
     }
 
+    /// Sort tasks using a custom comparator.
+    static func sortTasks(_ items: [ApiTask], using comparator: (ApiTask, ApiTask) -> Bool) -> [ApiTask] {
+        items.sorted(by: comparator)
+    }
+
     /// Compare two tasks by urgency (higher first, nil last), with UUID as tiebreaker.
-    private static func compareByUrgency(_ lhs: ApiTask, _ rhs: ApiTask) -> Bool {
+    static func compareByUrgency(_ lhs: ApiTask, _ rhs: ApiTask) -> Bool {
         switch (lhs.urgency, rhs.urgency) {
         case let (lhsUrgency?, rhsUrgency?):
             if lhsUrgency == rhsUrgency {
@@ -49,14 +54,22 @@ enum TaskListCoordinator {
     // MARK: - Grouped List Support
 
     /// Group tasks using the provided strategy.
+    /// - Parameters:
+    ///   - tasks: The tasks to group
+    ///   - strategy: The grouping strategy
+    ///   - collapsedKeys: Set of collapsed group keys
+    ///   - comparator: Optional custom comparator. If nil, uses urgency (descending).
     static func groupTasks(
         _ tasks: [ApiTask],
         using strategy: TaskGroupingStrategy,
-        collapsedKeys: Set<String?>
+        collapsedKeys: Set<String?>,
+        comparator: ((ApiTask, ApiTask) -> Bool)? = nil
     ) -> [GroupedListRow] {
-        // If strategy doesn't show headers, return flat list sorted by urgency
+        let taskComparator = comparator ?? compareByUrgency
+
+        // If strategy doesn't show headers, return flat list sorted
         guard strategy.showsHeaders else {
-            return sortTasksByUrgency(tasks).map { task in
+            return sortTasks(tasks, using: taskComparator).map { task in
                 let flatIndex = tasks.firstIndex(where: { $0.uuid == task.uuid }) ?? 0
                 return .task(GroupedTask(task: task, flatIndex: flatIndex, groupKey: nil))
             }
@@ -91,9 +104,9 @@ enum TaskListCoordinator {
                 isCollapsed: isCollapsed
             )))
             if !isCollapsed, let groupTasks = groups[key] {
-                // Sort tasks within this group by urgency
+                // Sort tasks within this group using the comparator
                 let sortedGroupTasks = groupTasks.sorted { lhs, rhs in
-                    compareByUrgency(lhs.1, rhs.1)
+                    taskComparator(lhs.1, rhs.1)
                 }
                 for (flatIndex, task) in sortedGroupTasks {
                     rows.append(.task(GroupedTask(task: task, flatIndex: flatIndex, groupKey: key)))

@@ -280,6 +280,9 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         ]),
         columns: ["id", "summary", "status"],
         columnNames: ["ID", "Summary", "Status"],
+        columnWidths: .object(["id": .number(60), "summary": .number(300)]),
+        sortColumn: "status",
+        sortDirection: "ascending",
         createdAt: "2024-12-31T10:00:00Z",
         updatedAt: "2024-12-31T10:00:00Z"
     )

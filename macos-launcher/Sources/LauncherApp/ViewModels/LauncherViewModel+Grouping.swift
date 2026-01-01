@@ -4,8 +4,14 @@ import Foundation
 
 extension LauncherViewModel {
     /// Computed grouped rows for display.
+    /// Uses the current sortState for ordering tasks within groups.
     var groupedRows: [GroupedListRow] {
-        TaskListCoordinator.groupTasks(tasks, using: groupingStrategy, collapsedKeys: collapsedGroups)
+        TaskListCoordinator.groupTasks(
+            tasks,
+            using: groupingStrategy,
+            collapsedKeys: collapsedGroups,
+            comparator: compareTasks
+        )
     }
 
     /// Toggle collapse for a group.

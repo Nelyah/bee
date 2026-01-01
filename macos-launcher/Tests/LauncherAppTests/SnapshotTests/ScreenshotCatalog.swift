@@ -183,17 +183,25 @@ final class ScreenshotCatalog: SnapshotTestCase {
 
     func testTaskRow_pending() {
         let task = TestHelpers.makeTask(id: "1", status: "pending", summary: "Pending task example")
-        let columns = viewModel.reportConfig?.columns ?? ["id", "summary", "project"]
-        let view = TaskRow(task: task, columns: columns, isSelected: false, isHovered: false)
-            .background(ThemeManager.current.base)
+        let view = TaskRow(
+            task: task,
+            columnConfigs: TestHelpers.standardColumnConfigs,
+            isSelected: false,
+            isHovered: false
+        )
+        .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
     }
 
     func testTaskRow_active() {
         let task = TestHelpers.makeTask(id: "1", status: "active", summary: "Active task example")
-        let columns = viewModel.reportConfig?.columns ?? ["id", "summary", "project"]
-        let view = TaskRow(task: task, columns: columns, isSelected: false, isHovered: false)
-            .background(ThemeManager.current.base)
+        let view = TaskRow(
+            task: task,
+            columnConfigs: TestHelpers.standardColumnConfigs,
+            isSelected: false,
+            isHovered: false
+        )
+        .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
     }
 
@@ -204,33 +212,49 @@ final class ScreenshotCatalog: SnapshotTestCase {
             summary: "Completed task example",
             dateCompleted: "2024-01-15T10:30:00Z"
         )
-        let columns = viewModel.reportConfig?.columns ?? ["id", "summary", "project"]
-        let view = TaskRow(task: task, columns: columns, isSelected: false, isHovered: false)
-            .background(ThemeManager.current.base)
+        let view = TaskRow(
+            task: task,
+            columnConfigs: TestHelpers.standardColumnConfigs,
+            isSelected: false,
+            isHovered: false
+        )
+        .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
     }
 
     func testTaskRow_withTags() {
         let task = TestHelpers.makeTask(id: "1", tags: ["urgent", "bug", "frontend"], summary: "Task with tags")
-        let columns = viewModel.reportConfig?.columns ?? ["id", "summary", "project"]
-        let view = TaskRow(task: task, columns: columns, isSelected: false, isHovered: false)
-            .background(ThemeManager.current.base)
+        let view = TaskRow(
+            task: task,
+            columnConfigs: TestHelpers.standardColumnConfigs,
+            isSelected: false,
+            isHovered: false
+        )
+        .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
     }
 
     func testTaskRow_withDueDate() {
         let task = TestHelpers.makeTask(id: "1", dateDue: "2024-12-31T23:59:59Z", summary: "Task with due date")
-        let columns = viewModel.reportConfig?.columns ?? ["id", "summary", "project"]
-        let view = TaskRow(task: task, columns: columns, isSelected: false, isHovered: false)
-            .background(ThemeManager.current.base)
+        let view = TaskRow(
+            task: task,
+            columnConfigs: TestHelpers.standardColumnConfigs,
+            isSelected: false,
+            isHovered: false
+        )
+        .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
     }
 
     func testTaskRow_selected() {
         let task = TestHelpers.makeTask(id: "1", summary: "Selected task")
-        let columns = viewModel.reportConfig?.columns ?? ["id", "summary", "project"]
-        let view = TaskRow(task: task, columns: columns, isSelected: true, isHovered: false)
-            .background(ThemeManager.current.base)
+        let view = TaskRow(
+            task: task,
+            columnConfigs: TestHelpers.standardColumnConfigs,
+            isSelected: true,
+            isHovered: false
+        )
+        .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
     }
 
@@ -241,7 +265,6 @@ final class ScreenshotCatalog: SnapshotTestCase {
             tags: ["api", "refactor"],
             summary: "Expanded task"
         )
-        let columns = viewModel.reportConfig?.columns ?? ["id", "summary", "project"]
         let expandedContent = TaskExpandedContent(
             isLoading: false,
             loadingStartedAt: nil,
@@ -251,7 +274,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         )
         let view = TaskRow(
             task: task,
-            columns: columns,
+            columnConfigs: TestHelpers.standardColumnConfigs,
             isSelected: false,
             isHovered: false,
             isExpanded: true,

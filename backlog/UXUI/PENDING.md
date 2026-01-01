@@ -66,33 +66,6 @@ Allow users to add annotations to tasks from the detail view, either via button 
 
 ---
 
-## UXUI-029: Fix CopyableDetailRow accessibility
-
-**Category:** Accessibility
-**Priority:** High
-**Effort:** Low (1-2 hours)
-**Component:** `DetailRow`
-
-### Current State
-CopyableDetailRow uses `onTapGesture` which is not accessible via keyboard or VoiceOver.
-
-### Problem
-Using tap gestures instead of proper Buttons breaks keyboard navigation and screen reader support.
-
-### Desired State
-Replace `onTapGesture` with proper Button for keyboard and VoiceOver accessibility.
-
-### Acceptance Criteria
-- [ ] UUID row focusable via Tab
-- [ ] Enter/Space triggers copy
-- [ ] VoiceOver announces "Copy UUID" with hint
-- [ ] Focus ring visible when focused
-
-### Files Likely Affected
-- `Sources/LauncherApp/Views/Components/DetailRow.swift`
-
----
-
 ## UXUI-030: Add detail-mode hints to BottomHintBar
 
 **Category:** Discoverability
@@ -279,13 +252,53 @@ Right-click on annotation/history entries to copy or (for annotations) delete.
 
 ---
 
+## UXUI-037: Fix TaskDetailView card alignment and visual consistency
+
+**Category:** Visual Polish
+**Priority:** High
+**Effort:** Medium (4-8 hours)
+**Component:** `TaskDetailView`, `DetailSection`, `DesignTokens`
+
+### Current State
+The TaskDetailView has inconsistent card widths and mixed visual treatments:
+- Overview and Dates cards have variable widths based on content
+- Overview uses `.primary` style (filled background), External Links uses `.tertiary` (no background)
+- In two-column layout, columns don't align at top
+- Section spacing is inconsistent (16px vs 8px vs 24px)
+
+### Problem
+Users perceive misaligned elements as "broken" or "unfinished." The mixed card treatments create false visual hierarchy where External Links appears less important than Overview/Dates when they should be peer sections.
+
+### Desired State
+All information cards should have consistent widths, padding, and visual treatment for a cohesive layout.
+
+### Acceptance Criteria
+- [ ] All cards in single-column mode have equal width
+- [ ] Consistent visual treatment for all sections (either all cards or all borderless)
+- [ ] Top alignment matches in two-column layout
+- [ ] Consistent spacing between peer sections
+- [ ] Section titles use same color regardless of style
+
+### Specific Fixes Needed
+1. **Card Width**: Set explicit widths or `maxWidth: .infinity` on single-column cards
+2. **Visual Hierarchy**: Either give all sections card treatment or remove from Overview/Dates
+3. **Top Alignment**: Match top padding in two-column HStack for External Links
+4. **Spacing**: Use consistent `DesignTokens.Spacing.large` between all peer sections
+5. **Title Color**: Use same foreground color for all section titles
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/TaskDetailView.swift` (lines 89-210, 302-344)
+- `Sources/LauncherApp/Utilities/Design/DesignTokens.swift` (consider adding `cardWidth` token)
+
+---
+
 # Ticket Index
 
 | ID | Title | Priority | Effort | Status |
 |----|-------|----------|--------|--------|
 | UXUI-027 | Keyboard navigation in detail view | Critical | High | Pending |
+| UXUI-037 | TaskDetailView card alignment | High | Medium | Pending |
 | UXUI-028 | Add annotation creation functionality | High | Medium | Pending |
-| UXUI-029 | Fix CopyableDetailRow accessibility | High | Low | Pending |
 | UXUI-030 | Detail-mode hints in BottomHintBar | High | Low | Pending |
 | UXUI-031 | Section header visual hierarchy | Medium | Low | Pending |
 | UXUI-032 | Show copy icons persistently | Medium | Low | Pending |

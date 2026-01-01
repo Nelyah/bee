@@ -308,6 +308,26 @@ Enhanced focus state with three signals:
 
 ---
 
+## UXUI-029: Fix CopyableDetailRow accessibility
+
+**Priority:** High | **Effort:** Low | **Status:** ✅ Complete
+
+### Resolution
+Replaced `onTapGesture` with proper SwiftUI Button for keyboard and VoiceOver accessibility:
+- Added `@FocusState` for keyboard focus tracking
+- Created `CopyableDetailRowButtonStyle` showing blue focus ring when focused
+- Added accessibility labels ("Copy {label}") and hints
+- Copy icon now appears on both hover AND focus
+
+### Files Modified
+- `Sources/LauncherApp/Views/DetailRow.swift`
+
+### Tests Added
+- `DetailRowUITests.swift` - ViewInspector UI tests
+- Snapshot tests for CopyableDetailRow variants
+
+---
+
 ## UXUI-026: Save Report Sheet Doesn't Respond to Escape Key
 
 **Priority:** Medium | **Effort:** Low | **Status:** ✅ Complete
@@ -356,5 +376,6 @@ Added Escape key handling to dismiss the Save Report sheet, matching standard ma
 | UXUI-024 | Bottom Hint Bar Weight | Low |
 | UXUI-025 | Search Input Focus | Low |
 | UXUI-026 | Save Report Sheet Escape Key | Medium |
+| UXUI-029 | CopyableDetailRow Accessibility | High |
 
-**Total: 24 tickets completed**
+**Total: 25 tickets completed**

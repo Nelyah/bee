@@ -8,12 +8,10 @@ struct CriteriaStripView: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.large) {
             CriteriaColumnView(
                 title: "Filters",
-                emptyText: "No filters",
                 chips: filterChips
             )
             CriteriaColumnView(
                 title: "Properties",
-                emptyText: "No properties",
                 chips: propertyChips
             )
         }
@@ -22,7 +20,6 @@ struct CriteriaStripView: View {
 
 private struct CriteriaColumnView: View {
     let title: String
-    let emptyText: String
     let chips: [CriteriaChip]
 
     var body: some View {
@@ -31,11 +28,7 @@ private struct CriteriaColumnView: View {
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .semibold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)
 
-            if chips.isEmpty {
-                Text(emptyText)
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
-                    .foregroundColor(ThemeManager.current.overlay0)
-            } else {
+            if !chips.isEmpty {
                 FlowLayout(spacing: DesignTokens.Spacing.extraSmall, rowSpacing: DesignTokens.Spacing.extraSmall) {
                     ForEach(chips) { chip in
                         CriteriaChipView(chip: chip)

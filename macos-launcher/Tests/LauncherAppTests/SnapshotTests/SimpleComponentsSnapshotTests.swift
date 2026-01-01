@@ -10,6 +10,7 @@ import XCTest
 /// - QuietLinkButton
 /// - TimelineRow
 /// - ProjectScopeChipView
+/// - TagsOverflowText
 final class SimpleComponentsSnapshotTests: SnapshotTestCase {
     // MARK: - HoverableButton Tests
 
@@ -169,5 +170,55 @@ final class SimpleComponentsSnapshotTests: SnapshotTestCase {
         )
 
         assertViewSnapshot(view, size: CGSize(width: 200, height: 50))
+    }
+
+    // MARK: - TagsOverflowText Tests
+
+    func testTagsOverflowTextEmpty() {
+        let view = TagsOverflowText(tags: [])
+            .frame(width: 100)
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 120, height: 30))
+    }
+
+    func testTagsOverflowTextSingleTag() {
+        let view = TagsOverflowText(tags: ["api"])
+            .frame(width: 100)
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 120, height: 30))
+    }
+
+    func testTagsOverflowTextTwoTags() {
+        let view = TagsOverflowText(tags: ["api", "backend"])
+            .frame(width: 100)
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 120, height: 30))
+    }
+
+    func testTagsOverflowTextWithOverflow() {
+        let view = TagsOverflowText(tags: ["api", "backend", "urgent"])
+            .frame(width: 100)
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 120, height: 30))
+    }
+
+    func testTagsOverflowTextManyTags() {
+        let view = TagsOverflowText(tags: ["api", "backend", "urgent", "refactor", "testing"])
+            .frame(width: 100)
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 120, height: 30))
+    }
+
+    func testTagsOverflowTextCustomMaxVisible() {
+        let view = TagsOverflowText(tags: ["api", "backend", "urgent", "refactor"], maxVisible: 3)
+            .frame(width: 150)
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 170, height: 30))
     }
 }

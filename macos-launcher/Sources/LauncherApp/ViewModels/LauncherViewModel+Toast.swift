@@ -49,4 +49,10 @@ extension LauncherViewModel {
         NSPasteboard.general.setString(url, forType: .string)
         showToast(message: "Copied link to clipboard", icon: .gitlab)
     }
+
+    func copyUUIDToClipboard(_ uuid: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(uuid, forType: .string)
+        showToast(message: "Copied UUID to clipboard", icon: .success)
+    }
 }

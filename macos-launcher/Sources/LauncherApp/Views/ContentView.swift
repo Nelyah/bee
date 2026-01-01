@@ -31,6 +31,9 @@ struct ContentView: View {
                     onCopyLink: { url in
                         viewModel.copyLinkToClipboard(url)
                     },
+                    onCopyUUID: { uuid in
+                        viewModel.copyUUIDToClipboard(uuid)
+                    },
                     onClose: {
                         viewModel.closeDetail()
                     }

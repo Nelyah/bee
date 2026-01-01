@@ -11,9 +11,11 @@ private enum TaskListLayout {
     static let criteriaTopPadding: CGFloat = DesignTokens.Spacing.extraSmall
     static let criteriaBottomPadding: CGFloat = DesignTokens.Spacing.small
     static let headerSpacing: CGFloat = DesignTokens.Spacing.medium
-    static let statusColumnWidth: CGFloat = 8
+    static let statusIndicatorWidth: CGFloat = 8
     static let firstColumnWidth: CGFloat = 30
     static let otherColumnWidth: CGFloat = 60
+    static let statusColumnWidth: CGFloat = 80
+    static let tagsColumnWidth: CGFloat = 80
     static let headerFontSize: CGFloat = DesignTokens.TypeScale.caption
     static let headerPaddingHorizontal: CGFloat = DesignTokens.Spacing.medium
     static let listSpacing: CGFloat = DesignTokens.Spacing.small
@@ -156,7 +158,7 @@ struct TaskListView: View {
                     HStack(spacing: TaskListLayout.headerSpacing) {
                         // Status indicator column (fixed width)
                         Text("")
-                            .frame(width: TaskListLayout.statusColumnWidth)
+                            .frame(width: TaskListLayout.statusIndicatorWidth)
 
                         ForEach(Array(config.columnNames.enumerated()), id: \.offset) { index, name in
                             if index == 0 {
@@ -167,8 +169,16 @@ struct TaskListView: View {
                                 // Summary column expands
                                 Text(name.uppercased())
                                     .frame(maxWidth: .infinity, alignment: .leading)
+                            } else if config.columns[index] == "status" {
+                                // Status column - wider for full text
+                                Text(name.uppercased())
+                                    .frame(width: TaskListLayout.statusColumnWidth, alignment: .leading)
+                            } else if config.columns[index] == "tags" {
+                                // Tags column - wider for overflow text
+                                Text(name.uppercased())
+                                    .frame(width: TaskListLayout.tagsColumnWidth, alignment: .leading)
                             } else {
-                                // Other columns - auto width
+                                // Other columns - standard width
                                 Text(name.uppercased())
                                     .frame(width: TaskListLayout.otherColumnWidth, alignment: .leading)
                             }

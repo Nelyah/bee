@@ -76,6 +76,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
+            onCopyUUID: { _ in },
             onClose: {}
         )
     }

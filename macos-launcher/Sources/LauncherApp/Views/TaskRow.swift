@@ -74,6 +74,19 @@ struct TaskRow: View {
                         .foregroundColor(ThemeManager.current.text)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .help(value(for: column))
+                } else if column == "tags" {
+                    // Tags column with overflow indicator (maxVisible: 1 to fit in 80px)
+                    TagsOverflowText(tags: task.tags, maxVisible: 1)
+                        .frame(width: 80, alignment: .leading)
+                } else if column == "status" {
+                    // Status column - wider to prevent mid-word truncation
+                    Text(value(for: column))
+                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
+                        .foregroundColor(ThemeManager.current.subtext1)
+                        .frame(width: 80, alignment: .leading)
+                        .lineLimit(1)
+                        .help(value(for: column))
                 } else {
                     // Other columns
                     Text(value(for: column))
@@ -81,6 +94,7 @@ struct TaskRow: View {
                         .foregroundColor(ThemeManager.current.subtext1)
                         .frame(width: 60, alignment: .leading)
                         .lineLimit(1)
+                        .help(value(for: column))
                 }
             }
         }
@@ -197,7 +211,7 @@ struct TaskRow: View {
     private var columnValues: [String: String] {
         [
             "id": task.dbId.map(String.init) ?? "-",
-            "uuid": String(task.uuid.prefix(8)),
+            "uuid": String(task.uuid.suffix(8)),
             "summary": task.summary,
             "status": task.status,
             "project": task.project ?? "-",

@@ -8,6 +8,7 @@ struct TaskDetailView: View {
     let onRefreshLinks: (ExternalLinkProvider) -> Void
     let onCopyBranch: (String) -> Void
     let onCopyLink: (String) -> Void
+    let onCopyUUID: (String) -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -118,7 +119,12 @@ struct TaskDetailView: View {
     private var metadataColumn: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
             DetailSection(title: "Overview") {
-                DetailRow(label: "UUID", value: shortUUID(task.uuid), helpText: task.uuid)
+                CopyableDetailRow(
+                    label: "UUID",
+                    value: shortUUID(task.uuid),
+                    fullValue: task.uuid,
+                    onCopy: onCopyUUID
+                )
                 DetailRow(label: "Project", value: task.project ?? "None", helpText: nil)
                 DetailRow(
                     label: "Tags",
@@ -200,8 +206,8 @@ struct TaskDetailView: View {
     }
 
     private func shortUUID(_ value: String) -> String {
-        let prefix = value.prefix(8)
-        return "\(prefix)…"
+        let suffix = value.suffix(8)
+        return "…\(suffix)"
     }
 
     private func formattedDate(_ value: String) -> (display: String, help: String?) {
@@ -389,6 +395,7 @@ private struct ExternalLinksProviderSection: View {
         onRefreshLinks: { _ in },
         onCopyBranch: { _ in },
         onCopyLink: { _ in },
+        onCopyUUID: { _ in },
         onClose: {}
     )
     .padding(24)

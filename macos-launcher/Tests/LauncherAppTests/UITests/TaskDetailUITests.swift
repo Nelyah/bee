@@ -69,6 +69,7 @@ final class TaskDetailUITests: XCTestCase {
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
+            onCopyUUID: { _ in },
             onClose: {}
         )
     }
@@ -115,6 +116,7 @@ final class TaskDetailUITests: XCTestCase {
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
+            onCopyUUID: { _ in },
             onClose: { closeCalled = true }
         )
 

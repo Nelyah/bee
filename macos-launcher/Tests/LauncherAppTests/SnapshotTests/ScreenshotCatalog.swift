@@ -279,6 +279,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
+            onCopyUUID: { _ in },
             onClose: {}
         )
         .background(ThemeManager.current.base)
@@ -310,6 +311,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
+            onCopyUUID: { _ in },
             onClose: {}
         )
         .background(ThemeManager.current.base)
@@ -330,6 +332,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
+            onCopyUUID: { _ in },
             onClose: {}
         )
         .background(ThemeManager.current.base)
@@ -352,6 +355,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
+            onCopyUUID: { _ in },
             onClose: {}
         )
         .background(ThemeManager.current.base)

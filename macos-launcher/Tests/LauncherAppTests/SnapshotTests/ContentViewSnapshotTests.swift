@@ -140,6 +140,24 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
         assertViewSnapshot(view, size: TestSizes.contentView)
     }
 
+    func testWithDetailModeHints() {
+        viewModel.tasks = MockApiClient.sampleTasks
+        viewModel.selectedIndex = 0
+        viewModel.mode = .detail
+        viewModel.taskDetailState = TaskDetailState(
+            isLoading: false,
+            taskUUID: MockApiClient.sampleTasks[0].uuid,
+            detail: MockApiClient.sampleTaskDetail
+        )
+        viewModel.externalLinksState = ExternalLinksState(
+            isLoading: false,
+            taskUUID: MockApiClient.sampleTasks[0].uuid,
+            links: []
+        )
+        let view = makeContentView()
+        assertViewSnapshot(view, size: TestSizes.contentView)
+    }
+
     // MARK: - Helper
 
     private func makeContentView() -> some View {

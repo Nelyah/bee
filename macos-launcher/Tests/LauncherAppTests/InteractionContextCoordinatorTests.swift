@@ -140,6 +140,64 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         XCTAssertFalse(model.right.contains { $0.key == "Tab" })
     }
 
+    // MARK: - Detail Mode Hints
+
+    func testDetailModeLeftHintsShowEscapeBack() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .detail,
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertEqual(model.left.count, 1)
+        XCTAssertEqual(model.left.first?.key, "Esc")
+        XCTAssertEqual(model.left.first?.label, "Back")
+    }
+
+    func testDetailModeRightHintsShowCommandMenu() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .detail,
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertTrue(model.right.contains { $0.key == "⌘K" && $0.label == "Command menu" })
+    }
+
+    func testDetailModeNoEnterHint() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .detail,
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.right.contains { $0.key == "Enter" })
+    }
+
+    func testDetailModeNoInsertHint() {
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .detail,
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.left.contains { $0.key == "i" })
+    }
+
+    func testBaseContextForDetailMode() {
+        let rows = sampleRows()
+        let base = InteractionContextCoordinator.baseContext(
+            mode: .detail,
+            selectedRowIndex: 0,
+            rows: rows
+        )
+        XCTAssertEqual(base, .detail)
+    }
+
     private func enterLabel(in context: InteractionContext) -> String? {
         let model = BottomHintModelBuilder.model(for: context)
         return model.right.first(where: { $0.key == "Enter" })?.label

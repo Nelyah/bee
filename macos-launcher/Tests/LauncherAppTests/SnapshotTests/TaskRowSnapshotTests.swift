@@ -73,6 +73,18 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         assertViewSnapshot(view, size: TestSizes.taskRow)
     }
 
+    func testTaskRowSelectedAndHovered() {
+        let task = makeTestTask()
+        let view = TaskRow(
+            task: task,
+            columns: ["id", "summary", "project"],
+            isSelected: true,
+            isHovered: true
+        )
+
+        assertViewSnapshot(view, size: TestSizes.taskRow)
+    }
+
     // MARK: - Expanded States
 
     func testTaskRowExpandedEmpty() {

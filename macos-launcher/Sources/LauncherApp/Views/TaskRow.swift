@@ -29,9 +29,18 @@ struct TaskRow: View {
         .padding(.vertical, DesignTokens.Spacing.small)
         .padding(.horizontal, DesignTokens.Spacing.medium)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(backgroundColor)
         )
+        .overlay(alignment: .leading) {
+            // Selection accent bar
+            if isSelected {
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                    .fill(ThemeManager.current.blue)
+                    .frame(width: 3)
+                    .padding(.vertical, DesignTokens.Spacing.extraSmall)
+            }
+        }
         .zIndex(isExpanded ? 1 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
     }
@@ -163,6 +172,9 @@ struct TaskRow: View {
     }
 
     private var backgroundColor: Color {
+        if isSelected, isHovered {
+            return ThemeManager.current.surface2
+        }
         if isSelected {
             return ThemeManager.current.surface1
         }

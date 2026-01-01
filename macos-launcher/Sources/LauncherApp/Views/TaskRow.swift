@@ -28,23 +28,21 @@ struct TaskRow: View {
         }
         .padding(.vertical, DesignTokens.Spacing.small)
         .padding(.horizontal, DesignTokens.Spacing.medium)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .fill(backgroundColor)
-        )
-        .overlay(alignment: .leading) {
-            // Selection accent bar - full height, matches row's left corner radius
-            if isSelected {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: DesignTokens.Radius.medium,
-                    bottomLeadingRadius: DesignTokens.Radius.medium,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 0
-                )
-                .fill(ThemeManager.current.blue)
-                .frame(width: 3)
+        .background {
+            // Background + selection bar share the same container clipping
+            ZStack(alignment: .leading) {
+                // Background fill
+                backgroundColor
+
+                // Selection accent bar - simple rectangle, clipped by container
+                if isSelected {
+                    Rectangle()
+                        .fill(ThemeManager.current.blue)
+                        .frame(width: 5)
+                }
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.medium))
         .zIndex(isExpanded ? 1 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
     }

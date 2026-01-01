@@ -111,6 +111,7 @@ struct SaveReportSheet: View {
         }
         .padding(DesignTokens.Spacing.extraLarge)
         .frame(width: 400, height: 340)
+        .background(Color(NSColor.windowBackgroundColor))
         .alert("Overwrite Report?", isPresented: $showOverwriteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Overwrite", role: .destructive) {

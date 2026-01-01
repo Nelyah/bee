@@ -224,43 +224,29 @@ Screenshot reference: `testTaskDetailWithError.1.png`
 
 ## UXUI-006: Save Report Sheet Missing Features
 
+**Status:** COMPLETED
 **Priority:** Medium
 **Effort:** Low (2-4 hours)
 **Component:** `SaveReportSheet`
 
-### Current State
-The save report sheet shows:
-- Single text input with placeholder "my-report"
-- Single "Save" button
-- No other UI elements
+### Resolution
+All features were already implemented in `SaveReportSheet.swift`. The backlog item was
+created based on outdated snapshot images that lacked a proper background color, causing
+UI elements to render invisibly against a transparent background.
 
-Screenshot reference: `testDefaultState.1.png` (SaveReportSheetSnapshotTests)
+Fixed by adding `.background(Color(NSColor.windowBackgroundColor))` to the view and
+regenerating all snapshot reference images.
 
-### Problem
-1. No "Cancel" button to abort operation
-2. No validation feedback (empty name, duplicate name)
-3. No preview of what's being saved (filters, columns)
-4. Minimal UI feels incomplete
+### Acceptance Criteria (All Met)
+- [x] Cancel button exists and closes sheet
+- [x] Validation messages appear inline (empty name, built-in report collision, user report overwrite)
+- [x] Save button disabled when invalid (empty name)
+- [x] Preview shows filters and columns (read-only)
+- [x] Keyboard: Esc cancels, Enter saves (when valid)
 
-### Desired State
-1. Add "Cancel" button (secondary style) next to "Save"
-2. Show validation:
-   - Empty name: "Report name is required"
-   - Duplicate: "A report with this name already exists"
-3. Preview section showing:
-   - Current filters being saved
-   - Current columns being saved
-4. Disable "Save" button when validation fails
-
-### Acceptance Criteria
-- [ ] Cancel button exists and closes sheet
-- [ ] Validation messages appear inline
-- [ ] Save button disabled when invalid
-- [ ] Preview shows filters and columns (read-only)
-- [ ] Keyboard: Esc cancels, Enter saves (when valid)
-
-### Files Likely Affected
-- `Sources/LauncherApp/Views/SaveReportSheet.swift`
+### Files Modified
+- `Sources/LauncherApp/Views/Components/SaveReportSheet.swift` - Added background color
+- Regenerated 10 snapshot reference images in `__Snapshots__/SaveReportSheetSnapshotTests/`
 
 ---
 

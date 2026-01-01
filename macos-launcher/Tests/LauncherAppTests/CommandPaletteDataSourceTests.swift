@@ -244,6 +244,68 @@ final class CommandPaletteDataSourceTests: XCTestCase {
 
     // MARK: - Ranking Tests
 
+    // MARK: - Section Title Matching Tests
+
+    func testFilteringMatchesSectionTitle() {
+        // When a query includes words from the section title,
+        // items in that section should match even if the item title
+        // doesn't contain those words.
+        // Example: "project biran" should match item "biran" in "Go to project" section
+        let contributor = MockContributor(
+            id: "test",
+            priority: 0,
+            sections: [
+                CommandPaletteSection(
+                    id: "goTo",
+                    title: "Go to project",
+                    items: [
+                        .action(
+                            CommandPaletteActionItem(id: "p1", title: "biran", handler: {})),
+                        .action(
+                            CommandPaletteActionItem(id: "p2", title: "backend", handler: {})),
+                    ]
+                ),
+            ]
+        )
+        dataSource.register(contributor)
+
+        // Query "project biran" should match "biran" because:
+        // - "project" is in section title "Go to project"
+        // - "biran" is the item title
+        let sections = dataSource.buildSections(context: CommandPaletteContext(), query: "project biran")
+
+        XCTAssertEqual(sections.count, 1, "Section should not be filtered out")
+        XCTAssertEqual(sections[0].items.count, 1, "Should match 'biran' item")
+        XCTAssertEqual(sections[0].items[0].displayTitle, "biran")
+    }
+
+    func testFilteringMatchesSectionTitlePartially() {
+        // "go to backend" should match "backend" in "Go to project" section
+        let contributor = MockContributor(
+            id: "test",
+            priority: 0,
+            sections: [
+                CommandPaletteSection(
+                    id: "goTo",
+                    title: "Go to project",
+                    items: [
+                        .action(
+                            CommandPaletteActionItem(id: "p1", title: "frontend", handler: {})),
+                        .action(
+                            CommandPaletteActionItem(id: "p2", title: "backend", handler: {})),
+                    ]
+                ),
+            ]
+        )
+        dataSource.register(contributor)
+
+        let sections = dataSource.buildSections(context: CommandPaletteContext(), query: "go to backend")
+
+        XCTAssertEqual(sections.count, 1)
+        XCTAssertEqual(sections[0].items.count, 1)
+        XCTAssertEqual(sections[0].items[0].displayTitle, "backend")
+    }
+
     func testItemsRankedByScore() {
         let contributor = MockContributor(
             id: "test",

@@ -17,7 +17,7 @@ final class GoToSectionContributorTests: XCTestCase {
 
         XCTAssertEqual(sections.count, 1)
         XCTAssertEqual(sections[0].id, "goTo")
-        XCTAssertEqual(sections[0].title, "Go To")
+        XCTAssertEqual(sections[0].title, "Go to project")
         XCTAssertEqual(sections[0].items.count, 3)
     }
 

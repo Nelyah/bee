@@ -32,6 +32,6 @@ struct GoToSectionContributor: CommandPaletteSectionContributor {
             )
         }
 
-        return [CommandPaletteSection(id: "goTo", title: "Go To", items: items)]
+        return [CommandPaletteSection(id: "goTo", title: "Go to project", items: items)]
     }
 }

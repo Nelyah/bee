@@ -70,7 +70,11 @@ final class CommandPaletteDataSource: ObservableObject {
         for contributor in contributors {
             let sections = contributor.buildSections(context: context, query: query)
             for section in sections {
-                let filteredItems = filterAndRank(items: section.items, query: query)
+                let filteredItems = filterAndRank(
+                    items: section.items,
+                    query: query,
+                    sectionTitle: section.title
+                )
                 if !filteredItems.isEmpty {
                     allSections.append(
                         CommandPaletteSection(
@@ -91,7 +95,11 @@ final class CommandPaletteDataSource: ObservableObject {
         var filteredSections: [CommandPaletteSection] = []
 
         for section in sections {
-            let filteredItems = filterAndRank(items: section.items, query: query)
+            let filteredItems = filterAndRank(
+                items: section.items,
+                query: query,
+                sectionTitle: section.title
+            )
             if !filteredItems.isEmpty {
                 filteredSections.append(
                     CommandPaletteSection(
@@ -114,8 +122,13 @@ final class CommandPaletteDataSource: ObservableObject {
     /// - Parameters:
     ///   - items: The items to filter
     ///   - query: The search query
+    ///   - sectionTitle: The section title to include in matching
     /// - Returns: Filtered and ranked items
-    private func filterAndRank(items: [CommandPaletteItem], query: String) -> [CommandPaletteItem] {
+    private func filterAndRank(
+        items: [CommandPaletteItem],
+        query: String,
+        sectionTitle: String? = nil
+    ) -> [CommandPaletteItem] {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedQuery.isEmpty else { return items }
 
@@ -128,6 +141,15 @@ final class CommandPaletteDataSource: ObservableObject {
                 // Also check subtitle if available
                 if let subtitle = item.subtitle,
                    let score = scorer.score(query: trimmedQuery, target: subtitle) {
+                    return (item, score)
+                }
+                // Try matching against section title + item title combined
+                // This allows "project biran" to match item "biran" in section "Go to project"
+                if let sectionTitle,
+                   let score = scorer.score(
+                       query: trimmedQuery,
+                       target: "\(sectionTitle) \(item.displayTitle)"
+                   ) {
                     return (item, score)
                 }
                 return nil

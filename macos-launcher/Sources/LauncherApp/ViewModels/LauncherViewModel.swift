@@ -505,6 +505,12 @@ final class LauncherViewModel: ObservableObject {
 
     @discardableResult
     func handleEscape() -> Bool {
+        // Close SaveReportSheet if it's open
+        if showingSaveReportSheet {
+            showingSaveReportSheet = false
+            return true
+        }
+
         if interactionContext == .commandPalette {
             if commandPalette.handleEscape() {
                 return true

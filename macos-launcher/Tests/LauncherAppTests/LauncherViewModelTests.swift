@@ -451,6 +451,47 @@ final class LauncherViewModelTests: XCTestCase {
         let content = TaskExpandedContent(isLoading: true, loadingStartedAt: pastDate)
         XCTAssertTrue(content.shouldShowLoading)
     }
+
+    // MARK: - HandleEscape SaveReportSheet Tests
+
+    func testHandleEscapeClosesSaveReportSheet() {
+        let viewModel = LauncherViewModel()
+        viewModel.showingSaveReportSheet = true
+
+        let result = viewModel.handleEscape()
+
+        XCTAssertTrue(result, "handleEscape should return true when closing SaveReportSheet")
+        XCTAssertFalse(viewModel.showingSaveReportSheet, "SaveReportSheet should be closed after handleEscape")
+    }
+
+    func testHandleEscapeReturnsEarlyWhenSaveReportSheetOpen() {
+        let viewModel = LauncherViewModel()
+        viewModel.showingSaveReportSheet = true
+        // Set up a state that would normally be handled by escape
+        viewModel.completion.showMenu = true
+
+        let result = viewModel.handleEscape()
+
+        XCTAssertTrue(result, "handleEscape should return true")
+        XCTAssertFalse(viewModel.showingSaveReportSheet, "SaveReportSheet should be closed")
+        // Verify other states were NOT processed (early return)
+        XCTAssertTrue(viewModel.completion.showMenu, "Completion menu should still be showing (early return)")
+    }
+
+    func testHandleEscapeDoesNotCloseSaveReportSheetWhenNotShowing() {
+        let viewModel = LauncherViewModel()
+        viewModel.showingSaveReportSheet = false
+        viewModel.tasks = [makeTask(id: "a")]
+        // Put in insert mode so escape has something to do
+        viewModel.exitInsertMode()
+        viewModel.enterInsertMode()
+
+        let result = viewModel.handleEscape()
+
+        // Should proceed to other escape handlers
+        XCTAssertTrue(result, "handleEscape should return true from other handler")
+        XCTAssertFalse(viewModel.showingSaveReportSheet, "SaveReportSheet should remain closed")
+    }
 }
 
 private func clearCollapsedDefaults() {

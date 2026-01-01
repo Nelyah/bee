@@ -4,6 +4,7 @@ struct TaskDetailView: View {
     let task: ApiTask
     let detailState: TaskDetailState
     let externalLinksState: ExternalLinksState
+    let onRetryDetail: () -> Void
     let onRefreshLinks: (ExternalLinkProvider) -> Void
     let onCopyBranch: (String) -> Void
     let onCopyLink: (String) -> Void
@@ -75,9 +76,7 @@ struct TaskDetailView: View {
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
                     .foregroundColor(ThemeManager.current.subtext0)
             } else if let error = detailError {
-                Text(error)
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.red)
+                ErrorBannerView(message: error, onRetry: onRetryDetail)
             }
         }
     }
@@ -89,9 +88,7 @@ struct TaskDetailView: View {
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
                     .foregroundColor(ThemeManager.current.subtext0)
             } else if let error = externalLinksError {
-                Text(error)
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.red)
+                ErrorBannerView(message: error)
             }
 
             ExternalLinksProviderSection(
@@ -388,6 +385,7 @@ private struct ExternalLinksProviderSection: View {
             taskUUID: MockApiClient.sampleTaskDetail.uuid,
             links: MockApiClient.sampleExternalLinks
         ),
+        onRetryDetail: {},
         onRefreshLinks: { _ in },
         onCopyBranch: { _ in },
         onCopyLink: { _ in },

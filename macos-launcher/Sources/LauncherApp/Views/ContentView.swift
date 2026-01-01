@@ -19,6 +19,9 @@ struct ContentView: View {
                     task: task,
                     detailState: viewModel.taskDetailState,
                     externalLinksState: viewModel.externalLinksState,
+                    onRetryDetail: {
+                        viewModel.loadTaskDetail(taskUUID: task.uuid)
+                    },
                     onRefreshLinks: { provider in
                         viewModel.refreshExternalLinks(provider: provider)
                     },

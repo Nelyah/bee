@@ -72,6 +72,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             task: task,
             detailState: detailState,
             externalLinksState: externalLinksState,
+            onRetryDetail: {},
             onRefreshLinks: { _ in },
             onCopyBranch: { _ in },
             onCopyLink: { _ in },

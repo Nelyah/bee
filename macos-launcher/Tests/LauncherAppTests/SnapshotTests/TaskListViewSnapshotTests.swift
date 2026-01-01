@@ -1,6 +1,6 @@
+@testable import LauncherApp
 import SnapshotTesting
 import SwiftUI
-@testable import LauncherApp
 import XCTest
 
 /// Snapshot tests for TaskListView in various states.

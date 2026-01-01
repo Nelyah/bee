@@ -124,5 +124,4 @@ final class ContentViewUITests: XCTestCase {
         // CommandPaletteView should not be present when not shown
         XCTAssertThrowsError(try view.find(CommandPaletteView.self))
     }
-
 }

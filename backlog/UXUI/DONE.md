@@ -306,4 +306,55 @@ Enhanced focus state with three signals:
 | UXUI-024 | Bottom Hint Bar Weight | Low |
 | UXUI-025 | Search Input Focus | Low |
 
-**Total: 23 tickets completed**
+---
+
+## UXUI-026: Save Report Sheet Doesn't Respond to Escape Key
+
+**Priority:** Medium | **Effort:** Low | **Status:** ✅ Complete
+
+### Resolution
+Added Escape key handling to dismiss the Save Report sheet, matching standard macOS modal sheet behavior.
+- Added check in `handleEscape()` to close SaveReportSheet when open
+- Returns early to prevent other escape handlers from firing
+- Matches Cancel button behavior exactly
+
+### Files Modified
+- `Sources/LauncherApp/ViewModels/LauncherViewModel.swift`
+
+### Tests Added
+- `testHandleEscapeClosesSaveReportSheet`
+- `testHandleEscapeReturnsEarlyWhenSaveReportSheetOpen`
+- `testHandleEscapeDoesNotCloseSaveReportSheetWhenNotShowing`
+
+---
+
+# Summary
+
+| ID | Title | Priority |
+|----|-------|----------|
+| UXUI-001 | Empty State Lacks Guidance | High |
+| UXUI-002 | Text Truncation Without Context | High |
+| UXUI-003 | Indistinguishable Row Selection States | Medium |
+| UXUI-004 | Detail View Unbalanced Layout | Medium |
+| UXUI-005 | Error States Lack Visual Prominence | High |
+| UXUI-006 | Save Report Sheet Missing Features | Medium |
+| UXUI-007 | "Stale" Warning Unclear | Low |
+| UXUI-008 | Group Headers Need Visual Distinction | Low |
+| UXUI-009 | Completion Menu Overlay Issues | Medium |
+| UXUI-011 | "No filters" Placeholder Value | Low |
+| UXUI-012 | Negative Phrasing in Detail View | Low |
+| UXUI-014 | Visual Consistency Audit | Medium |
+| UXUI-015 | Report Dropdown Discoverability | Low |
+| UXUI-016 | Monochromatic Gray Soup | High |
+| UXUI-017 | Text Hierarchy Lacks Weight | High |
+| UXUI-018 | Selection State Too Subtle | High |
+| UXUI-019 | Status Indicators Lack Impact | Medium |
+| UXUI-020 | Column Headers Invisible | Medium |
+| UXUI-021 | Inconsistent Border System | Medium |
+| UXUI-022 | Command Palette Lacks Depth | Medium |
+| UXUI-023 | Detail View Card Hierarchy | Medium |
+| UXUI-024 | Bottom Hint Bar Weight | Low |
+| UXUI-025 | Search Input Focus | Low |
+| UXUI-026 | Save Report Sheet Escape Key | Medium |
+
+**Total: 24 tickets completed**

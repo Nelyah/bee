@@ -6,35 +6,6 @@
 
 ---
 
-## UXUI-026: Save Report Sheet Doesn't Respond to Escape Key
-
-**Category:** Bugfix
-**Priority:** Medium
-**Effort:** Low (1-2 hours)
-**Component:** `SaveReportSheet`
-
-### Current State
-When the Save Report sheet is displayed:
-- Cancel button closes the sheet
-- Pressing Escape key does not close the window
-
-### Problem
-Users expect the standard macOS behavior where pressing Escape dismisses modal sheets. This is a standard convention across most macOS applications and is part of the system HIG (Human Interface Guidelines).
-
-### Desired State
-Pressing the Escape key should dismiss the Save Report sheet completely, matching the behavior of the Cancel button.
-
-### Acceptance Criteria
-- [ ] Escape key closes the Save Report sheet
-- [ ] Escape key behavior matches Cancel button behavior
-- [ ] No other keyboard shortcuts are affected
-- [ ] Snapshot tests pass
-
-### Files Likely Affected
-- `Sources/LauncherApp/Views/Components/SaveReportSheet.swift`
-
----
-
 ## UXUI-027: Implement keyboard navigation in detail view
 
 **Category:** Accessibility
@@ -312,7 +283,6 @@ Right-click on annotation/history entries to copy or (for annotations) delete.
 
 | ID | Title | Priority | Effort | Status |
 |----|-------|----------|--------|--------|
-| UXUI-026 | Save Report Sheet Doesn't Respond to Escape Key | Medium | Low | Pending |
 | UXUI-027 | Keyboard navigation in detail view | Critical | High | Pending |
 | UXUI-028 | Add annotation creation functionality | High | Medium | Pending |
 | UXUI-029 | Fix CopyableDetailRow accessibility | High | Low | Pending |

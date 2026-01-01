@@ -14,6 +14,7 @@ extension LauncherViewModel {
         guard selectedIndex != nil else { return }
         mode = .detail
         detailFocusedIndex = 0
+        detailKeyboardNavigationActive = false
         buildDetailFocusableItems()
         if let task = selectedTask {
             loadTaskDetail(taskUUID: task.uuid)
@@ -24,6 +25,7 @@ extension LauncherViewModel {
     /// Close the detail view and return to the list.
     func closeDetail() {
         mode = .list
+        detailKeyboardNavigationActive = false
         taskDetailState = TaskDetailState()
         externalLinksState = ExternalLinksState()
     }
@@ -180,10 +182,32 @@ extension LauncherViewModel {
     /// Handle a detail mode keyboard action.
     @discardableResult
     func handleDetailModeAction(_ action: DetailModeAction) -> Bool {
+        // Activate keyboard navigation on any navigation action
+        switch action {
+        case .moveFocus, .moveFocusLeft, .moveFocusRight, .selectFirst, .selectLast:
+            detailKeyboardNavigationActive = true
+        default:
+            break
+        }
+
         switch action {
         case let .moveFocus(delta):
             moveDetailFocus(delta: delta)
             return true
+        case .moveFocusLeft:
+            // Move to left column (UUID at index 0)
+            if detailFocusedIndex > 0 {
+                detailFocusedIndex = 0
+            }
+            return true
+        case .moveFocusRight:
+            // Move to right column (links), or open if already there
+            if detailFocusedIndex == 0, detailFocusableItems.count > 1 {
+                detailFocusedIndex = 1
+                return true
+            }
+            // Already in right column - open the focused item
+            return openFocusedDetailItem()
         case .openFocused:
             return openFocusedDetailItem()
         case .copyFocused:
@@ -193,6 +217,9 @@ extension LauncherViewModel {
             return true
         case .selectLast:
             detailFocusedIndex = max(0, detailFocusableItems.count - 1)
+            return true
+        case .addAnnotation:
+            startAddingAnnotation()
             return true
         }
     }
@@ -224,5 +251,62 @@ extension LauncherViewModel {
         // Show toast with appropriate label
         showToast(message: "\(item.copyLabel) copied", icon: .success)
         return true
+    }
+
+    // MARK: - Annotation Methods
+
+    /// Begin adding an annotation (shows the input field).
+    func startAddingAnnotation() {
+        guard selectedTask != nil else { return }
+        isAddingAnnotation = true
+        annotationInput = ""
+    }
+
+    /// Cancel adding an annotation (hides the input field).
+    func cancelAddingAnnotation() {
+        isAddingAnnotation = false
+        annotationInput = ""
+    }
+
+    /// Submit the current annotation text.
+    func submitAnnotation() {
+        guard let task = selectedTask else { return }
+        let text = annotationInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            cancelAddingAnnotation()
+            return
+        }
+
+        isSubmittingAnnotation = true
+
+        Task {
+            defer {
+                isSubmittingAnnotation = false
+            }
+
+            do {
+                // Build properties with annotation text
+                // Note: The field name must match TaskProperties.annotation in Rust
+                let properties: JSONValue = .object(["annotation": .string(text)])
+                // Build filter for this specific task
+                let filter: JSONValue = .object(["uuid": .string(task.uuid)])
+
+                _ = try await apiClient.runAction(
+                    action: "annotate",
+                    properties: properties,
+                    filter: filter
+                )
+
+                // Success - clear input and reload detail
+                isAddingAnnotation = false
+                annotationInput = ""
+                showToast(message: "Annotation added", icon: .success)
+
+                // Refresh the detail to show the new annotation
+                loadTaskDetail(taskUUID: task.uuid)
+            } catch {
+                showToast(message: "Failed to add annotation", icon: .warning)
+            }
+        }
     }
 }

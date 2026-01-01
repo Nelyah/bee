@@ -162,7 +162,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
             isInsertMode: false
         )
         let model = BottomHintModelBuilder.model(for: context)
-        XCTAssertTrue(model.left.contains { $0.key == "j/k" && $0.label == "Navigate" })
+        XCTAssertTrue(model.left.contains { $0.key == "hjkl" && $0.label == "Navigate" })
     }
 
     func testDetailModeRightHintsShowOpenAndCopy() {
@@ -173,7 +173,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
             isInsertMode: false
         )
         let model = BottomHintModelBuilder.model(for: context)
-        XCTAssertTrue(model.right.contains { $0.key == "o" && $0.label == "Open" })
+        XCTAssertTrue(model.right.contains { $0.key == "Enter" && $0.label == "Open" })
         XCTAssertTrue(model.right.contains { $0.key == "y" && $0.label == "Copy" })
     }
 
@@ -188,7 +188,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         XCTAssertTrue(model.right.contains { $0.key == "⌘K" && $0.label == "Command menu" })
     }
 
-    func testDetailModeNoEnterHint() {
+    func testDetailModeShowsEnterForOpen() {
         let context = InteractionContextCoordinator.interactionContext(
             base: .detail,
             showCompletionMenu: false,
@@ -196,7 +196,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
             isInsertMode: false
         )
         let model = BottomHintModelBuilder.model(for: context)
-        XCTAssertFalse(model.right.contains { $0.key == "Enter" })
+        XCTAssertTrue(model.right.contains { $0.key == "Enter" && $0.label == "Open" })
     }
 
     func testDetailModeNoInsertHint() {

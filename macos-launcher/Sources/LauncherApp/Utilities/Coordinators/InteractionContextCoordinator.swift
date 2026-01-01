@@ -86,7 +86,7 @@ enum BottomHintModelBuilder {
         var hints = [BottomHint(key: "Esc", label: escapeLabel(for: context))]
         switch context {
         case .detail:
-            hints.append(BottomHint(key: "j/k", label: "Navigate"))
+            hints.append(BottomHint(key: "hjkl", label: "Navigate"))
         case let .list(_, isInsertMode):
             if !isInsertMode {
                 hints.append(BottomHint(key: "i", label: "Insert"))
@@ -105,8 +105,8 @@ enum BottomHintModelBuilder {
 
         switch context {
         case .detail:
-            // Show open/copy hints for detail mode
-            hints.append(BottomHint(key: "o", label: "Open"))
+            // Show action hints for detail mode
+            hints.append(BottomHint(key: "a", label: "Add note"))
             hints.append(BottomHint(key: "y", label: "Copy"))
         case let .list(selection, isInsertMode):
             // Show Tab hint in normal mode (collapse for headers, expand for tasks)
@@ -148,7 +148,7 @@ enum BottomHintModelBuilder {
         case .completionMenu:
             "Accept suggestion"
         case .detail:
-            nil
+            "Open"
         case let .list(selection, _):
             switch selection {
             case .groupHeader:

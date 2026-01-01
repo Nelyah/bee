@@ -61,12 +61,61 @@ final class DetailModeKeyHandlingTests: XCTestCase {
         XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .selectLast)
     }
 
+    // MARK: - h/l Navigation Tests (vim-style)
+
+    func testHMoveFocusLeft() {
+        let input = KeyInput(
+            keyCode: KeyCode.keyH,
+            charactersIgnoringModifiers: "h",
+            modifierFlags: []
+        )
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocusLeft)
+    }
+
+    func testLMoveFocusRight() {
+        let input = KeyInput(
+            keyCode: KeyCode.keyL,
+            charactersIgnoringModifiers: "l",
+            modifierFlags: []
+        )
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocusRight)
+    }
+
+    func testModifiedHIgnored() {
+        // Cmd+H is system "Hide" - we shouldn't override it
+        let input = KeyInput(
+            keyCode: KeyCode.keyH,
+            charactersIgnoringModifiers: "h",
+            modifierFlags: [.command]
+        )
+        XCTAssertNil(KeyHandlingDecider.detailModeAction(for: input))
+    }
+
+    func testModifiedLIgnored() {
+        // Cmd+L might be used for other purposes - we shouldn't override it
+        let input = KeyInput(
+            keyCode: KeyCode.keyL,
+            charactersIgnoringModifiers: "l",
+            modifierFlags: [.command]
+        )
+        XCTAssertNil(KeyHandlingDecider.detailModeAction(for: input))
+    }
+
     // MARK: - Action Tests
 
-    func testOOpenFocused() {
+    func testEnterOpenFocused() {
         let input = KeyInput(
-            keyCode: KeyCode.keyO,
-            charactersIgnoringModifiers: "o",
+            keyCode: KeyCode.returnKey,
+            charactersIgnoringModifiers: "\r",
+            modifierFlags: []
+        )
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .openFocused)
+    }
+
+    func testKeypadEnterOpenFocused() {
+        let input = KeyInput(
+            keyCode: KeyCode.keypadEnter,
+            charactersIgnoringModifiers: "\r",
             modifierFlags: []
         )
         XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .openFocused)
@@ -79,6 +128,25 @@ final class DetailModeKeyHandlingTests: XCTestCase {
             modifierFlags: []
         )
         XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .copyFocused)
+    }
+
+    func testAAddAnnotation() {
+        let input = KeyInput(
+            keyCode: KeyCode.keyA,
+            charactersIgnoringModifiers: "a",
+            modifierFlags: []
+        )
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .addAnnotation)
+    }
+
+    func testModifiedAIgnored() {
+        // Cmd+A is system "Select All" - we shouldn't override it
+        let input = KeyInput(
+            keyCode: KeyCode.keyA,
+            charactersIgnoringModifiers: "a",
+            modifierFlags: [.command]
+        )
+        XCTAssertNil(KeyHandlingDecider.detailModeAction(for: input))
     }
 
     // MARK: - Non-Action Keys
@@ -416,6 +484,80 @@ final class DetailFocusViewModelTests: XCTestCase {
         viewModel.detailFocusedIndex = 999
 
         XCTAssertNil(viewModel.focusedDetailItem)
+    }
+
+    // MARK: - Annotation Tests
+
+    func testStartAddingAnnotationSetsState() {
+        setupDetailMode()
+
+        viewModel.startAddingAnnotation()
+
+        XCTAssertTrue(viewModel.isAddingAnnotation)
+        XCTAssertEqual(viewModel.annotationInput, "")
+    }
+
+    func testStartAddingAnnotationRequiresSelectedTask() {
+        // No task selected
+        viewModel.tasks = MockApiClient.sampleTasks
+        viewModel.selectedIndex = nil
+        viewModel.mode = .detail
+
+        viewModel.startAddingAnnotation()
+
+        XCTAssertFalse(viewModel.isAddingAnnotation, "Should not start adding if no task selected")
+    }
+
+    func testCancelAddingAnnotationClearsState() {
+        setupDetailMode()
+        viewModel.isAddingAnnotation = true
+        viewModel.annotationInput = "Some text"
+
+        viewModel.cancelAddingAnnotation()
+
+        XCTAssertFalse(viewModel.isAddingAnnotation)
+        XCTAssertEqual(viewModel.annotationInput, "")
+    }
+
+    func testSubmitAnnotationWithEmptyTextCancels() {
+        setupDetailMode()
+        viewModel.isAddingAnnotation = true
+        viewModel.annotationInput = "   " // whitespace only
+
+        viewModel.submitAnnotation()
+
+        XCTAssertFalse(viewModel.isAddingAnnotation, "Empty text should cancel")
+    }
+
+    func testHandleDetailModeActionAddAnnotation() {
+        setupDetailMode()
+
+        let result = viewModel.handleDetailModeAction(.addAnnotation)
+
+        XCTAssertTrue(result)
+        XCTAssertTrue(viewModel.isAddingAnnotation)
+    }
+
+    func testHandleDetailModeActionMoveFocusLeft() {
+        setupDetailModeWithItems()
+        // Start at a link item (index 1 = first gitlab link)
+        viewModel.detailFocusedIndex = 1
+
+        let result = viewModel.handleDetailModeAction(.moveFocusLeft)
+
+        XCTAssertTrue(result)
+        XCTAssertEqual(viewModel.detailFocusedIndex, 0, "moveFocusLeft should move to UUID (index 0)")
+    }
+
+    func testHandleDetailModeActionMoveFocusRight() {
+        setupDetailModeWithItems()
+        // Start at UUID (index 0)
+        viewModel.detailFocusedIndex = 0
+
+        let result = viewModel.handleDetailModeAction(.moveFocusRight)
+
+        XCTAssertTrue(result)
+        XCTAssertEqual(viewModel.detailFocusedIndex, 1, "moveFocusRight should move to first link (index 1)")
     }
 
     // MARK: - Helpers

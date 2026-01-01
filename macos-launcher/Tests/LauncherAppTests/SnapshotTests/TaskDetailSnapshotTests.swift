@@ -77,7 +77,8 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
-            onClose: {}
+            onClose: {},
+            annotationInput: .constant("")
         )
     }
 

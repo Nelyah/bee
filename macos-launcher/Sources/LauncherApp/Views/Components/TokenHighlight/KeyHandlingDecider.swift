@@ -152,16 +152,22 @@ enum KeyHandlingDecider {
         guard !hasDisallowedModifier else { return nil }
 
         switch input.keyCode {
+        case KeyCode.keyH:
+            return .moveFocusLeft
         case KeyCode.keyJ:
             return .moveFocus(1)
         case KeyCode.keyK:
             return .moveFocus(-1)
-        case KeyCode.keyO:
+        case KeyCode.keyL:
+            return .moveFocusRight
+        case KeyCode.returnKey, KeyCode.keypadEnter:
             return .openFocused
         case KeyCode.keyY:
             return .copyFocused
         case KeyCode.keyG:
             return input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
+        case KeyCode.keyA:
+            return .addAnnotation
         default:
             return nil
         }

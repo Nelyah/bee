@@ -492,6 +492,37 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertTrue(result, "handleEscape should return true from other handler")
         XCTAssertFalse(viewModel.showingSaveReportSheet, "SaveReportSheet should remain closed")
     }
+
+    // MARK: - HandleEscape Annotation Input Tests
+
+    func testHandleEscapeCancelsAnnotationInput() {
+        let viewModel = LauncherViewModel()
+        viewModel.tasks = [makeTask(id: "a")]
+        viewModel.selectedIndex = 0
+        viewModel.mode = .detail
+        viewModel.isAddingAnnotation = true
+        viewModel.annotationInput = "Some annotation text"
+
+        let result = viewModel.handleEscape()
+
+        XCTAssertTrue(result, "handleEscape should return true when canceling annotation")
+        XCTAssertFalse(viewModel.isAddingAnnotation, "isAddingAnnotation should be false after escape")
+        XCTAssertEqual(viewModel.annotationInput, "", "annotationInput should be cleared")
+    }
+
+    func testHandleEscapeAnnotationTakesPriorityOverDetailClose() {
+        let viewModel = LauncherViewModel()
+        viewModel.tasks = [makeTask(id: "a")]
+        viewModel.selectedIndex = 0
+        viewModel.mode = .detail
+        viewModel.isAddingAnnotation = true
+
+        _ = viewModel.handleEscape()
+
+        // Should cancel annotation but NOT close detail view
+        XCTAssertFalse(viewModel.isAddingAnnotation)
+        XCTAssertEqual(viewModel.mode, .detail, "Should remain in detail mode")
+    }
 }
 
 private func clearCollapsedDefaults() {

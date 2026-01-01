@@ -70,7 +70,8 @@ final class TaskDetailUITests: XCTestCase {
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
-            onClose: {}
+            onClose: {},
+            annotationInput: .constant("")
         )
     }
 
@@ -117,7 +118,8 @@ final class TaskDetailUITests: XCTestCase {
             onCopyBranch: { _ in },
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
-            onClose: { closeCalled = true }
+            onClose: { closeCalled = true },
+            annotationInput: .constant("")
         )
 
         let view = try sut.inspect()

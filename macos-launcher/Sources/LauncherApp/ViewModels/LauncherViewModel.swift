@@ -55,8 +55,20 @@ final class LauncherViewModel: ObservableObject {
     @Published var detailFocusedIndex: Int = 0
     /// List of focusable items in the current detail view.
     var detailFocusableItems: [DetailFocusableItem] = []
+    /// Whether keyboard navigation is active in detail mode (shows focus ring).
+    /// Set to true when user engages with hjkl navigation, reset on mode change.
+    @Published var detailKeyboardNavigationActive: Bool = false
     /// Loaded expanded content per task UUID.
     @Published var taskExpandedData: [String: TaskExpandedContent] = [:]
+
+    // MARK: - Annotation Input State
+
+    /// Whether the annotation input field is active.
+    @Published var isAddingAnnotation: Bool = false
+    /// The text currently being entered in the annotation input field.
+    @Published var annotationInput: String = ""
+    /// Whether an annotation submission is in progress.
+    @Published var isSubmittingAnnotation: Bool = false
 
     // MARK: - Project Scope State
 
@@ -515,6 +527,12 @@ final class LauncherViewModel: ObservableObject {
         // Close SaveReportSheet if it's open
         if showingSaveReportSheet {
             showingSaveReportSheet = false
+            return true
+        }
+
+        // Cancel annotation input if active
+        if isAddingAnnotation {
+            cancelAddingAnnotation()
             return true
         }
 

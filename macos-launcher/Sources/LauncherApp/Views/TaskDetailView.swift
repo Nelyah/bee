@@ -13,6 +13,21 @@ struct TaskDetailView: View {
     /// The currently keyboard-focused item (for j/k navigation).
     var focusedItem: DetailFocusableItem?
 
+    // MARK: - Annotation Input
+
+    /// Whether the annotation input field is visible.
+    var isAddingAnnotation: Bool = false
+    /// Binding to the annotation input text.
+    @Binding var annotationInput: String
+    /// Whether annotation submission is in progress.
+    var isSubmittingAnnotation: Bool = false
+    /// Called when the user presses Enter to submit the annotation.
+    var onSubmitAnnotation: () -> Void = {}
+    /// Called when the user cancels annotation input (Escape).
+    var onCancelAnnotation: () -> Void = {}
+    /// Called when the user wants to start adding an annotation.
+    var onStartAnnotation: () -> Void = {}
+
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -175,14 +190,30 @@ struct TaskDetailView: View {
     }
 
     private var annotationsSection: some View {
-        DetailSection(title: "Annotations") {
-            let annotations = sortedAnnotations(detailForTask?.annotations ?? [])
-            if annotations.isEmpty {
-                Text("—")
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.overlay0)
-            } else {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+        DetailSectionWithAction(
+            title: "Annotations",
+            actionLabel: "Add",
+            actionIcon: "plus",
+            onAction: onStartAnnotation
+        ) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                // Annotation input field
+                if isAddingAnnotation {
+                    AnnotationInputField(
+                        text: $annotationInput,
+                        isSubmitting: isSubmittingAnnotation,
+                        onSubmit: onSubmitAnnotation,
+                        onCancel: onCancelAnnotation
+                    )
+                }
+
+                // Existing annotations
+                let annotations = sortedAnnotations(detailForTask?.annotations ?? [])
+                if annotations.isEmpty, !isAddingAnnotation {
+                    Text("—")
+                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                        .foregroundColor(ThemeManager.current.overlay0)
+                } else {
                     ForEach(annotations) { annotation in
                         TimelineRow(
                             timestamp: annotation.time,
@@ -347,6 +378,115 @@ private struct DetailSection<Content: View>: View {
     }
 }
 
+/// A card-style section with an action button in the header.
+private struct DetailSectionWithAction<Content: View>: View {
+    let title: String
+    let actionLabel: String
+    let actionIcon: String
+    let onAction: () -> Void
+    let content: Content
+
+    init(
+        title: String,
+        actionLabel: String,
+        actionIcon: String,
+        onAction: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.actionLabel = actionLabel
+        self.actionIcon = actionIcon
+        self.onAction = onAction
+        self.content = content()
+    }
+
+    @State private var isHovering = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
+            HStack {
+                Text(title.uppercased())
+                    .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
+                    .foregroundColor(ThemeManager.current.subtext0)
+                Spacer()
+                Button(action: onAction) {
+                    HStack(spacing: 4) {
+                        Image(systemName: actionIcon)
+                            .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
+                        Text(actionLabel)
+                            .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
+                    }
+                    .foregroundColor(isHovering ? ThemeManager.current.text : ThemeManager.current.subtext0)
+                }
+                .buttonStyle(.plain)
+                .onHover { isHovering = $0 }
+            }
+            content
+        }
+        .padding(DesignTokens.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
+                .fill(ThemeManager.current.surface0)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
+                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
+        )
+    }
+}
+
+/// An inline text field for entering annotation text.
+private struct AnnotationInputField: View {
+    @Binding var text: String
+    let isSubmitting: Bool
+    let onSubmit: () -> Void
+    let onCancel: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.small) {
+            TextField("Enter annotation...", text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: DesignTokens.TypeScale.bodySm))
+                .foregroundColor(ThemeManager.current.text)
+                .focused($isFocused)
+                .onSubmit(onSubmit)
+                .disabled(isSubmitting)
+
+            if isSubmitting {
+                ProgressView()
+                    .scaleEffect(0.7)
+            } else {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
+                        .foregroundColor(ThemeManager.current.subtext0)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.escape, modifiers: [])
+            }
+        }
+        .padding(.horizontal, DesignTokens.Spacing.small)
+        .padding(.vertical, DesignTokens.Spacing.extraSmall)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                .fill(ThemeManager.current.surface1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                .stroke(
+                    isFocused ? ThemeManager.current.blue : ThemeManager.current.surface2,
+                    lineWidth: isFocused ? 2 : 1
+                )
+        )
+        .onAppear {
+            isFocused = true
+        }
+    }
+}
+
 private struct ExternalLinksProviderSection: View {
     let title: String
     let icon: Image?
@@ -418,24 +558,33 @@ private struct ExternalLinksProviderSection: View {
 }
 
 #Preview {
-    TaskDetailView(
-        task: MockApiClient.sampleTasks[0],
-        detailState: TaskDetailState(
-            taskUUID: MockApiClient.sampleTaskDetail.uuid,
-            detail: MockApiClient.sampleTaskDetail
-        ),
-        externalLinksState: ExternalLinksState(
-            taskUUID: MockApiClient.sampleTaskDetail.uuid,
-            links: MockApiClient.sampleExternalLinks
-        ),
-        onRetryDetail: {},
-        onRefreshLinks: { _ in },
-        onCopyBranch: { _ in },
-        onCopyLink: { _ in },
-        onCopyUUID: { _ in },
-        onClose: {}
-    )
-    .padding(DesignTokens.Spacing.extraExtraLarge)
-    .frame(width: 600, height: 400)
-    .background(ThemeManager.current.base)
+    struct PreviewWrapper: View {
+        @State private var annotationInput = ""
+
+        var body: some View {
+            TaskDetailView(
+                task: MockApiClient.sampleTasks[0],
+                detailState: TaskDetailState(
+                    taskUUID: MockApiClient.sampleTaskDetail.uuid,
+                    detail: MockApiClient.sampleTaskDetail
+                ),
+                externalLinksState: ExternalLinksState(
+                    taskUUID: MockApiClient.sampleTaskDetail.uuid,
+                    links: MockApiClient.sampleExternalLinks
+                ),
+                onRetryDetail: {},
+                onRefreshLinks: { _ in },
+                onCopyBranch: { _ in },
+                onCopyLink: { _ in },
+                onCopyUUID: { _ in },
+                onClose: {},
+                annotationInput: $annotationInput
+            )
+            .padding(DesignTokens.Spacing.extraExtraLarge)
+            .frame(width: 600, height: 400)
+            .background(ThemeManager.current.base)
+        }
+    }
+
+    return PreviewWrapper()
 }

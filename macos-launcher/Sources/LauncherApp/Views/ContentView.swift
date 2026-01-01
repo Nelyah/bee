@@ -38,7 +38,19 @@ struct ContentView: View {
                     onClose: {
                         viewModel.closeDetail()
                     },
-                    focusedItem: viewModel.focusedDetailItem
+                    focusedItem: viewModel.focusedDetailItem,
+                    isAddingAnnotation: viewModel.isAddingAnnotation,
+                    annotationInput: $viewModel.annotationInput,
+                    isSubmittingAnnotation: viewModel.isSubmittingAnnotation,
+                    onSubmitAnnotation: {
+                        viewModel.submitAnnotation()
+                    },
+                    onCancelAnnotation: {
+                        viewModel.cancelAddingAnnotation()
+                    },
+                    onStartAnnotation: {
+                        viewModel.startAddingAnnotation()
+                    }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)
             } else {
@@ -166,9 +178,10 @@ struct ContentView: View {
     private func installDetailModeMonitor() {
         guard detailModeMonitor == nil else { return }
         detailModeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // Only handle keys in detail mode when command palette is closed
+            // Only handle keys in detail mode when command palette is closed and not adding annotation
             guard viewModel.mode == .detail,
-                  !viewModel.commandPalette.isPresented else { return event }
+                  !viewModel.commandPalette.isPresented,
+                  !viewModel.isAddingAnnotation else { return event }
             guard let action = KeyHandlingDecider.detailModeAction(for: KeyInput(event: event)) else {
                 return event
             }

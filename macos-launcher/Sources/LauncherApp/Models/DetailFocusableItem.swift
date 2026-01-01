@@ -10,11 +10,11 @@ enum DetailFocusableItem: Equatable, Identifiable {
     var id: String {
         switch self {
         case let .uuid(uuid):
-            return "uuid-\(uuid)"
+            "uuid-\(uuid)"
         case let .gitlabMR(link):
-            return "gitlab-\(link.id)"
+            "gitlab-\(link.id)"
         case let .jiraIssue(link):
-            return "jira-\(link.id)"
+            "jira-\(link.id)"
         }
     }
 
@@ -23,11 +23,11 @@ enum DetailFocusableItem: Equatable, Identifiable {
     var openURL: URL? {
         switch self {
         case .uuid:
-            return nil // UUID is not openable
+            nil // UUID is not openable
         case let .gitlabMR(link):
-            return URL(string: link.url)
+            URL(string: link.url)
         case let .jiraIssue(link):
-            return URL(string: link.url)
+            URL(string: link.url)
         }
     }
 
@@ -40,8 +40,7 @@ enum DetailFocusableItem: Equatable, Identifiable {
             // Prefer branch name if available, otherwise copy URL
             if let summary = link.cachedSummary(),
                case let .gitlab(gitlab) = summary,
-               let branch = gitlab.sourceBranch
-            {
+               let branch = gitlab.sourceBranch {
                 return branch
             }
             return link.url
@@ -58,8 +57,7 @@ enum DetailFocusableItem: Equatable, Identifiable {
         case let .gitlabMR(link):
             if let summary = link.cachedSummary(),
                case let .gitlab(gitlab) = summary,
-               gitlab.sourceBranch != nil
-            {
+               gitlab.sourceBranch != nil {
                 return "Branch"
             }
             return "Link"

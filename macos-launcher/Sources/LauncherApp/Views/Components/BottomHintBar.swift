@@ -7,8 +7,8 @@ struct BottomHintBar: View {
 
     @State private var isHovered = false
 
-    /// Opacity when not hovered - subtle but visible
-    private let restingOpacity: Double = 0.4
+    /// Opacity when not hovered - always visible
+    private let restingOpacity: Double = 1.0
     /// Opacity when hovered - full visibility
     private let hoveredOpacity: Double = 1.0
 

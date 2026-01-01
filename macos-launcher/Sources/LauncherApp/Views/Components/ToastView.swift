@@ -39,7 +39,7 @@ struct ToastView: View {
                 icon
                     .resizable()
                     .renderingMode(.original)
-                    .frame(width: 14, height: 14)
+                    .frame(width: DesignTokens.IconSize.medium, height: DesignTokens.IconSize.medium)
             } else {
                 Image(systemName: "link")
                     .foregroundStyle(ThemeManager.current.subtext0)

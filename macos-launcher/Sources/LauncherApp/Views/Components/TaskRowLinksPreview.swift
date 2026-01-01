@@ -39,7 +39,7 @@ struct TaskRowLinksPreview: View {
             .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
             .foregroundColor(ThemeManager.current.subtext0)
             .padding(.horizontal, DesignTokens.Spacing.small)
-            .padding(.vertical, 4)
+            .padding(.vertical, DesignTokens.Spacing.extraSmall)
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                     .fill(ThemeManager.current.surface0.opacity(0.5))
@@ -61,7 +61,7 @@ struct CompactLinkChip: View {
         } label: {
             HStack(spacing: DesignTokens.Spacing.extraSmall) {
                 providerIcon
-                    .frame(width: 12, height: 12)
+                    .frame(width: DesignTokens.IconSize.small, height: DesignTokens.IconSize.small)
 
                 Text(displayText)
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
@@ -72,7 +72,7 @@ struct CompactLinkChip: View {
                 syncStatusIcon
             }
             .padding(.horizontal, DesignTokens.Spacing.small)
-            .padding(.vertical, 4)
+            .padding(.vertical, DesignTokens.Spacing.extraSmall)
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                     .fill(isHovering ? ThemeManager.current.surface1 : ThemeManager.current.surface1.opacity(0.7))
@@ -95,7 +95,7 @@ struct CompactLinkChip: View {
                     .aspectRatio(contentMode: .fit)
             } else {
                 Image(systemName: "link")
-                    .font(.system(size: 10))
+                    .font(.system(size: DesignTokens.TypeScale.caption))
                     .foregroundColor(ThemeManager.current.subtext0)
             }
         case "jira":
@@ -106,12 +106,12 @@ struct CompactLinkChip: View {
                     .aspectRatio(contentMode: .fit)
             } else {
                 Image(systemName: "link")
-                    .font(.system(size: 10))
+                    .font(.system(size: DesignTokens.TypeScale.caption))
                     .foregroundColor(ThemeManager.current.subtext0)
             }
         default:
             Image(systemName: "link")
-                .font(.system(size: 10))
+                .font(.system(size: DesignTokens.TypeScale.caption))
                 .foregroundColor(ThemeManager.current.subtext0)
         }
     }
@@ -134,19 +134,19 @@ struct CompactLinkChip: View {
         switch state {
         case .synced:
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 8))
+                .font(.system(size: DesignTokens.TypeScale.mini))
                 .foregroundColor(ThemeManager.current.teal)
         case .stale:
             Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 8))
+                .font(.system(size: DesignTokens.TypeScale.mini))
                 .foregroundColor(ThemeManager.current.peach)
         case .error:
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 8))
+                .font(.system(size: DesignTokens.TypeScale.mini))
                 .foregroundColor(ThemeManager.current.red)
         case .pending:
             Image(systemName: "clock.fill")
-                .font(.system(size: 8))
+                .font(.system(size: DesignTokens.TypeScale.mini))
                 .foregroundColor(ThemeManager.current.subtext0)
         }
     }

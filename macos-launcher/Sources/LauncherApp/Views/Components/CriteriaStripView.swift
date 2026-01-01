@@ -47,14 +47,14 @@ private struct CriteriaChipView: View {
         let tint = chip.tone.color
         HStack(spacing: DesignTokens.Spacing.extraSmall) {
             Image(systemName: chip.systemImage)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .font(.system(size: DesignTokens.TypeScale.label, weight: .semibold, design: .rounded))
                 .foregroundColor(tint)
             Text(chip.label)
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
                 .foregroundColor(ThemeManager.current.text)
         }
         .padding(.horizontal, DesignTokens.Spacing.small)
-        .padding(.vertical, 4)
+        .padding(.vertical, DesignTokens.Spacing.extraSmall)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
                 .fill(tint.opacity(0.16))

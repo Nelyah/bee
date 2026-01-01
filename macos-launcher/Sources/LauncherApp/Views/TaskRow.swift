@@ -57,7 +57,7 @@ struct TaskRow: View {
             // Status indicator
             Circle()
                 .fill(statusColor(task.status))
-                .frame(width: 8, height: 8)
+                .frame(width: DesignTokens.IconSize.mini, height: DesignTokens.IconSize.mini)
 
             // Dynamic columns
             ForEach(Array(columns.enumerated()), id: \.offset) { index, column in
@@ -102,9 +102,9 @@ struct TaskRow: View {
 
     private var chevronIndicator: some View {
         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-            .font(.system(size: 10, weight: .semibold))
+            .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
             .foregroundColor(ThemeManager.current.subtext0)
-            .frame(width: 12, height: 12)
+            .frame(width: DesignTokens.IconSize.small, height: DesignTokens.IconSize.small)
             .contentShape(Rectangle())
             .onTapGesture {
                 onChevronTap?()
@@ -151,7 +151,7 @@ struct TaskRow: View {
         HStack(spacing: DesignTokens.Spacing.small) {
             ProgressView()
                 .scaleEffect(0.7)
-                .frame(width: 14, height: 14)
+                .frame(width: DesignTokens.IconSize.medium, height: DesignTokens.IconSize.medium)
             Text("Loading...")
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
                 .foregroundColor(ThemeManager.current.subtext0)

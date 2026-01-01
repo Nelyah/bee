@@ -8,7 +8,7 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.medium) {
             Image(systemName: hasActiveFilters ? "magnifyingglass" : "checkmark.circle")
-                .font(.system(size: 32, weight: .light))
+                .font(.system(size: DesignTokens.TypeScale.display, weight: .light))
                 .foregroundColor(ThemeManager.current.overlay0)
 
             Text(hasActiveFilters ? "No tasks match your filters" : "No tasks yet")

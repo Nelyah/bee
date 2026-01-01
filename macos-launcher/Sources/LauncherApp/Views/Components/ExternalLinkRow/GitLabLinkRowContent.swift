@@ -58,7 +58,7 @@ struct GitLabLinkRowContent: View {
                                     .resizable()
                                     .renderingMode(.original)
                                     .scaledToFit()
-                                    .frame(width: 12, height: 12)
+                                    .frame(width: DesignTokens.IconSize.small, height: DesignTokens.IconSize.small)
                             } else {
                                 Image(systemName: "arrow.triangle.branch")
                                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
@@ -73,7 +73,7 @@ struct GitLabLinkRowContent: View {
                                 .foregroundColor(ThemeManager.current.text)
                         }
                         .padding(.horizontal, DesignTokens.Spacing.small)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, DesignTokens.Spacing.extraSmall)
                         .background(
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
                                 .fill(ThemeManager.current.surface2.opacity(isHovering ? 0.85 : 0.7))
@@ -139,10 +139,10 @@ struct GitLabLinkRowContent: View {
 
     private func statusIconView(name: String) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.large, style: .continuous)
                 .fill(ThemeManager.current.surface2.opacity(0.55))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.large, style: .continuous)
                         .stroke(ThemeManager.current.surface1.opacity(0.5), lineWidth: 1)
                 )
             if let icon = AssetIcon.image(named: name) {
@@ -150,19 +150,19 @@ struct GitLabLinkRowContent: View {
                     .resizable()
                     .renderingMode(.original)
                     .scaledToFit()
-                    .padding(6)
+                    .padding(DesignTokens.Spacing.small - 2)
             } else {
                 Image(systemName: "exclamationmark.triangle")
                     .resizable()
                     .renderingMode(.template)
                     .scaledToFit()
-                    .padding(8)
+                    .padding(DesignTokens.Spacing.small)
                     .foregroundColor(ThemeManager.current.yellow)
             }
         }
-        .frame(width: 34, height: 34)
+        .frame(width: DesignTokens.IconSize.large, height: DesignTokens.IconSize.large)
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.large, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [

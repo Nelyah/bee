@@ -66,7 +66,7 @@ private struct HintChip: View {
             BottomHint(key: "⌘K", label: "Command menu"),
         ]
     )
-    .padding(24)
+    .padding(DesignTokens.Spacing.extraExtraLarge)
     .frame(width: 500, height: 120)
     .background(ThemeManager.current.base)
 }

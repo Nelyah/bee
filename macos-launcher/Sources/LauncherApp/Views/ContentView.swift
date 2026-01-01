@@ -38,10 +38,10 @@ struct ContentView: View {
                         viewModel.closeDetail()
                     }
                 )
-                .padding(24)
+                .padding(DesignTokens.Spacing.extraExtraLarge)
             } else {
                 TaskListView(viewModel: viewModel, completion: viewModel.completion)
-                    .padding(20)
+                    .padding(DesignTokens.Spacing.extraLarge)
             }
 
             if viewModel.commandPalette.isPresented {
@@ -49,7 +49,7 @@ struct ContentView: View {
             }
 
             ToastStackView(toasts: viewModel.toasts)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DesignTokens.Spacing.large)
                 .padding(.bottom, BottomHintBar.height + DesignTokens.Spacing.extraExtraLarge)
                 .allowsHitTesting(false)
                 .zIndex(2)

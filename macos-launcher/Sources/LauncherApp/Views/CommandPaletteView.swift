@@ -36,7 +36,7 @@ struct CommandPaletteView: View {
                 // Search header
                 HStack(spacing: DesignTokens.Spacing.medium) {
                     Image(systemName: "magnifyingglass")
-                        .frame(width: 16, height: 16)
+                        .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
                         .foregroundColor(ThemeManager.current.subtext0)
                     TextField("Search", text: $commandPalette.query)
                         .textFieldStyle(.plain)
@@ -256,35 +256,35 @@ struct CommandPaletteView: View {
         switch icon {
         case let .system(name):
             Image(systemName: name)
-                .font(.system(size: 14))
+                .font(.system(size: DesignTokens.TypeScale.body))
                 .foregroundColor(ThemeManager.current.subtext0)
-                .frame(width: 16, height: 16)
+                .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
         case let .asset(name):
             Image(name, bundle: .module)
                 .resizable()
                 .renderingMode(.original)
-                .frame(width: 16, height: 16)
+                .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
         case .gitlab:
             if let icon = AssetIcon.gitlab() {
                 icon
                     .resizable()
                     .renderingMode(.original)
-                    .frame(width: 16, height: 16)
+                    .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
             } else {
                 Image(systemName: "link")
-                    .frame(width: 16, height: 16)
+                    .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
             }
         case .jira:
             if let icon = AssetIcon.jira() {
                 icon
                     .resizable()
                     .renderingMode(.original)
-                    .frame(width: 16, height: 16)
+                    .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
             } else {
                 Image(systemName: "ticket")
-                    .font(.system(size: 14))
+                    .font(.system(size: DesignTokens.TypeScale.body))
                     .foregroundColor(ThemeManager.current.subtext0)
-                    .frame(width: 16, height: 16)
+                    .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
             }
         }
     }
@@ -294,9 +294,9 @@ struct CommandPaletteView: View {
         Button {
             commandPalette.navigateBack()
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: DesignTokens.Spacing.medium) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 12))
+                    .font(.system(size: DesignTokens.TypeScale.bodySm))
                     .foregroundColor(ThemeManager.current.subtext0)
                 Text("Back")
                     .foregroundColor(ThemeManager.current.subtext0)

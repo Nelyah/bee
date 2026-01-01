@@ -18,12 +18,23 @@ enum DesignTokens {
     }
 
     enum TypeScale {
+        static let mini: CGFloat = 8
         static let caption: CGFloat = 10
         static let label: CGFloat = 11
         static let bodySm: CGFloat = 12
         static let body: CGFloat = 14
         static let bodyLg: CGFloat = 15
-        static let title: CGFloat = 22
+        static let bodyXl: CGFloat = 16
         static let input: CGFloat = 18
+        static let title: CGFloat = 22
+        static let display: CGFloat = 32
+    }
+
+    enum IconSize {
+        static let mini: CGFloat = 8
+        static let small: CGFloat = 12
+        static let medium: CGFloat = 14
+        static let standard: CGFloat = 16
+        static let large: CGFloat = 34
     }
 }

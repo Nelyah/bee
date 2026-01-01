@@ -337,7 +337,7 @@ private struct ExternalLinksProviderSection: View {
                         .resizable()
                         .renderingMode(useOriginalIcon ? .original : .template)
                         .foregroundColor(useOriginalIcon ? nil : ThemeManager.current.subtext0)
-                        .frame(width: 14, height: 14)
+                        .frame(width: DesignTokens.IconSize.medium, height: DesignTokens.IconSize.medium)
                 }
                 Text(title)
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
@@ -404,7 +404,7 @@ private struct ExternalLinksProviderSection: View {
         onCopyUUID: { _ in },
         onClose: {}
     )
-    .padding(24)
+    .padding(DesignTokens.Spacing.extraExtraLarge)
     .frame(width: 600, height: 400)
     .background(ThemeManager.current.base)
 }

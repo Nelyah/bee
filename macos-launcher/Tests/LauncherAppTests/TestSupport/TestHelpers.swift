@@ -245,9 +245,10 @@ enum TestHelpers {
     static func makeGroupHeader(
         key: String? = "project",
         displayName: String = "Test Project",
+        taskCount: Int = 3,
         isCollapsed: Bool = false
     ) -> GroupHeader {
-        GroupHeader(key: key, displayName: displayName, isCollapsed: isCollapsed)
+        GroupHeader(key: key, displayName: displayName, taskCount: taskCount, isCollapsed: isCollapsed)
     }
 
     // MARK: - Criteria Chip Helpers

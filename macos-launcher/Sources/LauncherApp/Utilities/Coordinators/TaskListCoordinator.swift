@@ -83,9 +83,11 @@ enum TaskListCoordinator {
 
             // Check if this group itself is directly collapsed
             let isCollapsed = collapsedKeys.contains(key)
+            let taskCount = groups[key]?.count ?? 0
             rows.append(.header(GroupHeader(
                 key: key,
                 displayName: strategy.displayName(for: key),
+                taskCount: taskCount,
                 isCollapsed: isCollapsed
             )))
             if !isCollapsed, let groupTasks = groups[key] {

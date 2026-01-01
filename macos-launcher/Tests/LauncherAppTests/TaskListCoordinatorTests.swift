@@ -60,7 +60,7 @@ final class TaskListCoordinatorTests: XCTestCase {
 
     func testMoveGroupedSelectionClampsAtEnd() {
         let rows: [GroupedListRow] = [
-            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .header(GroupHeader(key: "A", displayName: "A", taskCount: 2, isCollapsed: false)),
             .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
             .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A")),
         ]
@@ -76,7 +76,7 @@ final class TaskListCoordinatorTests: XCTestCase {
 
     func testMoveGroupedSelectionClampsAtStart() {
         let rows: [GroupedListRow] = [
-            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .header(GroupHeader(key: "A", displayName: "A", taskCount: 2, isCollapsed: false)),
             .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
         ]
 
@@ -91,7 +91,7 @@ final class TaskListCoordinatorTests: XCTestCase {
 
     func testMoveGroupedSelectionNavigatesNormally() {
         let rows: [GroupedListRow] = [
-            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .header(GroupHeader(key: "A", displayName: "A", taskCount: 2, isCollapsed: false)),
             .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
             .task(GroupedTask(task: makeTask(id: "b"), flatIndex: 1, groupKey: "A")),
         ]
@@ -113,7 +113,7 @@ final class TaskListCoordinatorTests: XCTestCase {
 
     func testMoveGroupedSelectionInitialSelection() {
         let rows: [GroupedListRow] = [
-            .header(GroupHeader(key: "A", displayName: "A", isCollapsed: false)),
+            .header(GroupHeader(key: "A", displayName: "A", taskCount: 2, isCollapsed: false)),
             .task(GroupedTask(task: makeTask(id: "a"), flatIndex: 0, groupKey: "A")),
         ]
 

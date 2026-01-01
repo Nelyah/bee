@@ -19,6 +19,8 @@ struct GroupHeader: Identifiable {
     let key: String?
     /// What to show in the UI.
     let displayName: String
+    /// Number of tasks in this group.
+    let taskCount: Int
     /// Whether this group is collapsed.
     var isCollapsed: Bool
 

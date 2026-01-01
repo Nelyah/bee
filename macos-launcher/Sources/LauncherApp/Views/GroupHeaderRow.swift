@@ -11,7 +11,8 @@ struct GroupHeaderRow: View {
         } else if isHovered {
             ThemeManager.current.surface0
         } else {
-            Color.clear
+            // Subtle background tint for visual distinction
+            ThemeManager.current.surface0.opacity(0.5)
         }
     }
 
@@ -22,9 +23,19 @@ struct GroupHeaderRow: View {
                 .foregroundColor(ThemeManager.current.subtext0)
                 .frame(width: 12)
 
+            // Folder icon for visual distinction
+            Image(systemName: "folder.fill")
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                .foregroundColor(ThemeManager.current.overlay0)
+
             Text(header.displayName)
-                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .bold, design: .rounded))
                 .foregroundColor(isSelected || isHovered ? ThemeManager.current.text : ThemeManager.current.subtext1)
+
+            // Task count badge
+            Text("(\(header.taskCount))")
+                .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
+                .foregroundColor(ThemeManager.current.subtext0)
 
             Spacer()
 
@@ -47,17 +58,17 @@ struct GroupHeaderRow: View {
 #Preview {
     VStack(spacing: 8) {
         GroupHeaderRow(
-            header: GroupHeader(key: "work", displayName: "Work", isCollapsed: false),
+            header: GroupHeader(key: "work", displayName: "Work", taskCount: 5, isCollapsed: false),
             isHovered: false,
             isSelected: false
         )
         GroupHeaderRow(
-            header: GroupHeader(key: "personal", displayName: "Personal", isCollapsed: true),
+            header: GroupHeader(key: "personal", displayName: "Personal", taskCount: 3, isCollapsed: true),
             isHovered: true,
             isSelected: false
         )
         GroupHeaderRow(
-            header: GroupHeader(key: nil, displayName: "No Project", isCollapsed: false),
+            header: GroupHeader(key: nil, displayName: "No Project", taskCount: 12, isCollapsed: false),
             isHovered: false,
             isSelected: true
         )

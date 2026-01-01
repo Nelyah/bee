@@ -71,28 +71,28 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     // MARK: - GroupHeaderRow Tests
 
     func testGroupHeaderRowCollapsed() {
-        let header = GroupHeader(key: "in_progress", displayName: "In Progress", isCollapsed: true)
+        let header = GroupHeader(key: "in_progress", displayName: "In Progress", taskCount: 4, isCollapsed: true)
         let view = GroupHeaderRow(header: header, isHovered: false, isSelected: false)
 
         assertViewSnapshot(view, size: CGSize(width: 600, height: 40))
     }
 
     func testGroupHeaderRowExpanded() {
-        let header = GroupHeader(key: "completed", displayName: "Completed Today", isCollapsed: false)
+        let header = GroupHeader(key: "completed", displayName: "Completed Today", taskCount: 7, isCollapsed: false)
         let view = GroupHeaderRow(header: header, isHovered: false, isSelected: false)
 
         assertViewSnapshot(view, size: CGSize(width: 600, height: 40))
     }
 
     func testGroupHeaderRowHovered() {
-        let header = GroupHeader(key: "pending", displayName: "Pending", isCollapsed: false)
+        let header = GroupHeader(key: "pending", displayName: "Pending", taskCount: 12, isCollapsed: false)
         let view = GroupHeaderRow(header: header, isHovered: true, isSelected: false)
 
         assertViewSnapshot(view, size: CGSize(width: 600, height: 40))
     }
 
     func testGroupHeaderRowSelected() {
-        let header = GroupHeader(key: "blocked", displayName: "Blocked", isCollapsed: true)
+        let header = GroupHeader(key: "blocked", displayName: "Blocked", taskCount: 2, isCollapsed: true)
         let view = GroupHeaderRow(header: header, isHovered: false, isSelected: true)
 
         assertViewSnapshot(view, size: CGSize(width: 600, height: 40))

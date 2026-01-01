@@ -146,7 +146,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
     }
 
     private func sampleRows() -> [GroupedListRow] {
-        let header = GroupHeader(key: "project", displayName: "Project", isCollapsed: false)
+        let header = GroupHeader(key: "project", displayName: "Project", taskCount: 1, isCollapsed: false)
         let task = ApiTask(
             dbId: 1,
             uuid: "task-1",

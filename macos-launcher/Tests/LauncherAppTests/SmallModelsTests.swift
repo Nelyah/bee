@@ -118,7 +118,7 @@ final class SmallModelsTests: XCTestCase {
     // MARK: - GroupedListRow Tests
 
     func testGroupedListRowHeaderId() {
-        let header = GroupHeader(key: "work", displayName: "Work", isCollapsed: false)
+        let header = GroupHeader(key: "work", displayName: "Work", taskCount: 5, isCollapsed: false)
         let row = GroupedListRow.header(header)
         XCTAssertEqual(row.id, "header-work")
     }
@@ -133,12 +133,12 @@ final class SmallModelsTests: XCTestCase {
     // MARK: - GroupHeader Tests
 
     func testGroupHeaderIdWithKey() {
-        let header = GroupHeader(key: "project", displayName: "Project", isCollapsed: false)
+        let header = GroupHeader(key: "project", displayName: "Project", taskCount: 3, isCollapsed: false)
         XCTAssertEqual(header.id, "project")
     }
 
     func testGroupHeaderIdWithNilKey() {
-        let header = GroupHeader(key: nil, displayName: "Ungrouped", isCollapsed: false)
+        let header = GroupHeader(key: nil, displayName: "Ungrouped", taskCount: 2, isCollapsed: false)
         XCTAssertEqual(header.id, "__none__")
     }
 

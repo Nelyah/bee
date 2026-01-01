@@ -145,7 +145,8 @@ final class ComponentSnapshotTests: SnapshotTestCase {
         let staleDate = Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date()
         let view = LinkStatusBadge(state: .stale(staleDate), timestamp: nil)
 
-        assertViewSnapshot(view, size: CGSize(width: 150, height: 24))
+        // Wider to fit "Last synced 2d ago" text
+        assertViewSnapshot(view, size: CGSize(width: 180, height: 24))
     }
 
     func testLinkStatusBadgeError() {

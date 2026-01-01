@@ -28,7 +28,7 @@ struct LinkStatusBadge: View {
         case let .synced(date):
             "Synced \(RelativeDateFormatter.description(for: date, now: Date(), calendar: .current))"
         case let .stale(date):
-            "Stale \(RelativeDateFormatter.description(for: date, now: Date(), calendar: .current))"
+            "Last synced \(RelativeDateFormatter.description(for: date, now: Date(), calendar: .current))"
         }
     }
 
@@ -36,6 +36,8 @@ struct LinkStatusBadge: View {
         switch state {
         case let .error(message):
             message
+        case .stale:
+            "Data may be outdated. Expand task to refresh."
         default:
             timestamp
         }

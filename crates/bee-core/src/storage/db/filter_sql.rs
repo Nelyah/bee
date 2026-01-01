@@ -112,9 +112,12 @@ pub(super) fn filter_to_condition_expr(filter: &dyn Filter) -> ConditionExpressi
         }
         FilterKind::DateEnd => {
             let f = filter.as_any().downcast_ref::<DateEndFilter>().unwrap();
+            let timestamp = f.time.to_rfc3339();
             let mut condition = Condition::all().add(tasks::Column::DateCompleted.is_not_null());
             if f.before {
-                condition = condition.add(tasks::Column::DateCompleted.lt(f.time.to_rfc3339()));
+                condition = condition.add(tasks::Column::DateCompleted.lt(timestamp));
+            } else {
+                condition = condition.add(tasks::Column::DateCompleted.gte(timestamp));
             }
             ConditionExpression::Condition(condition)
         }

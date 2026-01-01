@@ -16,6 +16,12 @@ pub struct UserReport {
     pub filter: Option<Value>,
     pub columns: Vec<String>,
     pub column_names: Vec<String>,
+    /// Custom column widths as JSON object: {"column_key": width}
+    pub column_widths: Option<Value>,
+    /// Column key to sort by (e.g., "status"). None means default urgency sort.
+    pub sort_column: Option<String>,
+    /// Sort direction: "ascending" or "descending"
+    pub sort_direction: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -56,6 +62,24 @@ fn serialize_filter_json(filter: &Option<Value>) -> String {
     }
 }
 
+/// Parse column widths JSON from optional string.
+fn parse_column_widths(value: &Option<String>) -> Option<Value> {
+    value.as_ref().and_then(|s| {
+        if s.is_empty() {
+            None
+        } else {
+            serde_json::from_str(s).ok()
+        }
+    })
+}
+
+/// Serialize column widths to JSON string.
+fn serialize_column_widths(widths: &Option<Value>) -> Option<String> {
+    widths
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default())
+}
+
 fn model_to_user_report(model: tables::user_reports::Model) -> UserReport {
     UserReport {
         id: model.id,
@@ -63,6 +87,9 @@ fn model_to_user_report(model: tables::user_reports::Model) -> UserReport {
         filter: parse_filter_json(&model.filters),
         columns: parse_json_array(&model.columns),
         column_names: parse_json_array(&model.column_names),
+        column_widths: parse_column_widths(&model.column_widths),
+        sort_column: model.sort_column,
+        sort_direction: model.sort_direction,
         created_at: parse_rfc3339(&model.created_at).unwrap_or_else(Utc::now),
         updated_at: parse_rfc3339(&model.updated_at).unwrap_or_else(Utc::now),
     }
@@ -84,21 +111,33 @@ pub(super) async fn get_by_name(
     Ok(row.map(model_to_user_report))
 }
 
+/// Parameters for creating or updating a user report.
+#[derive(Debug, Clone, Default)]
+pub struct UserReportParams {
+    pub filter: Option<Value>,
+    pub columns: Vec<String>,
+    pub column_names: Vec<String>,
+    pub column_widths: Option<Value>,
+    pub sort_column: Option<String>,
+    pub sort_direction: Option<String>,
+}
+
 pub(super) async fn insert(
     db: &DatabaseConnection,
     name: String,
-    filter: Option<Value>,
-    columns: Vec<String>,
-    column_names: Vec<String>,
+    params: UserReportParams,
 ) -> Result<UserReport, DbErr> {
     let now = Utc::now().to_rfc3339();
 
     let active = tables::user_reports::ActiveModel {
         id: NotSet,
         name: Set(name),
-        filters: Set(serialize_filter_json(&filter)),
-        columns: Set(serialize_json_array(&columns)),
-        column_names: Set(serialize_json_array(&column_names)),
+        filters: Set(serialize_filter_json(&params.filter)),
+        columns: Set(serialize_json_array(&params.columns)),
+        column_names: Set(serialize_json_array(&params.column_names)),
+        column_widths: Set(serialize_column_widths(&params.column_widths)),
+        sort_column: Set(params.sort_column),
+        sort_direction: Set(params.sort_direction),
         created_at: Set(now.clone()),
         updated_at: Set(now),
     };
@@ -118,9 +157,7 @@ pub(super) async fn insert(
 pub(super) async fn update(
     db: &DatabaseConnection,
     name: &str,
-    filter: Option<Value>,
-    columns: Vec<String>,
-    column_names: Vec<String>,
+    params: UserReportParams,
 ) -> Result<UserReport, DbErr> {
     let existing = tables::user_reports::Entity::find()
         .filter(tables::user_reports::Column::Name.eq(name))
@@ -131,9 +168,12 @@ pub(super) async fn update(
     let now = Utc::now().to_rfc3339();
 
     let mut active: tables::user_reports::ActiveModel = existing.into();
-    active.filters = Set(serialize_filter_json(&filter));
-    active.columns = Set(serialize_json_array(&columns));
-    active.column_names = Set(serialize_json_array(&column_names));
+    active.filters = Set(serialize_filter_json(&params.filter));
+    active.columns = Set(serialize_json_array(&params.columns));
+    active.column_names = Set(serialize_json_array(&params.column_names));
+    active.column_widths = Set(serialize_column_widths(&params.column_widths));
+    active.sort_column = Set(params.sort_column);
+    active.sort_direction = Set(params.sort_direction);
     active.updated_at = Set(now);
 
     let updated = active.update(db).await?;
@@ -172,15 +212,13 @@ mod tests {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 
         let filter = Some(json!({"type": "StatusFilter", "status": "pending"}));
-        let inserted = insert(
-            &db,
-            "my-report".to_string(),
-            filter.clone(),
-            vec!["id".to_string(), "summary".to_string()],
-            vec!["ID".to_string(), "Summary".to_string()],
-        )
-        .await
-        .unwrap();
+        let params = UserReportParams {
+            filter: filter.clone(),
+            columns: vec!["id".to_string(), "summary".to_string()],
+            column_names: vec!["ID".to_string(), "Summary".to_string()],
+            ..Default::default()
+        };
+        let inserted = insert(&db, "my-report".to_string(), params).await.unwrap();
 
         assert_eq!(inserted.name, "my-report");
         assert_eq!(inserted.filter, filter);
@@ -197,15 +235,15 @@ mod tests {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 
         let filter = Some(json!({"type": "ProjectFilter", "project": "acme"}));
-        insert(
-            &db,
-            "test-report".to_string(),
-            filter.clone(),
-            vec!["id".to_string()],
-            vec!["ID".to_string()],
-        )
-        .await
-        .unwrap();
+        let params = UserReportParams {
+            filter: filter.clone(),
+            columns: vec!["id".to_string()],
+            column_names: vec!["ID".to_string()],
+            ..Default::default()
+        };
+        insert(&db, "test-report".to_string(), params)
+            .await
+            .unwrap();
 
         let found = get_by_name(&db, "test-report").await.unwrap();
         assert!(found.is_some());
@@ -219,15 +257,15 @@ mod tests {
     async fn test_update_user_report() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 
-        insert(
-            &db,
-            "update-test".to_string(),
-            Some(json!({"type": "StatusFilter", "status": "pending"})),
-            vec!["id".to_string()],
-            vec!["ID".to_string()],
-        )
-        .await
-        .unwrap();
+        let initial_params = UserReportParams {
+            filter: Some(json!({"type": "StatusFilter", "status": "pending"})),
+            columns: vec!["id".to_string()],
+            column_names: vec!["ID".to_string()],
+            ..Default::default()
+        };
+        insert(&db, "update-test".to_string(), initial_params)
+            .await
+            .unwrap();
 
         let new_filter = Some(json!({
             "type": "AndFilter",
@@ -236,25 +274,27 @@ mod tests {
                 {"type": "ProjectFilter", "project": "foo"}
             ]
         }));
-        let updated = update(
-            &db,
-            "update-test",
-            new_filter.clone(),
-            vec!["id".to_string(), "summary".to_string()],
-            vec!["ID".to_string(), "Summary".to_string()],
-        )
-        .await
-        .unwrap();
+        let update_params = UserReportParams {
+            filter: new_filter.clone(),
+            columns: vec!["id".to_string(), "summary".to_string()],
+            column_names: vec!["ID".to_string(), "Summary".to_string()],
+            sort_column: Some("status".to_string()),
+            sort_direction: Some("ascending".to_string()),
+            ..Default::default()
+        };
+        let updated = update(&db, "update-test", update_params).await.unwrap();
 
         assert_eq!(updated.filter, new_filter);
         assert_eq!(updated.columns, vec!["id", "summary"]);
+        assert_eq!(updated.sort_column, Some("status".to_string()));
+        assert_eq!(updated.sort_direction, Some("ascending".to_string()));
     }
 
     #[tokio::test]
     async fn test_delete_user_report() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 
-        insert(&db, "delete-test".to_string(), None, vec![], vec![])
+        insert(&db, "delete-test".to_string(), UserReportParams::default())
             .await
             .unwrap();
 
@@ -279,10 +319,10 @@ mod tests {
     async fn test_list_names() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 
-        insert(&db, "report-a".to_string(), None, vec![], vec![])
+        insert(&db, "report-a".to_string(), UserReportParams::default())
             .await
             .unwrap();
-        insert(&db, "report-b".to_string(), None, vec![], vec![])
+        insert(&db, "report-b".to_string(), UserReportParams::default())
             .await
             .unwrap();
 
@@ -297,7 +337,7 @@ mod tests {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 
         // Insert with None filter
-        let inserted = insert(&db, "no-filter".to_string(), None, vec![], vec![])
+        let inserted = insert(&db, "no-filter".to_string(), UserReportParams::default())
             .await
             .unwrap();
         assert!(inserted.filter.is_none());
@@ -305,5 +345,33 @@ mod tests {
         // Read back
         let found = get_by_name(&db, "no-filter").await.unwrap().unwrap();
         assert!(found.filter.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_column_settings_roundtrip() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let column_widths = Some(json!({"id": 80, "summary": 300}));
+        let params = UserReportParams {
+            filter: None,
+            columns: vec!["id".to_string(), "summary".to_string()],
+            column_names: vec!["ID".to_string(), "Summary".to_string()],
+            column_widths: column_widths.clone(),
+            sort_column: Some("urgency".to_string()),
+            sort_direction: Some("descending".to_string()),
+        };
+        let inserted = insert(&db, "sorted-report".to_string(), params)
+            .await
+            .unwrap();
+
+        assert_eq!(inserted.column_widths, column_widths);
+        assert_eq!(inserted.sort_column, Some("urgency".to_string()));
+        assert_eq!(inserted.sort_direction, Some("descending".to_string()));
+
+        // Read back
+        let found = get_by_name(&db, "sorted-report").await.unwrap().unwrap();
+        assert_eq!(found.column_widths, column_widths);
+        assert_eq!(found.sort_column, Some("urgency".to_string()));
+        assert_eq!(found.sort_direction, Some("descending".to_string()));
     }
 }

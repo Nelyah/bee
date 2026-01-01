@@ -324,6 +324,15 @@ pub struct ReportSummary {
     pub columns: Vec<String>,
     /// Display names for columns (human-readable like "ID", "Summary").
     pub column_names: Vec<String>,
+    /// Custom column widths as JSON object.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub column_widths: Option<serde_json::Value>,
+    /// Column key to sort by. None means default urgency sort.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_column: Option<String>,
+    /// Sort direction: "ascending" or "descending"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_direction: Option<String>,
     /// Whether this is the default report.
     pub is_default: bool,
     /// Whether this is a user-created report (vs. static from config).
@@ -348,6 +357,15 @@ pub struct UserReportRequest {
     pub columns: Vec<String>,
     /// Display names for columns (human-readable like "ID", "Summary").
     pub column_names: Vec<String>,
+    /// Custom column widths as JSON object: {"column_key": width_in_pixels}
+    #[serde(default)]
+    pub column_widths: Option<serde_json::Value>,
+    /// Column key to sort by (e.g., "status"). None means default urgency sort.
+    #[serde(default)]
+    pub sort_column: Option<String>,
+    /// Sort direction: "ascending" or "descending"
+    #[serde(default)]
+    pub sort_direction: Option<String>,
 }
 
 /// Response for user report operations.
@@ -361,6 +379,15 @@ pub struct UserReportDto {
     pub columns: Vec<String>,
     /// Display names for columns.
     pub column_names: Vec<String>,
+    /// Custom column widths as JSON object.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub column_widths: Option<serde_json::Value>,
+    /// Column key to sort by. None means default urgency sort.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_column: Option<String>,
+    /// Sort direction: "ascending" or "descending"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_direction: Option<String>,
     /// When the report was created.
     pub created_at: String,
     /// When the report was last updated.
@@ -374,6 +401,9 @@ impl UserReportDto {
             filter: report.filter,
             columns: report.columns,
             column_names: report.column_names,
+            column_widths: report.column_widths,
+            sort_column: report.sort_column,
+            sort_direction: report.sort_direction,
             created_at: report.created_at.to_rfc3339(),
             updated_at: report.updated_at.to_rfc3339(),
         }

@@ -21,7 +21,10 @@ use axum::{
 };
 use bee_actions::{ActionRegistry, command_parser::ParsedCommand};
 use bee_core::{
-    config::ReportConfig, filters::Filter, storage::AsyncStore, storage::db::DbStore,
+    config::ReportConfig,
+    filters::Filter,
+    storage::AsyncStore,
+    storage::db::{DbStore, UserReportParams},
     task::TaskProperties,
 };
 use serde::Deserialize;
@@ -185,6 +188,9 @@ async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
             filter: None, // Static reports don't have pre-parsed filter
             columns: report.columns.clone(),
             column_names: report.column_names.clone(),
+            column_widths: None, // Static reports don't have custom widths
+            sort_column: None,   // Static reports use default urgency sort
+            sort_direction: None,
             is_default: name == default_report_name,
             is_user_report: false,
         })
@@ -200,6 +206,9 @@ async fn config_handler(State(state): State<AppState>) -> Json<ConfigResponse> {
                 filter: report.filter,
                 columns: report.columns,
                 column_names: report.column_names,
+                column_widths: report.column_widths,
+                sort_column: report.sort_column,
+                sort_direction: report.sort_direction,
                 is_default: false,
                 is_user_report: true,
             });
@@ -643,13 +652,15 @@ async fn create_user_report_handler(
         )));
     }
 
-    let report = DbStore::insert_user_report(
-        payload.name,
-        payload.filter,
-        payload.columns,
-        payload.column_names,
-    )
-    .await?;
+    let params = UserReportParams {
+        filter: payload.filter,
+        columns: payload.columns,
+        column_names: payload.column_names,
+        column_widths: payload.column_widths,
+        sort_column: payload.sort_column,
+        sort_direction: payload.sort_direction,
+    };
+    let report = DbStore::insert_user_report(payload.name, params).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -680,9 +691,15 @@ async fn update_user_report_handler(
         )));
     }
 
-    let report =
-        DbStore::update_user_report(&name, payload.filter, payload.columns, payload.column_names)
-            .await?;
+    let params = UserReportParams {
+        filter: payload.filter,
+        columns: payload.columns,
+        column_names: payload.column_names,
+        column_widths: payload.column_widths,
+        sort_column: payload.sort_column,
+        sort_direction: payload.sort_direction,
+    };
+    let report = DbStore::update_user_report(&name, params).await?;
 
     Ok(Json(UserReportDto::from_user_report(report)))
 }

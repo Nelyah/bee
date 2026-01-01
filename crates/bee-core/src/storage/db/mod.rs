@@ -26,9 +26,8 @@ use crate::{
     },
     task::{ActionUndo, Task, TaskData, TaskProperties},
 };
-use serde_json::Value;
 
-pub use user_reports::UserReport;
+pub use user_reports::{UserReport, UserReportParams};
 
 pub use task_read::CompletionRow;
 
@@ -140,24 +139,20 @@ impl DbStore {
     /// Create a new user report.
     pub async fn insert_user_report(
         name: String,
-        filter: Option<Value>,
-        columns: Vec<String>,
-        column_names: Vec<String>,
+        params: UserReportParams,
     ) -> CoreResult<UserReport> {
         let db = get_database(None).await?;
-        let report = user_reports_db::insert(&db, name, filter, columns, column_names).await?;
+        let report = user_reports_db::insert(&db, name, params).await?;
         Ok(report)
     }
 
     /// Update an existing user report.
     pub async fn update_user_report(
         name: &str,
-        filter: Option<Value>,
-        columns: Vec<String>,
-        column_names: Vec<String>,
+        params: UserReportParams,
     ) -> CoreResult<UserReport> {
         let db = get_database(None).await?;
-        let report = user_reports_db::update(&db, name, filter, columns, column_names).await?;
+        let report = user_reports_db::update(&db, name, params).await?;
         Ok(report)
     }
 

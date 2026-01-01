@@ -923,6 +923,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_filter_date_end_after() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let early_complete = Local.with_ymd_and_hms(2024, 5, 1, 8, 0, 0).unwrap();
+        let late_complete = Local.with_ymd_and_hms(2024, 5, 3, 8, 0, 0).unwrap();
+        let threshold = Local.with_ymd_and_hms(2024, 5, 2, 8, 0, 0).unwrap();
+
+        let completed_early = Task {
+            summary: "Completed Early".to_string(),
+            date_completed: Some(early_complete),
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &completed_early).await.unwrap();
+
+        let completed_late = Task {
+            summary: "Completed Late".to_string(),
+            date_completed: Some(late_complete),
+            uuid: Uuid::new_v4(),
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &completed_late).await.unwrap();
+
+        // end.after should only match tasks completed at or after the threshold
+        assert_single_match(
+            &db,
+            Box::new(DateEndFilter {
+                time: threshold,
+                before: false,
+            }),
+            &completed_late,
+        )
+        .await;
+    }
+
+    #[tokio::test]
     async fn test_filter_depends_on_returns_only_dependents() {
         let db = get_database(Some("sqlite::memory:")).await.unwrap();
 

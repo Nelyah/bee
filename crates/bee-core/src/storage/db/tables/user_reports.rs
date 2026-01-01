@@ -12,6 +12,12 @@ pub struct Model {
     pub filters: String,
     pub columns: String,
     pub column_names: String,
+    /// JSON object storing custom column widths: {"column_key": width_in_pixels}
+    pub column_widths: Option<String>,
+    /// Column key to sort by (e.g., "status"). None means default urgency sort.
+    pub sort_column: Option<String>,
+    /// Sort direction: "ascending" or "descending"
+    pub sort_direction: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

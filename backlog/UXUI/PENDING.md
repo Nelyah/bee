@@ -504,6 +504,367 @@ Screenshot reference: `testWithReportBadge.1.png`, `testDefaultState.1.png` (Rep
 
 ---
 
+## UXUI-016: Monochromatic Gray Soup - Low Surface Differentiation
+
+**Priority:** High
+**Effort:** Medium (4-6 hours)
+**Component:** App-wide theme colors
+
+### Current State
+The entire interface uses a narrow luminosity band (~12-30% HSL lightness):
+- Background: `#1e1e2e` (base)
+- Task rows: same `#1e1e2e` (base)
+- Hover: `#313244` (surface0)
+- Selected: `#45475a` (surface1)
+
+Contrast ratios between surface levels:
+- Base to surface0: 1.3:1
+- Base to surface1: 1.6:1
+- Base to surface2: 1.9:1
+
+A noticeable difference typically requires at least 2:1.
+
+### Problem
+Everything exists in a narrow luminosity range creating "gray soup" where nothing pops. Users cannot quickly distinguish interactive states from static content. This is the primary contributor to the "cheap" appearance.
+
+### Desired State
+1. Increase contrast between surface levels to minimum 2:1
+2. Consider accent color tinting for selection states (blue at 8-15% opacity)
+3. Add subtle shadows to lift interactive elements
+4. Skip surface0 for interactive states - jump to surface1 for hover
+
+### Acceptance Criteria
+- [ ] Surface color contrast ratios improved to 2:1 minimum
+- [ ] Selected rows are immediately distinguishable at a glance
+- [ ] Hover states clearly indicate interactivity
+- [ ] Theme colors documented with contrast ratios
+
+### Files Likely Affected
+- `Sources/LauncherApp/Utilities/Design/Theme.swift`
+- `Sources/LauncherApp/Views/TaskRow.swift`
+- Multiple component files
+
+---
+
+## UXUI-017: Text Hierarchy Lacks Weight Differentiation
+
+**Priority:** High
+**Effort:** Medium (4-6 hours)
+**Component:** Typography across views
+
+### Current State
+Text hierarchy relies on subtle color shifts:
+- Task ID: `subtext0` (#a6adc8) - 12px medium
+- Summary: `text` (#cdd6f4) - 15px semibold
+- Status/Tags: `subtext1` (#bac2de) - 12px medium
+
+The color progression from overlay0 → subtext0 → subtext1 → text has only ~20% luminosity difference between levels.
+
+### Problem
+1. Summary doesn't dominate - it visually competes with metadata
+2. ID and secondary info blend together
+3. Scanning a list is difficult because nothing anchors the eye
+4. Font weight differences (medium vs semibold) are too subtle
+
+### Desired State
+More aggressive weight/color differentiation:
+- Summary: 15px **bold** (not semibold), full `text` color
+- Secondary (Status, Tags): 12px medium, `subtext0` (push back from subtext1)
+- Tertiary (ID, Urgency): 11px regular, `overlay0` (most muted)
+
+### Acceptance Criteria
+- [ ] Task summary is the clear visual anchor in each row
+- [ ] Three distinct hierarchy levels are immediately apparent
+- [ ] Typography weights documented in DesignTokens
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/TaskRow.swift`
+- `Sources/LauncherApp/Utilities/Design/DesignTokens.swift`
+- Multiple component files
+
+---
+
+## UXUI-018: Selection State Still Too Subtle
+
+**Priority:** High
+**Effort:** Low (2-4 hours)
+**Component:** `TaskRow`
+
+### Current State
+Selection is indicated by:
+- 5px blue accent bar on left edge
+- Background change from base (#1e1e2e) to surface1 (#45475a) - only 1.6:1 contrast
+
+### Problem
+1. The accent bar is 5px on a ~700px wide row - easy to miss
+2. Selected background has insufficient contrast with unselected
+3. Native macOS apps use ~3:1 contrast for selection with vibrant color fills
+
+### Desired State
+Options to consider:
+1. Add subtle blue glow/shadow to accent bar to extend its visual presence
+2. Tint selection background with accent color (blue at 8-15% opacity)
+3. Add subtle outline stroke on selected rows
+4. Increase background contrast to surface2 for selection
+
+### Acceptance Criteria
+- [ ] Selection state is unmistakable at a glance
+- [ ] Works well with keyboard navigation
+- [ ] Maintains visual harmony with overall theme
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/TaskRow.swift`
+
+---
+
+## UXUI-019: Status Indicators Lack Visual Impact
+
+**Priority:** Medium
+**Effort:** Low (2-4 hours)
+**Component:** Task rows - status visualization
+
+### Current State
+Status shown as:
+- 8px colored circle (green/yellow/blue)
+- Text label ("active", "pending", "completed") in subtext1 color
+
+### Problem
+1. 8px dots don't provide enough visual weight for quick scanning
+2. Pastel Catppuccin accent colors lack punch against dark background
+3. Status text and dot are redundant - showing same info twice
+4. Completed tasks look identical to active except for color
+
+### Desired State
+Options:
+1. Larger status dots (10px) with subtle glow/shadow
+2. Replace text with status badges/pills (colored background capsule)
+3. Dim completed tasks (60-70% opacity) to visually separate done from active
+4. Remove redundant status text, let the dot speak
+
+### Acceptance Criteria
+- [ ] Status is scannable at a glance across many rows
+- [ ] Completed tasks are visually distinct from active
+- [ ] Status indicators have sufficient visual weight
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/TaskRow.swift`
+- `Sources/LauncherApp/Utilities/Design/StatusColor.swift`
+
+---
+
+## UXUI-020: Column Headers Nearly Invisible
+
+**Priority:** Medium
+**Effort:** Low (2-3 hours)
+**Component:** Task list headers
+
+### Current State
+Headers ("ID", "SUMMARY", "TAGS", "STATUS", "URGENCY") use:
+- Very muted gray color
+- Same or similar treatment as content below
+- No visual separation (divider, background, spacing)
+
+### Problem
+1. Headers blend into content - hard to distinguish structure
+2. All-caps at small size is hard to read
+3. No clear visual break between header and content area
+
+### Desired State
+Options:
+1. Increase header font weight to bold, add letter-spacing for all-caps
+2. Add subtle divider below headers
+3. Use slightly brighter text color (subtext0 minimum)
+4. OR: Remove headers entirely for cleaner Spotlight-like feel
+
+### Acceptance Criteria
+- [ ] Headers are clearly distinguished from content (or removed)
+- [ ] If kept, headers provide clear column identification
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/TaskListView.swift`
+- `Sources/LauncherApp/Views/Components/HeaderRow.swift` (if exists)
+
+---
+
+## UXUI-021: Inconsistent Border/Separator System
+
+**Priority:** Medium
+**Effort:** Medium (4-6 hours)
+**Component:** App-wide borders
+
+### Current State
+Borders are used inconsistently:
+- Window border: `surface1.opacity(0.5)` - 1px
+- Bottom hint bar: `surface1.opacity(0.5)` - 1px
+- Detail view cards: `surface1` full opacity
+- Group headers: No border
+- Task rows: No border
+
+The opacity(0.5) borders are nearly invisible.
+
+### Problem
+Inconsistent borders make some elements feel "designed" while others feel like placeholders. Creates visual noise without clear purpose.
+
+### Desired State
+Establish a border system:
+1. Container borders: Full opacity `surface1`
+2. Focus states: Accent color (blue)
+3. Separators: `surface0.opacity(0.8)`
+
+Either commit to visible borders or remove them and use spacing/shadow.
+
+### Acceptance Criteria
+- [ ] Border system documented in DesignTokens
+- [ ] All components use consistent border treatment
+- [ ] Borders serve clear visual purpose
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Utilities/Design/DesignTokens.swift`
+- Multiple view files
+
+---
+
+## UXUI-022: Command Palette Lacks Depth
+
+**Priority:** Medium
+**Effort:** Low (2-4 hours)
+**Component:** `CommandPaletteView`
+
+### Current State
+- Dark overlay background
+- Rounded panel with surface0/surface1 fills
+- No shadow or blur behind the palette
+- Selected item uses subtle background shift
+
+### Problem
+1. Palette doesn't "float" - feels flat on the interface
+2. No visual depth cues (shadow, blur) to indicate overlay
+3. Selected item too subtle
+4. Icons same muted color as text - don't aid scanning
+
+### Desired State
+1. Add drop shadow to palette container
+2. Consider background blur (.ultraThinMaterial)
+3. Make selected item more prominent (blue tint at 15-20% opacity)
+4. Tint icons with semantic colors
+
+### Acceptance Criteria
+- [ ] Command palette clearly floats above content
+- [ ] Selected item is immediately obvious
+- [ ] Icons are scannable
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/CommandPaletteView.swift`
+
+---
+
+## UXUI-023: Detail View Card Hierarchy Flat
+
+**Priority:** Medium
+**Effort:** Medium (4-6 hours)
+**Component:** `TaskDetailView`
+
+### Current State
+All cards (Overview, External Links, Dates, Annotations, History) have:
+- Similar visual treatment
+- Equal visual weight
+- Same border/background style
+
+### Problem
+1. Everything competes for attention - no clear focal point
+2. Primary info (task title, status) is same size as auxiliary info
+3. External links get as much visual real estate as core task data
+
+### Desired State
+Create visual hierarchy through card weights:
+1. **Primary**: Task title + status prominently at top (no card wrapper)
+2. **Secondary**: Overview, Dates - bordered cards
+3. **Tertiary**: External Links, Annotations, History - borderless, compact
+
+Consider two-column layout with core info dominating.
+
+### Acceptance Criteria
+- [ ] Clear visual hierarchy between card types
+- [ ] Task title/status is the focal point
+- [ ] Auxiliary info is clearly secondary
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/TaskDetailView.swift`
+- `Sources/LauncherApp/Views/Components/TaskDetailSections/`
+
+---
+
+## UXUI-024: Bottom Hint Bar Visual Weight
+
+**Priority:** Low
+**Effort:** Low (1-2 hours)
+**Component:** `BottomHintBar`
+
+### Current State
+Hint bar shows keyboard shortcuts with key chips in a floating bar:
+- Ultra-thin material + surface0 fill
+- Takes 34px of vertical space
+- Always visible
+
+### Problem
+1. Creates visual noise at bottom of interface
+2. Constant presence reduces content space
+3. Competes for attention with actual content
+
+### Desired State
+Options:
+1. Fade to lower opacity when not hovered (0.4 → 1.0 on hover)
+2. Move hints inline to search bar placeholder
+3. Remove surface0 fill, use material only
+
+### Acceptance Criteria
+- [ ] Hint bar doesn't compete with content
+- [ ] Hints remain discoverable
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/Components/BottomHintBar.swift`
+
+---
+
+## UXUI-025: Search Input Focus Enhancement
+
+**Priority:** Low
+**Effort:** Low (1-2 hours)
+**Component:** Search input field
+
+### Current State
+- Blue ring on focus
+- Muted placeholder text
+- Search icon same color as inactive elements
+
+### Problem
+1. Placeholder text could have higher contrast
+2. Search icon doesn't brighten on focus
+3. No animation to draw eye on focus
+
+### Desired State
+1. Subtle scale animation on focus (1.01x)
+2. Brighten search icon when focused
+3. Slightly increase placeholder text contrast
+
+### Acceptance Criteria
+- [ ] Focus state is clearly indicated
+- [ ] Smooth transition animation
+- [ ] Snapshot tests updated
+
+### Files Likely Affected
+- `Sources/LauncherApp/Views/Components/TokenHighlightTextView.swift`
+
+---
+
 # Ticket Index
 
 | ID | Title | Priority | Effort | Status |
@@ -521,6 +882,16 @@ Screenshot reference: `testWithReportBadge.1.png`, `testDefaultState.1.png` (Rep
 | UXUI-012 | Negative Phrasing in Detail View | Low | Low | ✅ Complete |
 | UXUI-014 | Visual Consistency Audit | Medium | Medium | ✅ Complete |
 | UXUI-015 | Report Dropdown Discoverability | Low | Low | ✅ Complete |
+| UXUI-016 | Monochromatic Gray Soup | High | Medium | Pending |
+| UXUI-017 | Text Hierarchy Lacks Weight | High | Medium | Pending |
+| UXUI-018 | Selection State Too Subtle | High | Low | Pending |
+| UXUI-019 | Status Indicators Lack Impact | Medium | Low | Pending |
+| UXUI-020 | Column Headers Invisible | Medium | Low | Pending |
+| UXUI-021 | Inconsistent Border System | Medium | Medium | Pending |
+| UXUI-022 | Command Palette Lacks Depth | Medium | Low | Pending |
+| UXUI-023 | Detail View Card Hierarchy | Medium | Medium | Pending |
+| UXUI-024 | Bottom Hint Bar Weight | Low | Low | Pending |
+| UXUI-025 | Search Input Focus | Low | Low | Pending |
 
 ---
 

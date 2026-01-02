@@ -71,6 +71,7 @@ After generating, use the Read tool on the PNG file to view it.
 | `testTaskDetail_withAnnotations` | With annotations/history | `testTaskDetail_withAnnotations.1.png` |
 | `testTaskDetail_withExternalLinks` | With GitLab links | `testTaskDetail_withExternalLinks.1.png` |
 | `testTaskDetail_loading` | Loading state | `testTaskDetail_loading.1.png` |
+| `testTaskDetail_projectEditing` | Project editing with autocomplete | `testTaskDetail_projectEditing.1.png` |
 
 ### Command Palette
 

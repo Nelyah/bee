@@ -154,7 +154,8 @@
       "Bash(macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel+KeyboardHandling.swift )",
       "WebFetch(domain:lefthook.dev)",
       "Skill(rust-codebase-architecture)",
-      "Bash(git -C /Users/chloe/builds/bee status --short)"
+      "Bash(git -C /Users/chloe/builds/bee status --short)",
+      "Skill(ui-ux-screenshots)"
     ]
   },
   "outputStyle": "Explanatory"

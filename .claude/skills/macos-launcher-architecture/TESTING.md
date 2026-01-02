@@ -75,6 +75,24 @@ final class MyViewUITests: XCTestCase {
 | Get actual view | `try view.actualView()` |
 | Find by identifier | `try view.find(viewWithAccessibilityIdentifier: "myId")` |
 
+### Gotcha: Button Finding Fragility
+
+**Problem:** `find(ViewType.Button.self)` returns the FIRST button in the view hierarchy. Adding new buttons (e.g., collapsible section headers) can break existing tests.
+
+```swift
+// Fragile - will break if a new button is added before "Back"
+let button = try view.find(ViewType.Button.self)
+try button.tap()
+
+// Robust - finds the specific button by its content
+let backButton = try view.find(ViewType.Button.self, where: { button in
+    (try? button.find(text: "Back")) != nil
+})
+try backButton.tap()
+```
+
+**Rule:** When testing button taps, use the `where:` parameter to identify the specific button by its label, icon, or other distinguishing content.
+
 ### Testing with ViewModel
 
 ```swift

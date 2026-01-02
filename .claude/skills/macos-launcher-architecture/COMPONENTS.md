@@ -94,6 +94,52 @@ struct StatusBadge: View {
 
 ## Common Patterns
 
+### DetailSection Styling Convention
+
+`DetailSection` uppercases titles automatically. When creating custom sections (e.g., collapsible variants), match this pattern:
+
+```swift
+// DetailSection does this internally:
+Text(title.uppercased())
+    .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
+    .foregroundColor(ThemeManager.current.subtext0)
+
+// Custom sections must match:
+Text("HISTORY")  // Already uppercased
+    .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
+    .foregroundColor(ThemeManager.current.subtext0)
+```
+
+Also apply the container styling (padding, background, border) to match `DetailSection`.
+
+### Hover + Focus ButtonStyle
+
+Combine hover and focus states in custom button styles:
+
+```swift
+private struct CopyableDetailRowButtonStyle: ButtonStyle {
+    let isFocused: Bool
+    let isHovering: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, DesignTokens.Spacing.small)
+            .padding(.vertical, DesignTokens.Spacing.extraSmall)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                    .fill(isHovering ? ThemeManager.current.surface1.opacity(0.5) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                    .stroke(isFocused ? ThemeManager.current.blue : Color.clear, lineWidth: 2)
+            )
+            .opacity(configuration.isPressed ? 0.7 : 1.0)
+    }
+}
+```
+
+Key pattern: Background fill for hover, stroke overlay for focus, opacity for press.
+
 ### Button with State Feedback
 
 ```swift

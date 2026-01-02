@@ -391,6 +391,35 @@ final class ScreenshotCatalog: SnapshotTestCase {
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
     }
 
+    func testTaskDetail_projectEditing() {
+        let task = MockApiClient.sampleTasks[0]
+        let detailState = TaskDetailState()
+        var linksState = ExternalLinksState()
+        linksState.taskUUID = task.uuid
+        linksState.links = MockApiClient.sampleExternalLinks
+        let sampleProjects = TestHelpers.makeCompletionItems(["learning", "leetcode", "legacy-api"])
+        let view = TaskDetailView(
+            task: task,
+            detailState: detailState,
+            externalLinksState: linksState,
+            onRetryDetail: {},
+            onRefreshLinks: { _ in },
+            onCopyBranch: { _ in },
+            onCopyLink: { _ in },
+            onCopyUUID: { _ in },
+            onClose: {},
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant(""),
+            isEditingProject: true,
+            projectEditInput: .constant("learn"),
+            filteredProjects: sampleProjects,
+            projectCompletionSelectedIndex: 0
+        )
+        .background(ThemeManager.current.base)
+        assertViewSnapshot(view, size: TestSizes.detailViewWide)
+    }
+
     // MARK: - Command Palette
 
     func testCommandPalette_default() {

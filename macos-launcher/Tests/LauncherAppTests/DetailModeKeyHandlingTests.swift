@@ -375,27 +375,27 @@ final class DetailFocusViewModelTests: XCTestCase {
         }
     }
 
-    func testBuildDetailFocusableItemsIncludesProject() {
-        setupDetailMode()
-        viewModel.buildDetailFocusableItems()
-
-        XCTAssertGreaterThanOrEqual(viewModel.detailFocusableItems.count, 3)
-        if case .project = viewModel.detailFocusableItems[1] {
-            // Success - Project should be second (after task name)
-        } else {
-            XCTFail("Second focusable item should be project")
-        }
-    }
-
     func testBuildDetailFocusableItemsIncludesUUID() {
         setupDetailMode()
         viewModel.buildDetailFocusableItems()
 
         XCTAssertGreaterThanOrEqual(viewModel.detailFocusableItems.count, 3)
-        if case .uuid = viewModel.detailFocusableItems[2] {
-            // Success - UUID should be third (after task name and project)
+        if case .uuid = viewModel.detailFocusableItems[1] {
+            // Success - UUID should be second (after task name)
         } else {
-            XCTFail("Third focusable item should be UUID")
+            XCTFail("Second focusable item should be UUID")
+        }
+    }
+
+    func testBuildDetailFocusableItemsIncludesProject() {
+        setupDetailMode()
+        viewModel.buildDetailFocusableItems()
+
+        XCTAssertGreaterThanOrEqual(viewModel.detailFocusableItems.count, 3)
+        if case .project = viewModel.detailFocusableItems[2] {
+            // Success - Project should be third (after task name and UUID)
+        } else {
+            XCTFail("Third focusable item should be project")
         }
     }
 
@@ -438,6 +438,7 @@ final class DetailFocusViewModelTests: XCTestCase {
     func testMoveFocusDownIncrementsIndex() {
         setupDetailModeWithItems()
         viewModel.detailFocusedIndex = 0
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         viewModel.handleDetailModeAction(.moveFocus(1))
 
@@ -447,6 +448,7 @@ final class DetailFocusViewModelTests: XCTestCase {
     func testMoveFocusUpDecrementsIndex() {
         setupDetailModeWithItems()
         viewModel.detailFocusedIndex = 2
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         viewModel.handleDetailModeAction(.moveFocus(-1))
 
@@ -456,6 +458,7 @@ final class DetailFocusViewModelTests: XCTestCase {
     func testMoveFocusStopsAtBounds() {
         setupDetailModeWithItems()
         viewModel.detailFocusedIndex = 0
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         viewModel.handleDetailModeAction(.moveFocus(-1))
 
@@ -466,6 +469,7 @@ final class DetailFocusViewModelTests: XCTestCase {
         setupDetailModeWithItems()
         let lastIndex = viewModel.detailFocusableItems.count - 1
         viewModel.detailFocusedIndex = lastIndex
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         viewModel.handleDetailModeAction(.moveFocus(1))
 
@@ -475,6 +479,7 @@ final class DetailFocusViewModelTests: XCTestCase {
     func testSelectFirstJumpsToIndex0() {
         setupDetailModeWithItems()
         viewModel.detailFocusedIndex = 3
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         viewModel.handleDetailModeAction(.selectFirst)
 
@@ -484,6 +489,7 @@ final class DetailFocusViewModelTests: XCTestCase {
     func testSelectLastJumpsToLastIndex() {
         setupDetailModeWithItems()
         viewModel.detailFocusedIndex = 0
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
         let lastIndex = viewModel.detailFocusableItems.count - 1
 
         viewModel.handleDetailModeAction(.selectLast)
@@ -575,25 +581,30 @@ final class DetailFocusViewModelTests: XCTestCase {
 
     func testHandleDetailModeActionMoveFocusLeft() {
         setupDetailModeWithItems()
-        // Start at a link item (index 2 = first gitlab link, after taskName and UUID)
-        viewModel.detailFocusedIndex = 2
+        // Index mapping: 0=taskName, 1=uuid, 2=project, 3+=links
+        // Start at a link item (index 3 = first link, in the right column)
+        viewModel.detailFocusedIndex = 3
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         let result = viewModel.handleDetailModeAction(.moveFocusLeft)
 
         XCTAssertTrue(result)
+        // moveFocusLeft from right column (links) should jump to left column (task name)
         XCTAssertEqual(viewModel.detailFocusedIndex, 0, "moveFocusLeft should move to task name (index 0)")
     }
 
     func testHandleDetailModeActionMoveFocusRight() {
         setupDetailModeWithItems()
-        // Start at task name (index 0)
+        // Index mapping: 0=taskName, 1=uuid, 2=project, 3+=links
+        // Start at task name (index 0, in the left column)
         viewModel.detailFocusedIndex = 0
+        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         let result = viewModel.handleDetailModeAction(.moveFocusRight)
 
         XCTAssertTrue(result)
-        // moveFocusRight from index 0 should move to index 1 (UUID)
-        XCTAssertEqual(viewModel.detailFocusedIndex, 1, "moveFocusRight should move to UUID (index 1)")
+        // moveFocusRight from left column should jump to right column (first link at index 3)
+        XCTAssertEqual(viewModel.detailFocusedIndex, 3, "moveFocusRight should move to first link (index 3)")
     }
 
     func testOpenFocusedStartsEditingWhenTaskNameFocused() {

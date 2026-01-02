@@ -147,11 +147,11 @@ extension LauncherViewModel {
             // 1. Task name is first (at the top of the detail view)
             items.append(.taskName(task.summary))
 
-            // 2. Project (in metadata section)
-            items.append(.project(task.project ?? ""))
-
-            // 3. UUID
+            // 2. UUID (first row in Overview section)
             items.append(.uuid(task.uuid))
+
+            // 3. Project (second row in Overview section)
+            items.append(.project(task.project ?? ""))
         }
 
         // 4. GitLab MRs
@@ -194,12 +194,23 @@ extension LauncherViewModel {
     /// Handle a detail mode keyboard action.
     @discardableResult
     func handleDetailModeAction(_ action: DetailModeAction) -> Bool {
+        // Track if navigation was just activated (for navigation actions only)
+        let wasInactive = !detailKeyboardNavigationActive
+        let isNavigationAction: Bool
+
         // Activate keyboard navigation on any navigation action
         switch action {
         case .moveFocus, .moveFocusLeft, .moveFocusRight, .selectFirst, .selectLast:
             detailKeyboardNavigationActive = true
+            isNavigationAction = true
         default:
-            break
+            isNavigationAction = false
+        }
+
+        // On first activation of navigation, just show focus at current index (don't move)
+        // This ensures the first press of j/k shows focus ring without moving
+        if wasInactive, isNavigationAction {
+            return true
         }
 
         switch action {
@@ -207,18 +218,26 @@ extension LauncherViewModel {
             moveDetailFocus(delta: delta)
             return true
         case .moveFocusLeft:
-            // Move to left column (UUID at index 0)
-            if detailFocusedIndex > 0 {
+            // The left column contains: taskName (0), uuid (1), project (2)
+            // If on right column (links at index 3+), move to first metadata item
+            let firstLinkIndex = 3
+            if detailFocusedIndex >= firstLinkIndex {
                 detailFocusedIndex = 0
             }
             return true
         case .moveFocusRight:
-            // Move to right column (links), or open if already there
-            if detailFocusedIndex == 0, detailFocusableItems.count > 1 {
-                detailFocusedIndex = 1
+            // The left column contains: taskName (0), uuid (1), project (2)
+            // The right column contains: links (3+)
+            let firstLinkIndex = 3 // First potential link index
+
+            // If on left column (metadata), move to first link if available
+            if detailFocusedIndex < firstLinkIndex {
+                if detailFocusableItems.count > firstLinkIndex {
+                    detailFocusedIndex = firstLinkIndex
+                }
                 return true
             }
-            // Already in right column - open the focused item
+            // Already in right column (links) - open the focused item
             return openFocusedDetailItem()
         case .openFocused:
             return openFocusedDetailItem()

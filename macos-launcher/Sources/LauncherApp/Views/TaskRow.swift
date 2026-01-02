@@ -4,10 +4,38 @@ struct TaskRow: View {
     let task: ApiTask
     let columnConfigs: [ColumnConfig]
     let isSelected: Bool
-    let isHovered: Bool
     var isExpanded: Bool = false
     var expandedContent: TaskExpandedContent?
     var onChevronTap: (() -> Void)?
+    /// Optional callback when hover state changes (for ViewModel tracking)
+    var onHoverChange: ((Bool) -> Void)?
+    /// Testing hook: initial hover state. Only use in tests/previews.
+    var initialHovered: Bool = false
+
+    /// Local hover state - prevents full list re-render on hover
+    @State private var isHovered = false
+
+    init(
+        task: ApiTask,
+        columnConfigs: [ColumnConfig],
+        isSelected: Bool,
+        isExpanded: Bool = false,
+        expandedContent: TaskExpandedContent? = nil,
+        onChevronTap: (() -> Void)? = nil,
+        onHoverChange: ((Bool) -> Void)? = nil,
+        initialHovered: Bool = false
+    ) {
+        self.task = task
+        self.columnConfigs = columnConfigs
+        self.isSelected = isSelected
+        self.isExpanded = isExpanded
+        self.expandedContent = expandedContent
+        self.onChevronTap = onChevronTap
+        self.onHoverChange = onHoverChange
+        self.initialHovered = initialHovered
+        // Initialize @State with the testing hook value
+        _isHovered = State(initialValue: initialHovered)
+    }
 
     /// Delayed loading indicator - only shows after 1 second
     @State private var showDelayedLoading = false
@@ -46,6 +74,10 @@ struct TaskRow: View {
         .opacity(rowOpacity)
         .zIndex(isExpanded ? 1 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
+        .onHover { hovering in
+            isHovered = hovering
+            onHoverChange?(hovering)
+        }
     }
 
     private var mainRow: some View {
@@ -66,18 +98,19 @@ struct TaskRow: View {
     @ViewBuilder
     private func columnView(for config: ColumnConfig) -> some View {
         let column = config.key
+        let displayValue = value(for: column) // Compute once, reuse for Text and help
 
         if config.isFlex {
             // Summary column expands
-            Text(value(for: column))
+            Text(displayValue)
                 .font(.system(size: DesignTokens.TypeScale.bodyLg, weight: .semibold, design: .rounded))
                 .foregroundColor(ThemeManager.current.text)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .help(value(for: column))
+                .help(displayValue)
         } else if column == "id" {
             // ID column - monospaced
-            Text(value(for: column))
+            Text(displayValue)
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .monospaced))
                 .foregroundColor(ThemeManager.current.subtext1)
                 .frame(width: config.effectiveWidth, alignment: .leading)
@@ -87,12 +120,12 @@ struct TaskRow: View {
                 .frame(width: config.effectiveWidth, alignment: .leading)
         } else {
             // Other columns
-            Text(value(for: column))
+            Text(displayValue)
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext1)
                 .frame(width: config.effectiveWidth, alignment: .leading)
                 .lineLimit(1)
-                .help(value(for: column))
+                .help(displayValue)
         }
     }
 
@@ -224,24 +257,21 @@ struct TaskRow: View {
     }
 
     /// Get the value for a column from the task.
+    /// Direct switch-based lookup avoids dictionary allocation per access.
     private func value(for column: String) -> String {
-        columnValues[column] ?? "-"
-    }
-
-    /// Dictionary mapping column names to their display values.
-    private var columnValues: [String: String] {
-        [
-            "id": task.dbId.map(String.init) ?? "-",
-            "uuid": String(task.uuid.suffix(8)),
-            "summary": task.summary,
-            "status": task.status,
-            "project": task.project ?? "-",
-            "tags": task.tags.isEmpty ? "-" : task.tags.joined(separator: ", "),
-            "urgency": task.urgency.map(String.init) ?? "-",
-            "date_created": formatDate(task.dateCreated),
-            "date_completed": task.dateCompleted.map(formatDate) ?? "-",
-            "date_due": task.dateDue.map(formatDate) ?? "-",
-        ]
+        switch column {
+        case "id": task.dbId.map(String.init) ?? "-"
+        case "uuid": String(task.uuid.suffix(8))
+        case "summary": task.summary
+        case "status": task.status
+        case "project": task.project ?? "-"
+        case "tags": task.tags.isEmpty ? "-" : task.tags.joined(separator: ", ")
+        case "urgency": task.urgency.map(String.init) ?? "-"
+        case "date_created": formatDate(task.dateCreated)
+        case "date_completed": task.dateCompleted.map(formatDate) ?? "-"
+        case "date_due": task.dateDue.map(formatDate) ?? "-"
+        default: "-"
+        }
     }
 
     /// Format an ISO date string to a relative or short format.
@@ -263,7 +293,6 @@ private let sampleColumnConfigs = [
         task: MockApiClient.sampleTasks[0],
         columnConfigs: sampleColumnConfigs,
         isSelected: true,
-        isHovered: false,
         isExpanded: false
     )
     .padding()
@@ -275,7 +304,6 @@ private let sampleColumnConfigs = [
         task: MockApiClient.sampleTasks[1],
         columnConfigs: sampleColumnConfigs,
         isSelected: false,
-        isHovered: true,
         isExpanded: true,
         expandedContent: TaskExpandedContent(isLoading: true)
     )
@@ -288,7 +316,6 @@ private let sampleColumnConfigs = [
         task: MockApiClient.sampleTasks[0],
         columnConfigs: sampleColumnConfigs,
         isSelected: true,
-        isHovered: false,
         isExpanded: true,
         expandedContent: TaskExpandedContent(isLoading: false, links: [], annotations: [])
     )

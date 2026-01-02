@@ -3,16 +3,8 @@ import Foundation
 // MARK: - Grouping Methods
 
 extension LauncherViewModel {
-    /// Computed grouped rows for display.
-    /// Uses the current sortState for ordering tasks within groups.
-    var groupedRows: [GroupedListRow] {
-        TaskListCoordinator.groupTasks(
-            tasks,
-            using: groupingStrategy,
-            collapsedKeys: collapsedGroups,
-            comparator: compareTasks
-        )
-    }
+    // Note: groupedRows is now a @Published property in the main ViewModel,
+    // updated via Combine pipeline to prevent expensive recalculation on hover.
 
     /// Toggle collapse for a group.
     func toggleGroupCollapse(_ key: String?) {

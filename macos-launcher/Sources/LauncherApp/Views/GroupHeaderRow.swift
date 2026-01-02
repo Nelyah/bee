@@ -2,8 +2,28 @@ import SwiftUI
 
 struct GroupHeaderRow: View {
     let header: GroupHeader
-    let isHovered: Bool
     let isSelected: Bool
+    /// Optional callback when hover state changes (for ViewModel tracking)
+    var onHoverChange: ((Bool) -> Void)?
+    /// Testing hook: initial hover state. Only use in tests/previews.
+    var initialHovered: Bool = false
+
+    /// Local hover state - prevents full list re-render on hover
+    @State private var isHovered = false
+
+    init(
+        header: GroupHeader,
+        isSelected: Bool,
+        onHoverChange: ((Bool) -> Void)? = nil,
+        initialHovered: Bool = false
+    ) {
+        self.header = header
+        self.isSelected = isSelected
+        self.onHoverChange = onHoverChange
+        self.initialHovered = initialHovered
+        // Initialize @State with the testing hook value
+        _isHovered = State(initialValue: initialHovered)
+    }
 
     private var backgroundColor: Color {
         if isSelected {
@@ -52,6 +72,10 @@ struct GroupHeaderRow: View {
                 .fill(backgroundColor)
         )
         .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovered = hovering
+            onHoverChange?(hovering)
+        }
     }
 }
 
@@ -59,17 +83,14 @@ struct GroupHeaderRow: View {
     VStack(spacing: 8) {
         GroupHeaderRow(
             header: GroupHeader(key: "work", displayName: "Work", taskCount: 5, isCollapsed: false),
-            isHovered: false,
             isSelected: false
         )
         GroupHeaderRow(
             header: GroupHeader(key: "personal", displayName: "Personal", taskCount: 3, isCollapsed: true),
-            isHovered: true,
             isSelected: false
         )
         GroupHeaderRow(
             header: GroupHeader(key: nil, displayName: "No Project", taskCount: 12, isCollapsed: false),
-            isHovered: false,
             isSelected: true
         )
     }

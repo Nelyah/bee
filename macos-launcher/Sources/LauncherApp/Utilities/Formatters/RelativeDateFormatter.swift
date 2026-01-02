@@ -1,6 +1,22 @@
 import Foundation
 
 enum RelativeDateFormatter {
+    // MARK: - Cached Formatters (avoid allocating per-call)
+
+    /// ISO8601 formatter with fractional seconds support
+    private static let isoFormatterWithFractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    /// ISO8601 formatter without fractional seconds (fallback)
+    private static let isoFormatterBasic: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
     static func description(for isoDate: String, now: Date = Date(), calendar: Calendar = .current) -> String {
         if let date = date(from: isoDate) {
             return description(for: date, now: now, calendar: calendar)
@@ -9,13 +25,11 @@ enum RelativeDateFormatter {
     }
 
     static func date(from isoDate: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: isoDate) {
+        // Try with fractional seconds first (more common), then fallback
+        if let date = isoFormatterWithFractional.date(from: isoDate) {
             return date
         }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: isoDate)
+        return isoFormatterBasic.date(from: isoDate)
     }
 
     static func description(for date: Date, now: Date, calendar: Calendar) -> String {

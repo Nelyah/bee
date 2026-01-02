@@ -42,8 +42,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -54,8 +53,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
-            isSelected: true,
-            isHovered: false
+            isSelected: true
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -67,7 +65,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: false,
-            isHovered: true
+            initialHovered: true
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -79,7 +77,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
             isSelected: true,
-            isHovered: true
+            initialHovered: true
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -99,7 +97,6 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
-            isHovered: false,
             isExpanded: true,
             expandedContent: content
         )
@@ -116,7 +113,6 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
             isSelected: false,
-            isHovered: false,
             isExpanded: true,
             expandedContent: content
         )
@@ -131,8 +127,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary"]),
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -143,8 +138,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project", "tags", "urgency"]),
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
 
         // Wider size for more columns
@@ -170,8 +164,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "status"]),
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -196,8 +189,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "tags"]),
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -208,8 +200,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "project"]),
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -220,8 +211,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.makeColumnConfigs(from: ["id", "summary", "tags"]),
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
 
         assertViewSnapshot(view, size: TestSizes.taskRow)

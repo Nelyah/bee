@@ -48,6 +48,9 @@ final class LauncherViewModel: ObservableObject {
     @Published var groupingStrategy: TaskGroupingStrategy = ProjectGroupingStrategy()
     /// Set of collapsed group keys.
     @Published var collapsedGroups: Set<String?> = []
+    /// Cached grouped rows - updated only when dependencies change.
+    /// This prevents expensive O(n) regrouping on hover/selection changes.
+    @Published private(set) var groupedRows: [GroupedListRow] = []
 
     // MARK: - Column Customization State
 
@@ -104,7 +107,8 @@ final class LauncherViewModel: ObservableObject {
     }
 
     /// Currently hovered row index (for collapse toggle).
-    @Published var hoveredRowIndex: Int?
+    /// NOT @Published - hover state is local to rows, this is only for action fallback.
+    var hoveredRowIndex: Int?
     /// Currently selected row index in grouped view.
     @Published var selectedRowIndex: Int?
     var lastSelectedRowIndex: Int?
@@ -165,27 +169,52 @@ final class LauncherViewModel: ObservableObject {
             .store(in: &cancellables)
 
         loadGroupingStrategy()
+        setupGroupedRowsUpdates()
         setupInteractionContextUpdates()
         setupCommandPaletteContributors()
     }
 
+    /// Sets up the Combine pipeline that updates groupedRows only when actual dependencies change.
+    /// This prevents expensive O(n) regrouping on hover/selection changes.
+    private func setupGroupedRowsUpdates() {
+        // Combine all dependencies that affect groupedRows
+        // Since we're on @MainActor, we're already on main thread - no need for receive(on:)
+        // This allows the pipeline to execute synchronously, which is critical for tests
+        Publishers.CombineLatest4(
+            $tasks,
+            $groupingStrategy.map { $0 as TaskGroupingStrategy }.eraseToAnyPublisher(),
+            $collapsedGroups,
+            $sortState
+        )
+        .sink { [weak self] tasks, strategy, collapsedGroups, _ in
+            guard let self else { return }
+            groupedRows = TaskListCoordinator.groupTasks(
+                tasks,
+                using: strategy,
+                collapsedKeys: collapsedGroups,
+                comparator: compareTasks
+            )
+        }
+        .store(in: &cancellables)
+
+        // Initial calculation (synchronous)
+        groupedRows = TaskListCoordinator.groupTasks(
+            tasks,
+            using: groupingStrategy,
+            collapsedKeys: collapsedGroups,
+            comparator: compareTasks
+        )
+    }
+
     private func setupInteractionContextUpdates() {
-        let baseContextPublisher = Publishers.CombineLatest4(
+        // Use the cached groupedRows instead of recalculating
+        let baseContextPublisher = Publishers.CombineLatest3(
             $mode,
             $selectedRowIndex,
-            $tasks,
-            $collapsedGroups
+            $groupedRows
         )
-        .map { [weak self] mode, selectedRowIndex, tasks, collapsedGroups in
-            guard let self else {
-                return BaseInteractionContext.list(selection: .none)
-            }
-            let rows = TaskListCoordinator.groupTasks(
-                tasks,
-                using: groupingStrategy,
-                collapsedKeys: collapsedGroups
-            )
-            return InteractionContextCoordinator.baseContext(
+        .map { mode, selectedRowIndex, rows in
+            InteractionContextCoordinator.baseContext(
                 mode: mode,
                 selectedRowIndex: selectedRowIndex,
                 rows: rows

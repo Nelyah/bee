@@ -198,13 +198,12 @@ struct TaskListView: View {
                                     case let .header(header):
                                         GroupHeaderRow(
                                             header: header,
-                                            isHovered: viewModel.hoveredRowIndex == rowIndex,
-                                            isSelected: viewModel.selectedRowIndex == rowIndex
+                                            isSelected: viewModel.selectedRowIndex == rowIndex,
+                                            onHoverChange: { hovering in
+                                                viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                            }
                                         )
                                         .id(row.id)
-                                        .onHover { hovering in
-                                            viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                        }
                                         .onTapGesture { viewModel.activatePrimary(at: rowIndex) }
 
                                     case let .task(item):
@@ -212,15 +211,14 @@ struct TaskListView: View {
                                             task: item.task,
                                             columnConfigs: viewModel.columnConfigs,
                                             isSelected: viewModel.selectedRowIndex == rowIndex,
-                                            isHovered: viewModel.hoveredRowIndex == rowIndex,
                                             isExpanded: viewModel.isTaskExpanded(item.task.uuid),
                                             expandedContent: viewModel.taskExpandedData[item.task.uuid],
-                                            onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) }
+                                            onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) },
+                                            onHoverChange: { hovering in
+                                                viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                            }
                                         )
                                         .id(row.id)
-                                        .onHover { hovering in
-                                            viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                        }
                                         .onTapGesture { viewModel.selectRow(rowIndex) }
                                         .simultaneousGesture(
                                             TapGesture(count: 2).onEnded {
@@ -232,7 +230,8 @@ struct TaskListView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, TaskListLayout.listVerticalPadding)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.expandedTasks)
+                            // Animation is now scoped to individual TaskRow (see TaskRow.swift)
+                            // This prevents animating all 350 rows when any task expands
                         }
                         .safeAreaInset(edge: .bottom, spacing: 0) {
                             // Reserve space for BottomHintBar overlay so scrollTo respects it

@@ -186,8 +186,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.standardColumnConfigs,
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -198,8 +197,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.standardColumnConfigs,
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -215,8 +213,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.standardColumnConfigs,
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -227,8 +224,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.standardColumnConfigs,
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -239,8 +235,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.standardColumnConfigs,
-            isSelected: false,
-            isHovered: false
+            isSelected: false
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -251,8 +246,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         let view = TaskRow(
             task: task,
             columnConfigs: TestHelpers.standardColumnConfigs,
-            isSelected: true,
-            isHovered: false
+            isSelected: true
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.taskRow)
@@ -276,7 +270,6 @@ final class ScreenshotCatalog: SnapshotTestCase {
             task: task,
             columnConfigs: TestHelpers.standardColumnConfigs,
             isSelected: false,
-            isHovered: false,
             isExpanded: true,
             expandedContent: expandedContent,
             onChevronTap: {}

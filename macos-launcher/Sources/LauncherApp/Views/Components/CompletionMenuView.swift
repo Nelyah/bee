@@ -1,80 +1,153 @@
 import AppKit
 import SwiftUI
 
-/// Dropdown menu for displaying completion suggestions.
-struct CompletionMenuView: View {
-    let items: [CompletionItem]
+// MARK: - Protocols
+
+/// Protocol for items that can be used in completion menus.
+protocol CompletableItem: Identifiable {
+    /// The text to display and search against.
+    var displayValue: String { get }
+
+    /// Optional metadata to display (e.g., count, description).
+    var metadata: String? { get }
+}
+
+/// A fuzzy-matched item with its match score and highlighted indices.
+struct FuzzyMatchedItem<Item: CompletableItem> {
+    let item: Item
+    let match: FuzzyMatch
+}
+
+// MARK: - CompletionItem Extension
+
+extension CompletionItem: CompletableItem {
+    var displayValue: String { value }
+    var metadata: String? { count.map(String.init) }
+}
+
+// MARK: - CompletionMenuView
+
+/// Dropdown menu for displaying completion suggestions with fuzzy matching.
+struct CompletionMenuView<Item: CompletableItem>: View {
+    let matches: [FuzzyMatchedItem<Item>]
     let selectedIndex: Int
-    let currentValue: String?
-    let onSelect: (CompletionItem) -> Void
+    let currentValue: Item?
+    let theme: CompletionTheme
+    let onSelect: (Item) -> Void
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        let isCurrentValue = currentValue == item.value
+                    ForEach(Array(matches.enumerated()), id: \.element.item.id) { index, matchedItem in
+                        let isCurrentValue = currentValue?.id == matchedItem.item.id
                         CompletionRow(
-                            item: item,
+                            matchedItem: matchedItem,
                             isSelected: index == selectedIndex,
-                            isCurrentValue: isCurrentValue
+                            isCurrentValue: isCurrentValue,
+                            theme: theme
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
                             guard !isCurrentValue else { return }
-                            onSelect(item)
+                            onSelect(matchedItem.item)
                         }
                         .id(index)
                     }
                 }
             }
             .onChange(of: selectedIndex) { _, newValue in
-                guard items.indices.contains(newValue) else { return }
+                guard matches.indices.contains(newValue) else { return }
                 withAnimation(.easeInOut(duration: 0.12)) {
                     proxy.scrollTo(newValue, anchor: .center)
                 }
             }
         }
         .frame(maxHeight: 6 * 30) // Max 6 items visible, then scroll
-        .padding(.vertical, DesignTokens.Spacing.extraSmall)
-        .background(ThemeManager.current.surface0)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
+        .padding(theme.menuPadding)
+        .background(theme.background)
+        .clipShape(RoundedRectangle(cornerRadius: theme.cornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
-                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
+            RoundedRectangle(cornerRadius: theme.cornerRadius)
+                .stroke(theme.border.opacity(theme.borderOpacity), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
+        .shadow(color: theme.shadow.color, radius: theme.shadow.radius, x: theme.shadow.x, y: theme.shadow.y)
     }
 }
 
-/// A single row in the completion menu.
-struct CompletionRow: View {
-    let item: CompletionItem
+// MARK: - Legacy Wrapper (for backward compatibility)
+
+/// Legacy CompletionMenuView that works with CompletionItem directly (no fuzzy matching).
+/// Use the generic CompletionMenuView<Item> with FuzzyMatchedItem for new code.
+extension CompletionMenuView where Item == CompletionItem {
+    init(
+        items: [CompletionItem],
+        selectedIndex: Int,
+        currentValue: String?,
+        onSelect: @escaping (CompletionItem) -> Void
+    ) {
+        // Convert items to FuzzyMatchedItem with perfect scores (no fuzzy matching)
+        let matches = items.map { item in
+            FuzzyMatchedItem(
+                item: item,
+                match: FuzzyMatch(score: 1.0, matchedIndices: [])
+            )
+        }
+
+        // Find current value item
+        let currentItem = currentValue.flatMap { val in
+            items.first { $0.value == val }
+        }
+
+        self.init(
+            matches: matches,
+            selectedIndex: selectedIndex,
+            currentValue: currentItem,
+            theme: .default,
+            onSelect: onSelect
+        )
+    }
+}
+
+/// A single row in the completion menu with fuzzy match highlighting.
+struct CompletionRow<Item: CompletableItem>: View {
+    let matchedItem: FuzzyMatchedItem<Item>
     let isSelected: Bool
     let isCurrentValue: Bool
+    let theme: CompletionTheme
     @State private var isHovering: Bool = false
 
     var body: some View {
         HStack {
-            Text(item.value)
-                .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .monospaced))
-                .foregroundColor(textColor)
+            // Highlighted text with fuzzy matches
+            if matchedItem.match.matchedIndices.isEmpty {
+                // No fuzzy highlighting (perfect match or no query)
+                Text(matchedItem.item.displayValue)
+                    .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .monospaced))
+                    .foregroundColor(textColor)
+            } else {
+                // Fuzzy highlighted text
+                FuzzyMatcher.highlightedText(
+                    matchedItem.item.displayValue,
+                    matchedIndices: matchedItem.match.matchedIndices,
+                    baseFont: .system(size: DesignTokens.TypeScale.body, weight: .medium, design: .monospaced),
+                    baseColor: textColor,
+                    matchColor: theme.matchHighlightColor,
+                    matchWeight: theme.matchFontWeight
+                )
+            }
 
             Spacer()
 
-            if let count = item.count {
-                Text("\(count)")
+            if let metadata = matchedItem.item.metadata {
+                Text(metadata)
                     .font(.system(size: DesignTokens.TypeScale.label, weight: .regular))
-                    .foregroundColor(countColor)
+                    .foregroundColor(metadataColor)
             }
         }
         .padding(.horizontal, DesignTokens.Spacing.medium)
         .padding(.vertical, DesignTokens.Spacing.small)
-        .background(
-            isSelected
-                ? ThemeManager.current.blue.opacity(0.35)
-                : (isHovering && !isCurrentValue ? ThemeManager.current.surfaceHover : Color.clear)
-        )
+        .background(backgroundColor)
         .onHover { hovering in
             isHovering = hovering
         }
@@ -82,22 +155,29 @@ struct CompletionRow: View {
 
     private var textColor: Color {
         if isSelected {
-            return ThemeManager.current.text
+            return theme.selectedText
         }
         if isCurrentValue {
-            return ThemeManager.current.overlay0
+            return theme.currentValueText
         }
-        return ThemeManager.current.text
+        return theme.normalText
     }
 
-    private var countColor: Color {
+    private var metadataColor: Color {
         if isSelected {
-            return ThemeManager.current.text
+            return theme.metadataSelectedText
         }
-        if isCurrentValue {
-            return ThemeManager.current.overlay0
+        return theme.metadataText
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return theme.selectedBackground
         }
-        return ThemeManager.current.overlay0
+        if isHovering, !isCurrentValue {
+            return theme.hoverBackground
+        }
+        return Color.clear
     }
 }
 

@@ -141,21 +141,48 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
 
     func testCompletionRowSelected() {
         let item = CompletionItem(value: "selected-item", count: 25)
-        let view = CompletionRow(item: item, isSelected: true, isCurrentValue: false)
+        let matchedItem = FuzzyMatchedItem(
+            item: item,
+            match: FuzzyMatch(score: 1.0, matchedIndices: [])
+        )
+        let view = CompletionRow(
+            matchedItem: matchedItem,
+            isSelected: true,
+            isCurrentValue: false,
+            theme: .default
+        )
 
         assertViewSnapshot(view, size: CGSize(width: 250, height: 36))
     }
 
     func testCompletionRowUnselected() {
         let item = CompletionItem(value: "unselected-item", count: 10)
-        let view = CompletionRow(item: item, isSelected: false, isCurrentValue: false)
+        let matchedItem = FuzzyMatchedItem(
+            item: item,
+            match: FuzzyMatch(score: 1.0, matchedIndices: [])
+        )
+        let view = CompletionRow(
+            matchedItem: matchedItem,
+            isSelected: false,
+            isCurrentValue: false,
+            theme: .default
+        )
 
         assertViewSnapshot(view, size: CGSize(width: 250, height: 36))
     }
 
     func testCompletionRowWithoutCount() {
         let item = CompletionItem(value: "no-count-item", count: nil)
-        let view = CompletionRow(item: item, isSelected: false, isCurrentValue: false)
+        let matchedItem = FuzzyMatchedItem(
+            item: item,
+            match: FuzzyMatch(score: 1.0, matchedIndices: [])
+        )
+        let view = CompletionRow(
+            matchedItem: matchedItem,
+            isSelected: false,
+            isCurrentValue: false,
+            theme: .default
+        )
 
         assertViewSnapshot(view, size: CGSize(width: 250, height: 36))
     }

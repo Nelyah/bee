@@ -484,11 +484,11 @@ struct TaskDetailView: View {
             isEditing: isEditingProject,
             editInput: $projectEditInput,
             isSubmitting: isSubmittingProject,
-            filteredProjects: filteredProjects,
-            selectedIndex: projectCompletionSelectedIndex,
+            allProjects: filteredProjects,
             isFocused: isProjectFocused,
             onStartEditing: onStartEditingProject,
             onSubmit: onSubmitProjectEdit,
+            onCancel: onCancelProjectEdit,
             onSelectCompletion: onSelectProjectCompletion
         )
         .zIndex(2) // Ensure project completion dropdown overlays Dates section

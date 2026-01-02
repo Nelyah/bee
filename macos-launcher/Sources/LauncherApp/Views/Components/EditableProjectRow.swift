@@ -1,20 +1,20 @@
 import SwiftUI
 
 /// Editable project row with autocomplete support for the task detail view.
+///
+/// Now uses the reusable `CompletionField` component for all completion logic.
 struct EditableProjectRow: View {
     let currentProject: String?
     let isEditing: Bool
     @Binding var editInput: String
     let isSubmitting: Bool
-    let filteredProjects: [CompletionItem]
-    let selectedIndex: Int
+    let allProjects: [CompletionItem] // All available projects (fuzzy filtering done by CompletionField)
     let isFocused: Bool
 
     let onStartEditing: () -> Void
     let onSubmit: () -> Void
+    let onCancel: () -> Void
     let onSelectCompletion: (CompletionItem) -> Void
-
-    @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
         if isEditing {
@@ -25,40 +25,22 @@ struct EditableProjectRow: View {
                         .foregroundColor(ThemeManager.current.subtext0)
                         .frame(width: 80, alignment: .leading)
 
-                    TextField("Project name...", text: $editInput)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: DesignTokens.TypeScale.body, weight: .regular, design: .monospaced))
-                        .foregroundColor(ThemeManager.current.text)
-                        .padding(.horizontal, DesignTokens.Spacing.small)
-                        .padding(.vertical, DesignTokens.Spacing.extraSmall)
-                        .background(
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
-                                .fill(ThemeManager.current.surface1)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
-                                .stroke(ThemeManager.current.blue, lineWidth: 2)
-                        )
-                        .disabled(isSubmitting)
-                        .opacity(isSubmitting ? 0.6 : 1.0)
-                        .onSubmit {
-                            onSubmit()
-                        }
-                        .focused($isTextFieldFocused)
-                        // Autocomplete dropdown floats below text field using overlay
-                        // (overlays don't participate in layout, preventing parent expansion)
-                        .overlay(alignment: .topLeading) {
-                            if !filteredProjects.isEmpty {
-                                CompletionMenuView(
-                                    items: filteredProjects,
-                                    selectedIndex: selectedIndex,
-                                    currentValue: currentProject,
-                                    onSelect: onSelectCompletion
-                                )
-                                .frame(width: 200, height: 200)
-                                .offset(y: 32)
-                            }
-                        }
+                    // Use the reusable CompletionField component
+                    CompletionField(
+                        text: $editInput,
+                        placeholder: "Project name...",
+                        items: allProjects,
+                        currentValue: currentValue,
+                        onSubmit: onSubmit,
+                        onCancel: onCancel,
+                        onSelect: onSelectCompletion,
+                        theme: .default,
+                        minWidth: 200,
+                        minHeight: 200,
+                        maxHeight: 200
+                    )
+                    .disabled(isSubmitting)
+                    .opacity(isSubmitting ? 0.6 : 1.0)
                 }
 
                 if isSubmitting {
@@ -71,9 +53,6 @@ struct EditableProjectRow: View {
                     .padding(.top, DesignTokens.Spacing.extraSmall)
                 }
             }
-            .onAppear {
-                isTextFieldFocused = true
-            }
         } else {
             DetailRow(label: "Project", value: currentProject ?? "None", helpText: nil)
                 .modifier(DetailFocusRing(isFocused: isFocused))
@@ -83,5 +62,11 @@ struct EditableProjectRow: View {
                 }
                 .help(isFocused ? "Press Enter to edit" : "Click to edit")
         }
+    }
+
+    /// Finds the CompletionItem that matches the current project value.
+    private var currentValue: CompletionItem? {
+        guard let currentProject else { return nil }
+        return allProjects.first { $0.value == currentProject }
     }
 }

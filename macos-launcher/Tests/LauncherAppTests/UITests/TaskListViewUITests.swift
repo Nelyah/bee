@@ -163,8 +163,8 @@ final class TaskListViewUITests: XCTestCase {
         let sut = TaskListView(viewModel: viewModel, completion: viewModel.completion)
         let view = try sut.inspect()
 
-        // Find CompletionMenuView
-        _ = try view.find(CompletionMenuView.self)
+        // Find CompletionMenuView (with explicit generic type)
+        _ = try view.find(CompletionMenuView<CompletionItem>.self)
     }
 
     func testHidesCompletionMenuWhenNotShown() throws {
@@ -173,7 +173,7 @@ final class TaskListViewUITests: XCTestCase {
         let view = try sut.inspect()
 
         // Completion menu should not be visible
-        XCTAssertThrowsError(try view.find(CompletionMenuView.self))
+        XCTAssertThrowsError(try view.find(CompletionMenuView<CompletionItem>.self))
     }
 
     // MARK: - Status Message Tests

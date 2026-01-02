@@ -6,7 +6,6 @@ struct ContentView: View {
     @State private var escapeMonitor: Any?
     @State private var normalModeMonitor: Any?
     @State private var detailModeMonitor: Any?
-    @State private var projectCompletionMonitor: Any?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -162,14 +161,12 @@ struct ContentView: View {
                 installEscapeMonitor()
                 installNormalModeMonitor()
                 installDetailModeMonitor()
-                installProjectCompletionMonitor()
             }
         }
         .onDisappear {
             removeEscapeMonitor()
             removeNormalModeMonitor()
             removeDetailModeMonitor()
-            removeProjectCompletionMonitor()
         }
     }
 
@@ -245,36 +242,6 @@ struct ContentView: View {
         if let monitor = detailModeMonitor {
             NSEvent.removeMonitor(monitor)
             detailModeMonitor = nil
-        }
-    }
-
-    /// Handle project completion navigation while editing project in detail view.
-    private func installProjectCompletionMonitor() {
-        guard projectCompletionMonitor == nil else { return }
-        projectCompletionMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard viewModel.mode == .detail,
-                  viewModel.isEditingProject,
-                  !viewModel.filteredProjects.isEmpty else { return event }
-            let input = KeyInput(event: event)
-            if input.modifierFlags.contains(.control) {
-                if input.keyCode == KeyCode.keyN || input.charactersIgnoringModifiers == "n" {
-                    viewModel.selectNextProjectCompletion()
-                    return nil
-                }
-                if input.keyCode == KeyCode.keyP || input.charactersIgnoringModifiers == "p" {
-                    viewModel.selectPreviousProjectCompletion()
-                    return nil
-                }
-            }
-            return event
-        }
-    }
-
-    /// Remove the project completion monitor.
-    private func removeProjectCompletionMonitor() {
-        if let monitor = projectCompletionMonitor {
-            NSEvent.removeMonitor(monitor)
-            projectCompletionMonitor = nil
         }
     }
 

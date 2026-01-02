@@ -155,7 +155,10 @@
       "WebFetch(domain:lefthook.dev)",
       "Skill(rust-codebase-architecture)",
       "Bash(git -C /Users/chloe/builds/bee status --short)",
-      "Skill(ui-ux-screenshots)"
+      "Skill(ui-ux-screenshots)",
+      "Bash(git -C /Users/chloe/builds/bee diff --stat)",
+      "Bash(git -C /Users/chloe/builds/bee log --oneline -5)",
+      "Bash(git -C /Users/chloe/builds/bee add:*)"
     ]
   },
   "outputStyle": "Explanatory"

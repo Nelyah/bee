@@ -93,12 +93,26 @@ final class CompletionMenuUITests: XCTestCase {
         let item = TestHelpers.makeCompletionItem(value: "test-item")
 
         // Test selected row
-        let selectedRow = CompletionRow(item: item, isSelected: true, isCurrentValue: false)
+        let matchedItem = FuzzyMatchedItem(
+            item: item,
+            match: FuzzyMatch(score: 1.0, matchedIndices: [])
+        )
+        let selectedRow = CompletionRow(
+            matchedItem: matchedItem,
+            isSelected: true,
+            isCurrentValue: false,
+            theme: .default
+        )
         let selectedView = try selectedRow.inspect()
         _ = try selectedView.find(text: "test-item")
 
         // Test unselected row
-        let unselectedRow = CompletionRow(item: item, isSelected: false, isCurrentValue: false)
+        let unselectedRow = CompletionRow(
+            matchedItem: matchedItem,
+            isSelected: false,
+            isCurrentValue: false,
+            theme: .default
+        )
         let unselectedView = try unselectedRow.inspect()
         _ = try unselectedView.find(text: "test-item")
     }

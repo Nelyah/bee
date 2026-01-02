@@ -127,10 +127,13 @@ struct TaskDetailView: View {
                         .font(.system(size: DesignTokens.TypeScale.title, weight: .bold, design: .rounded))
                         .foregroundColor(ThemeManager.current.text)
                         .lineLimit(nil)
+                        .padding(.horizontal, DesignTokens.Spacing.small)
+                        .padding(.vertical, DesignTokens.Spacing.extraSmall)
+                        .modifier(DetailFocusRing(isFocused: isTaskNameFocused))
                         .onTapGesture {
                             onStartEditingTaskName()
                         }
-                        .help("Click to edit")
+                        .help(isTaskNameFocused ? "Press Enter to edit" : "Click to edit")
                 }
                 Spacer()
                 Text(task.status.uppercased())
@@ -414,6 +417,14 @@ struct TaskDetailView: View {
     }
 
     // MARK: - Focus Helpers
+
+    /// Whether the task name is currently keyboard-focused.
+    private var isTaskNameFocused: Bool {
+        if case .taskName = focusedItem {
+            return true
+        }
+        return false
+    }
 
     /// Whether the UUID row is currently keyboard-focused.
     private var isUUIDFocused: Bool {

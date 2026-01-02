@@ -139,15 +139,19 @@ extension LauncherViewModel {
     // MARK: - Detail Focus Navigation
 
     /// Builds the list of focusable items for the current detail view.
+    /// Order: Task Name → UUID → GitLab MRs → Jira Issues
     func buildDetailFocusableItems() {
         var items: [DetailFocusableItem] = []
 
-        // 1. UUID is always first (if we have a task)
         if let task = selectedTask {
+            // 1. Task name is first (at the top of the detail view)
+            items.append(.taskName(task.summary))
+
+            // 2. UUID
             items.append(.uuid(task.uuid))
         }
 
-        // 2. GitLab MRs
+        // 3. GitLab MRs
         let gitlabLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
         }
@@ -155,7 +159,7 @@ extension LauncherViewModel {
             items.append(.gitlabMR(link))
         }
 
-        // 3. Jira issues
+        // 4. Jira issues
         let jiraLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
         }
@@ -236,12 +240,16 @@ extension LauncherViewModel {
     }
 
     private func openFocusedDetailItem() -> Bool {
-        guard let item = focusedDetailItem,
-              let url = item.openURL
-        else {
-            return false
+        guard let item = focusedDetailItem else { return false }
+
+        // Task name: Enter triggers editing instead of opening URL
+        if case .taskName = item {
+            startEditingTaskName()
+            return true
         }
 
+        // Links: open URL in browser
+        guard let url = item.openURL else { return false }
         NSWorkspace.shared.open(url)
         return true
     }

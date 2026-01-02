@@ -363,15 +363,27 @@ final class DetailFocusViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.detailFocusableItems.isEmpty)
     }
 
-    func testBuildDetailFocusableItemsIncludesUUID() {
+    func testBuildDetailFocusableItemsIncludesTaskName() {
         setupDetailMode()
         viewModel.buildDetailFocusableItems()
 
         XCTAssertFalse(viewModel.detailFocusableItems.isEmpty)
-        if case .uuid = viewModel.detailFocusableItems.first {
-            // Success
+        if case .taskName = viewModel.detailFocusableItems.first {
+            // Success - task name should be first
         } else {
-            XCTFail("First focusable item should be UUID")
+            XCTFail("First focusable item should be task name")
+        }
+    }
+
+    func testBuildDetailFocusableItemsIncludesUUID() {
+        setupDetailMode()
+        viewModel.buildDetailFocusableItems()
+
+        XCTAssertGreaterThanOrEqual(viewModel.detailFocusableItems.count, 2)
+        if case .uuid = viewModel.detailFocusableItems[1] {
+            // Success - UUID should be second (after task name)
+        } else {
+            XCTFail("Second focusable item should be UUID")
         }
     }
 
@@ -551,24 +563,38 @@ final class DetailFocusViewModelTests: XCTestCase {
 
     func testHandleDetailModeActionMoveFocusLeft() {
         setupDetailModeWithItems()
-        // Start at a link item (index 1 = first gitlab link)
-        viewModel.detailFocusedIndex = 1
+        // Start at a link item (index 2 = first gitlab link, after taskName and UUID)
+        viewModel.detailFocusedIndex = 2
 
         let result = viewModel.handleDetailModeAction(.moveFocusLeft)
 
         XCTAssertTrue(result)
-        XCTAssertEqual(viewModel.detailFocusedIndex, 0, "moveFocusLeft should move to UUID (index 0)")
+        XCTAssertEqual(viewModel.detailFocusedIndex, 0, "moveFocusLeft should move to task name (index 0)")
     }
 
     func testHandleDetailModeActionMoveFocusRight() {
         setupDetailModeWithItems()
-        // Start at UUID (index 0)
+        // Start at task name (index 0)
         viewModel.detailFocusedIndex = 0
 
         let result = viewModel.handleDetailModeAction(.moveFocusRight)
 
         XCTAssertTrue(result)
-        XCTAssertEqual(viewModel.detailFocusedIndex, 1, "moveFocusRight should move to first link (index 1)")
+        // moveFocusRight from index 0 should move to index 1 (UUID)
+        XCTAssertEqual(viewModel.detailFocusedIndex, 1, "moveFocusRight should move to UUID (index 1)")
+    }
+
+    func testOpenFocusedStartsEditingWhenTaskNameFocused() {
+        setupDetailModeWithItems()
+        // Focus on task name (index 0)
+        viewModel.detailFocusedIndex = 0
+        viewModel.detailKeyboardNavigationActive = true
+        XCTAssertFalse(viewModel.isEditingTaskName)
+
+        let result = viewModel.handleDetailModeAction(.openFocused)
+
+        XCTAssertTrue(result)
+        XCTAssertTrue(viewModel.isEditingTaskName, "Enter on task name should start editing")
     }
 
     // MARK: - Helpers

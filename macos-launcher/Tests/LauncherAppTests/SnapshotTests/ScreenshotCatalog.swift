@@ -294,7 +294,9 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            annotationInput: .constant("")
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -327,7 +329,9 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            annotationInput: .constant("")
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -349,7 +353,9 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            annotationInput: .constant("")
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -373,7 +379,9 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            annotationInput: .constant("")
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)

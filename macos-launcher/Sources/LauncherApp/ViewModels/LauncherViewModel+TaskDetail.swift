@@ -319,4 +319,219 @@ extension LauncherViewModel {
             }
         }
     }
+
+    // MARK: - Task Name Editing Methods
+
+    /// Begin editing the task name.
+    func startEditingTaskName() {
+        guard let task = selectedTask else { return }
+        taskNameEditInput = task.summary
+        isEditingTaskName = true
+    }
+
+    /// Cancel editing the task name.
+    func cancelEditingTaskName() {
+        isEditingTaskName = false
+        taskNameEditInput = ""
+    }
+
+    /// Submit the edited task name.
+    func submitTaskNameEdit() {
+        guard let task = selectedTask else { return }
+        let newSummary = taskNameEditInput.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // If empty or unchanged, just cancel
+        guard !newSummary.isEmpty, newSummary != task.summary else {
+            cancelEditingTaskName()
+            return
+        }
+
+        isSubmittingTaskName = true
+
+        Task {
+            defer {
+                isSubmittingTaskName = false
+            }
+
+            do {
+                let properties: JSONValue = .object(["summary": .string(newSummary)])
+                let filter: JSONValue = .object([
+                    "type": .string("UuidFilter"),
+                    "value": .object(["uuid": .string(task.uuid)]),
+                ])
+
+                _ = try await apiClient.runAction(
+                    action: "modify",
+                    properties: properties,
+                    filter: filter
+                )
+
+                // Success - clear state and reload
+                isEditingTaskName = false
+                taskNameEditInput = ""
+                showToast(message: "Task name updated", icon: .success)
+
+                // Update the task in the local list
+                if let idx = tasks.firstIndex(where: { $0.uuid == task.uuid }) {
+                    tasks[idx] = ApiTask(
+                        dbId: task.dbId,
+                        uuid: task.uuid,
+                        status: task.status,
+                        summary: newSummary,
+                        project: task.project,
+                        tags: task.tags,
+                        dateCreated: task.dateCreated,
+                        dateCompleted: task.dateCompleted,
+                        dateDue: task.dateDue,
+                        urgency: task.urgency
+                    )
+                }
+
+                // Refresh the detail view
+                loadTaskDetail(taskUUID: task.uuid)
+            } catch {
+                showToast(message: "Failed to update task name", icon: .warning)
+            }
+        }
+    }
+
+    // MARK: - Annotation Editing Methods
+
+    /// Begin editing an existing annotation at the given index.
+    func startEditingAnnotation(at index: Int) {
+        guard let detail = taskDetailState.detail,
+              index >= 0, index < detail.annotations.count
+        else { return }
+
+        annotationEditInput = detail.annotations[index].value
+        editingAnnotationIndex = index
+    }
+
+    /// Cancel editing an annotation.
+    func cancelEditingAnnotation() {
+        editingAnnotationIndex = nil
+        annotationEditInput = ""
+    }
+
+    /// Submit the edited annotation.
+    func submitAnnotationEdit() {
+        guard let task = selectedTask,
+              let detail = taskDetailState.detail,
+              let editIndex = editingAnnotationIndex,
+              editIndex >= 0, editIndex < detail.annotations.count
+        else {
+            cancelEditingAnnotation()
+            return
+        }
+
+        let newValue = annotationEditInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let originalValue = detail.annotations[editIndex].value
+
+        // If empty, treat as delete
+        if newValue.isEmpty {
+            deleteAnnotation(at: editIndex)
+            return
+        }
+
+        // If unchanged, just cancel
+        guard newValue != originalValue else {
+            cancelEditingAnnotation()
+            return
+        }
+
+        isSubmittingAnnotationEdit = true
+
+        Task {
+            defer {
+                isSubmittingAnnotationEdit = false
+            }
+
+            do {
+                // Build the updated annotations array
+                var updatedAnnotations: [[String: JSONValue]] = []
+                for (idx, ann) in detail.annotations.enumerated() {
+                    let value = idx == editIndex ? newValue : ann.value
+                    updatedAnnotations.append([
+                        "value": .string(value),
+                        "time": .string(ann.time),
+                    ])
+                }
+
+                let properties: JSONValue = .object([
+                    "annotations": .array(updatedAnnotations.map { .object($0) }),
+                ])
+                let filter: JSONValue = .object([
+                    "type": .string("UuidFilter"),
+                    "value": .object(["uuid": .string(task.uuid)]),
+                ])
+
+                _ = try await apiClient.runAction(
+                    action: "modify",
+                    properties: properties,
+                    filter: filter
+                )
+
+                // Success
+                editingAnnotationIndex = nil
+                annotationEditInput = ""
+                showToast(message: "Annotation updated", icon: .success)
+
+                loadTaskDetail(taskUUID: task.uuid)
+            } catch {
+                showToast(message: "Failed to update annotation", icon: .warning)
+            }
+        }
+    }
+
+    /// Delete an annotation at the given index.
+    func deleteAnnotation(at index: Int) {
+        guard let task = selectedTask,
+              let detail = taskDetailState.detail,
+              index >= 0, index < detail.annotations.count
+        else { return }
+
+        // Clear edit state if we're deleting the one being edited
+        if editingAnnotationIndex == index {
+            editingAnnotationIndex = nil
+            annotationEditInput = ""
+        }
+
+        isSubmittingAnnotationEdit = true
+
+        Task {
+            defer {
+                isSubmittingAnnotationEdit = false
+            }
+
+            do {
+                // Build annotations array without the deleted one
+                var updatedAnnotations: [[String: JSONValue]] = []
+                for (idx, ann) in detail.annotations.enumerated() where idx != index {
+                    updatedAnnotations.append([
+                        "value": .string(ann.value),
+                        "time": .string(ann.time),
+                    ])
+                }
+
+                let properties: JSONValue = .object([
+                    "annotations": .array(updatedAnnotations.map { .object($0) }),
+                ])
+                let filter: JSONValue = .object([
+                    "type": .string("UuidFilter"),
+                    "value": .object(["uuid": .string(task.uuid)]),
+                ])
+
+                _ = try await apiClient.runAction(
+                    action: "modify",
+                    properties: properties,
+                    filter: filter
+                )
+
+                showToast(message: "Annotation deleted", icon: .success)
+                loadTaskDetail(taskUUID: task.uuid)
+            } catch {
+                showToast(message: "Failed to delete annotation", icon: .warning)
+            }
+        }
+    }
 }

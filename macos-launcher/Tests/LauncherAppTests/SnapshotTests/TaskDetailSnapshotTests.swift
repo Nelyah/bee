@@ -78,7 +78,9 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            annotationInput: .constant("")
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
     }
 

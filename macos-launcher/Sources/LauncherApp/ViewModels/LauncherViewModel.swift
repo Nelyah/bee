@@ -76,7 +76,7 @@ final class LauncherViewModel: ObservableObject {
     /// Loaded expanded content per task UUID.
     @Published var taskExpandedData: [String: TaskExpandedContent] = [:]
 
-    // MARK: - Annotation Input State
+    // MARK: - Editing State (Annotations & Task Name)
 
     /// Whether the annotation input field is active.
     @Published var isAddingAnnotation: Bool = false
@@ -84,6 +84,18 @@ final class LauncherViewModel: ObservableObject {
     @Published var annotationInput: String = ""
     /// Whether an annotation submission is in progress.
     @Published var isSubmittingAnnotation: Bool = false
+    /// Whether the task name is being edited.
+    @Published var isEditingTaskName: Bool = false
+    /// The text currently being entered for the task name.
+    @Published var taskNameEditInput: String = ""
+    /// Whether a task name submission is in progress.
+    @Published var isSubmittingTaskName: Bool = false
+    /// Index of the annotation being edited (nil = not editing any annotation).
+    @Published var editingAnnotationIndex: Int?
+    /// The text currently being entered for the annotation edit.
+    @Published var annotationEditInput: String = ""
+    /// Whether an annotation edit submission is in progress.
+    @Published var isSubmittingAnnotationEdit: Bool = false
 
     // MARK: - Project Scope State
 
@@ -567,85 +579,6 @@ final class LauncherViewModel: ObservableObject {
         suppressInputHandling = false
     }
 
-    // MARK: - Keyboard Handlers
-
-    @discardableResult
-    func handleEscape() -> Bool {
-        // Close SaveReportSheet if it's open
-        if showingSaveReportSheet {
-            showingSaveReportSheet = false
-            return true
-        }
-
-        // Cancel annotation input if active
-        if isAddingAnnotation {
-            cancelAddingAnnotation()
-            return true
-        }
-
-        if interactionContext == .commandPalette {
-            if commandPalette.handleEscape() {
-                return true
-            }
-            closeCommandPalette()
-            return true
-        }
-
-        let action = InteractionCoordinator.escapeAction(for: interactionContext)
-        switch action {
-        case .closeCommandPalette:
-            closeCommandPalette()
-            return true
-        case .clearCompletions:
-            clearCompletions()
-            return true
-        case .closeDetail:
-            closeDetail()
-            return true
-        case .exitInsertMode:
-            exitInsertMode()
-            return true
-        case .closeWindow:
-            windowClose.send()
-            return true
-        case .none:
-            return false
-        }
-    }
-
-    @discardableResult
-    func handleNormalModeAction(_ action: NormalModeAction) -> Bool {
-        let effect = InteractionCoordinator.normalModeEffect(
-            action: action,
-            canToggleGroupCollapse: canToggleSelectedOrHoveredGroupCollapse()
-        )
-        switch effect {
-        case .enterInsertMode:
-            enterInsertMode()
-            return true
-        case let .moveSelection(delta):
-            moveSelection(delta: delta)
-            return true
-        case .selectFirst:
-            selectFirstRow()
-            return true
-        case .selectLast:
-            selectLastRow()
-            return true
-        case .toggleGroupCollapse:
-            return toggleSelectedOrHoveredGroupCollapse()
-        case .toggleTaskExpansion:
-            return toggleSelectedOrHoveredTaskExpansion()
-        case .openDetail:
-            openDetail()
-            return true
-        case .openCommandPalette:
-            openCommandPalette()
-            return true
-        case .none:
-            return false
-        }
-    }
 }
 
 // MARK: - Supporting Types

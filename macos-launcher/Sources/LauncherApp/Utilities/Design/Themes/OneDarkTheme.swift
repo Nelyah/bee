@@ -27,6 +27,9 @@ struct OneDarkTheme: Theme {
     var text: Color { Self.textColor }
     var textNS: NSColor { Self.textColorNS }
 
+    var annotationText: Color { Self.annotationTextColor }
+    var annotationTextNS: NSColor { Self.annotationTextColorNS }
+
     var subtext1: Color { Self.subtext1Color }
     var subtext1NS: NSColor { Self.subtext1ColorNS }
 
@@ -94,6 +97,8 @@ struct OneDarkTheme: Theme {
 
     private static let textColor = Color(hex: "#abb2bf")
     private static let textColorNS = NSColor(hex: "#abb2bf")
+    private static let annotationTextColor = Color(hex: "#d4d4d4")
+    private static let annotationTextColorNS = NSColor(hex: "#d4d4d4")
     private static let subtext1Color = Color(hex: "#a0a8b7")
     private static let subtext1ColorNS = NSColor(hex: "#a0a8b7")
     private static let subtext0Color = Color(hex: "#8b93a1")

@@ -27,6 +27,9 @@ struct CatppuccinTheme: Theme {
     var text: Color { Self.textColor }
     var textNS: NSColor { Self.textColorNS }
 
+    var annotationText: Color { Self.annotationTextColor }
+    var annotationTextNS: NSColor { Self.annotationTextColorNS }
+
     var subtext1: Color { Self.subtext1Color }
     var subtext1NS: NSColor { Self.subtext1ColorNS }
 
@@ -94,6 +97,8 @@ struct CatppuccinTheme: Theme {
 
     private static let textColor = Color(hex: "#cdd6f4")
     private static let textColorNS = NSColor(hex: "#cdd6f4")
+    private static let annotationTextColor = Color(hex: "#e8eaf6")
+    private static let annotationTextColorNS = NSColor(hex: "#e8eaf6")
     private static let subtext1Color = Color(hex: "#bac2de")
     private static let subtext1ColorNS = NSColor(hex: "#bac2de")
     private static let subtext0Color = Color(hex: "#a6adc8")

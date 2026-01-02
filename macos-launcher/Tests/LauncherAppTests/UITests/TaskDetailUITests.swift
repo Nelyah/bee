@@ -71,7 +71,9 @@ final class TaskDetailUITests: XCTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            annotationInput: .constant("")
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
     }
 
@@ -119,7 +121,9 @@ final class TaskDetailUITests: XCTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: { closeCalled = true },
-            annotationInput: .constant("")
+            annotationInput: .constant(""),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
 
         let view = try sut.inspect()
@@ -231,7 +235,9 @@ final class TaskDetailUITests: XCTestCase {
             onCopyUUID: { _ in },
             onClose: {},
             isAddingAnnotation: true,
-            annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 })
+            annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 }),
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
 
         let view = try sut.inspect()
@@ -260,7 +266,9 @@ final class TaskDetailUITests: XCTestCase {
             onClose: {},
             isAddingAnnotation: true,
             annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 }),
-            onSubmitAnnotation: { callbackInvoked = true }
+            onSubmitAnnotation: { callbackInvoked = true },
+            taskNameEditInput: .constant(""),
+            annotationEditInput: .constant("")
         )
 
         // Invoke the callback and verify it works

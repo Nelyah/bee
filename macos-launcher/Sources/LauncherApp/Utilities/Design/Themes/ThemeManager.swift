@@ -72,6 +72,8 @@ struct CachedTheme: Theme {
     var surface2NS: NSColor { underlying.surface2NS }
     var text: Color { underlying.text }
     var textNS: NSColor { underlying.textNS }
+    var annotationText: Color { underlying.annotationText }
+    var annotationTextNS: NSColor { underlying.annotationTextNS }
     var subtext1: Color { underlying.subtext1 }
     var subtext1NS: NSColor { underlying.subtext1NS }
     var subtext0: Color { underlying.subtext0 }

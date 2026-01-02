@@ -13,8 +13,8 @@ struct TimelineRow: View {
                 .frame(width: 90, alignment: .leading)
                 .help(timestamp)
             Text(value)
-                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
-                .foregroundColor(ThemeManager.current.text)
+                .font(.system(size: DesignTokens.TypeScale.body, weight: .regular))
+                .foregroundColor(ThemeManager.current.annotationText)
         }
         .padding(.vertical, 6)
         .padding(.horizontal, DesignTokens.Spacing.small)

@@ -36,6 +36,12 @@ protocol Theme {
     var text: Color { get }
     var textNS: NSColor { get }
 
+    // MARK: - Semantic Text Colors
+
+    /// Brighter text color for annotation content - provides better contrast for user-generated content
+    var annotationText: Color { get }
+    var annotationTextNS: NSColor { get }
+
     var subtext1: Color { get }
     var subtext1NS: NSColor { get }
 

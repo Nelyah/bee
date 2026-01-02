@@ -50,6 +50,32 @@ struct ContentView: View {
                     },
                     onStartAnnotation: {
                         viewModel.startAddingAnnotation()
+                    },
+                    // Task name editing
+                    isEditingTaskName: viewModel.isEditingTaskName,
+                    taskNameEditInput: $viewModel.taskNameEditInput,
+                    isSubmittingTaskName: viewModel.isSubmittingTaskName,
+                    onStartEditingTaskName: {
+                        viewModel.startEditingTaskName()
+                    },
+                    onSubmitTaskNameEdit: {
+                        viewModel.submitTaskNameEdit()
+                    },
+                    onCancelTaskNameEdit: {
+                        viewModel.cancelEditingTaskName()
+                    },
+                    // Annotation editing
+                    editingAnnotationIndex: viewModel.editingAnnotationIndex,
+                    annotationEditInput: $viewModel.annotationEditInput,
+                    isSubmittingAnnotationEdit: viewModel.isSubmittingAnnotationEdit,
+                    onStartEditingAnnotation: { index in
+                        viewModel.startEditingAnnotation(at: index)
+                    },
+                    onSubmitAnnotationEdit: {
+                        viewModel.submitAnnotationEdit()
+                    },
+                    onCancelAnnotationEdit: {
+                        viewModel.cancelEditingAnnotation()
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)

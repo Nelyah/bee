@@ -28,6 +28,36 @@ struct TaskDetailView: View {
     /// Called when the user wants to start adding an annotation.
     var onStartAnnotation: () -> Void = {}
 
+    // MARK: - Task Name Editing
+
+    /// Whether the task name is being edited.
+    var isEditingTaskName: Bool = false
+    /// Binding to the task name edit input.
+    @Binding var taskNameEditInput: String
+    /// Whether task name submission is in progress.
+    var isSubmittingTaskName: Bool = false
+    /// Called when the user clicks on the task name to edit it.
+    var onStartEditingTaskName: () -> Void = {}
+    /// Called when the user submits the task name edit.
+    var onSubmitTaskNameEdit: () -> Void = {}
+    /// Called when the user cancels the task name edit.
+    var onCancelTaskNameEdit: () -> Void = {}
+
+    // MARK: - Annotation Editing
+
+    /// Index of the annotation being edited (nil = not editing).
+    var editingAnnotationIndex: Int?
+    /// Binding to the annotation edit input.
+    @Binding var annotationEditInput: String
+    /// Whether annotation edit submission is in progress.
+    var isSubmittingAnnotationEdit: Bool = false
+    /// Called when the user clicks on an annotation to edit it.
+    var onStartEditingAnnotation: (Int) -> Void = { _ in }
+    /// Called when the user submits the annotation edit.
+    var onSubmitAnnotationEdit: () -> Void = {}
+    /// Called when the user cancels the annotation edit.
+    var onCancelAnnotationEdit: () -> Void = {}
+
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -77,10 +107,25 @@ struct TaskDetailView: View {
             }
 
             HStack(alignment: .top) {
-                Text(task.summary)
-                    .font(.system(size: DesignTokens.TypeScale.title, weight: .bold, design: .rounded))
-                    .foregroundColor(ThemeManager.current.text)
-                    .lineLimit(2)
+                if isEditingTaskName {
+                    ExpandingTextEditor(
+                        text: $taskNameEditInput,
+                        placeholder: "Task name...",
+                        isSubmitting: isSubmittingTaskName,
+                        onSubmit: onSubmitTaskNameEdit,
+                        onCancel: onCancelTaskNameEdit,
+                        minHeight: 40
+                    )
+                } else {
+                    Text(task.summary)
+                        .font(.system(size: DesignTokens.TypeScale.title, weight: .bold, design: .rounded))
+                        .foregroundColor(ThemeManager.current.text)
+                        .lineLimit(nil)
+                        .onTapGesture {
+                            onStartEditingTaskName()
+                        }
+                        .help("Click to edit")
+                }
                 Spacer()
                 Text(task.status.uppercased())
                     .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
@@ -197,10 +242,11 @@ struct TaskDetailView: View {
             onAction: onStartAnnotation
         ) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
-                // Annotation input field
+                // New annotation input field
                 if isAddingAnnotation {
-                    AnnotationInputField(
+                    ExpandingTextEditor(
                         text: $annotationInput,
+                        placeholder: "Enter annotation...",
                         isSubmitting: isSubmittingAnnotation,
                         onSubmit: onSubmitAnnotation,
                         onCancel: onCancelAnnotation
@@ -211,14 +257,27 @@ struct TaskDetailView: View {
                 let annotations = sortedAnnotations(detailForTask?.annotations ?? [])
                 if annotations.isEmpty, !isAddingAnnotation {
                     Text("—")
-                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                        .font(.system(size: DesignTokens.TypeScale.body, weight: .medium))
                         .foregroundColor(ThemeManager.current.overlay0)
                 } else {
-                    ForEach(annotations) { annotation in
-                        TimelineRow(
-                            timestamp: annotation.time,
-                            value: annotation.value
-                        )
+                    ForEach(Array(annotations.enumerated()), id: \.element.id) { index, annotation in
+                        if editingAnnotationIndex == index {
+                            // Edit mode for this annotation
+                            ExpandingTextEditor(
+                                text: $annotationEditInput,
+                                placeholder: "Edit annotation...",
+                                isSubmitting: isSubmittingAnnotationEdit,
+                                onSubmit: onSubmitAnnotationEdit,
+                                onCancel: onCancelAnnotationEdit
+                            )
+                        } else {
+                            // Display mode - clickable to edit
+                            EditableTimelineRow(
+                                timestamp: annotation.time,
+                                value: annotation.value,
+                                onTap: { onStartEditingAnnotation(index) }
+                            )
+                        }
                     }
                 }
             }
@@ -487,6 +546,46 @@ private struct AnnotationInputField: View {
     }
 }
 
+/// A timeline row that can be tapped to enter edit mode.
+private struct EditableTimelineRow: View {
+    let timestamp: String
+    let value: String
+    let onTap: () -> Void
+
+    @State private var isHovering: Bool = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.medium) {
+            Text(RelativeDateFormatter.description(for: timestamp))
+                .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
+                .foregroundColor(ThemeManager.current.subtext0)
+                .frame(width: 90, alignment: .leading)
+                .help(timestamp)
+            Text(value)
+                .font(.system(size: DesignTokens.TypeScale.body, weight: .regular))
+                .foregroundColor(ThemeManager.current.annotationText)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, DesignTokens.Spacing.small)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                .fill(isHovering ? ThemeManager.current.surfaceHover : ThemeManager.current.surface1.opacity(0.6))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                .stroke(isHovering ? ThemeManager.current.blue.opacity(0.5) : .clear, lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .onTapGesture {
+            onTap()
+        }
+        .help("Click to edit")
+    }
+}
+
 private struct ExternalLinksProviderSection: View {
     let title: String
     let icon: Image?
@@ -560,6 +659,8 @@ private struct ExternalLinksProviderSection: View {
 #Preview {
     struct PreviewWrapper: View {
         @State private var annotationInput = ""
+        @State private var taskNameEditInput = ""
+        @State private var annotationEditInput = ""
 
         var body: some View {
             TaskDetailView(
@@ -578,7 +679,9 @@ private struct ExternalLinksProviderSection: View {
                 onCopyLink: { _ in },
                 onCopyUUID: { _ in },
                 onClose: {},
-                annotationInput: $annotationInput
+                annotationInput: $annotationInput,
+                taskNameEditInput: $taskNameEditInput,
+                annotationEditInput: $annotationEditInput
             )
             .padding(DesignTokens.Spacing.extraExtraLarge)
             .frame(width: 600, height: 400)

@@ -97,6 +97,14 @@ final class LauncherViewModel: ObservableObject {
     @Published var annotationEditInput: String = ""
     /// Whether an annotation edit submission is in progress.
     @Published var isSubmittingAnnotationEdit: Bool = false
+    /// Whether the project field is being edited in task detail.
+    @Published var isEditingProject: Bool = false
+    /// The text currently being entered for the project edit.
+    @Published var projectEditInput: String = ""
+    /// Whether a project submission is in progress.
+    @Published var isSubmittingProject: Bool = false
+    /// Index of selected project in autocomplete dropdown (-1 = none).
+    @Published var projectCompletionSelectedIndex: Int = -1
 
     // MARK: - Project Scope State
 
@@ -238,13 +246,14 @@ final class LauncherViewModel: ObservableObject {
         }
 
         // Combine editing states into a single isEditing boolean
-        let isEditingPublisher = Publishers.CombineLatest3(
+        let isEditingPublisher = Publishers.CombineLatest4(
             $isEditingTaskName,
+            $isEditingProject,
             $isAddingAnnotation,
             $editingAnnotationId
         )
-        .map { isEditingTaskName, isAddingAnnotation, editingAnnotationId in
-            isEditingTaskName || isAddingAnnotation || editingAnnotationId != nil
+        .map { isEditingTaskName, isEditingProject, isAddingAnnotation, editingAnnotationId in
+            isEditingTaskName || isEditingProject || isAddingAnnotation || editingAnnotationId != nil
         }
 
         Publishers.CombineLatest(

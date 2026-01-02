@@ -296,7 +296,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onClose: {},
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
-            annotationEditInput: .constant("")
+            annotationEditInput: .constant(""),
+            projectEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -331,7 +332,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onClose: {},
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
-            annotationEditInput: .constant("")
+            annotationEditInput: .constant(""),
+            projectEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -355,7 +357,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onClose: {},
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
-            annotationEditInput: .constant("")
+            annotationEditInput: .constant(""),
+            projectEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -381,7 +384,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             onClose: {},
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
-            annotationEditInput: .constant("")
+            annotationEditInput: .constant(""),
+            projectEditInput: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)

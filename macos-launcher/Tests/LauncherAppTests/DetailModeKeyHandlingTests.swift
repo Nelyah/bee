@@ -375,15 +375,27 @@ final class DetailFocusViewModelTests: XCTestCase {
         }
     }
 
+    func testBuildDetailFocusableItemsIncludesProject() {
+        setupDetailMode()
+        viewModel.buildDetailFocusableItems()
+
+        XCTAssertGreaterThanOrEqual(viewModel.detailFocusableItems.count, 3)
+        if case .project = viewModel.detailFocusableItems[1] {
+            // Success - Project should be second (after task name)
+        } else {
+            XCTFail("Second focusable item should be project")
+        }
+    }
+
     func testBuildDetailFocusableItemsIncludesUUID() {
         setupDetailMode()
         viewModel.buildDetailFocusableItems()
 
-        XCTAssertGreaterThanOrEqual(viewModel.detailFocusableItems.count, 2)
-        if case .uuid = viewModel.detailFocusableItems[1] {
-            // Success - UUID should be second (after task name)
+        XCTAssertGreaterThanOrEqual(viewModel.detailFocusableItems.count, 3)
+        if case .uuid = viewModel.detailFocusableItems[2] {
+            // Success - UUID should be third (after task name and project)
         } else {
-            XCTFail("Second focusable item should be UUID")
+            XCTFail("Third focusable item should be UUID")
         }
     }
 

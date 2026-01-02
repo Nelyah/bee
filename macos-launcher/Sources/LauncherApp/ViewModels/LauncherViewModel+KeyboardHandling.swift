@@ -23,6 +23,12 @@ extension LauncherViewModel {
             return true
         }
 
+        // Cancel project editing if active
+        if isEditingProject {
+            cancelEditingProject()
+            return true
+        }
+
         // Cancel annotation editing if active
         if editingAnnotationId != nil {
             cancelEditingAnnotation()

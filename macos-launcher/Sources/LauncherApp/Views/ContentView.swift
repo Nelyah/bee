@@ -76,6 +76,24 @@ struct ContentView: View {
                     },
                     onCancelAnnotationEdit: {
                         viewModel.cancelEditingAnnotation()
+                    },
+                    // Project editing
+                    isEditingProject: viewModel.isEditingProject,
+                    projectEditInput: $viewModel.projectEditInput,
+                    isSubmittingProject: viewModel.isSubmittingProject,
+                    filteredProjects: viewModel.filteredProjects,
+                    projectCompletionSelectedIndex: viewModel.projectCompletionSelectedIndex,
+                    onStartEditingProject: {
+                        viewModel.startEditingProject()
+                    },
+                    onSubmitProjectEdit: {
+                        viewModel.submitProjectEdit()
+                    },
+                    onCancelProjectEdit: {
+                        viewModel.cancelEditingProject()
+                    },
+                    onSelectProjectCompletion: { item in
+                        viewModel.selectProjectFromCompletion(item)
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)

@@ -59,6 +59,27 @@ struct TaskDetailView: View {
     /// Called when the user cancels the annotation edit.
     var onCancelAnnotationEdit: () -> Void = {}
 
+    // MARK: - Project Editing
+
+    /// Whether the project field is being edited.
+    var isEditingProject: Bool = false
+    /// Binding to the project edit input.
+    @Binding var projectEditInput: String
+    /// Whether project submission is in progress.
+    var isSubmittingProject: Bool = false
+    /// Filtered project completions for autocomplete.
+    var filteredProjects: [CompletionItem] = []
+    /// Selected index in project autocomplete list.
+    var projectCompletionSelectedIndex: Int = -1
+    /// Called when the user clicks on the project to edit it.
+    var onStartEditingProject: () -> Void = {}
+    /// Called when the user submits the project edit.
+    var onSubmitProjectEdit: () -> Void = {}
+    /// Called when the user cancels the project edit.
+    var onCancelProjectEdit: () -> Void = {}
+    /// Called when the user selects a project from autocomplete.
+    var onSelectProjectCompletion: (CompletionItem) -> Void = { _ in }
+
     // MARK: - Collapsible Sections
 
     /// Whether the history section is expanded (collapsed by default).
@@ -203,7 +224,7 @@ struct TaskDetailView: View {
                     onCopy: onCopyUUID,
                     isKeyboardFocused: isUUIDFocused
                 )
-                DetailRow(label: "Project", value: task.project ?? "None", helpText: nil)
+                projectRow
                 DetailRow(
                     label: "Tags",
                     value: task.tags.isEmpty ? "None" : task.tags.joined(separator: ", "),
@@ -434,6 +455,14 @@ struct TaskDetailView: View {
         return false
     }
 
+    /// Whether the project row is currently keyboard-focused.
+    private var isProjectFocused: Bool {
+        if case .project = focusedItem {
+            return true
+        }
+        return false
+    }
+
     /// Returns the focused link ID if the current focused item is an external link.
     private var focusedLinkId: Int? {
         switch focusedItem {
@@ -442,6 +471,23 @@ struct TaskDetailView: View {
         default:
             nil
         }
+    }
+
+    // MARK: - Project Row
+
+    private var projectRow: some View {
+        EditableProjectRow(
+            currentProject: task.project,
+            isEditing: isEditingProject,
+            editInput: $projectEditInput,
+            isSubmitting: isSubmittingProject,
+            filteredProjects: filteredProjects,
+            selectedIndex: projectCompletionSelectedIndex,
+            isFocused: isProjectFocused,
+            onStartEditing: onStartEditingProject,
+            onSubmit: onSubmitProjectEdit,
+            onSelectCompletion: onSelectProjectCompletion
+        )
     }
 }
 
@@ -709,6 +755,7 @@ private struct ExternalLinksProviderSection: View {
         @State private var annotationInput = ""
         @State private var taskNameEditInput = ""
         @State private var annotationEditInput = ""
+        @State private var projectEditInput = ""
 
         var body: some View {
             TaskDetailView(
@@ -729,7 +776,8 @@ private struct ExternalLinksProviderSection: View {
                 onClose: {},
                 annotationInput: $annotationInput,
                 taskNameEditInput: $taskNameEditInput,
-                annotationEditInput: $annotationEditInput
+                annotationEditInput: $annotationEditInput,
+                projectEditInput: $projectEditInput
             )
             .padding(DesignTokens.Spacing.extraExtraLarge)
             .frame(width: 600, height: 400)

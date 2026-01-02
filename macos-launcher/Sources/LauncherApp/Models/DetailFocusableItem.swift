@@ -6,6 +6,9 @@ enum DetailFocusableItem: Equatable, Identifiable {
     /// Task name at the top of the detail view.
     /// Associated value is the task summary for copying.
     case taskName(String)
+    /// Project field in the metadata section.
+    /// Associated value is the project name (or empty string if none).
+    case project(String)
     case uuid(String)
     case gitlabMR(ExternalLinkDto)
     case jiraIssue(ExternalLinkDto)
@@ -14,6 +17,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
         switch self {
         case .taskName:
             "taskName"
+        case .project:
+            "project"
         case let .uuid(uuid):
             "uuid-\(uuid)"
         case let .gitlabMR(link):
@@ -25,11 +30,13 @@ enum DetailFocusableItem: Equatable, Identifiable {
 
     /// What action "o" (open) performs on this item.
     /// Returns nil for items that cannot be opened.
-    /// Note: Task name returns nil here, but Enter key triggers editing instead.
+    /// Note: Task name and project return nil here, but Enter key triggers editing instead.
     var openURL: URL? {
         switch self {
         case .taskName:
             nil // Task name uses Enter to edit, not open URL
+        case .project:
+            nil // Project uses Enter to edit, not open URL
         case .uuid:
             nil // UUID is not openable
         case let .gitlabMR(link):
@@ -44,6 +51,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
         switch self {
         case let .taskName(summary):
             return summary
+        case let .project(name):
+            return name
         case let .uuid(uuid):
             return uuid
         case let .gitlabMR(link):
@@ -64,6 +73,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
         switch self {
         case .taskName:
             return "Task name"
+        case .project:
+            return "Project"
         case .uuid:
             return "UUID"
         case let .gitlabMR(link):

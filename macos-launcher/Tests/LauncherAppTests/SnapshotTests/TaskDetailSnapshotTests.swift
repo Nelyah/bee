@@ -80,7 +80,8 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             onClose: {},
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
-            annotationEditInput: .constant("")
+            annotationEditInput: .constant(""),
+            projectEditInput: .constant("")
         )
     }
 

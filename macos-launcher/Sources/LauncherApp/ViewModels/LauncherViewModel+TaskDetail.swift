@@ -139,7 +139,7 @@ extension LauncherViewModel {
     // MARK: - Detail Focus Navigation
 
     /// Builds the list of focusable items for the current detail view.
-    /// Order: Task Name → UUID → GitLab MRs → Jira Issues
+    /// Order: Task Name → Project → UUID → GitLab MRs → Jira Issues
     func buildDetailFocusableItems() {
         var items: [DetailFocusableItem] = []
 
@@ -147,11 +147,14 @@ extension LauncherViewModel {
             // 1. Task name is first (at the top of the detail view)
             items.append(.taskName(task.summary))
 
-            // 2. UUID
+            // 2. Project (in metadata section)
+            items.append(.project(task.project ?? ""))
+
+            // 3. UUID
             items.append(.uuid(task.uuid))
         }
 
-        // 3. GitLab MRs
+        // 4. GitLab MRs
         let gitlabLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
         }
@@ -159,7 +162,7 @@ extension LauncherViewModel {
             items.append(.gitlabMR(link))
         }
 
-        // 4. Jira issues
+        // 5. Jira issues
         let jiraLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
         }
@@ -245,6 +248,12 @@ extension LauncherViewModel {
         // Task name: Enter triggers editing instead of opening URL
         if case .taskName = item {
             startEditingTaskName()
+            return true
+        }
+
+        // Project: Enter triggers editing instead of opening URL
+        if case .project = item {
+            startEditingProject()
             return true
         }
 
@@ -401,6 +410,135 @@ extension LauncherViewModel {
                 showToast(message: "Failed to update task name", icon: .warning)
             }
         }
+    }
+
+    // MARK: - Project Editing Methods
+
+    /// Begin editing the project field.
+    func startEditingProject() {
+        guard let task = selectedTask else { return }
+        projectEditInput = task.project ?? ""
+        projectCompletionSelectedIndex = -1
+        isEditingProject = true
+    }
+
+    /// Cancel editing the project.
+    func cancelEditingProject() {
+        isEditingProject = false
+        projectEditInput = ""
+        projectCompletionSelectedIndex = -1
+    }
+
+    /// Filter projects for autocomplete based on current input.
+    var filteredProjects: [CompletionItem] {
+        let input = projectEditInput.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !input.isEmpty else {
+            return completion.projectItems
+        }
+        return completion.projectItems.filter {
+            $0.value.lowercased().contains(input)
+        }
+    }
+
+    /// Select the next project in the autocomplete list.
+    func selectNextProjectCompletion() {
+        guard !filteredProjects.isEmpty else { return }
+        if projectCompletionSelectedIndex < filteredProjects.count - 1 {
+            projectCompletionSelectedIndex += 1
+        } else {
+            projectCompletionSelectedIndex = 0 // Wrap around
+        }
+    }
+
+    /// Select the previous project in the autocomplete list.
+    func selectPreviousProjectCompletion() {
+        guard !filteredProjects.isEmpty else { return }
+        if projectCompletionSelectedIndex > 0 {
+            projectCompletionSelectedIndex -= 1
+        } else {
+            projectCompletionSelectedIndex = filteredProjects.count - 1 // Wrap around
+        }
+    }
+
+    /// Submit the edited project (from autocomplete or typed).
+    func submitProjectEdit() {
+        guard let task = selectedTask else { return }
+
+        // Use selected completion if available, otherwise use typed input
+        let newProject: String = if projectCompletionSelectedIndex >= 0,
+                                    projectCompletionSelectedIndex < filteredProjects.count {
+            filteredProjects[projectCompletionSelectedIndex].value
+        } else {
+            projectEditInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // If unchanged, just cancel
+        let currentProject = task.project ?? ""
+        guard newProject != currentProject else {
+            cancelEditingProject()
+            return
+        }
+
+        isSubmittingProject = true
+
+        Task {
+            defer {
+                isSubmittingProject = false
+            }
+
+            do {
+                // Use null if clearing the project
+                let projectValue: JSONValue = newProject.isEmpty ? .null : .string(newProject)
+                let properties: JSONValue = .object(["project": projectValue])
+                let filter: JSONValue = .object([
+                    "type": .string("UuidFilter"),
+                    "value": .object(["uuid": .string(task.uuid)]),
+                ])
+
+                _ = try await apiClient.runAction(
+                    action: "modify",
+                    properties: properties,
+                    filter: filter
+                )
+
+                // Success - clear state and reload
+                isEditingProject = false
+                projectEditInput = ""
+                projectCompletionSelectedIndex = -1
+                showToast(message: newProject.isEmpty ? "Project cleared" : "Project updated", icon: .success)
+
+                // Update the task in the local list
+                if let idx = tasks.firstIndex(where: { $0.uuid == task.uuid }) {
+                    tasks[idx] = ApiTask(
+                        dbId: task.dbId,
+                        uuid: task.uuid,
+                        status: task.status,
+                        summary: task.summary,
+                        project: newProject.isEmpty ? nil : newProject,
+                        tags: task.tags,
+                        dateCreated: task.dateCreated,
+                        dateCompleted: task.dateCompleted,
+                        dateDue: task.dateDue,
+                        urgency: task.urgency
+                    )
+                }
+
+                // Rebuild focusable items since project changed
+                buildDetailFocusableItems()
+
+                // Refresh the detail view
+                loadTaskDetail(taskUUID: task.uuid)
+            } catch {
+                showToast(message: "Failed to update project", icon: .warning)
+            }
+        }
+    }
+
+    /// Select a project from the autocomplete list and submit immediately.
+    func selectProjectFromCompletion(_ item: CompletionItem) {
+        projectEditInput = item.value
+        projectCompletionSelectedIndex = -1
+        submitProjectEdit()
     }
 
     // MARK: - Annotation Editing Methods

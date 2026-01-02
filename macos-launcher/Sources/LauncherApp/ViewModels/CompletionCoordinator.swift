@@ -27,6 +27,11 @@ final class CompletionCoordinator: ObservableObject {
         cache.projects.map(\.value)
     }
 
+    /// Project completion items from cache.
+    var projectItems: [CompletionItem] {
+        cache.projects
+    }
+
     /// Tag names from completion cache.
     var tagNames: [String] {
         cache.tags.map(\.value)

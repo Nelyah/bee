@@ -226,15 +226,20 @@ final class LauncherViewModelTests: XCTestCase {
 
     func testParseErrorToastIsDebounced() async {
         let mock = MockApiClient()
-        let viewModel = LauncherViewModel(apiClient: mock, unexpectedTokenToastDelay: 0.05)
+        let viewModel = LauncherViewModel(
+            apiClient: mock,
+            unexpectedTokenToastDelay: 0.02,
+            inputDebounceDelay: 0.02
+        )
 
         mock.parseResult = .failure(SampleError(message: "Unexpected token A"))
         viewModel.handleInputChange("a")
-        try? await Task.sleep(for: .milliseconds(20))
+        try? await Task.sleep(for: .milliseconds(10))
 
         mock.parseResult = .failure(SampleError(message: "could not parse the task property expression"))
         viewModel.handleInputChange("ab")
-        try? await Task.sleep(for: .milliseconds(80))
+        // Wait for: input debounce (20ms) + toast delay (20ms) + buffer
+        try? await Task.sleep(for: .milliseconds(60))
 
         XCTAssertEqual(viewModel.toasts.count, 1)
         XCTAssertEqual(viewModel.toasts.first?.message, "could not parse the task property expression")
@@ -242,16 +247,21 @@ final class LauncherViewModelTests: XCTestCase {
 
     func testParseErrorToastWaitsUntilMenuCloses() async {
         let mock = MockApiClient()
-        let viewModel = LauncherViewModel(apiClient: mock, unexpectedTokenToastDelay: 0.05)
+        let viewModel = LauncherViewModel(
+            apiClient: mock,
+            unexpectedTokenToastDelay: 0.02,
+            inputDebounceDelay: 0.02
+        )
         viewModel.completion.showMenu = true
 
         mock.parseResult = .failure(SampleError(message: "parse error"))
         viewModel.handleInputChange("a")
-        try? await Task.sleep(for: .milliseconds(80))
+        // Wait for input debounce + check that toast is deferred
+        try? await Task.sleep(for: .milliseconds(50))
         XCTAssertTrue(viewModel.toasts.isEmpty)
 
         viewModel.clearCompletions()
-        try? await Task.sleep(for: .milliseconds(80))
+        try? await Task.sleep(for: .milliseconds(50))
         XCTAssertEqual(viewModel.toasts.count, 1)
         XCTAssertEqual(viewModel.toasts.first?.message, "parse error")
     }

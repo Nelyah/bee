@@ -175,19 +175,16 @@ extension LauncherViewModel {
             }
             return lhs.status < rhs.status
         case "summary":
-            let lhsSummary = lhs.summary.lowercased()
-            let rhsSummary = rhs.summary.lowercased()
-            if lhsSummary == rhsSummary {
+            let comparison = lhs.summary.localizedCaseInsensitiveCompare(rhs.summary)
+            if comparison == .orderedSame {
                 return lhs.uuid < rhs.uuid
             }
-            return lhsSummary < rhsSummary
+            return comparison == .orderedAscending
         case "project":
             return compareOptionalStrings(lhs.project, rhs.project, tiebreaker: lhs.uuid < rhs.uuid)
         case "tags":
-            // Sort by first tag alphabetically
-            let lhsTag = lhs.tags.first?.lowercased()
-            let rhsTag = rhs.tags.first?.lowercased()
-            return compareOptionalStrings(lhsTag, rhsTag, tiebreaker: lhs.uuid < rhs.uuid)
+            // Sort by first tag alphabetically (case-insensitive)
+            return compareOptionalStrings(lhs.tags.first, rhs.tags.first, tiebreaker: lhs.uuid < rhs.uuid)
         case "date_created":
             // Dates are ISO strings, so string comparison works
             if lhs.dateCreated == rhs.dateCreated {
@@ -225,13 +222,15 @@ extension LauncherViewModel {
     }
 
     /// Compare optional strings case-insensitively, with nil sorting last.
+    /// Uses localizedCaseInsensitiveCompare to avoid string allocations.
     private func compareOptionalStrings(_ lhs: String?, _ rhs: String?, tiebreaker: Bool) -> Bool {
-        switch (lhs?.lowercased(), rhs?.lowercased()) {
+        switch (lhs, rhs) {
         case let (l?, r?):
-            if l == r {
+            let comparison = l.localizedCaseInsensitiveCompare(r)
+            if comparison == .orderedSame {
                 return tiebreaker
             }
-            return l < r
+            return comparison == .orderedAscending
         case (_?, nil):
             return true
         case (nil, _?):

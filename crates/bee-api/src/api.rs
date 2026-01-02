@@ -831,9 +831,12 @@ async fn action_handler(
     let printer = JsonPrinter::new();
     action.do_action(&printer)?;
 
-    DbStore::write_tasks(action.get_tasks()).await?;
-
-    DbStore::log_undo(state.undo_count, action.get_undos().to_owned()).await?;
+    // Skip write_tasks for read-only actions that don't modify tasks
+    let readonly_actions = ["list", "info", "export", "help"];
+    if !readonly_actions.contains(&action_name) {
+        DbStore::write_tasks(action.get_tasks()).await?;
+        DbStore::log_undo(state.undo_count, action.get_undos().to_owned()).await?;
+    }
 
     let tasks = action.get_tasks().to_vec();
     let tasks = tasks.into_iter().map(ApiTask::from_task).collect();

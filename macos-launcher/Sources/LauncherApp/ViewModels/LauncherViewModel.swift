@@ -139,17 +139,20 @@ final class LauncherViewModel: ObservableObject {
             self?.showToast(message: message)
         }
     )
+    private let inputDebouncer: InputDebouncer
 
     init(
         apiClient: ApiClientProtocol = ApiClient(),
         actionService: LauncherActionService? = nil,
         settingsService: SettingsServiceProtocol = UserDefaultsSettingsService(),
-        unexpectedTokenToastDelay: TimeInterval = Constants.defaultUnexpectedTokenToastDelay
+        unexpectedTokenToastDelay: TimeInterval = Constants.defaultUnexpectedTokenToastDelay,
+        inputDebounceDelay: TimeInterval = 0.05
     ) {
         self.apiClient = apiClient
         self.actionService = actionService ?? LauncherActionService(apiClient: apiClient)
         self.settingsService = settingsService
         self.unexpectedTokenToastDelay = unexpectedTokenToastDelay
+        inputDebouncer = InputDebouncer(delay: inputDebounceDelay)
         commandPalette = CommandPaletteCoordinator()
         completion = CompletionCoordinator()
 
@@ -380,7 +383,7 @@ final class LauncherViewModel: ObservableObject {
         }
     }
 
-    /// Handle text input changes and trigger parsing/actions on each keystroke.
+    /// Handle text input changes with debouncing to prevent excessive API calls.
     func handleInputChange(_ newValue: String) {
         if suppressInputHandling {
             return
@@ -389,12 +392,13 @@ final class LauncherViewModel: ObservableObject {
         requestCounter += 1
         let requestId = requestCounter
 
-        logger.debug("Input change -> parse only. id=\(requestId), text=\(newValue, privacy: .private)")
+        logger.debug("Input change -> debounced parse. id=\(requestId), text=\(newValue, privacy: .private)")
         selectedIndex = nil
         mode = .list
         statusMessage = nil
 
-        Task {
+        inputDebouncer.debounce(requestId: requestId) { [weak self] in
+            guard let self else { return }
             await parseOnly(for: newValue, requestId: requestId)
         }
     }

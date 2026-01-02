@@ -69,8 +69,10 @@ enum TaskListCoordinator {
 
         // If strategy doesn't show headers, return flat list sorted
         guard strategy.showsHeaders else {
+            // Pre-compute UUID -> index mapping (O(n)) to avoid O(n²) lookups during sort
+            let indexByUUID = Dictionary(uniqueKeysWithValues: tasks.enumerated().map { ($1.uuid, $0) })
             return sortTasks(tasks, using: taskComparator).map { task in
-                let flatIndex = tasks.firstIndex(where: { $0.uuid == task.uuid }) ?? 0
+                let flatIndex = indexByUUID[task.uuid] ?? 0
                 return .task(GroupedTask(task: task, flatIndex: flatIndex, groupKey: nil))
             }
         }

@@ -58,6 +58,7 @@ class SnapshotTestCase: XCTestCase {
         named name: String? = nil,
         size: CGSize? = nil,
         precision: Float = 0.99,
+        waitForAsync: Bool = false,
         file: StaticString = #file,
         testName: String = #function,
         line: UInt = #line
@@ -69,6 +70,11 @@ class SnapshotTestCase: XCTestCase {
         } else {
             // Use intrinsic content size
             hostView.frame.size = hostView.intrinsicContentSize
+        }
+
+        // Allow async operations (like DispatchQueue.main.async in onAppear) to complete
+        if waitForAsync {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
         }
 
         assertSnapshot(

@@ -384,14 +384,16 @@ final class ScreenshotCatalog: SnapshotTestCase {
     func testCommandPalette_default() {
         viewModel.openCommandPalette()
         let view = CommandPaletteView(viewModel: viewModel, commandPalette: viewModel.commandPalette)
-        assertViewSnapshot(view, size: TestSizes.commandPalette)
+        // waitForAsync: CommandPaletteView uses DispatchQueue.main.async to set focus in onAppear
+        assertViewSnapshot(view, size: TestSizes.commandPalette, waitForAsync: true)
     }
 
     func testCommandPalette_withSearch() {
         viewModel.openCommandPalette()
         viewModel.commandPalette.query = "report"
         let view = CommandPaletteView(viewModel: viewModel, commandPalette: viewModel.commandPalette)
-        assertViewSnapshot(view, size: TestSizes.commandPalette)
+        // waitForAsync: CommandPaletteView uses DispatchQueue.main.async to set focus in onAppear
+        assertViewSnapshot(view, size: TestSizes.commandPalette, waitForAsync: true)
     }
 
     // MARK: - Components

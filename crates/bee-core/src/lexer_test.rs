@@ -244,3 +244,48 @@ fn test_lexer_token_spans() {
     assert_eq!(tok.start, 2);
     assert_eq!(tok.end, 3);
 }
+
+#[test]
+fn test_lexer_case_insensitive_keywords() {
+    // Test that filter keywords are case-insensitive
+
+    // status: variations
+    let mut lexer = Lexer::new("Status:pending".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::FilterStatus);
+
+    let mut lexer = Lexer::new("STATUS:active".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::FilterStatus);
+
+    // project: variations
+    let mut lexer = Lexer::new("Project:work".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::ProjectPrefix);
+
+    let mut lexer = Lexer::new("PROJECT:work".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::ProjectPrefix);
+
+    // due: variations
+    let mut lexer = Lexer::new("Due:tomorrow".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::FilterTokDateDue);
+
+    let mut lexer = Lexer::new("DUE:tomorrow".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::FilterTokDateDue);
+
+    // Operator case variations
+    let mut lexer = Lexer::new("AND".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::OperatorAnd);
+
+    let mut lexer = Lexer::new("Or".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::OperatorOr);
+
+    let mut lexer = Lexer::new("XOR".to_string());
+    let tok = lexer.next_token().unwrap();
+    assert_eq!(tok.token_type, TokenType::OperatorXor);
+}

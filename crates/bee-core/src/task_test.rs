@@ -549,3 +549,89 @@ fn test_task_delete_with_valid_uuid_succeeds() {
         TaskStatus::Deleted
     );
 }
+
+#[test]
+fn test_compute_urgency_deleted_task_returns_none() {
+    let mut task = Task {
+        status: TaskStatus::Deleted,
+        ..Default::default()
+    };
+
+    let result = task.compute_urgency();
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+    assert!(
+        task.urgency.is_none(),
+        "Deleted tasks should have urgency = None"
+    );
+}
+
+#[test]
+fn test_compute_urgency_completed_task_returns_none() {
+    let mut task = Task {
+        status: TaskStatus::Completed,
+        ..Default::default()
+    };
+
+    let result = task.compute_urgency();
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+    assert!(
+        task.urgency.is_none(),
+        "Completed tasks should have urgency = None"
+    );
+}
+
+#[test]
+fn test_apply_properties_to_deleted_task_succeeds() {
+    let mut task = Task {
+        status: TaskStatus::Deleted,
+        summary: "Original".to_string(),
+        ..Default::default()
+    };
+
+    let props = TaskProperties {
+        summary: Some("Updated".to_string()),
+        ..Default::default()
+    };
+
+    let result = task.apply(&props);
+
+    assert!(
+        result.is_ok(),
+        "Applying properties to deleted task should succeed"
+    );
+    assert_eq!(task.summary, "Updated");
+    assert!(
+        task.urgency.is_none(),
+        "Deleted task should still have urgency = None"
+    );
+}
+
+#[test]
+fn test_apply_properties_to_completed_task_succeeds() {
+    let mut task = Task {
+        status: TaskStatus::Completed,
+        summary: "Original".to_string(),
+        ..Default::default()
+    };
+
+    let props = TaskProperties {
+        summary: Some("Updated".to_string()),
+        ..Default::default()
+    };
+
+    let result = task.apply(&props);
+
+    assert!(
+        result.is_ok(),
+        "Applying properties to completed task should succeed"
+    );
+    assert_eq!(task.summary, "Updated");
+    assert!(
+        task.urgency.is_none(),
+        "Completed task should still have urgency = None"
+    );
+}

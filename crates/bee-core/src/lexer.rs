@@ -211,13 +211,14 @@ impl Lexer {
         false
     }
 
-    // Method to match a specific keyword without consuming the input
+    // Method to match a specific keyword without consuming the input (case-insensitive)
     fn match_keyword(&self, word: &str) -> bool {
         self.input
             .graphemes(true)
             .skip(self.position)
             .collect::<String>()
-            .starts_with(word)
+            .to_lowercase()
+            .starts_with(&word.to_lowercase())
     }
 
     fn read_next_word(&mut self) -> String {

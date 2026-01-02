@@ -270,8 +270,11 @@ impl Task {
     }
 
     pub fn compute_urgency(&mut self) -> CoreResult<i64> {
-        if self.status == TaskStatus::Deleted {
-            return Err(CoreError::task("Cannot compute urgency for deleted task"));
+        // Urgency only makes sense for actionable tasks (pending, active, blocked)
+        // Deleted and completed tasks have no urgency
+        if self.status == TaskStatus::Deleted || self.status == TaskStatus::Completed {
+            self.urgency = None;
+            return Ok(0);
         }
 
         let active_status_coef: i64 = 2;

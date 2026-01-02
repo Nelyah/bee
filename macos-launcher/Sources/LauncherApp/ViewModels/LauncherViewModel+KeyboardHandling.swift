@@ -24,7 +24,7 @@ extension LauncherViewModel {
         }
 
         // Cancel annotation editing if active
-        if editingAnnotationIndex != nil {
+        if editingAnnotationId != nil {
             cancelEditingAnnotation()
             return true
         }

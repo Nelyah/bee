@@ -90,8 +90,9 @@ final class LauncherViewModel: ObservableObject {
     @Published var taskNameEditInput: String = ""
     /// Whether a task name submission is in progress.
     @Published var isSubmittingTaskName: Bool = false
-    /// Index of the annotation being edited (nil = not editing any annotation).
-    @Published var editingAnnotationIndex: Int?
+    /// ID of the annotation being edited (nil = not editing any annotation).
+    /// Using ID instead of index avoids mismatch when annotations are sorted for display.
+    @Published var editingAnnotationId: String?
     /// The text currently being entered for the annotation edit.
     @Published var annotationEditInput: String = ""
     /// Whether an annotation edit submission is in progress.
@@ -240,10 +241,10 @@ final class LauncherViewModel: ObservableObject {
         let isEditingPublisher = Publishers.CombineLatest3(
             $isEditingTaskName,
             $isAddingAnnotation,
-            $editingAnnotationIndex
+            $editingAnnotationId
         )
-        .map { isEditingTaskName, isAddingAnnotation, editingAnnotationIndex in
-            isEditingTaskName || isAddingAnnotation || editingAnnotationIndex != nil
+        .map { isEditingTaskName, isAddingAnnotation, editingAnnotationId in
+            isEditingTaskName || isAddingAnnotation || editingAnnotationId != nil
         }
 
         Publishers.CombineLatest(

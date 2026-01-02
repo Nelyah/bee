@@ -65,11 +65,11 @@ struct ContentView: View {
                         viewModel.cancelEditingTaskName()
                     },
                     // Annotation editing
-                    editingAnnotationIndex: viewModel.editingAnnotationIndex,
+                    editingAnnotationId: viewModel.editingAnnotationId,
                     annotationEditInput: $viewModel.annotationEditInput,
                     isSubmittingAnnotationEdit: viewModel.isSubmittingAnnotationEdit,
-                    onStartEditingAnnotation: { index in
-                        viewModel.startEditingAnnotation(at: index)
+                    onStartEditingAnnotation: { annotationId in
+                        viewModel.startEditingAnnotation(withId: annotationId)
                     },
                     onSubmitAnnotationEdit: {
                         viewModel.submitAnnotationEdit()

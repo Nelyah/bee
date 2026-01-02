@@ -397,19 +397,22 @@ extension LauncherViewModel {
 
     // MARK: - Annotation Editing Methods
 
-    /// Begin editing an existing annotation at the given index.
-    func startEditingAnnotation(at index: Int) {
+    /// Begin editing an existing annotation by its ID.
+    ///
+    /// Using ID instead of index avoids mismatch when annotations are sorted for display.
+    /// The annotation ID is computed as "time-value".
+    func startEditingAnnotation(withId id: String) {
         guard let detail = taskDetailState.detail,
-              index >= 0, index < detail.annotations.count
+              let annotation = detail.annotations.first(where: { $0.id == id })
         else { return }
 
-        annotationEditInput = detail.annotations[index].value
-        editingAnnotationIndex = index
+        annotationEditInput = annotation.value
+        editingAnnotationId = id
     }
 
     /// Cancel editing an annotation.
     func cancelEditingAnnotation() {
-        editingAnnotationIndex = nil
+        editingAnnotationId = nil
         annotationEditInput = ""
     }
 
@@ -417,19 +420,19 @@ extension LauncherViewModel {
     func submitAnnotationEdit() {
         guard let task = selectedTask,
               let detail = taskDetailState.detail,
-              let editIndex = editingAnnotationIndex,
-              editIndex >= 0, editIndex < detail.annotations.count
+              let editId = editingAnnotationId,
+              let annotation = detail.annotations.first(where: { $0.id == editId })
         else {
             cancelEditingAnnotation()
             return
         }
 
         let newValue = annotationEditInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        let originalValue = detail.annotations[editIndex].value
+        let originalValue = annotation.value
 
         // If empty, treat as delete
         if newValue.isEmpty {
-            deleteAnnotation(at: editIndex)
+            deleteAnnotation(withId: editId)
             return
         }
 
@@ -449,8 +452,8 @@ extension LauncherViewModel {
             do {
                 // Build the updated annotations array
                 var updatedAnnotations: [[String: JSONValue]] = []
-                for (idx, ann) in detail.annotations.enumerated() {
-                    let value = idx == editIndex ? newValue : ann.value
+                for ann in detail.annotations {
+                    let value = ann.id == editId ? newValue : ann.value
                     updatedAnnotations.append([
                         "value": .string(value),
                         "time": .string(ann.time),
@@ -472,7 +475,7 @@ extension LauncherViewModel {
                 )
 
                 // Success
-                editingAnnotationIndex = nil
+                editingAnnotationId = nil
                 annotationEditInput = ""
                 showToast(message: "Annotation updated", icon: .success)
 
@@ -483,16 +486,16 @@ extension LauncherViewModel {
         }
     }
 
-    /// Delete an annotation at the given index.
-    func deleteAnnotation(at index: Int) {
+    /// Delete an annotation by its ID.
+    func deleteAnnotation(withId id: String) {
         guard let task = selectedTask,
               let detail = taskDetailState.detail,
-              index >= 0, index < detail.annotations.count
+              detail.annotations.contains(where: { $0.id == id })
         else { return }
 
         // Clear edit state if we're deleting the one being edited
-        if editingAnnotationIndex == index {
-            editingAnnotationIndex = nil
+        if editingAnnotationId == id {
+            editingAnnotationId = nil
             annotationEditInput = ""
         }
 
@@ -506,7 +509,7 @@ extension LauncherViewModel {
             do {
                 // Build annotations array without the deleted one
                 var updatedAnnotations: [[String: JSONValue]] = []
-                for (idx, ann) in detail.annotations.enumerated() where idx != index {
+                for ann in detail.annotations where ann.id != id {
                     updatedAnnotations.append([
                         "value": .string(ann.value),
                         "time": .string(ann.time),

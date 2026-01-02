@@ -587,6 +587,56 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(uuidValue, "test-task-uuid")
     }
 
+    // MARK: - Annotation Editing Tests
+
+    /// Test that editing annotation by ID correctly loads the annotation content.
+    ///
+    /// Previously, clicking on the 2nd annotation would load the 1st annotation's
+    /// content when annotations were sorted for display. Using ID-based editing
+    /// (instead of index-based) fixes this.
+    func testStartEditingAnnotationByIdLoadsCorrectContent() {
+        let viewModel = LauncherViewModel()
+        viewModel.tasks = [makeTask(id: "task-uuid")]
+        viewModel.selectedIndex = 0
+        viewModel.mode = .detail
+
+        // Create two annotations with different times
+        let olderAnnotation = TestHelpers.makeAnnotation(value: "Older note", time: "2024-01-01T10:00:00Z")
+        let newerAnnotation = TestHelpers.makeAnnotation(value: "Newer note", time: "2024-01-02T10:00:00Z")
+
+        let detail = TestHelpers.makeTaskDetail(
+            id: "task-uuid",
+            annotations: [olderAnnotation, newerAnnotation]
+        )
+        viewModel.taskDetailState.detail = detail
+        viewModel.taskDetailState.taskUUID = "task-uuid"
+
+        // When user clicks on "Older note", we pass its ID (regardless of display order)
+        let olderAnnotationId = olderAnnotation.id
+        viewModel.startEditingAnnotation(withId: olderAnnotationId)
+
+        // Should load the correct annotation's content
+        XCTAssertEqual(
+            viewModel.annotationEditInput,
+            "Older note",
+            "startEditingAnnotation(withId:) should load the annotation with matching ID"
+        )
+        XCTAssertEqual(viewModel.editingAnnotationId, olderAnnotationId)
+
+        // Reset and test with the other annotation
+        viewModel.cancelEditingAnnotation()
+
+        let newerAnnotationId = newerAnnotation.id
+        viewModel.startEditingAnnotation(withId: newerAnnotationId)
+
+        XCTAssertEqual(
+            viewModel.annotationEditInput,
+            "Newer note",
+            "startEditingAnnotation(withId:) should load the correct annotation"
+        )
+        XCTAssertEqual(viewModel.editingAnnotationId, newerAnnotationId)
+    }
+
     // MARK: - Column Reorder Tests
 
     func testReorderColumnMovesForward() {

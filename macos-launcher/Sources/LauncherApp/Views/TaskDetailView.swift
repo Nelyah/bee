@@ -45,14 +45,15 @@ struct TaskDetailView: View {
 
     // MARK: - Annotation Editing
 
-    /// Index of the annotation being edited (nil = not editing).
-    var editingAnnotationIndex: Int?
+    /// ID of the annotation being edited (nil = not editing).
+    /// Uses annotation ID instead of index to avoid mismatch when annotations are sorted.
+    var editingAnnotationId: String?
     /// Binding to the annotation edit input.
     @Binding var annotationEditInput: String
     /// Whether annotation edit submission is in progress.
     var isSubmittingAnnotationEdit: Bool = false
-    /// Called when the user clicks on an annotation to edit it.
-    var onStartEditingAnnotation: (Int) -> Void = { _ in }
+    /// Called when the user clicks on an annotation to edit it (passes annotation ID).
+    var onStartEditingAnnotation: (String) -> Void = { _ in }
     /// Called when the user submits the annotation edit.
     var onSubmitAnnotationEdit: () -> Void = {}
     /// Called when the user cancels the annotation edit.
@@ -265,8 +266,8 @@ struct TaskDetailView: View {
                         .font(.system(size: DesignTokens.TypeScale.body, weight: .medium))
                         .foregroundColor(ThemeManager.current.overlay0)
                 } else {
-                    ForEach(Array(annotations.enumerated()), id: \.element.id) { index, annotation in
-                        if editingAnnotationIndex == index {
+                    ForEach(annotations) { annotation in
+                        if editingAnnotationId == annotation.id {
                             // Edit mode for this annotation
                             ExpandingTextEditor(
                                 text: $annotationEditInput,
@@ -280,7 +281,7 @@ struct TaskDetailView: View {
                             EditableTimelineRow(
                                 timestamp: annotation.time,
                                 value: annotation.value,
-                                onTap: { onStartEditingAnnotation(index) }
+                                onTap: { onStartEditingAnnotation(annotation.id) }
                             )
                         }
                     }

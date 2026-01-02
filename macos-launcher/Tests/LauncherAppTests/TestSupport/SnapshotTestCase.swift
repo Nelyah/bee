@@ -58,7 +58,6 @@ class SnapshotTestCase: XCTestCase {
         named name: String? = nil,
         size: CGSize? = nil,
         precision: Float = 0.99,
-        waitForAsync: Bool = false,
         file: StaticString = #file,
         testName: String = #function,
         line: UInt = #line
@@ -72,10 +71,10 @@ class SnapshotTestCase: XCTestCase {
             hostView.frame.size = hostView.intrinsicContentSize
         }
 
-        // Allow async operations (like DispatchQueue.main.async in onAppear) to complete
-        if waitForAsync {
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
-        }
+        // Allow async operations (like DispatchQueue.main.async in onAppear) to complete.
+        // This ensures consistent snapshots by letting the run loop process pending work
+        // before capturing. Essential for views using async dispatch in lifecycle handlers.
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
 
         assertSnapshot(
             of: hostView,

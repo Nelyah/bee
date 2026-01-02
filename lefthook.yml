@@ -1,3 +1,8 @@
+# Only show failures and final summary (hide verbose success output)
+output:
+  - failure
+  - summary
+
 pre-commit:
   parallel: true
   commands:

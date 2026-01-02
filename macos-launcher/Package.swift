@@ -27,6 +27,9 @@ let package = Package(
                 "LauncherApp",
                 "ViewInspector",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            ],
+            exclude: [
+                "SnapshotTests/__Snapshots__",
             ]
         ),
     ]

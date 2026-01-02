@@ -46,7 +46,8 @@ struct ColumnHeaderRow: View {
                     index: index,
                     totalCount: columnConfigs.count,
                     sortDirection: sortDirection(for: config.key),
-                    showResizeHandle: !config.isFlex && index < columnConfigs.count - 1,
+                    showSeparator: index < columnConfigs.count - 1,
+                    allowResize: !config.isFlex && index < columnConfigs.count - 1,
                     isDragging: draggedColumn == config.key,
                     isDropTarget: dropTargetIndex == index,
                     onTap: { onSort(config.key) },
@@ -103,7 +104,8 @@ private struct DraggableColumnHeader: View {
     let index: Int
     let totalCount: Int
     let sortDirection: ColumnSortDirection?
-    let showResizeHandle: Bool
+    let showSeparator: Bool
+    let allowResize: Bool
     let isDragging: Bool
     let isDropTarget: Bool
     let onTap: () -> Void
@@ -118,7 +120,8 @@ private struct DraggableColumnHeader: View {
         ResizableColumnHeader(
             config: config,
             sortDirection: sortDirection,
-            showResizeHandle: showResizeHandle,
+            showSeparator: showSeparator,
+            allowResize: allowResize,
             onTap: onTap,
             onResize: onResize,
             onResizeEnd: onResizeEnd
@@ -167,11 +170,12 @@ private struct DraggableColumnHeader: View {
 
 // MARK: - Resizable Column Header
 
-/// A column header with an optional resize handle on the right edge.
+/// A column header with an optional separator/resize handle on the right edge.
 private struct ResizableColumnHeader: View {
     let config: ColumnConfig
     let sortDirection: ColumnSortDirection?
-    let showResizeHandle: Bool
+    let showSeparator: Bool
+    let allowResize: Bool
     let onTap: () -> Void
     let onResize: (CGFloat) -> Void
     var onResizeEnd: (() -> Void)?
@@ -184,11 +188,33 @@ private struct ResizableColumnHeader: View {
                 onTap: onTap
             )
 
-            if showResizeHandle {
+            if showSeparator {
                 Spacer(minLength: 0)
-                ResizeHandle(onResize: onResize, onResizeEnd: onResizeEnd)
+                if allowResize {
+                    ResizeHandle(onResize: onResize, onResizeEnd: onResizeEnd)
+                } else {
+                    // Visual-only separator for flex columns (not interactive)
+                    SeparatorLine()
+                }
             }
         }
+    }
+}
+
+// MARK: - Separator Line
+
+/// A non-interactive visual separator line between columns.
+private struct SeparatorLine: View {
+    var body: some View {
+        Rectangle()
+            .fill(ThemeManager.current.surface1)
+            .frame(width: ColumnHeaderLayout.resizeHandleVisibleWidth)
+            .frame(height: ColumnHeaderLayout.resizeHandleHeight)
+            .padding(
+                .horizontal,
+                (ColumnHeaderLayout.resizeHandleWidth - ColumnHeaderLayout.resizeHandleVisibleWidth) / 2
+            )
+            .frame(width: ColumnHeaderLayout.resizeHandleWidth, height: ColumnHeaderLayout.resizeHandleHitboxHeight)
     }
 }
 

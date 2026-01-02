@@ -578,7 +578,6 @@ final class LauncherViewModel: ObservableObject {
         clearCompletions()
         suppressInputHandling = false
     }
-
 }
 
 // MARK: - Supporting Types

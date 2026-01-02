@@ -112,7 +112,9 @@ struct ExpandingTextEditor: View {
 
 #Preview("With Text") {
     ExpandingTextEditor(
-        text: .constant("This is a longer annotation that might span multiple lines when the content is extensive enough to wrap."),
+        text: .constant(
+            "This is a longer annotation that might span multiple lines when the content is extensive enough to wrap."
+        ),
         placeholder: "Enter annotation...",
         isSubmitting: false,
         onSubmit: {},

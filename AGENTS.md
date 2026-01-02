@@ -41,6 +41,29 @@ Guidance for Codex when working in this repository.
 
 - Initialise Serena and figure out what it can do
 
+## Token Optimization (IMPORTANT)
+
+These patterns save significant tokens. Follow them strictly:
+
+1. **Use the Explore agent for open-ended code discovery:**
+   - When: "Where is X handled?", "How does Y work?", "Find all places that do Z"
+   - Use: `Task(subagent_type="Explore", prompt="Find where...")`
+   - Why: Search-and-read cycle stays in separate context, only answer returns
+
+2. **Use line-limited file reads:**
+   - When: You know approximately where content is (e.g., after a Grep)
+   - Use: `Read(file_path, offset=LINE-10, limit=50)` instead of reading entire file
+   - First use `Grep(pattern, output_mode="content", -n=true)` to find line numbers
+
+3. **Use Serena symbolic tools for code symbols:**
+   - When: Finding classes, functions, methods
+   - Use: `mcp__serena__find_symbol(name_path, include_body=true)`
+   - Why: Returns just the symbol, not the whole file
+
+4. **Check Serena memories before exploring:**
+   - Run `mcp__serena__list_memories` at session start
+   - Read relevant memories like `token_optimization_patterns`, `project_overview`
+
 ## Quick start
 ```bash
 # Build the workspace

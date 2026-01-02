@@ -11,7 +11,9 @@ use chrono::{DateTime, Duration, Local, Utc};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
-use std::{env, fmt};
+use std::{env, fmt, sync::Arc};
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 use tokio::time::{Duration as TokioDuration, sleep};
 use url::Url;
 use uuid::Uuid;
@@ -197,6 +199,7 @@ pub async fn fetch_recent_gitlab_merge_requests(
     config: &ExternalLinksConfig,
     limit: usize,
 ) -> ApiResult<Vec<GitlabMergeRequestDto>> {
+    const MAX_GITLAB_APPROVAL_CONCURRENCY: usize = 5;
     let cfg = config
         .gitlab
         .as_ref()
@@ -251,7 +254,18 @@ pub async fn fetch_recent_gitlab_merge_requests(
     let raw: Vec<GitlabMergeRequestRaw> = serde_json::from_str(&body)
         .map_err(|e| ApiError::external_link(format!("Invalid GitLab merge request JSON: {e}")))?;
 
-    let mut results = Vec::with_capacity(raw.len());
+    struct PreparedMergeRequest {
+        iid: i64,
+        title: String,
+        web_url: String,
+        project_path: String,
+        state: String,
+        user_notes_count: Option<i64>,
+        pipeline_status: Option<String>,
+        updated_at: DateTime<Local>,
+    }
+
+    let mut prepared = Vec::with_capacity(raw.len());
     for item in raw {
         let updated = match DateTime::parse_from_rfc3339(&item.updated_at) {
             Ok(value) => value,
@@ -267,28 +281,74 @@ pub async fn fetch_recent_gitlab_merge_requests(
                     .as_ref()
                     .and_then(|pipeline| pipeline.status.clone())
             });
-        let approved = if project_path.is_empty() {
-            None
-        } else {
-            (fetch_gitlab_approval_status(client, &base, token.as_str(), &project_path, item.iid)
-                .await)
-                .unwrap_or_default()
-        };
 
-        if cfg.min_delay_ms > 0 {
-            sleep(TokioDuration::from_millis(cfg.min_delay_ms)).await;
-        }
-
-        results.push(GitlabMergeRequestDto {
+        prepared.push(PreparedMergeRequest {
             iid: item.iid,
             title: item.title,
             web_url: item.web_url,
             project_path,
             state: item.state,
             user_notes_count: item.user_notes_count,
-            approved,
             pipeline_status,
             updated_at: updated.with_timezone(&Local),
+        });
+    }
+
+    let mut approvals = vec![None; prepared.len()];
+    let semaphore = Arc::new(Semaphore::new(MAX_GITLAB_APPROVAL_CONCURRENCY.max(1)));
+    let mut join_set = JoinSet::new();
+    let base = base.to_string();
+    let token = token.to_string();
+
+    for (index, item) in prepared.iter().enumerate() {
+        if item.project_path.is_empty() {
+            continue;
+        }
+        let client = client.clone();
+        let base = base.clone();
+        let token = token.clone();
+        let project_path = item.project_path.clone();
+        let iid = item.iid;
+        let semaphore = Arc::clone(&semaphore);
+        let min_delay_ms = cfg.min_delay_ms;
+        let stagger_delay_ms = if min_delay_ms > 0 {
+            min_delay_ms.saturating_mul((index % MAX_GITLAB_APPROVAL_CONCURRENCY.max(1)) as u64)
+        } else {
+            0
+        };
+
+        join_set.spawn(async move {
+            let _permit = semaphore.acquire_owned().await.ok();
+            if stagger_delay_ms > 0 {
+                sleep(TokioDuration::from_millis(stagger_delay_ms)).await;
+            }
+            let approved = fetch_gitlab_approval_status(&client, &base, &token, &project_path, iid)
+                .await
+                .unwrap_or_default();
+            (index, approved)
+        });
+    }
+
+    while let Some(result) = join_set.join_next().await {
+        if let Ok((index, approved)) = result
+            && let Some(slot) = approvals.get_mut(index)
+        {
+            *slot = approved;
+        }
+    }
+
+    let mut results = Vec::with_capacity(prepared.len());
+    for (index, item) in prepared.into_iter().enumerate() {
+        results.push(GitlabMergeRequestDto {
+            iid: item.iid,
+            title: item.title,
+            web_url: item.web_url,
+            project_path: item.project_path,
+            state: item.state,
+            user_notes_count: item.user_notes_count,
+            approved: approvals.get(index).copied().unwrap_or_default(),
+            pipeline_status: item.pipeline_status,
+            updated_at: item.updated_at,
         });
     }
 

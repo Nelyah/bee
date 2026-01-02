@@ -360,7 +360,8 @@ enum CriteriaChipBuilder {
     }
 
     private static func handleTaskIdFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
-        let id = obj["id"]?.stringValue ?? obj["id"]?.numberValue.map { String(Int($0)) } ?? "id"
+        // Check numberValue first to format integers correctly (avoiding "1.0" display)
+        let id = obj["id"]?.numberValue.map { String(Int($0)) } ?? obj["id"]?.stringValue ?? "id"
         return [CriteriaChip(kind: .filter, label: "ID: \(id)", systemImage: "number", tone: .rosewater)]
     }
 

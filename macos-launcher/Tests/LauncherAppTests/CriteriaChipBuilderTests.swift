@@ -67,4 +67,30 @@ final class CriteriaChipBuilderTests: XCTestCase {
         XCTAssertTrue(chips.contains { $0.label == "Status: completed" })
         XCTAssertTrue(chips.contains { $0.label == "Text: foo" })
     }
+
+    func testTaskIdFilterDisplaysIntegerWithoutDecimals() {
+        // Task ID should display as "1" not "1.0"
+        let taskIdFilter: JSONValue = .object([
+            "type": .string("TaskIdFilter"),
+            "id": .number(1),
+        ])
+
+        let chips = CriteriaChipBuilder.filterChips(from: taskIdFilter)
+
+        XCTAssertEqual(chips.count, 1)
+        XCTAssertEqual(chips.first?.label, "ID: 1")
+    }
+
+    func testTaskIdFilterWithStringValue() {
+        // Task ID can also come as a string
+        let taskIdFilter: JSONValue = .object([
+            "type": .string("TaskIdFilter"),
+            "id": .string("42"),
+        ])
+
+        let chips = CriteriaChipBuilder.filterChips(from: taskIdFilter)
+
+        XCTAssertEqual(chips.count, 1)
+        XCTAssertEqual(chips.first?.label, "ID: 42")
+    }
 }

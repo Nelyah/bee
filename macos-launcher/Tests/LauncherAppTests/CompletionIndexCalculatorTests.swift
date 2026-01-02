@@ -13,7 +13,7 @@ final class CompletionIndexCalculatorTests: XCTestCase {
         let name: String
 
         init(_ name: String) {
-            self.id = name
+            id = name
             self.name = name
         }
     }

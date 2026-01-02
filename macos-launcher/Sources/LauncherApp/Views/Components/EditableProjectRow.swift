@@ -36,7 +36,7 @@ struct EditableProjectRow: View {
                         onSelect: onSelectCompletion,
                         theme: .default,
                         minWidth: 200,
-                        minHeight: 200,
+                        minHeight: 100,
                         maxHeight: 200
                     )
                     .disabled(isSubmitting)

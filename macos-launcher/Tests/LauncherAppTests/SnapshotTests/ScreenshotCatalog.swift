@@ -397,7 +397,15 @@ final class ScreenshotCatalog: SnapshotTestCase {
         var linksState = ExternalLinksState()
         linksState.taskUUID = task.uuid
         linksState.links = MockApiClient.sampleExternalLinks
-        let sampleProjects = TestHelpers.makeCompletionItems(["learning", "leetcode", "legacy-api"])
+        let sampleProjects = TestHelpers.makeCompletionItems([
+            "work",
+            "personal",
+            "hobby",
+            "home",
+            "health",
+            "hobbies-misc",
+            "homework",
+        ])
         let view = TaskDetailView(
             task: task,
             detailState: detailState,
@@ -412,9 +420,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             isEditingProject: true,
-            projectEditInput: .constant("learn"),
-            filteredProjects: sampleProjects,
-            projectCompletionSelectedIndex: 0
+            projectEditInput: .constant("hobby"),
+            filteredProjects: sampleProjects
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)

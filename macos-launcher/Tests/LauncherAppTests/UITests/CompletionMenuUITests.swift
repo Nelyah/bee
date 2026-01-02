@@ -161,4 +161,36 @@ final class CompletionMenuUITests: XCTestCase {
         _ = try view.find(text: "item-1")
         _ = try view.find(text: "item-10")
     }
+
+    // MARK: - Fuzzy Matching Integration Tests
+
+    func testFuzzyMatchingPrioritizesExactMatch() throws {
+        // Many project values including "work" and "hobby"
+        let items = TestHelpers.makeCompletionItems([
+            "work",
+            "personal",
+            "hobby",
+            "home",
+            "health",
+            "hobbies-misc",
+            "homework",
+        ])
+
+        // Simulate fuzzy matching with query "hobby"
+        let query = "hobby"
+        let matches: [FuzzyMatchedItem<CompletionItem>] = items.compactMap { item in
+            guard let match = FuzzyMatcher.match(query, in: item.value) else {
+                return nil
+            }
+            return FuzzyMatchedItem(item: item, match: match)
+        }.sorted { $0.match.score > $1.match.score }
+
+        // First match should be "hobby" (exact match)
+        XCTAssertFalse(matches.isEmpty, "Should have matches")
+        XCTAssertEqual(matches.first?.item.value, "hobby", "First match should be exact 'hobby'")
+
+        // "work" should NOT be in results (no 'h' in work)
+        let workMatch = matches.first { $0.item.value == "work" }
+        XCTAssertNil(workMatch, "'work' should not match 'hobby' query")
+    }
 }

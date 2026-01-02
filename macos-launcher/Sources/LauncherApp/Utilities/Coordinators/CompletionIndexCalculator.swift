@@ -93,7 +93,7 @@ enum CompletionIndexCalculator {
     ///   - index: The index to validate
     ///   - items: The array being indexed
     /// - Returns: true if the index is within bounds
-    static func isValidIndex<T>(_ index: Int, for items: [T]) -> Bool {
+    static func isValidIndex(_ index: Int, for items: [some Any]) -> Bool {
         items.indices.contains(index)
     }
 }

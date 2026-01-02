@@ -103,8 +103,6 @@ final class LauncherViewModel: ObservableObject {
     @Published var projectEditInput: String = ""
     /// Whether a project submission is in progress.
     @Published var isSubmittingProject: Bool = false
-    /// Index of selected project in autocomplete dropdown (-1 = none).
-    @Published var projectCompletionSelectedIndex: Int = -1
 
     // MARK: - Project Scope State
 

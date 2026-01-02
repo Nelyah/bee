@@ -69,8 +69,6 @@ struct TaskDetailView: View {
     var isSubmittingProject: Bool = false
     /// Filtered project completions for autocomplete.
     var filteredProjects: [CompletionItem] = []
-    /// Selected index in project autocomplete list.
-    var projectCompletionSelectedIndex: Int = -1
     /// Called when the user clicks on the project to edit it.
     var onStartEditingProject: () -> Void = {}
     /// Called when the user submits the project edit.

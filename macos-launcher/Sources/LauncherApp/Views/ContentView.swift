@@ -82,7 +82,6 @@ struct ContentView: View {
                     projectEditInput: $viewModel.projectEditInput,
                     isSubmittingProject: viewModel.isSubmittingProject,
                     filteredProjects: viewModel.filteredProjects,
-                    projectCompletionSelectedIndex: viewModel.projectCompletionSelectedIndex,
                     onStartEditingProject: {
                         viewModel.startEditingProject()
                     },

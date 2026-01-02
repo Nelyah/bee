@@ -10,59 +10,80 @@ struct FuzzyMatch {
     let matchedIndices: [Int]
 }
 
-/// Provides fuzzy string matching and highlighting capabilities.
+/// Provides fuzzy string matching using the fzy algorithm.
+///
+/// The fzy algorithm is a battle-tested fuzzy matching algorithm used by
+/// command-line fuzzy finders like fzy and fzf. It uses a two-phase approach:
+///
+/// 1. **Matching Phase**: Determines if all query characters exist in the
+///    target string in order (case-insensitive). If any character is missing
+///    or out of order, there's no match.
+///
+/// 2. **Scoring Phase**: Uses dynamic programming to find the optimal positions
+///    for matched characters, maximizing the score based on:
+///    - Consecutive character matches (biggest bonus)
+///    - Matches at word boundaries (/, space, _, -, .)
+///    - CamelCase transitions
+///    - Matches at the start of the string
+///
+/// Reference: https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md
 enum FuzzyMatcher {
+    // MARK: - Scoring Constants
+
+    /// Scoring constants based on the fzy algorithm.
+    private enum Score {
+        /// Base score for each matched character.
+        static let match: Double = 16.0
+
+        /// Penalty for starting a gap (non-consecutive match).
+        static let gapStart: Double = -3.0
+
+        /// Penalty for each additional character in a gap.
+        static let gapExtend: Double = -1.0
+
+        /// Bonus for matching the first character of the target.
+        static let bonusFirstChar: Double = 16.0
+
+        /// Bonus for matching after a word boundary character.
+        static let bonusBoundary: Double = 8.0
+
+        /// Bonus for matching a CamelCase transition.
+        static let bonusCamel: Double = 7.0
+
+        /// Bonus for consecutive character matches.
+        static let bonusConsecutive: Double = 4.0
+    }
+
+    // MARK: - Public API
+
     /// Performs fuzzy matching of a query against a target string.
     ///
-    /// Scoring factors:
-    /// - Consecutive character matches (higher weight)
-    /// - Early matches in the string (higher weight)
-    /// - Match density (percentage of query characters found)
+    /// The algorithm requires all query characters to be present in the target
+    /// in the same order. Characters can be skipped in the target (fuzzy match),
+    /// but all query characters must match exactly.
     ///
     /// - Parameters:
-    ///   - query: The search string
-    ///   - target: The string to search within
-    /// - Returns: A `FuzzyMatch` if the query matches, otherwise `nil`
+    ///   - query: The search string (what the user typed)
+    ///   - target: The string to search within (e.g., a project name)
+    /// - Returns: A `FuzzyMatch` if all query chars are found in order, otherwise `nil`
     static func match(_ query: String, in target: String) -> FuzzyMatch? {
+        // Empty query matches everything with perfect score
         guard !query.isEmpty else {
-            // Empty query matches everything with perfect score
             return FuzzyMatch(score: 1.0, matchedIndices: [])
         }
 
-        let queryChars = Array(query.lowercased())
-        let targetChars = Array(target.lowercased())
-
-        var matchedIndices: [Int] = []
-        var queryIndex = 0
-
-        // Find all query characters in target (in order)
-        for (targetIndex, targetChar) in targetChars.enumerated() {
-            guard queryIndex < queryChars.count else { break }
-
-            if targetChar == queryChars[queryIndex] {
-                matchedIndices.append(targetIndex)
-                queryIndex += 1
-            }
-        }
-
-        // If not all query characters were found, no match
-        guard queryIndex == queryChars.count else {
+        // Phase 1: Check if all query characters exist in target (in order)
+        guard hasSubsequence(query, in: target) else {
             return nil
         }
 
-        // Calculate score based on multiple factors
-        let score = calculateScore(
-            matchedIndices: matchedIndices,
-            targetLength: targetChars.count,
-            queryLength: queryChars.count
-        )
+        // Phase 2: Calculate optimal score using dynamic programming
+        let (score, indices) = calculateOptimalMatch(query: query, target: target)
 
-        // Reject poor matches (less than 40% quality)
-        guard score >= 0.4 else {
-            return nil
-        }
+        // Normalize score to 0.0-1.0 range
+        let normalizedScore = normalizeScore(score, queryLength: query.count, targetLength: target.count)
 
-        return FuzzyMatch(score: score, matchedIndices: matchedIndices)
+        return FuzzyMatch(score: normalizedScore, matchedIndices: indices)
     }
 
     /// Creates highlighted text with matched characters styled distinctly.
@@ -94,13 +115,15 @@ enum FuzzyMatcher {
 
             if matchSet.contains(index) {
                 // Matched character: bold + underline + match color
-                result += charText
+                // swiftlint:disable:next shorthand_operator
+                result = result + charText
                     .fontWeight(matchWeight)
                     .underline()
                     .foregroundColor(matchColor)
             } else {
                 // Normal character: base styling
-                result += charText
+                // swiftlint:disable:next shorthand_operator
+                result = result + charText
                     .foregroundColor(baseColor)
             }
         }
@@ -108,43 +131,237 @@ enum FuzzyMatcher {
         return result
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Phase 1: Subsequence Check
 
-    /// Calculates a fuzzy match score based on match quality.
+    /// Checks if all query characters exist in target in order.
     ///
-    /// Factors:
-    /// - **Consecutive bonus:** Consecutive matches score higher
-    /// - **Early position bonus:** Matches at the start of the string score higher
-    /// - **Match density:** Higher percentage of characters matched scores higher
-    private static func calculateScore(
-        matchedIndices: [Int],
-        targetLength: Int,
-        queryLength: Int
-    ) -> Double {
-        guard !matchedIndices.isEmpty else { return 0.0 }
+    /// This is a fast O(n+m) check that determines if a match is possible
+    /// before running the more expensive scoring algorithm.
+    ///
+    /// - Parameters:
+    ///   - query: The search string
+    ///   - target: The string to search within
+    /// - Returns: `true` if all query chars found in order, `false` otherwise
+    private static func hasSubsequence(_ query: String, in target: String) -> Bool {
+        let queryChars = Array(query.lowercased())
+        let targetChars = Array(target.lowercased())
 
-        var score = 0.0
+        var queryIndex = 0
 
-        // Base score: match density (0.0-0.4)
-        let density = Double(queryLength) / Double(targetLength)
-        score += density * 0.4
+        for targetChar in targetChars {
+            guard queryIndex < queryChars.count else { break }
 
-        // Consecutive match bonus (0.0-0.3)
-        var consecutiveCount = 0
-        for i in 0 ..< matchedIndices.count - 1 {
-            if matchedIndices[i + 1] == matchedIndices[i] + 1 {
-                consecutiveCount += 1
+            if targetChar == queryChars[queryIndex] {
+                queryIndex += 1
             }
         }
-        let consecutiveRatio = Double(consecutiveCount) / Double(max(1, queryLength - 1))
-        score += consecutiveRatio * 0.3
 
-        // Early position bonus (0.0-0.3)
-        // First match position affects score (earlier is better)
-        let firstMatchPos = Double(matchedIndices.first ?? 0)
-        let earlyBonus = max(0, 1.0 - (firstMatchPos / Double(targetLength)))
-        score += earlyBonus * 0.3
+        return queryIndex == queryChars.count
+    }
 
-        return min(1.0, max(0.0, score))
+    // MARK: - Phase 2: Optimal Score Calculation
+
+    // swiftlint:disable cyclomatic_complexity
+    /// Calculates the optimal match score and positions using dynamic programming.
+    ///
+    /// This implements a simplified version of the fzy algorithm that finds
+    /// the best positions to match each query character, maximizing bonuses
+    /// for consecutive matches, word boundaries, and early positions.
+    ///
+    /// - Parameters:
+    ///   - query: The search string
+    ///   - target: The string to search within
+    /// - Returns: Tuple of (raw score, best match indices)
+    private static func calculateOptimalMatch(query: String, target: String) -> (Double, [Int]) {
+        let queryChars = Array(query.lowercased())
+        let targetLower = Array(target.lowercased())
+        let targetOriginal = Array(target)
+
+        let n = queryChars.count
+        let m = targetLower.count
+
+        // Edge case: both empty or query longer than target
+        if n == 0 { return (0, []) }
+        if m == 0 { return (-.infinity, []) }
+        if n > m { return (-.infinity, []) }
+
+        // DP table: score[i][j] = best score matching query[0..<i] ending at target[j-1]
+        // We use 1-based indexing for cleaner boundary handling
+        var score = [[Double]](repeating: [Double](repeating: -.infinity, count: m + 1), count: n + 1)
+
+        // consecutive[i][j] = score if query[i-1] matched target[j-1] AND was consecutive
+        var consecutive = [[Double]](repeating: [Double](repeating: -.infinity, count: m + 1), count: n + 1)
+
+        // Track which target position gave best score for backtracking
+        var bestEndPos = [[Int]](repeating: [Int](repeating: -1, count: m + 1), count: n + 1)
+
+        // Base case: matching 0 query characters
+        score[0][0] = 0
+        for j in 1 ... m {
+            score[0][j] = 0 // Can skip any prefix of target
+        }
+
+        // Fill DP table
+        for i in 1 ... n {
+            let queryChar = queryChars[i - 1]
+
+            for j in 1 ... m {
+                let targetChar = targetLower[j - 1]
+
+                // Option 1: Don't match target[j-1], carry forward best score
+                if score[i][j - 1] > score[i][j] {
+                    score[i][j] = score[i][j - 1]
+                    bestEndPos[i][j] = bestEndPos[i][j - 1]
+                }
+
+                // Option 2: Match query[i-1] with target[j-1] (if chars match)
+                guard queryChar == targetChar else { continue }
+
+                // Calculate bonus for this position
+                var bonus = Score.match
+
+                // First character bonus
+                if j == 1 {
+                    bonus += Score.bonusFirstChar
+                } else {
+                    // Word boundary bonus
+                    if isBoundaryChar(targetOriginal[j - 2]) {
+                        bonus += Score.bonusBoundary
+                    }
+                    // CamelCase bonus
+                    else if targetOriginal[j - 2].isLowercase, targetOriginal[j - 1].isUppercase {
+                        bonus += Score.bonusCamel
+                    }
+                }
+
+                // Calculate score from previous state
+                var matchScore: Double
+                var isConsecutive = false
+
+                if i == 1 {
+                    // First query char: start fresh
+                    matchScore = bonus
+                    // Add gap penalty for skipped target prefix
+                    if j > 1 {
+                        matchScore += Score.gapStart + Score.gapExtend * Double(j - 2)
+                    }
+                } else {
+                    // Subsequent query chars: best of consecutive or gap
+                    let gapScore = score[i - 1][j - 1] + bonus
+                    let consScore = consecutive[i - 1][j - 1] + bonus + Score.bonusConsecutive
+
+                    if consScore >= gapScore, consecutive[i - 1][j - 1] > -.infinity {
+                        matchScore = consScore
+                        isConsecutive = true
+                    } else if score[i - 1][j - 1] > -.infinity {
+                        matchScore = gapScore
+                    } else {
+                        continue // No valid previous state
+                    }
+                }
+
+                // Update if this is better
+                if matchScore > score[i][j] {
+                    score[i][j] = matchScore
+                    bestEndPos[i][j] = j - 1 // 0-based index
+                    consecutive[i][j] = matchScore
+                } else {
+                    consecutive[i][j] = -.infinity
+                }
+
+                _ = isConsecutive // Silence unused variable warning
+            }
+        }
+
+        // Find best final score (can end at any position in target)
+        var bestScore: Double = -.infinity
+        var endJ = m
+
+        for j in n ... m {
+            if score[n][j] > bestScore {
+                bestScore = score[n][j]
+                endJ = j
+            }
+        }
+
+        // Backtrack to find matched indices
+        let indices = backtrack(
+            score: score,
+            bestEndPos: bestEndPos,
+            n: n,
+            endJ: endJ,
+            queryChars: queryChars,
+            targetLower: targetLower
+        )
+
+        return (bestScore, indices)
+    }
+
+    // swiftlint:enable cyclomatic_complexity
+
+    // swiftlint:disable function_parameter_count
+    /// Backtracks through the DP table to find the actual matched indices.
+    private static func backtrack(
+        score _: [[Double]],
+        bestEndPos: [[Int]],
+        n: Int,
+        endJ: Int,
+        queryChars: [Character],
+        targetLower: [Character]
+    ) -> [Int] {
+        var indices = [Int]()
+        var i = n
+        var j = endJ
+
+        while i > 0, j > 0 {
+            let pos = bestEndPos[i][j]
+            if pos >= 0, targetLower[pos] == queryChars[i - 1] {
+                indices.append(pos)
+                i -= 1
+                j = pos // Move to position before this match
+            } else {
+                j -= 1
+            }
+        }
+
+        return indices.reversed()
+    }
+
+    // swiftlint:enable function_parameter_count
+
+    // MARK: - Helper Functions
+
+    /// Checks if a character is a word boundary character.
+    private static func isBoundaryChar(_ char: Character) -> Bool {
+        char == "/" || char == " " || char == "_" || char == "-" || char == "."
+    }
+
+    /// Normalizes the raw score to a 0.0-1.0 range.
+    ///
+    /// The normalization considers:
+    /// - Query length (longer queries can accumulate more points)
+    /// - Target length (longer targets may have more gap penalties)
+    /// - Maximum possible score (all consecutive, all bonuses)
+    private static func normalizeScore(_ rawScore: Double, queryLength: Int, targetLength: Int) -> Double {
+        guard queryLength > 0 else { return 1.0 }
+        guard rawScore > -.infinity else { return 0.0 }
+
+        // Calculate maximum possible score
+        // Best case: all chars consecutive at start with first char bonus
+        let maxScore = Score.match * Double(queryLength)
+            + Score.bonusFirstChar
+            + Score.bonusConsecutive * Double(max(0, queryLength - 1))
+
+        // Calculate minimum expected score (all chars match with gaps)
+        let minScore = Score.match * Double(queryLength)
+            + Score.gapStart * Double(queryLength)
+            + Score.gapExtend * Double(max(0, targetLength - queryLength))
+
+        // Normalize to 0.0-1.0 range
+        let range = maxScore - minScore
+        guard range > 0 else { return rawScore > 0 ? 1.0 : 0.0 }
+
+        let normalized = (rawScore - minScore) / range
+        return max(0.0, min(1.0, normalized))
     }
 }

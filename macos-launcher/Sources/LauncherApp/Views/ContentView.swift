@@ -204,10 +204,12 @@ struct ContentView: View {
     private func installDetailModeMonitor() {
         guard detailModeMonitor == nil else { return }
         detailModeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // Only handle keys in detail mode when command palette is closed and not adding annotation
+            // Only handle keys in detail mode when not in any editing state
             guard viewModel.mode == .detail,
                   !viewModel.commandPalette.isPresented,
-                  !viewModel.isAddingAnnotation else { return event }
+                  !viewModel.isAddingAnnotation,
+                  !viewModel.isEditingTaskName,
+                  viewModel.editingAnnotationId == nil else { return event }
             guard let action = KeyHandlingDecider.detailModeAction(for: KeyInput(event: event)) else {
                 return event
             }

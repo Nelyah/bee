@@ -451,31 +451,57 @@ extension LauncherViewModel {
     /// Filter projects for autocomplete based on current input.
     var filteredProjects: [CompletionItem] {
         let input = projectEditInput.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !input.isEmpty else {
-            return completion.projectItems
+        var items = completion.projectItems.filter { !$0.value.isEmpty }
+        if !input.isEmpty {
+            items = items.filter { $0.value.lowercased().contains(input) }
         }
-        return completion.projectItems.filter {
-            $0.value.lowercased().contains(input)
+
+        // Deduplicate by value while preserving order.
+        var seen = Set<String>()
+        items = items.filter { seen.insert($0.value).inserted }
+
+        // Always show current project at the top (dimmed, non-selectable).
+        if let current = selectedTask?.project, !current.isEmpty {
+            items.removeAll { $0.value == current }
+            items.insert(CompletionItem(value: current, count: nil), at: 0)
         }
+
+        return items
+    }
+
+    private func isCurrentProjectCompletion(_ item: CompletionItem) -> Bool {
+        guard let current = selectedTask?.project, !current.isEmpty else { return false }
+        return item.value == current
+    }
+
+    private func nextSelectableProjectCompletionIndex(from start: Int, delta: Int) -> Int? {
+        guard !filteredProjects.isEmpty else { return nil }
+        let count = filteredProjects.count
+        var index = start
+        for _ in 0 ..< count {
+            index = (index + delta + count) % count
+            if !isCurrentProjectCompletion(filteredProjects[index]) {
+                return index
+            }
+        }
+        return nil
     }
 
     /// Select the next project in the autocomplete list.
     func selectNextProjectCompletion() {
-        guard !filteredProjects.isEmpty else { return }
-        if projectCompletionSelectedIndex < filteredProjects.count - 1 {
-            projectCompletionSelectedIndex += 1
+        if let nextIndex = nextSelectableProjectCompletionIndex(from: projectCompletionSelectedIndex, delta: 1) {
+            projectCompletionSelectedIndex = nextIndex
         } else {
-            projectCompletionSelectedIndex = 0 // Wrap around
+            projectCompletionSelectedIndex = -1
         }
     }
 
     /// Select the previous project in the autocomplete list.
     func selectPreviousProjectCompletion() {
-        guard !filteredProjects.isEmpty else { return }
-        if projectCompletionSelectedIndex > 0 {
-            projectCompletionSelectedIndex -= 1
+        if let prevIndex = nextSelectableProjectCompletionIndex(from: projectCompletionSelectedIndex, delta: -1) {
+            projectCompletionSelectedIndex = prevIndex
         } else {
-            projectCompletionSelectedIndex = filteredProjects.count - 1 // Wrap around
+            projectCompletionSelectedIndex = -1
         }
     }
 
@@ -555,6 +581,7 @@ extension LauncherViewModel {
 
     /// Select a project from the autocomplete list and submit immediately.
     func selectProjectFromCompletion(_ item: CompletionItem) {
+        guard !isCurrentProjectCompletion(item) else { return }
         projectEditInput = item.value
         projectCompletionSelectedIndex = -1
         submitProjectEdit()

@@ -232,6 +232,7 @@ struct TaskDetailView: View {
                 )
                 DetailRow(label: "Urgency", value: task.urgency.map(String.init) ?? "None", helpText: nil)
             }
+            .zIndex(1) // Keep project completion dropdown above later sections in this column
 
             DetailSection(title: "Dates") {
                 let created = formattedDate(task.dateCreated)
@@ -243,6 +244,7 @@ struct TaskDetailView: View {
                 let due = formattedOptionalDate(task.dateDue, emptyLabel: "—")
                 DetailRow(label: "Due", value: due.display, helpText: due.help)
             }
+            .zIndex(0)
         }
     }
 
@@ -254,6 +256,7 @@ struct TaskDetailView: View {
         return HStack(alignment: .top, spacing: TaskDetailLayout.columnSpacing) {
             metadataColumn
                 .frame(width: leftWidth, alignment: .leading)
+                .zIndex(1) // Ensure left column overlays (e.g., project dropdown) draw above right column
 
             externalLinksSection
                 .frame(width: rightWidth, alignment: .leading)
@@ -488,6 +491,7 @@ struct TaskDetailView: View {
             onSubmit: onSubmitProjectEdit,
             onSelectCompletion: onSelectProjectCompletion
         )
+        .zIndex(2) // Ensure project completion dropdown overlays Dates section
     }
 }
 
@@ -521,12 +525,12 @@ private struct DetailSection<Content: View>: View {
         .padding(DesignTokens.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .fill(ThemeManager.current.surface0)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
+            ZStack {
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
+                    .fill(ThemeManager.current.surface0)
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
+                    .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
+            }
         )
     }
 }

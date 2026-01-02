@@ -18,6 +18,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -33,6 +34,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 1,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -48,6 +50,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 2,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -65,6 +68,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -78,6 +82,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -91,6 +96,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 3,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -108,6 +114,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -123,6 +130,7 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 1,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -133,21 +141,21 @@ final class CompletionMenuSnapshotTests: SnapshotTestCase {
 
     func testCompletionRowSelected() {
         let item = CompletionItem(value: "selected-item", count: 25)
-        let view = CompletionRow(item: item, isSelected: true)
+        let view = CompletionRow(item: item, isSelected: true, isCurrentValue: false)
 
         assertViewSnapshot(view, size: CGSize(width: 250, height: 36))
     }
 
     func testCompletionRowUnselected() {
         let item = CompletionItem(value: "unselected-item", count: 10)
-        let view = CompletionRow(item: item, isSelected: false)
+        let view = CompletionRow(item: item, isSelected: false, isCurrentValue: false)
 
         assertViewSnapshot(view, size: CGSize(width: 250, height: 36))
     }
 
     func testCompletionRowWithoutCount() {
         let item = CompletionItem(value: "no-count-item", count: nil)
-        let view = CompletionRow(item: item, isSelected: false)
+        let view = CompletionRow(item: item, isSelected: false, isCurrentValue: false)
 
         assertViewSnapshot(view, size: CGSize(width: 250, height: 36))
     }

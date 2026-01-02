@@ -470,6 +470,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
         let view = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
         .background(ThemeManager.current.base)

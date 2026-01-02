@@ -260,6 +260,7 @@ struct TaskListView: View {
                 CompletionMenuView(
                     items: completion.items,
                     selectedIndex: completion.selectedIndex,
+                    currentValue: nil,
                     onSelect: { item in
                         viewModel.acceptCompletion(item)
                     }

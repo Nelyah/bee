@@ -14,6 +14,7 @@ final class CompletionMenuUITests: XCTestCase {
         let sut = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -33,6 +34,7 @@ final class CompletionMenuUITests: XCTestCase {
         let sut = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -50,6 +52,7 @@ final class CompletionMenuUITests: XCTestCase {
         let sut = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -67,6 +70,7 @@ final class CompletionMenuUITests: XCTestCase {
         let sut = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -89,12 +93,12 @@ final class CompletionMenuUITests: XCTestCase {
         let item = TestHelpers.makeCompletionItem(value: "test-item")
 
         // Test selected row
-        let selectedRow = CompletionRow(item: item, isSelected: true)
+        let selectedRow = CompletionRow(item: item, isSelected: true, isCurrentValue: false)
         let selectedView = try selectedRow.inspect()
         _ = try selectedView.find(text: "test-item")
 
         // Test unselected row
-        let unselectedRow = CompletionRow(item: item, isSelected: false)
+        let unselectedRow = CompletionRow(item: item, isSelected: false, isCurrentValue: false)
         let unselectedView = try unselectedRow.inspect()
         _ = try unselectedView.find(text: "test-item")
     }
@@ -105,6 +109,7 @@ final class CompletionMenuUITests: XCTestCase {
         let sut = CompletionMenuView(
             items: [],
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -118,6 +123,7 @@ final class CompletionMenuUITests: XCTestCase {
         let sut = CompletionMenuView(
             items: items,
             selectedIndex: 0,
+            currentValue: nil,
             onSelect: { _ in }
         )
 
@@ -132,6 +138,7 @@ final class CompletionMenuUITests: XCTestCase {
         let sut = CompletionMenuView(
             items: items,
             selectedIndex: 10,
+            currentValue: nil,
             onSelect: { _ in }
         )
 

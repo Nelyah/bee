@@ -5,6 +5,7 @@ import SwiftUI
 struct CompletionMenuView: View {
     let items: [CompletionItem]
     let selectedIndex: Int
+    let currentValue: String?
     let onSelect: (CompletionItem) -> Void
 
     var body: some View {
@@ -12,10 +13,18 @@ struct CompletionMenuView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        CompletionRow(item: item, isSelected: index == selectedIndex)
-                            .contentShape(Rectangle())
-                            .onTapGesture { onSelect(item) }
-                            .id(index)
+                        let isCurrentValue = currentValue == item.value
+                        CompletionRow(
+                            item: item,
+                            isSelected: index == selectedIndex,
+                            isCurrentValue: isCurrentValue
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard !isCurrentValue else { return }
+                            onSelect(item)
+                        }
+                        .id(index)
                     }
                 }
             }
@@ -28,15 +37,7 @@ struct CompletionMenuView: View {
         }
         .frame(maxHeight: 6 * 30) // Max 6 items visible, then scroll
         .padding(.vertical, DesignTokens.Spacing.extraSmall)
-        .background(
-            // Use vibrancy effect for modern macOS feel
-            ZStack {
-                // Base dark layer for readability
-                ThemeManager.current.surface0.opacity(0.85)
-                // Subtle blur effect
-                VisualEffectBlur(material: .popover, blendingMode: .behindWindow)
-            }
-        )
+        .background(ThemeManager.current.surface0)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
@@ -50,24 +51,53 @@ struct CompletionMenuView: View {
 struct CompletionRow: View {
     let item: CompletionItem
     let isSelected: Bool
+    let isCurrentValue: Bool
+    @State private var isHovering: Bool = false
 
     var body: some View {
         HStack {
             Text(item.value)
                 .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .monospaced))
-                .foregroundColor(isSelected ? ThemeManager.current.text : ThemeManager.current.text)
+                .foregroundColor(textColor)
 
             Spacer()
 
             if let count = item.count {
                 Text("\(count)")
                     .font(.system(size: DesignTokens.TypeScale.label, weight: .regular))
-                    .foregroundColor(isSelected ? ThemeManager.current.text : ThemeManager.current.overlay0)
+                    .foregroundColor(countColor)
             }
         }
         .padding(.horizontal, DesignTokens.Spacing.medium)
         .padding(.vertical, DesignTokens.Spacing.small)
-        .background(isSelected ? ThemeManager.current.blue : Color.clear)
+        .background(
+            isSelected
+                ? ThemeManager.current.blue.opacity(0.35)
+                : (isHovering && !isCurrentValue ? ThemeManager.current.surfaceHover : Color.clear)
+        )
+        .onHover { hovering in
+            isHovering = hovering
+        }
+    }
+
+    private var textColor: Color {
+        if isSelected {
+            return ThemeManager.current.text
+        }
+        if isCurrentValue {
+            return ThemeManager.current.overlay0
+        }
+        return ThemeManager.current.text
+    }
+
+    private var countColor: Color {
+        if isSelected {
+            return ThemeManager.current.text
+        }
+        if isCurrentValue {
+            return ThemeManager.current.overlay0
+        }
+        return ThemeManager.current.overlay0
     }
 }
 
@@ -100,6 +130,7 @@ struct VisualEffectBlur: NSViewRepresentable {
             CompletionItem(value: "work", count: 3),
         ],
         selectedIndex: 1,
+        currentValue: nil,
         onSelect: { _ in }
     )
     .frame(width: 200)

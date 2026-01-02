@@ -53,6 +53,10 @@ struct CompletionField<Item: CompletableItem>: View {
 
     // MARK: - Internal State
 
+    /// Local copy of text for immediate filtering without triggering @Published during view updates.
+    /// This decouples the TextField from the binding to avoid "Publishing changes from within view updates".
+    @State private var localText: String = ""
+
     /// Currently selected index in the fuzzy matches.
     @State private var selectedIndex: Int = 0
 
@@ -81,7 +85,7 @@ struct CompletionField<Item: CompletableItem>: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            TextField(placeholder, text: $text)
+            TextField(placeholder, text: $localText)
                 .textFieldStyle(.plain)
                 .font(.system(size: DesignTokens.TypeScale.body, weight: .regular, design: .monospaced))
                 .foregroundColor(ThemeManager.current.text)
@@ -104,13 +108,20 @@ struct CompletionField<Item: CompletableItem>: View {
                 )
                 .focused($isFocused)
                 .onAppear {
+                    // Initialize local state from binding
+                    localText = text
                     isFocused = true
                     selectAllText()
-                    updateFuzzyMatches(query: text)
+                    updateFuzzyMatches(query: localText)
                     installKeyboardMonitor()
                 }
-                .onChange(of: text) { _, newValue in
+                .onChange(of: localText) { _, newValue in
+                    // Filter immediately using local state
                     updateFuzzyMatches(query: newValue)
+                    // Defer binding update to avoid "Publishing changes from within view updates"
+                    DispatchQueue.main.async {
+                        text = newValue
+                    }
                 }
                 .onPreferenceChange(TextFieldHeightPreferenceKey.self) { height in
                     textFieldHeight = max(height, 24)
@@ -156,6 +167,8 @@ struct CompletionField<Item: CompletableItem>: View {
                         theme: theme,
                         onSelect: handleSelect
                     )
+                    // Force re-render when fuzzyMatches changes - GeometryReader can prevent proper view invalidation
+                    .id(fuzzyMatches.map { "\($0.item.id)" }.joined(separator: ","))
                     .frame(minWidth: minWidth, minHeight: minHeight, maxHeight: maxHeight)
                     .offset(y: proxy.size.height + DesignTokens.Spacing.extraSmall)
                     .background(
@@ -200,54 +213,37 @@ struct CompletionField<Item: CompletableItem>: View {
             fuzzyMatches.insert(currentMatch, at: 0)
         }
 
-        // Reset selection to first selectable item
-        selectedIndex = findFirstSelectableIndex() ?? 0
-    }
-
-    /// Finds the index of the first selectable (non-current-value) item.
-    private func findFirstSelectableIndex() -> Int? {
-        for (index, match) in fuzzyMatches.enumerated() {
-            if currentValue?.id != match.item.id {
-                return index
-            }
-        }
-        return nil
+        // Reset selection to first selectable item.
+        // Use -1 when no valid selection exists (empty list or only currentValue matches).
+        // This prevents selectedIndex from being 0 for an empty array (invalid index).
+        selectedIndex = CompletionIndexCalculator.findFirstSelectableIndex(
+            items: fuzzyMatches.map(\.item),
+            currentValueId: currentValue?.id
+        ) ?? -1
     }
 
     // MARK: - Navigation Logic
 
     /// Selects the next item in the completion list.
     private func selectNext() {
-        guard !fuzzyMatches.isEmpty else { return }
+        guard let nextIndex = CompletionIndexCalculator.selectNextIndex(
+            from: selectedIndex,
+            items: fuzzyMatches.map(\.item),
+            currentValueId: currentValue?.id
+        ) else { return }
 
-        // Find next selectable index (skipping current value)
-        var nextIndex = selectedIndex
-        let count = fuzzyMatches.count
-
-        for _ in 0 ..< count {
-            nextIndex = (nextIndex + 1) % count
-            if currentValue?.id != fuzzyMatches[nextIndex].item.id {
-                selectedIndex = nextIndex
-                return
-            }
-        }
+        selectedIndex = nextIndex
     }
 
     /// Selects the previous item in the completion list.
     private func selectPrevious() {
-        guard !fuzzyMatches.isEmpty else { return }
+        guard let prevIndex = CompletionIndexCalculator.selectPreviousIndex(
+            from: selectedIndex,
+            items: fuzzyMatches.map(\.item),
+            currentValueId: currentValue?.id
+        ) else { return }
 
-        // Find previous selectable index (skipping current value)
-        var prevIndex = selectedIndex
-        let count = fuzzyMatches.count
-
-        for _ in 0 ..< count {
-            prevIndex = (prevIndex - 1 + count) % count
-            if currentValue?.id != fuzzyMatches[prevIndex].item.id {
-                selectedIndex = prevIndex
-                return
-            }
-        }
+        selectedIndex = prevIndex
     }
 
     // MARK: - Selection Logic

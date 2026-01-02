@@ -437,7 +437,6 @@ extension LauncherViewModel {
     func startEditingProject() {
         guard let task = selectedTask else { return }
         projectEditInput = task.project ?? ""
-        projectCompletionSelectedIndex = -1
         isEditingProject = true
     }
 
@@ -445,26 +444,16 @@ extension LauncherViewModel {
     func cancelEditingProject() {
         isEditingProject = false
         projectEditInput = ""
-        projectCompletionSelectedIndex = -1
     }
 
-    /// Filter projects for autocomplete based on current input.
+    /// All available projects for autocomplete.
+    /// Filtering is handled by CompletionField's internal FuzzyMatcher.
     var filteredProjects: [CompletionItem] {
-        let input = projectEditInput.lowercased().trimmingCharacters(in: .whitespaces)
         var items = completion.projectItems.filter { !$0.value.isEmpty }
-        if !input.isEmpty {
-            items = items.filter { $0.value.lowercased().contains(input) }
-        }
 
         // Deduplicate by value while preserving order.
         var seen = Set<String>()
         items = items.filter { seen.insert($0.value).inserted }
-
-        // Always show current project at the top (dimmed, non-selectable).
-        if let current = selectedTask?.project, !current.isEmpty {
-            items.removeAll { $0.value == current }
-            items.insert(CompletionItem(value: current, count: nil), at: 0)
-        }
 
         return items
     }
@@ -474,48 +463,11 @@ extension LauncherViewModel {
         return item.value == current
     }
 
-    private func nextSelectableProjectCompletionIndex(from start: Int, delta: Int) -> Int? {
-        guard !filteredProjects.isEmpty else { return nil }
-        let count = filteredProjects.count
-        var index = start
-        for _ in 0 ..< count {
-            index = (index + delta + count) % count
-            if !isCurrentProjectCompletion(filteredProjects[index]) {
-                return index
-            }
-        }
-        return nil
-    }
-
-    /// Select the next project in the autocomplete list.
-    func selectNextProjectCompletion() {
-        if let nextIndex = nextSelectableProjectCompletionIndex(from: projectCompletionSelectedIndex, delta: 1) {
-            projectCompletionSelectedIndex = nextIndex
-        } else {
-            projectCompletionSelectedIndex = -1
-        }
-    }
-
-    /// Select the previous project in the autocomplete list.
-    func selectPreviousProjectCompletion() {
-        if let prevIndex = nextSelectableProjectCompletionIndex(from: projectCompletionSelectedIndex, delta: -1) {
-            projectCompletionSelectedIndex = prevIndex
-        } else {
-            projectCompletionSelectedIndex = -1
-        }
-    }
-
-    /// Submit the edited project (from autocomplete or typed).
+    /// Submit the edited project (from typed input).
     func submitProjectEdit() {
         guard let task = selectedTask else { return }
 
-        // Use selected completion if available, otherwise use typed input
-        let newProject: String = if projectCompletionSelectedIndex >= 0,
-                                    projectCompletionSelectedIndex < filteredProjects.count {
-            filteredProjects[projectCompletionSelectedIndex].value
-        } else {
-            projectEditInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
+        let newProject = projectEditInput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // If unchanged, just cancel
         let currentProject = task.project ?? ""
@@ -549,7 +501,6 @@ extension LauncherViewModel {
                 // Success - clear state and reload
                 isEditingProject = false
                 projectEditInput = ""
-                projectCompletionSelectedIndex = -1
                 showToast(message: newProject.isEmpty ? "Project cleared" : "Project updated", icon: .success)
 
                 // Update the task in the local list
@@ -582,9 +533,13 @@ extension LauncherViewModel {
     /// Select a project from the autocomplete list and submit immediately.
     func selectProjectFromCompletion(_ item: CompletionItem) {
         guard !isCurrentProjectCompletion(item) else { return }
-        projectEditInput = item.value
-        projectCompletionSelectedIndex = -1
-        submitProjectEdit()
+
+        // Use Task with @MainActor to properly defer state changes
+        // and avoid "Publishing changes from within view updates"
+        Task { @MainActor in
+            projectEditInput = item.value
+            submitProjectEdit()
+        }
     }
 
     // MARK: - Annotation Editing Methods

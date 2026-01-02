@@ -54,6 +54,7 @@ struct CopyableDetailRow: View {
                     Text(value)
                         .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .rounded))
                         .foregroundColor(ThemeManager.current.text)
+                        .underline(isHovering || showFocusRing)
                         .help(fullValue)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -65,7 +66,7 @@ struct CopyableDetailRow: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(CopyableDetailRowButtonStyle(isFocused: showFocusRing))
+            .buttonStyle(CopyableDetailRowButtonStyle(isFocused: showFocusRing, isHovering: isHovering))
             .focused($isFocused)
             .onHover { hovering in
                 isHovering = hovering
@@ -77,15 +78,21 @@ struct CopyableDetailRow: View {
     }
 }
 
-/// Custom button style for CopyableDetailRow that shows a focus ring when focused.
+/// Custom button style for CopyableDetailRow that shows a focus ring when focused
+/// and a subtle background highlight when hovering.
 private struct CopyableDetailRowButtonStyle: ButtonStyle {
     let isFocused: Bool
+    let isHovering: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal, DesignTokens.Spacing.small)
             .padding(.vertical, DesignTokens.Spacing.extraSmall)
             .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                    .fill(isHovering ? ThemeManager.current.surface1.opacity(0.5) : Color.clear)
+            )
+            .overlay(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                     .stroke(
                         isFocused ? ThemeManager.current.blue : Color.clear,

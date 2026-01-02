@@ -127,7 +127,10 @@ final class TaskDetailUITests: XCTestCase {
         )
 
         let view = try sut.inspect()
-        let backButton = try view.find(ViewType.Button.self)
+        // Find the Back button specifically (not just any button)
+        let backButton = try view.find(ViewType.Button.self, where: { button in
+            (try? button.find(text: "Back")) != nil
+        })
         try backButton.tap()
 
         XCTAssertTrue(closeCalled)
@@ -278,7 +281,7 @@ final class TaskDetailUITests: XCTestCase {
 
     // MARK: - History Section Tests
 
-    func testTaskDetailDisplaysEmptyHistoryPlaceholder() throws {
+    func testTaskDetailDisplaysHistoryHeader() throws {
         let task = makeTask(id: "uuid-123")
         let detail = TestHelpers.makeTaskDetail(id: "uuid-123", history: [])
         let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
@@ -286,12 +289,12 @@ final class TaskDetailUITests: XCTestCase {
 
         let view = try sut.inspect()
 
-        // Empty state shows a neutral dash instead of "No history yet"
-        // Note: We search for the section header since multiple dashes exist
+        // History header is always visible
         _ = try view.find(text: "HISTORY")
     }
 
-    func testTaskDetailDisplaysHistory() throws {
+    func testHistorySectionIsCollapsedByDefault() throws {
+        // TICKET-008: History section should be collapsed by default
         let task = makeTask(id: "uuid-123")
         let history = [
             TaskHistoryDto(value: "Status changed to active", datetime: "2024-01-15T10:00:00Z"),
@@ -315,7 +318,30 @@ final class TaskDetailUITests: XCTestCase {
 
         let view = try sut.inspect()
 
-        _ = try view.find(text: "Status changed to active")
+        // History header should be visible
+        _ = try view.find(text: "HISTORY")
+
+        // But history content should NOT be visible when collapsed
+        XCTAssertThrowsError(try view.find(text: "Status changed to active")) { error in
+            // Expected: content is hidden because section is collapsed
+            XCTAssertTrue(error is InspectionError)
+        }
+    }
+
+    func testHistorySectionShowsChevronRightWhenCollapsed() throws {
+        // TICKET-008: Collapsed state should show right-pointing chevron
+        let task = makeTask(id: "uuid-123")
+        let detail = TestHelpers.makeTaskDetail(id: "uuid-123", history: [])
+        let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
+        let sut = makeSUT(task: task, detailState: detailState)
+
+        let view = try sut.inspect()
+
+        // Find the chevron.right image (collapsed state)
+        _ = try view.find(ViewType.Image.self, where: { image in
+            let name = try? image.actualImage().name()
+            return name == "chevron.right"
+        })
     }
 
     // MARK: - External Links Section Tests

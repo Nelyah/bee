@@ -58,6 +58,11 @@ struct TaskDetailView: View {
     /// Called when the user cancels the annotation edit.
     var onCancelAnnotationEdit: () -> Void = {}
 
+    // MARK: - Collapsible Sections
+
+    /// Whether the history section is expanded (collapsed by default).
+    @State private var isHistoryExpanded: Bool = false
+
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -285,23 +290,54 @@ struct TaskDetailView: View {
     }
 
     private var historySection: some View {
-        DetailSection(title: "History") {
-            let history = sortedHistory(detailForTask?.history ?? [])
-            if history.isEmpty {
-                Text("—")
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.overlay0)
-            } else {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
-                    ForEach(history) { entry in
-                        TimelineRow(
-                            timestamp: entry.datetime,
-                            value: entry.value
-                        )
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
+            // Collapsible header (styled like DetailSection)
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isHistoryExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: DesignTokens.Spacing.small) {
+                    Image(systemName: isHistoryExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(ThemeManager.current.subtext0)
+                        .frame(width: 12)
+                    Text("HISTORY")
+                        .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
+                        .foregroundColor(ThemeManager.current.subtext0)
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Collapsible content
+            if isHistoryExpanded {
+                let history = sortedHistory(detailForTask?.history ?? [])
+                if history.isEmpty {
+                    Text("—")
+                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                        .foregroundColor(ThemeManager.current.overlay0)
+                } else {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                        ForEach(history) { entry in
+                            TimelineRow(
+                                timestamp: entry.datetime,
+                                value: entry.value
+                            )
+                        }
                     }
                 }
             }
         }
+        .padding(DesignTokens.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
+                .fill(ThemeManager.current.surface0)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
+                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
+        )
     }
 
     private func shortUUID(_ value: String) -> String {

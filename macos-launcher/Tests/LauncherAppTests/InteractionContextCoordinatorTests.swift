@@ -246,6 +246,81 @@ final class InteractionContextCoordinatorTests: XCTestCase {
         XCTAssertEqual(copyHint?.label, "Copy Link")
     }
 
+    // MARK: - Edit Mode Hints (TICKET-002, 003, 004)
+
+    func testDetailEditModeShowsCancelHint() {
+        // When editing, Escape label should be "Cancel" instead of "Back"
+        let context = InteractionContext.detail(isEditing: true)
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertEqual(model.left.first?.key, "Esc")
+        XCTAssertEqual(model.left.first?.label, "Cancel")
+    }
+
+    func testDetailEditModeShowsSaveHint() {
+        // When editing, show "Cmd+Enter Save" hint
+        let context = InteractionContext.detail(isEditing: true)
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertTrue(model.right.contains { $0.key == "⌘↩" && $0.label == "Save" })
+    }
+
+    func testDetailEditModeHidesEnterHint() {
+        // When editing, Enter hint should not be shown (since Enter submits)
+        let context = InteractionContext.detail(isEditing: true)
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.right.contains { $0.key == "Enter" })
+    }
+
+    func testDetailEditModeHidesNavigateHint() {
+        // When editing, navigate hint should not be shown (focus is in text field)
+        let context = InteractionContext.detail(isEditing: true)
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.left.contains { $0.key == "hjkl" })
+    }
+
+    func testDetailEditModeHidesCopyHint() {
+        // When editing, copy hint should not be shown
+        let context = InteractionContext.detail(isEditing: true)
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.right.contains { $0.key == "y" })
+    }
+
+    func testDetailEditModeHidesAddNoteHint() {
+        // When editing, add note hint should not be shown
+        let context = InteractionContext.detail(isEditing: true)
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertFalse(model.right.contains { $0.key == "a" })
+    }
+
+    func testDetailEditModeStillShowsCommandMenu() {
+        // Command menu should still be available during edit
+        let context = InteractionContext.detail(isEditing: true)
+        let model = BottomHintModelBuilder.model(for: context)
+        XCTAssertTrue(model.right.contains { $0.key == "⌘K" && $0.label == "Command menu" })
+    }
+
+    func testInteractionContextPassesIsEditingTrue() {
+        // Verify that isEditing is passed through the coordinator
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .detail,
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false,
+            isEditing: true
+        )
+        XCTAssertEqual(context, .detail(isEditing: true))
+    }
+
+    func testInteractionContextPassesIsEditingFalse() {
+        // Verify that isEditing defaults to false
+        let context = InteractionContextCoordinator.interactionContext(
+            base: .detail,
+            showCompletionMenu: false,
+            commandPalettePresented: false,
+            isInsertMode: false
+        )
+        XCTAssertEqual(context, .detail(isEditing: false))
+    }
+
     private func enterLabel(in context: InteractionContext) -> String? {
         let model = BottomHintModelBuilder.model(for: context)
         return model.right.first(where: { $0.key == "Enter" })?.label

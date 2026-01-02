@@ -236,18 +236,33 @@ final class LauncherViewModel: ObservableObject {
             )
         }
 
-        Publishers.CombineLatest4(
-            baseContextPublisher,
-            completion.$showMenu,
-            commandPalette.$isPresented,
-            $isInsertMode
+        // Combine editing states into a single isEditing boolean
+        let isEditingPublisher = Publishers.CombineLatest3(
+            $isEditingTaskName,
+            $isAddingAnnotation,
+            $editingAnnotationIndex
         )
-        .map { baseContext, showCompletionMenu, commandPalettePresented, isInsertMode in
-            InteractionContextCoordinator.interactionContext(
+        .map { isEditingTaskName, isAddingAnnotation, editingAnnotationIndex in
+            isEditingTaskName || isAddingAnnotation || editingAnnotationIndex != nil
+        }
+
+        Publishers.CombineLatest(
+            Publishers.CombineLatest4(
+                baseContextPublisher,
+                completion.$showMenu,
+                commandPalette.$isPresented,
+                $isInsertMode
+            ),
+            isEditingPublisher
+        )
+        .map { combined, isEditing in
+            let (baseContext, showCompletionMenu, commandPalettePresented, isInsertMode) = combined
+            return InteractionContextCoordinator.interactionContext(
                 base: baseContext,
                 showCompletionMenu: showCompletionMenu,
                 commandPalettePresented: commandPalettePresented,
-                isInsertMode: isInsertMode
+                isInsertMode: isInsertMode,
+                isEditing: isEditing
             )
         }
         .removeDuplicates()

@@ -294,10 +294,11 @@ extension LauncherViewModel {
                 // Note: The field name must match TaskProperties.annotation in Rust
                 let properties: JSONValue = .object(["annotation": .string(text)])
                 // Build filter for this specific task
-                // Note: Rust uses typetag::serde which requires a "type" discriminator
+                // Rust uses #[typetag::serde(tag = "type", content = "value")] which requires
+                // the filter content to be wrapped in a "value" field
                 let filter: JSONValue = .object([
                     "type": .string("UuidFilter"),
-                    "uuid": .string(task.uuid),
+                    "value": .object(["uuid": .string(task.uuid)]),
                 ])
 
                 _ = try await apiClient.runAction(

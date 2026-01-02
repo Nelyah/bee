@@ -1026,6 +1026,43 @@ mod tests {
     }
 
     #[test]
+    fn test_flat_uuid_filter_fails_deserialization() {
+        // Test that the flat format (what the macOS Swift client currently sends) fails deserialization
+        // This is the format Swift sends: {"type": "UuidFilter", "uuid": "..."}
+        let flat_filter = serde_json::json!({
+            "type": "UuidFilter",
+            "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        });
+
+        let result = deserialize_filter(Some(flat_filter));
+        // This should fail because typetag expects {"type": "UuidFilter", "value": {...}}
+        assert!(
+            result.is_err(),
+            "Flat format should fail deserialization. Expected error but got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_correct_uuid_filter_format_deserializes() {
+        // Test the correct format with "value" wrapper deserializes successfully
+        let correct_filter = serde_json::json!({
+            "type": "UuidFilter",
+            "value": {
+                "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            }
+        });
+
+        let result = deserialize_filter(Some(correct_filter));
+        assert!(
+            result.is_ok(),
+            "Correct format should deserialize. Got error: {:?}",
+            result
+        );
+        assert!(result.unwrap().is_some());
+    }
+
+    #[test]
     fn test_properties_roundtrip() {
         let props = TaskProperties::from(&["summary +tag".to_string()]).unwrap();
         let serialized = serialize_properties(Some(props.clone())).unwrap();

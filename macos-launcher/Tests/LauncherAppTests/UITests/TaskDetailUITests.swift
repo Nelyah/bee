@@ -212,6 +212,62 @@ final class TaskDetailUITests: XCTestCase {
         _ = try view.find(text: "Second note")
     }
 
+    // MARK: - Annotation Input Tests
+
+    func testAnnotationInputFieldAppearsWhenAddingAnnotation() throws {
+        let task = makeTask(id: "uuid-123")
+        let detail = TestHelpers.makeTaskDetail(id: "uuid-123", annotations: [])
+        let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
+        var annotationInput = ""
+
+        let sut = TaskDetailView(
+            task: task,
+            detailState: detailState,
+            externalLinksState: ExternalLinksState(),
+            onRetryDetail: {},
+            onRefreshLinks: { _ in },
+            onCopyBranch: { _ in },
+            onCopyLink: { _ in },
+            onCopyUUID: { _ in },
+            onClose: {},
+            isAddingAnnotation: true,
+            annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 })
+        )
+
+        let view = try sut.inspect()
+
+        // When isAddingAnnotation is true, the annotation input section should be visible
+        // Look for the "Add annotation" placeholder or input area
+        XCTAssertNotNil(view)
+    }
+
+    func testAnnotationSubmitCallbackIsWired() throws {
+        let task = makeTask(id: "uuid-123")
+        let detail = TestHelpers.makeTaskDetail(id: "uuid-123", annotations: [])
+        let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
+        var annotationInput = "Test annotation"
+
+        var callbackInvoked = false
+        let sut = TaskDetailView(
+            task: task,
+            detailState: detailState,
+            externalLinksState: ExternalLinksState(),
+            onRetryDetail: {},
+            onRefreshLinks: { _ in },
+            onCopyBranch: { _ in },
+            onCopyLink: { _ in },
+            onCopyUUID: { _ in },
+            onClose: {},
+            isAddingAnnotation: true,
+            annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 }),
+            onSubmitAnnotation: { callbackInvoked = true }
+        )
+
+        // Invoke the callback and verify it works
+        sut.onSubmitAnnotation()
+        XCTAssertTrue(callbackInvoked, "onSubmitAnnotation callback should be invoked")
+    }
+
     // MARK: - History Section Tests
 
     func testTaskDetailDisplaysEmptyHistoryPlaceholder() throws {

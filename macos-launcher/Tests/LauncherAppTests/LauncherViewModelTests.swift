@@ -546,8 +546,10 @@ final class LauncherViewModelTests: XCTestCase {
         // Wait for async task to complete
         try? await Task.sleep(for: .milliseconds(50))
 
-        // Assert: Verify the filter format includes "type" discriminator
-        // The Rust backend uses typetag::serde which requires {"type": "UuidFilter", "uuid": "..."}
+        // Assert: Verify the filter format matches typetag::serde requirements
+        // Rust uses #[typetag::serde(tag = "type", content = "value")] which requires:
+        // {"type": "UuidFilter", "value": {"uuid": "..."}}
+        // NOT the flat format: {"type": "UuidFilter", "uuid": "..."}
         guard let filter = mock.lastRunActionFilter,
               case let .object(dict) = filter else {
             XCTFail("Expected filter to be an object, got: \(String(describing: mock.lastRunActionFilter))")
@@ -561,9 +563,15 @@ final class LauncherViewModelTests: XCTestCase {
         }
         XCTAssertEqual(typeValue, "UuidFilter", "Type discriminator should be 'UuidFilter'")
 
-        // Verify "uuid" field is present
-        guard case let .string(uuidValue) = dict["uuid"] else {
-            XCTFail("Filter must contain 'uuid' field. Got: \(dict)")
+        // Verify "value" wrapper is present (required by typetag with content = "value")
+        guard case let .object(valueDict) = dict["value"] else {
+            XCTFail("Filter must contain 'value' wrapper for typetag::serde. Got: \(dict)")
+            return
+        }
+
+        // Verify "uuid" field is inside the "value" wrapper
+        guard case let .string(uuidValue) = valueDict["uuid"] else {
+            XCTFail("Filter value must contain 'uuid' field. Got: \(valueDict)")
             return
         }
         XCTAssertEqual(uuidValue, "test-task-uuid")

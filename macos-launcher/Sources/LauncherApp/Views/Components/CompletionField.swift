@@ -83,6 +83,16 @@ struct CompletionField<Item: CompletableItem>: View {
     /// Keyboard monitor for Ctrl+N/P navigation.
     @State private var keyboardMonitor: Any?
 
+    // MARK: - Action Deferral
+
+    /// Defer mutations to the next main run loop to avoid publishing during view updates.
+    private func deferAction(_ action: @escaping () -> Void) {
+        Task { @MainActor in
+            await Task.yield()
+            action()
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -141,12 +151,12 @@ struct CompletionField<Item: CompletableItem>: View {
                     removeKeyboardMonitor()
                 }
                 .onSubmit {
-                    onSubmit()
+                    deferAction(onSubmit)
                 }
                 // Keyboard shortcuts
                 .onKeyPress(.escape) {
                     showMenu = false
-                    onCancel()
+                    deferAction(onCancel)
                     return .handled
                 }
                 .onKeyPress(.upArrow) {
@@ -189,7 +199,7 @@ struct CompletionField<Item: CompletableItem>: View {
                     // When SwiftUI dismisses the popover (click outside), it sets to false
                     // We need to call onCancel() to notify the parent
                     if !newValue {
-                        onCancel()
+                        deferAction(onCancel)
                     }
                 }
             ),
@@ -315,7 +325,7 @@ struct CompletionField<Item: CompletableItem>: View {
         // Don't allow selecting the current value
         guard currentValue?.id != item.id else { return }
         showMenu = false
-        onSelect(item)
+        deferAction { onSelect(item) }
     }
 
     /// Handles the Return key press.
@@ -323,7 +333,7 @@ struct CompletionField<Item: CompletableItem>: View {
         // If a valid item is selected, select it
         guard fuzzyMatches.indices.contains(selectedIndex) else {
             showMenu = false
-            onSubmit()
+            deferAction(onSubmit)
             return
         }
 
@@ -332,7 +342,7 @@ struct CompletionField<Item: CompletableItem>: View {
         // Don't allow selecting the current value
         if currentValue?.id == selectedItem.id {
             showMenu = false
-            onSubmit()
+            deferAction(onSubmit)
         } else {
             handleSelect(selectedItem)
         }

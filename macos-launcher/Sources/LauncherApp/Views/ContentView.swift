@@ -93,6 +93,30 @@ struct ContentView: View {
                     },
                     onSelectProjectCompletion: { item in
                         viewModel.selectProjectFromCompletion(item)
+                    },
+                    // Tag editing
+                    selectedTagIndex: viewModel.selectedTagIndex,
+                    isAddingTag: viewModel.isAddingTag,
+                    tagAddQuery: $viewModel.tagAddQuery,
+                    isSubmittingTag: viewModel.isSubmittingTag,
+                    allTagCompletions: viewModel.allTagCompletions,
+                    onSelectTagIndex: { index in
+                        viewModel.selectTagIndex(index)
+                    },
+                    onStartAddingTag: {
+                        viewModel.startAddingTag()
+                    },
+                    onCancelAddingTag: {
+                        viewModel.cancelAddingTag()
+                    },
+                    onSelectTagCompletion: { item in
+                        viewModel.selectTagFromCompletion(item)
+                    },
+                    onRemoveTag: { tag in
+                        viewModel.removeTag(tag)
+                    },
+                    onEditTag: { index in
+                        viewModel.startEditingTag(at: index)
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)
@@ -227,6 +251,7 @@ struct ContentView: View {
                   !viewModel.isAddingAnnotation,
                   !viewModel.isEditingTaskName,
                   !viewModel.isEditingProject,
+                  !viewModel.isAddingTag,
                   viewModel.editingAnnotationId == nil else { return event }
             guard let action = KeyHandlingDecider.detailModeAction(for: KeyInput(event: event)) else {
                 return event

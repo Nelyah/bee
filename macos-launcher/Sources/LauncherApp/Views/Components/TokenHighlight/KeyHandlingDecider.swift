@@ -151,25 +151,33 @@ enum KeyHandlingDecider {
 
         guard !hasDisallowedModifier else { return nil }
 
+        return detailModeKeyAction(input)
+    }
+
+    private static func detailModeKeyAction(_ input: KeyInput) -> DetailModeAction? {
         switch input.keyCode {
         case KeyCode.keyH:
-            return .moveFocusLeft
+            .moveFocusLeft
         case KeyCode.keyJ:
-            return .moveFocus(1)
+            .moveFocus(1)
         case KeyCode.keyK:
-            return .moveFocus(-1)
+            .moveFocus(-1)
         case KeyCode.keyL:
-            return .moveFocusRight
+            .moveFocusRight
         case KeyCode.returnKey, KeyCode.keypadEnter:
-            return .openFocused
+            .openFocused
         case KeyCode.keyY:
-            return .copyFocused
+            .copyFocused
+        case KeyCode.keyX:
+            .deleteFocused
         case KeyCode.keyG:
-            return input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
+            input.modifierFlags.contains(.shift) ? .selectLast : .selectFirst
         case KeyCode.keyA:
-            return .addAnnotation
+            .addAnnotation
+        case KeyCode.keyT:
+            .addTag
         default:
-            return nil
+            nil
         }
     }
 }

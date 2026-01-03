@@ -37,6 +37,11 @@ final class CompletionCoordinator: ObservableObject {
         cache.tags.map(\.value)
     }
 
+    /// Tag completion items from cache.
+    var tagItems: [CompletionItem] {
+        cache.tags
+    }
+
     func loadData(actionService: LauncherActionService) async -> String? {
         guard !isLoaded else { return nil }
         do {

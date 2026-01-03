@@ -152,13 +152,22 @@ final class DetailModeKeyHandlingTests: XCTestCase {
     // MARK: - Non-Action Keys
 
     func testUnhandledKeyReturnsNil() {
-        // Random key 'x' should not trigger any action
+        // Random key 'q' should not trigger any action
         let input = KeyInput(
-            keyCode: 7, // x key
-            charactersIgnoringModifiers: "x",
+            keyCode: 12, // q key
+            charactersIgnoringModifiers: "q",
             modifierFlags: []
         )
         XCTAssertNil(KeyHandlingDecider.detailModeAction(for: input))
+    }
+
+    func testXKeyTriggersDeleteFocused() {
+        let input = KeyInput(
+            keyCode: KeyCode.keyX,
+            charactersIgnoringModifiers: "x",
+            modifierFlags: []
+        )
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .deleteFocused)
     }
 
     func testModifiedJIgnored() {
@@ -581,9 +590,16 @@ final class DetailFocusViewModelTests: XCTestCase {
 
     func testHandleDetailModeActionMoveFocusLeft() {
         setupDetailModeWithItems()
-        // Index mapping: 0=taskName, 1=uuid, 2=project, 3+=links
-        // Start at a link item (index 3 = first link, in the right column)
-        viewModel.detailFocusedIndex = 3
+        // Index mapping: 0=taskName, 1=uuid, 2=project, 3...n=tags, n+1+=links
+        // Find first external link index dynamically
+        let firstLinkIndex = viewModel.detailFocusableItems.firstIndex {
+            if case .gitlabMR = $0 { return true }
+            if case .jiraIssue = $0 { return true }
+            return false
+        } ?? viewModel.detailFocusableItems.count
+
+        // Start at a link item (in the right column)
+        viewModel.detailFocusedIndex = firstLinkIndex
         viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
 
         let result = viewModel.handleDetailModeAction(.moveFocusLeft)
@@ -595,7 +611,14 @@ final class DetailFocusViewModelTests: XCTestCase {
 
     func testHandleDetailModeActionMoveFocusRight() {
         setupDetailModeWithItems()
-        // Index mapping: 0=taskName, 1=uuid, 2=project, 3+=links
+        // Index mapping: 0=taskName, 1=uuid, 2=project, 3...n=tags, n+1+=links
+        // Find first external link index dynamically
+        let firstLinkIndex = viewModel.detailFocusableItems.firstIndex {
+            if case .gitlabMR = $0 { return true }
+            if case .jiraIssue = $0 { return true }
+            return false
+        } ?? viewModel.detailFocusableItems.count
+
         // Start at task name (index 0, in the left column)
         viewModel.detailFocusedIndex = 0
         viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
@@ -603,8 +626,8 @@ final class DetailFocusViewModelTests: XCTestCase {
         let result = viewModel.handleDetailModeAction(.moveFocusRight)
 
         XCTAssertTrue(result)
-        // moveFocusRight from left column should jump to right column (first link at index 3)
-        XCTAssertEqual(viewModel.detailFocusedIndex, 3, "moveFocusRight should move to first link (index 3)")
+        // moveFocusRight from left column should jump to right column (first link)
+        XCTAssertEqual(viewModel.detailFocusedIndex, firstLinkIndex, "moveFocusRight should move to first link")
     }
 
     func testOpenFocusedStartsEditingWhenTaskNameFocused() {

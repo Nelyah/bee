@@ -158,7 +158,22 @@
       "Skill(ui-ux-screenshots)",
       "Bash(git -C /Users/chloe/builds/bee diff --stat)",
       "Bash(git -C /Users/chloe/builds/bee log --oneline -5)",
-      "Bash(git -C /Users/chloe/builds/bee add:*)"
+      "Bash(git -C /Users/chloe/builds/bee add:*)",
+      "Bash(git -C /Users/chloe/builds/bee diff --cached --stat)",
+      "Bash(git -C /Users/chloe/builds/bee diff --stat macos-launcher/Sources/LauncherApp/Views/Components/CompletionField.swift)",
+      "Bash(xargs basename:*)",
+      "Bash(git -C /Users/chloe/builds/bee diff --stat macos-launcher/Sources/LauncherApp/Views/Components/EditableTagsRow.swift)",
+      "Bash(git -C /Users/chloe/builds/bee log:*)",
+      "Bash(macos-launcher/Sources/LauncherApp/Models/DetailFocusableItem.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/Utilities/Coordinators/InteractionContextCoordinator.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/Utilities/KeyCode.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel+Tags.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/Views/Components/CompletionField.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/Views/Components/EditableTagsRow.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlight/KeyHandlingDecider.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlight/KeyHandlingModels.swift )",
+      "Bash(macos-launcher/Sources/LauncherApp/Utilities/Coordinators/CompletionIndexCalculator.swift)",
+      "Bash(git -C /Users/chloe/builds/bee commit -m \"$\\(cat <<''EOF''\nfeat\\(macos\\): improve tag navigation and add \"t\" keybinding\n\nTag navigation improvements:\n- Add h/l navigation between tags when focused on a tag\n- Make \"+\" add button focusable via keyboard \\(j/k navigation\\)\n- Add \"t\" keybinding to start adding a tag from anywhere in detail view\n- Show \"t Add tag\" hint in the bottom hint bar\n- Rebuild focusable items after adding/removing tags to keep\n  navigation in sync\n\nCompletionField improvements:\n- Add freeform entry mode for tags \\(menu stays open with no matches\\)\n- Add hjkl navigation within completion menu\n- Keep menu open when text is empty \\(shows empty state prompt\\)\n- Add selectPreviousIndexAllowingUnselect for freeform mode\nEOF\n\\)\")"
     ]
   },
   "outputStyle": "Explanatory"

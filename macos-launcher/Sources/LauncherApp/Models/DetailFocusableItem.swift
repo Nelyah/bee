@@ -12,6 +12,11 @@ enum DetailFocusableItem: Equatable, Identifiable {
     case uuid(String)
     case gitlabMR(ExternalLinkDto)
     case jiraIssue(ExternalLinkDto)
+    /// A tag in the tags row.
+    /// Associated values are the tag name and its index in the tags array.
+    case tag(String, index: Int)
+    /// The "+" button to add a new tag.
+    case addTagButton
 
     var id: String {
         switch self {
@@ -25,6 +30,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             "gitlab-\(link.id)"
         case let .jiraIssue(link):
             "jira-\(link.id)"
+        case let .tag(_, index):
+            "tag-\(index)"
+        case .addTagButton:
+            "addTagButton"
         }
     }
 
@@ -43,6 +52,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             URL(string: link.url)
         case let .jiraIssue(link):
             URL(string: link.url)
+        case .tag:
+            nil // Tags use Enter to edit, not open URL
+        case .addTagButton:
+            nil // Add button uses Enter to start adding, not open URL
         }
     }
 
@@ -65,6 +78,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return link.url
         case let .jiraIssue(link):
             return link.url
+        case let .tag(name, _):
+            return name
+        case .addTagButton:
+            return "" // Nothing to copy from add button
         }
     }
 
@@ -86,6 +103,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "Link"
         case .jiraIssue:
             return "Link"
+        case .tag:
+            return "Tag"
+        case .addTagButton:
+            return "" // Nothing to copy from add button
         }
     }
 }

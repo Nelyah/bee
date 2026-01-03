@@ -297,7 +297,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -333,7 +334,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -358,7 +360,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -385,7 +388,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -421,7 +425,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             annotationEditInput: .constant(""),
             isEditingProject: true,
             projectEditInput: .constant("hobby"),
-            filteredProjects: sampleProjects
+            filteredProjects: sampleProjects,
+            tagAddQuery: .constant("")
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)

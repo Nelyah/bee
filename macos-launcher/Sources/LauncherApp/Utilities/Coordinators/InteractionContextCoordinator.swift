@@ -81,13 +81,22 @@ enum InteractionContextCoordinator {
 
 enum BottomHintModelBuilder {
     static func model(for context: InteractionContext) -> BottomHintModel {
-        model(for: context, detailCopyLabel: nil)
+        model(for: context, detailCopyLabel: nil, hasTagSelected: false)
     }
 
     /// Builds hint model with optional detail copy label (e.g., "UUID", "Branch", "Link").
     static func model(for context: InteractionContext, detailCopyLabel: String?) -> BottomHintModel {
+        model(for: context, detailCopyLabel: detailCopyLabel, hasTagSelected: false)
+    }
+
+    /// Builds hint model with optional detail copy label and tag selection state.
+    static func model(
+        for context: InteractionContext,
+        detailCopyLabel: String?,
+        hasTagSelected: Bool
+    ) -> BottomHintModel {
         let left = leftHints(for: context)
-        let right = rightHints(for: context, detailCopyLabel: detailCopyLabel)
+        let right = rightHints(for: context, detailCopyLabel: detailCopyLabel, hasTagSelected: hasTagSelected)
         return BottomHintModel(left: left, right: right)
     }
 
@@ -108,7 +117,11 @@ enum BottomHintModelBuilder {
         return hints
     }
 
-    private static func rightHints(for context: InteractionContext, detailCopyLabel: String?) -> [BottomHint] {
+    private static func rightHints(
+        for context: InteractionContext,
+        detailCopyLabel: String?,
+        hasTagSelected: Bool
+    ) -> [BottomHint] {
         var hints: [BottomHint] = []
 
         switch context {
@@ -121,8 +134,13 @@ enum BottomHintModelBuilder {
                 if let enterLabel = enterLabel(for: context) {
                     hints.append(BottomHint(key: "Enter", label: enterLabel))
                 }
+                // Show tag deletion hint when a tag is selected
+                if hasTagSelected {
+                    hints.append(BottomHint(key: "x", label: "Delete tag"))
+                }
                 // Show action hints for detail mode
                 hints.append(BottomHint(key: "a", label: "Add note"))
+                hints.append(BottomHint(key: "t", label: "Add tag"))
                 // Dynamic copy label based on focused item (e.g., "Copy UUID", "Copy Branch")
                 let copyLabel = detailCopyLabel.map { "Copy \($0)" } ?? "Copy"
                 hints.append(BottomHint(key: "y", label: copyLabel))

@@ -96,4 +96,41 @@ enum CompletionIndexCalculator {
     static func isValidIndex(_ index: Int, for items: [some Any]) -> Bool {
         items.indices.contains(index)
     }
+
+    /// Calculates the previous selectable index, allowing navigation to "no selection" state.
+    ///
+    /// Unlike `selectPreviousIndex` which wraps around, this method returns -1 when
+    /// at the first selectable index, enabling the user to unselect all items.
+    ///
+    /// - Parameters:
+    ///   - currentIndex: The current selected index (-1 means no selection)
+    ///   - items: Array of items
+    ///   - currentValueId: The ID of the current value to skip
+    /// - Returns: The previous valid index, -1 to indicate "no selection", or nil if already at -1
+    static func selectPreviousIndexAllowingUnselect<T: Identifiable>(
+        from currentIndex: Int,
+        items: [T],
+        currentValueId: T.ID?
+    ) -> Int? {
+        // If already at no-selection, stay there
+        guard currentIndex >= 0 else { return nil }
+
+        // If at first selectable index, go to no-selection
+        let firstSelectable = findFirstSelectableIndex(items: items, currentValueId: currentValueId)
+        if currentIndex == firstSelectable {
+            return -1
+        }
+
+        // Find previous selectable index (without wrapping)
+        var prevIndex = currentIndex - 1
+        while prevIndex >= 0 {
+            if currentValueId != items[prevIndex].id {
+                return prevIndex
+            }
+            prevIndex -= 1
+        }
+
+        // Reached the beginning, go to no-selection
+        return -1
+    }
 }

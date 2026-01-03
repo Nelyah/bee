@@ -74,7 +74,8 @@ final class TaskDetailUITests: XCTestCase {
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
     }
 
@@ -125,7 +126,8 @@ final class TaskDetailUITests: XCTestCase {
             annotationInput: .constant(""),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
 
         let view = try sut.inspect()
@@ -243,7 +245,8 @@ final class TaskDetailUITests: XCTestCase {
             annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 }),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
 
         let view = try sut.inspect()
@@ -275,7 +278,8 @@ final class TaskDetailUITests: XCTestCase {
             onSubmitAnnotation: { callbackInvoked = true },
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
-            projectEditInput: .constant("")
+            projectEditInput: .constant(""),
+            tagAddQuery: .constant("")
         )
 
         // Invoke the callback and verify it works

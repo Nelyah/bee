@@ -50,9 +50,11 @@ enum DetailModeAction: Equatable {
     case moveFocus(Int) // j/k navigation (+1/-1)
     case moveFocusLeft // h - move to left column (UUID)
     case moveFocusRight // l - move to right column (links) or open
-    case openFocused // o - open in browser
+    case openFocused // o/Enter - open in browser or edit
     case copyFocused // y - copy to clipboard
+    case deleteFocused // x - delete focused item (tags only)
     case selectFirst // g - jump to first
     case selectLast // G - jump to last
     case addAnnotation // a - add annotation
+    case addTag // t - add new tag
 }

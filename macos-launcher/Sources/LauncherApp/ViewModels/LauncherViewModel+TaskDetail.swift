@@ -139,7 +139,7 @@ extension LauncherViewModel {
     // MARK: - Detail Focus Navigation
 
     /// Builds the list of focusable items for the current detail view.
-    /// Order: Task Name → Project → UUID → GitLab MRs → Jira Issues
+    /// Order: Task Name → UUID → Project → Tags → GitLab MRs → Jira Issues
     func buildDetailFocusableItems() {
         var items: [DetailFocusableItem] = []
 
@@ -152,9 +152,20 @@ extension LauncherViewModel {
 
             // 3. Project (second row in Overview section)
             items.append(.project(task.project ?? ""))
+
+            // 4. Tags (after project, before external links)
+            for (index, tag) in task.tags.enumerated() {
+                items.append(.tag(tag, index: index))
+            }
+
+            // 5. Add tag button (after tags, before external links)
+            // Only include when not currently adding a tag
+            if !isAddingTag {
+                items.append(.addTagButton)
+            }
         }
 
-        // 4. GitLab MRs
+        // 6. GitLab MRs
         let gitlabLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
         }
@@ -162,7 +173,7 @@ extension LauncherViewModel {
             items.append(.gitlabMR(link))
         }
 
-        // 5. Jira issues
+        // 6. Jira issues
         let jiraLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
         }
@@ -189,6 +200,16 @@ extension LauncherViewModel {
             return nil
         }
         return detailFocusableItems[detailFocusedIndex]
+    }
+
+    /// Index of the first external link in the focusable items list.
+    /// Returns the count if no external links are present.
+    private var firstExternalLinkIndex: Int {
+        detailFocusableItems.firstIndex {
+            if case .gitlabMR = $0 { return true }
+            if case .jiraIssue = $0 { return true }
+            return false
+        } ?? detailFocusableItems.count
     }
 
     /// Handle a detail mode keyboard action.
@@ -218,27 +239,9 @@ extension LauncherViewModel {
             moveDetailFocus(delta: delta)
             return true
         case .moveFocusLeft:
-            // The left column contains: taskName (0), uuid (1), project (2)
-            // If on right column (links at index 3+), move to first metadata item
-            let firstLinkIndex = 3
-            if detailFocusedIndex >= firstLinkIndex {
-                detailFocusedIndex = 0
-            }
-            return true
+            return handleMoveFocusLeft()
         case .moveFocusRight:
-            // The left column contains: taskName (0), uuid (1), project (2)
-            // The right column contains: links (3+)
-            let firstLinkIndex = 3 // First potential link index
-
-            // If on left column (metadata), move to first link if available
-            if detailFocusedIndex < firstLinkIndex {
-                if detailFocusableItems.count > firstLinkIndex {
-                    detailFocusedIndex = firstLinkIndex
-                }
-                return true
-            }
-            // Already in right column (links) - open the focused item
-            return openFocusedDetailItem()
+            return handleMoveFocusRight()
         case .openFocused:
             return openFocusedDetailItem()
         case .copyFocused:
@@ -252,6 +255,11 @@ extension LauncherViewModel {
         case .addAnnotation:
             startAddingAnnotation()
             return true
+        case .deleteFocused:
+            return deleteFocusedDetailItem()
+        case .addTag:
+            startAddingTag()
+            return true
         }
     }
 
@@ -259,6 +267,53 @@ extension LauncherViewModel {
         guard !detailFocusableItems.isEmpty else { return }
         let newIndex = detailFocusedIndex + delta
         detailFocusedIndex = max(0, min(newIndex, detailFocusableItems.count - 1))
+    }
+
+    /// Handle h key: navigate left within tags, or switch from links column to metadata column.
+    private func handleMoveFocusLeft() -> Bool {
+        // When on a tag or add button, h navigates to previous item (like k)
+        if let item = focusedDetailItem {
+            if case .tag = item {
+                moveDetailFocus(delta: -1)
+                return true
+            }
+            if case .addTagButton = item {
+                moveDetailFocus(delta: -1)
+                return true
+            }
+        }
+        // If on right column (links), move to first metadata item
+        if detailFocusedIndex >= firstExternalLinkIndex {
+            detailFocusedIndex = 0
+        }
+        return true
+    }
+
+    /// Handle l key: navigate right within tags, or switch from metadata column to links column.
+    private func handleMoveFocusRight() -> Bool {
+        // When on a tag, l navigates to next item (like j)
+        if let item = focusedDetailItem {
+            if case .tag = item {
+                moveDetailFocus(delta: 1)
+                return true
+            }
+            if case .addTagButton = item {
+                // From add button, l moves to external links (if any)
+                if detailFocusableItems.count > firstExternalLinkIndex {
+                    detailFocusedIndex = firstExternalLinkIndex
+                }
+                return true
+            }
+        }
+        // If on left column (metadata + tags), move to first link if available
+        if detailFocusedIndex < firstExternalLinkIndex {
+            if detailFocusableItems.count > firstExternalLinkIndex {
+                detailFocusedIndex = firstExternalLinkIndex
+            }
+            return true
+        }
+        // Already in right column (links) - open the focused item
+        return openFocusedDetailItem()
     }
 
     private func openFocusedDetailItem() -> Bool {
@@ -273,6 +328,18 @@ extension LauncherViewModel {
         // Project: Enter triggers editing instead of opening URL
         if case .project = item {
             startEditingProject()
+            return true
+        }
+
+        // Tag: Enter triggers editing that tag
+        if case let .tag(_, index) = item {
+            startEditingTag(at: index)
+            return true
+        }
+
+        // Add tag button: Enter starts adding a new tag
+        if case .addTagButton = item {
+            startAddingTag()
             return true
         }
 
@@ -291,6 +358,16 @@ extension LauncherViewModel {
 
         // Show toast with appropriate label
         showToast(message: "\(item.copyLabel) copied", icon: .success)
+        return true
+    }
+
+    private func deleteFocusedDetailItem() -> Bool {
+        guard let item = focusedDetailItem else { return false }
+
+        // Only tags can be deleted with x
+        guard case let .tag(tagName, _) = item else { return false }
+
+        removeTag(tagName)
         return true
     }
 

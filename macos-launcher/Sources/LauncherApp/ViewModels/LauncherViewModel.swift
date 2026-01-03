@@ -104,6 +104,17 @@ final class LauncherViewModel: ObservableObject {
     /// Whether a project submission is in progress.
     @Published var isSubmittingProject: Bool = false
 
+    // MARK: - Tag Editing State
+
+    /// Index of the currently selected tag for keyboard navigation (nil = no selection).
+    @Published var selectedTagIndex: Int?
+    /// Whether the user is adding a new tag (CompletionField is shown).
+    @Published var isAddingTag: Bool = false
+    /// Query text for the tag completion field.
+    @Published var tagAddQuery: String = ""
+    /// Whether a tag operation (add/remove) is in progress.
+    @Published var isSubmittingTag: Bool = false
+
     // MARK: - Project Scope State
 
     /// The currently scoped project (layers on top of report filters).
@@ -295,7 +306,11 @@ final class LauncherViewModel: ObservableObject {
     /// Updates the hint model for the given context.
     private func updateHintModel(for context: InteractionContext) {
         let copyLabel = computeDetailCopyLabel()
-        hintModel = BottomHintModelBuilder.model(for: context, detailCopyLabel: copyLabel)
+        hintModel = BottomHintModelBuilder.model(
+            for: context,
+            detailCopyLabel: copyLabel,
+            hasTagSelected: selectedTagIndex != nil
+        )
     }
 
     /// Computes the copy label for the currently focused detail item.

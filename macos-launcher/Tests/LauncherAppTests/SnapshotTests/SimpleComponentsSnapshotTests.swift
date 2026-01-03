@@ -221,4 +221,116 @@ final class SimpleComponentsSnapshotTests: SnapshotTestCase {
 
         assertViewSnapshot(view, size: CGSize(width: 170, height: 30))
     }
+
+    // MARK: - TagChip Tests
+
+    func testTagChipDefault() {
+        let view = TagChip(tag: "hobby", isSelected: false, onRemove: {})
+            .padding()
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 120, height: 50))
+    }
+
+    func testTagChipSelected() {
+        let view = TagChip(tag: "urgent", isSelected: true, onRemove: {})
+            .padding()
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 120, height: 50))
+    }
+
+    func testTagChipLongName() {
+        let view = TagChip(tag: "very-long-tag-name", isSelected: false, onRemove: {})
+            .padding()
+            .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 200, height: 50))
+    }
+
+    // MARK: - EditableTagsRow Tests
+
+    func testEditableTagsRowEmpty() {
+        let view = EditableTagsRow(
+            tags: [],
+            selectedTagIndex: nil,
+            isAddingTag: false,
+            tagAddQuery: .constant(""),
+            allTagCompletions: [],
+            isSubmitting: false,
+            onSelectTagIndex: { _ in },
+            onStartAdding: {},
+            onCancelAdding: {},
+            onSelectCompletion: { _ in },
+            onRemoveTag: { _ in }
+        )
+        .padding()
+        .frame(width: 350)
+        .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 400, height: 80))
+    }
+
+    func testEditableTagsRowWithTags() {
+        let view = EditableTagsRow(
+            tags: ["hobby", "code", "urgent"],
+            selectedTagIndex: nil,
+            isAddingTag: false,
+            tagAddQuery: .constant(""),
+            allTagCompletions: [],
+            isSubmitting: false,
+            onSelectTagIndex: { _ in },
+            onStartAdding: {},
+            onCancelAdding: {},
+            onSelectCompletion: { _ in },
+            onRemoveTag: { _ in }
+        )
+        .padding()
+        .frame(width: 350)
+        .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 400, height: 80))
+    }
+
+    func testEditableTagsRowWithSelection() {
+        let view = EditableTagsRow(
+            tags: ["hobby", "code", "urgent"],
+            selectedTagIndex: 1,
+            isAddingTag: false,
+            tagAddQuery: .constant(""),
+            allTagCompletions: [],
+            isSubmitting: false,
+            onSelectTagIndex: { _ in },
+            onStartAdding: {},
+            onCancelAdding: {},
+            onSelectCompletion: { _ in },
+            onRemoveTag: { _ in }
+        )
+        .padding()
+        .frame(width: 350)
+        .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 400, height: 80))
+    }
+
+    func testEditableTagsRowManyTags() {
+        let view = EditableTagsRow(
+            tags: ["hobby", "code", "urgent", "review", "backend", "api"],
+            selectedTagIndex: nil,
+            isAddingTag: false,
+            tagAddQuery: .constant(""),
+            allTagCompletions: [],
+            isSubmitting: false,
+            onSelectTagIndex: { _ in },
+            onStartAdding: {},
+            onCancelAdding: {},
+            onSelectCompletion: { _ in },
+            onRemoveTag: { _ in }
+        )
+        .padding()
+        .frame(width: 350)
+        .background(ThemeManager.current.base)
+
+        assertViewSnapshot(view, size: CGSize(width: 400, height: 120))
+    }
 }

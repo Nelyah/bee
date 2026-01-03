@@ -78,6 +78,31 @@ struct TaskDetailView: View {
     /// Called when the user selects a project from autocomplete.
     var onSelectProjectCompletion: (CompletionItem) -> Void = { _ in }
 
+    // MARK: - Tag Editing
+
+    /// Index of the currently selected tag for keyboard navigation (nil = no selection).
+    var selectedTagIndex: Int?
+    /// Whether the user is adding a new tag.
+    var isAddingTag: Bool = false
+    /// Binding to the tag add query.
+    @Binding var tagAddQuery: String
+    /// Whether a tag operation is in progress.
+    var isSubmittingTag: Bool = false
+    /// All available tag completions for autocomplete.
+    var allTagCompletions: [CompletionItem] = []
+    /// Called when user selects a tag index (for keyboard navigation).
+    var onSelectTagIndex: (Int?) -> Void = { _ in }
+    /// Called when the user wants to start adding a tag.
+    var onStartAddingTag: () -> Void = {}
+    /// Called when the user cancels adding a tag.
+    var onCancelAddingTag: () -> Void = {}
+    /// Called when the user selects a tag from autocomplete.
+    var onSelectTagCompletion: (CompletionItem) -> Void = { _ in }
+    /// Called when the user removes a tag.
+    var onRemoveTag: (String) -> Void = { _ in }
+    /// Called when the user wants to edit a tag at a specific index (Enter on focused tag).
+    var onEditTag: (Int) -> Void = { _ in }
+
     // MARK: - Collapsible Sections
 
     /// Whether the history section is expanded (collapsed by default).
@@ -223,10 +248,21 @@ struct TaskDetailView: View {
                     isKeyboardFocused: isUUIDFocused
                 )
                 projectRow
-                DetailRow(
-                    label: "Tags",
-                    value: task.tags.isEmpty ? "None" : task.tags.joined(separator: ", "),
-                    helpText: nil
+                EditableTagsRow(
+                    tags: task.tags,
+                    selectedTagIndex: selectedTagIndex,
+                    keyboardFocusedTagIndex: keyboardFocusedTagIndex,
+                    isAddButtonFocused: isAddButtonFocused,
+                    isAddingTag: isAddingTag,
+                    tagAddQuery: $tagAddQuery,
+                    allTagCompletions: allTagCompletions,
+                    isSubmitting: isSubmittingTag,
+                    onSelectTagIndex: onSelectTagIndex,
+                    onStartAdding: onStartAddingTag,
+                    onCancelAdding: onCancelAddingTag,
+                    onSelectCompletion: onSelectTagCompletion,
+                    onRemoveTag: onRemoveTag,
+                    onEditTag: onEditTag
                 )
                 DetailRow(label: "Urgency", value: task.urgency.map(String.init) ?? "None", helpText: nil)
             }
@@ -474,6 +510,24 @@ struct TaskDetailView: View {
         }
     }
 
+    /// Returns the focused tag index if the current focused item is a tag.
+    private var keyboardFocusedTagIndex: Int? {
+        switch focusedItem {
+        case let .tag(_, index):
+            index
+        default:
+            nil
+        }
+    }
+
+    /// Whether the add tag button is keyboard-focused.
+    private var isAddButtonFocused: Bool {
+        if case .addTagButton = focusedItem {
+            return true
+        }
+        return false
+    }
+
     // MARK: - Project Row
 
     private var projectRow: some View {
@@ -682,82 +736,13 @@ private struct EditableTimelineRow: View {
     }
 }
 
-private struct ExternalLinksProviderSection: View {
-    let title: String
-    let icon: Image?
-    let useOriginalIcon: Bool
-    let isRefreshing: Bool
-    let links: [ExternalLinkDto]
-    let onRefresh: () -> Void
-    let onCopyBranch: (String) -> Void
-    let onCopyLink: (String) -> Void
-    /// The ID of the currently keyboard-focused link (if any).
-    var focusedLinkId: Int?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
-            HStack(spacing: DesignTokens.Spacing.small) {
-                if let icon {
-                    icon
-                        .resizable()
-                        .renderingMode(useOriginalIcon ? .original : .template)
-                        .foregroundColor(useOriginalIcon ? nil : ThemeManager.current.subtext0)
-                        .frame(width: DesignTokens.IconSize.medium, height: DesignTokens.IconSize.medium)
-                }
-                Text(title)
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
-                    .foregroundColor(ThemeManager.current.text)
-                Spacer()
-                if !links.isEmpty {
-                    HoverableButton(
-                        action: onRefresh,
-                        pressedOpacity: 0.6,
-                        pressedScale: 0.96,
-                        animationDuration: 0.15
-                    ) { isHovering in
-                        Group {
-                            if isRefreshing {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                            } else {
-                                Text("Refresh")
-                                    .underline(isHovering)
-                            }
-                        }
-                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
-                        .foregroundColor(isHovering ? ThemeManager.current.subtext1 : ThemeManager.current.subtext0)
-                    }
-                    .contentShape(Rectangle())
-                    .disabled(isRefreshing)
-                }
-            }
-
-            if links.isEmpty {
-                Text("—")
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                    .foregroundColor(ThemeManager.current.overlay0)
-            } else {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
-                    ForEach(links, id: \.id) { link in
-                        ExternalLinkRow(
-                            link: link,
-                            onCopyBranch: onCopyBranch,
-                            onCopyLink: onCopyLink,
-                            isKeyboardFocused: link.id == focusedLinkId
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 #Preview {
     struct PreviewWrapper: View {
         @State private var annotationInput = ""
         @State private var taskNameEditInput = ""
         @State private var annotationEditInput = ""
         @State private var projectEditInput = ""
+        @State private var tagAddQuery = ""
 
         var body: some View {
             TaskDetailView(
@@ -779,7 +764,8 @@ private struct ExternalLinksProviderSection: View {
                 annotationInput: $annotationInput,
                 taskNameEditInput: $taskNameEditInput,
                 annotationEditInput: $annotationEditInput,
-                projectEditInput: $projectEditInput
+                projectEditInput: $projectEditInput,
+                tagAddQuery: $tagAddQuery
             )
             .padding(DesignTokens.Spacing.extraExtraLarge)
             .frame(width: 600, height: 400)

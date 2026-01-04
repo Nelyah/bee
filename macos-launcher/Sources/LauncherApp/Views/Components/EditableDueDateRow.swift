@@ -45,6 +45,12 @@ struct EditableDueDateRow: View {
         }
     }
 
+    private func deferAction(_ action: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            action()
+        }
+    }
+
     // MARK: - Display Mode
 
     private var displayView: some View {
@@ -147,7 +153,7 @@ struct EditableDueDateRow: View {
                 get: { isEditing },
                 set: { newValue in
                     if !newValue {
-                        onCancel()
+                        deferAction(onCancel)
                     }
                 }
             ),

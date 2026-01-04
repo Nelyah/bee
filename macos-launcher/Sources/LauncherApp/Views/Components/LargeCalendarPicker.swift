@@ -14,18 +14,32 @@ struct LargeCalendarPicker: View {
     // NSDatePicker with .yearMonthDay only - tight bounds around content
     private let nativeWidth: CGFloat = 232
     private let nativeHeight: CGFloat = 180
+    // Manual centering offset to counter AppKit content's uneven visual bounds.
+    private let centerOffsetX: CGFloat = 85
+    private let centerOffsetY: CGFloat = -28
 
     var body: some View {
-        NativeDatePicker(selection: $selection)
-            .fixedSize()
-            .scaleEffect(scale, anchor: .center)
-            .frame(width: nativeWidth * scale, height: nativeHeight * scale)
+        NativeDatePicker(
+            selection: $selection,
+            nativeSize: CGSize(width: nativeWidth, height: nativeHeight),
+            scale: scale
+        )
+        .frame(width: nativeWidth, height: nativeHeight)
+        .scaleEffect(scale, anchor: .center)
+        .frame(width: nativeWidth * scale, height: nativeHeight * scale, alignment: .center)
+        .offset(x: centerOffsetX, y: centerOffsetY)
     }
 }
 
 /// The actual NSViewRepresentable wrapper for NSDatePicker.
 private struct NativeDatePicker: NSViewRepresentable {
     @Binding var selection: Date
+    let nativeSize: CGSize
+    let scale: CGFloat
+
+    private var scaledSize: CGSize {
+        CGSize(width: nativeSize.width * scale, height: nativeSize.height * scale)
+    }
 
     func makeNSView(context: Context) -> NSDatePicker {
         let picker = NSDatePicker()
@@ -43,6 +57,15 @@ private struct NativeDatePicker: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(selection: $selection)
+    }
+
+    @MainActor
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        nsView: NSDatePicker,
+        context: Context
+    ) -> CGSize? {
+        nativeSize
     }
 
     class Coordinator: NSObject {

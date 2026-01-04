@@ -10,11 +10,10 @@ This document contains detailed tickets for features requested in `feature-list.
 2. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
 3. [TICKET-015: Project Overview View](#ticket-015)
 4. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-5. [TICKET-017: Global Dropdown Menu Trigger (Cmd+P)](#ticket-017)
-6. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-7. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-8. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-9. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+5. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
+6. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+7. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+8. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
 
@@ -206,53 +205,6 @@ Low
 
 ---
 
-<a name="ticket-017"></a>
-## TICKET-017: Global Dropdown Menu Trigger (Cmd+P)
-
-### Summary
-Add global Cmd+P binding to trigger the contextual dropdown menu in any view (Report menu in task list, Task state in task detail).
-
-### Priority
-Medium
-
-### Complexity
-Medium
-
-### Affected Layers
-- **macOS**: `LauncherApp.swift` (global shortcut), `ContentView.swift`, view-specific menu handling
-
-### Current State
-- Report menu exists in task list (upper right)
-- Task state menu planned for task detail (TICKET-006)
-
-### Implementation Notes
-
-1. Define protocol for views with contextual menus:
-   ```swift
-   protocol ContextualMenuProvider {
-       var hasContextualMenu: Bool { get }
-       func showContextualMenu()
-   }
-   ```
-
-2. Add global keyboard handler for Cmd+P:
-   - Check current view/mode
-   - Call appropriate menu display method
-
-3. View implementations:
-   - TaskListView: Opens report menu
-   - TaskDetailView: Opens state menu (after TICKET-006)
-
-### Acceptance Criteria
-- [ ] Cmd+P in task list opens report menu
-- [ ] Cmd+P in task detail opens task state menu
-- [ ] Menu positioned appropriately
-- [ ] Works regardless of focus state
-
-### Dependencies
-None (task detail menu now implemented via TICKET-006)
-
----
 <a name="ticket-019"></a>
 ## TICKET-019: Multi-Select Tasks with Space
 
@@ -470,7 +422,6 @@ None
 
 ### Medium Complexity (3-5 days)
 - TICKET-012: Fuzzy Match Highlighting
-- TICKET-017: Global Dropdown Menu
 - TICKET-019: Multi-Select Tasks
 - TICKET-020: Report Filter Visual Grouping
 
@@ -493,8 +444,7 @@ None
 ## Suggested Implementation Order
 
 ### Phase 1: Command Palette & Navigation
-1. TICKET-017 (global Cmd+P)
-2. TICKET-012 (fuzzy highlighting)
+1. TICKET-012 (fuzzy highlighting)
 
 ### Phase 2: Advanced Features
 3. TICKET-019 (multi-select)

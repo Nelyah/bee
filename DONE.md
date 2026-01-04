@@ -4,6 +4,33 @@ Tickets moved here after implementation and review.
 
 ---
 
+## TICKET-017: Global Dropdown Menu Trigger (Cmd+P)
+**Completed:** 2026-01-04
+
+### Summary
+Add global Cmd+P binding to trigger contextual dropdown menus, plus colored status badge in task detail.
+
+### Resolution
+
+#### Cmd+P Global Shortcut
+- Added `.commands` keyboard shortcut in `LauncherApp.swift`
+- Created `handleContextualMenu()` in ViewModel that dispatches based on mode:
+  - List mode → triggers report menu
+  - Detail mode → triggers task state menu
+- Created `MenuTriggerProvider` class for bridging SwiftUI ViewModel to AppKit NSMenu
+
+#### Task State Menu (Clickable Status Badge)
+- Created `TaskStateMenuButton` component (NSMenu + NSViewRepresentable)
+- Colored badge based on task status using `statusColor()`
+- Menu options: Completed, Active, Pending, Deleted
+- All options are status changes (not destructive) - detail view stays open
+
+#### Tests Added
+- `CommandPTriggerTests` (9 tests): Cmd+P dispatch, multiple triggers, mode switching
+- `TaskStateChangeTests` (6 tests): State change behavior, detail view persistence
+
+---
+
 ## TICKET-018: Fix Task ID Filter Chip Float Display
 **Completed:** 2026-01-02
 

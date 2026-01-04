@@ -6,102 +6,21 @@ This document contains detailed tickets for features requested in `feature-list.
 
 ## Table of Contents
 
-1. [TICKET-007: Task Linking via Command Palette](#ticket-007)
-2. [TICKET-009: File Attachments for Tasks](#ticket-009)
-3. [TICKET-010: macOS Mail Integration](#ticket-010)
-4. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
-5. [TICKET-015: Project Overview View](#ticket-015)
-6. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-7. [TICKET-017: Global Dropdown Menu Trigger (Cmd+P)](#ticket-017)
-8. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-9. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-10. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-11. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+1. [TICKET-009: File Attachments for Tasks](#ticket-009)
+2. [TICKET-010: macOS Mail Integration](#ticket-010)
+3. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
+4. [TICKET-015: Project Overview View](#ticket-015)
+5. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
+6. [TICKET-017: Global Dropdown Menu Trigger (Cmd+P)](#ticket-017)
+7. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
+8. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+9. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+10. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
 
 ---
 
-<a name="ticket-007"></a>
-## TICKET-007: Task Linking via Command Palette
-
-### Summary
-Add ability to link tasks together through the command palette, with task selection UI and link type selection.
-
-### Priority
-High
-
-### Complexity
-Very High ⚠️⚠️
-
-### Affected Layers
-- **Rust Core**: `Link`, `LinkType` already exist in `task_model.rs`
-- **Rust API**: Endpoints for creating/reading links
-- **macOS**: New `TaskLinkSectionContributor.swift`, `TaskSelectorView.swift`, `TaskDetailView.swift` (linked tasks display)
-
-### Current State
-- Backend: `Link` struct exists with `from`, `to`, `link_type` fields
-- Backend: `LinkType` enum defines relationship types
-- Frontend: No UI for task linking yet
-
-### Implementation Notes
-
-#### Phase 1: API Layer
-1. Verify/create endpoints:
-   - `POST /tasks/{uuid}/links` - create link
-   - `GET /tasks/{uuid}/links` - get linked tasks
-   - `DELETE /tasks/{uuid}/links/{linkId}` - remove link
-2. Update `ApiClientProtocol` with link methods
-
-#### Phase 2: Task Selector Component
-1. Create `TaskSelectorView` - reusable task list for selection only:
-   - Uses existing `TaskListView` rendering
-   - Filters out current task
-   - Search/filter capability
-   - Single-select mode (no detail navigation)
-   - Returns selected task UUID
-2. Style as modal/sheet
-
-#### Phase 3: Command Palette Integration
-1. Create `TaskLinkSectionContributor`:
-   - Shows "Link to Task..." action when task selected
-   - Opens task selector as submenu/modal
-2. After task selected, show link type submenu:
-   - "Blocks" (current task blocks selected)
-   - "Blocked by" (current task blocked by selected)
-   - "Related to"
-   - "Duplicates"
-   - "Parent of" / "Child of"
-
-#### Phase 4: Display Linked Tasks
-1. Add "Linked Tasks" section in TaskDetailView
-2. Group by link type
-3. Show task summary and status
-4. Allow clicking to navigate to linked task
-5. Allow removing links
-
-### UX Designer Involvement Required
-- Task selector modal design
-- Link type selection UX flow
-- Linked tasks display in detail view
-- How to show bidirectional relationships
-- Confirmation flows
-
-### Acceptance Criteria
-- [ ] Command palette shows "Link to Task..." when task selected
-- [ ] Task selector allows filtering/searching tasks
-- [ ] Task selector prevents selecting current task
-- [ ] Link type selection presented after task selection
-- [ ] Link created and persisted to backend
-- [ ] Linked tasks displayed in task detail
-- [ ] Can navigate to linked tasks
-- [ ] Can remove links from detail view
-
-### Dependencies
-- Requires significant UX design input
-- Backend link endpoints must be verified/implemented
-
----
 <a name="ticket-009"></a>
 ## TICKET-009: File Attachments for Tasks
 
@@ -628,7 +547,6 @@ None
 - TICKET-022: Help Mode
 
 ### Very High Complexity (2+ weeks)
-- TICKET-007: Task Linking System
 - TICKET-009: File Attachments
 - TICKET-010: macOS Mail Integration
 
@@ -636,9 +554,8 @@ None
 
 ## Tickets Requiring UX Designer
 
-1. **TICKET-007**: Task Linking - task selector modal, link type UX, display in detail
-2. **TICKET-012**: Fuzzy Highlighting - styling decisions
-3. **TICKET-020**: Report Filter Grouping - visual design
+1. **TICKET-012**: Fuzzy Highlighting - styling decisions
+2. **TICKET-020**: Report Filter Grouping - visual design
 
 ---
 
@@ -649,16 +566,15 @@ None
 2. TICKET-012 (fuzzy highlighting)
 
 ### Phase 2: Advanced Features
-3. TICKET-007 (task linking - needs UX)
-4. TICKET-019 (multi-select)
-5. TICKET-015 (project overview)
+3. TICKET-019 (multi-select)
+4. TICKET-015 (project overview)
+5. TICKET-016 (important links - builds on TICKET-007)
 
 ### Phase 3: Polish & Extras
 6. TICKET-020 (filter grouping - needs UX)
 7. TICKET-021 (info tooltips)
 8. TICKET-022 (help mode)
-9. TICKET-016 (important links - after TICKET-007)
 
 ### Phase 4: Complex Integrations
-10. TICKET-009 (file attachments)
-11. TICKET-010 (mail integration)
+9. TICKET-009 (file attachments)
+10. TICKET-010 (mail integration)

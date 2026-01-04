@@ -196,3 +196,37 @@ Add ability to view and edit due date in task detail with both keyboard and mous
 - Popover UI with quick action buttons, DatePicker, and Clear/Cancel/Save controls
 - Uses existing `runAction` API with "modify" action - no new backend endpoints needed
 - 14 unit tests for date calculations in `QuickDueDateActionTests.swift`
+
+---
+
+## TICKET-007: Task Linking via Command Palette
+**Completed:** 2026-01-04
+
+### Summary
+Add ability to link tasks together through the command palette, with task selection UI, link type selection, and enhanced linked tasks display.
+
+### Resolution
+
+#### Backend (Rust)
+- Added 6 link types to `LinkType` enum: blocking, dependsOn, parentOf, childOf, relatedTo, duplicates
+- Added `link:` syntax for creating task links via CLI (e.g., `link:blocking:uuid`)
+- Added migration for `link_type` column in task_links table
+- Updated task detail API to return links with type information
+
+#### macOS Launcher
+- Created `TaskLinkSectionContributor` for command palette integration
+- Created `LinkedTasksSection` component with status badges + task titles (not just UUIDs)
+- Created `DetailSection` reusable component for collapsible sections
+- Added `ActionHandler.buildLinkTypeMenu()` and `buildTaskSelectorMenu()` for nested menu flow
+- Extended `DetailFocusableItem` with `.linkedTask(TaskLinkDto)` for keyboard navigation
+- Added `navigateToTask(uuid:)` for clicking/pressing Enter on linked tasks
+- Added `Cmd+L` global shortcut to open link palette directly
+- Added "⌘L Link task" to hint bar in detail mode
+- Stored `paletteActionHandler` on ViewModel to fix closure lifecycle bug
+
+#### Tests
+- Added `ActionHandlerLinkTests` (12 tests for menu building)
+- Added `TaskLinkSectionContributorTests`
+- Added `LinkedTasksSectionUITests` (17 tests)
+- Added `DetailSectionUITests`
+- Updated snapshots for new hint bar and status badges

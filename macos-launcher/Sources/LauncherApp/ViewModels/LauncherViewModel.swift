@@ -109,7 +109,7 @@ final class LauncherViewModel: ObservableObject {
     /// Whether the due date field is being edited in task detail.
     @Published var isEditingDueDate: Bool = false
     /// The date currently selected in the date picker.
-    @Published var dueDateEditSelection: Date = Date()
+    @Published var dueDateEditSelection: Date = .init()
     /// Whether a due date submission is in progress.
     @Published var isSubmittingDueDate: Bool = false
 

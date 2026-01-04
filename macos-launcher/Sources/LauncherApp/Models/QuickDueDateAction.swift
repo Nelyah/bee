@@ -58,15 +58,15 @@ enum QuickDueDateAction: Equatable {
     func date(from now: Date = Date(), calendar: Calendar = .current) -> Date {
         switch self {
         case .today:
-            return todayDate(from: now, calendar: calendar)
+            todayDate(from: now, calendar: calendar)
         case .tomorrow:
-            return tomorrowDate(from: now, calendar: calendar)
+            tomorrowDate(from: now, calendar: calendar)
         case .nextWeekday:
-            return nextWeekdayDate(from: now, calendar: calendar)
+            nextWeekdayDate(from: now, calendar: calendar)
         case .nextWeek:
-            return nextMondayDate(from: now, calendar: calendar)
+            nextMondayDate(from: now, calendar: calendar)
         case .inOneWeek:
-            return inOneWeekDate(from: now, calendar: calendar)
+            inOneWeekDate(from: now, calendar: calendar)
         }
     }
 
@@ -117,18 +117,17 @@ enum QuickDueDateAction: Equatable {
         let currentWeekday = calendar.component(.weekday, from: now)
         // weekday: 1 = Sunday, 2 = Monday, ..., 7 = Saturday
         // Calculate days until next Monday
-        let daysUntilMonday: Int
-        if currentWeekday == 2 {
+        let daysUntilMonday = if currentWeekday == 2 {
             // Today is Monday, go to next Monday
-            daysUntilMonday = 7
+            7
         } else if currentWeekday == 1 {
             // Sunday -> Monday is tomorrow
-            daysUntilMonday = 1
+            1
         } else {
             // Tuesday(3) through Saturday(7)
             // Days until Monday = 9 - currentWeekday
             // e.g., Wednesday(4) -> 9-4 = 5 days
-            daysUntilMonday = 9 - currentWeekday
+            9 - currentWeekday
         }
 
         let nextMonday = calendar.date(byAdding: .day, value: daysUntilMonday, to: now) ?? now

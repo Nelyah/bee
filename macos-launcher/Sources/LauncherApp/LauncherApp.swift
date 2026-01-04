@@ -25,6 +25,11 @@ struct LauncherApp: App {
                     viewModel.openLinkPalette()
                 }
                 .keyboardShortcut("l", modifiers: [.command])
+
+                Button("Contextual Menu") {
+                    viewModel.handleContextualMenu()
+                }
+                .keyboardShortcut("p", modifiers: [.command])
             }
         }
     }

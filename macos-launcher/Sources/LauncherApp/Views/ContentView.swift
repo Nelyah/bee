@@ -6,6 +6,8 @@ struct ContentView: View {
     @State private var escapeMonitor: Any?
     @State private var normalModeMonitor: Any?
     @State private var detailModeMonitor: Any?
+    /// Trigger provider for programmatic task state menu display (Cmd+P).
+    @State private var taskStateMenuTrigger = MenuTriggerProvider()
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -162,12 +164,23 @@ struct ContentView: View {
                     onNavigateToTask: { uuid in
                         viewModel.navigateToTask(uuid: uuid)
                     },
+                    // Task state changes
+                    onTaskStateChange: { action, uuid in
+                        viewModel.handleTaskStateChange(action, taskUUID: uuid)
+                    },
+                    taskStateMenuTrigger: taskStateMenuTrigger,
                     // Focus management
                     onClearFocus: {
                         viewModel.clearDetailFocus()
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)
+                .onAppear {
+                    // Wire up the Cmd+P trigger for task state menu
+                    viewModel.taskStateMenuTrigger = {
+                        taskStateMenuTrigger.trigger?()
+                    }
+                }
             } else {
                 TaskListView(viewModel: viewModel, completion: viewModel.completion)
                     .padding(DesignTokens.Spacing.extraLarge)

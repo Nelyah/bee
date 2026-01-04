@@ -1,26 +1,20 @@
 import AppKit
 import SwiftUI
 
-/// A class that provides a trigger closure for showing a menu programmatically.
-/// Set the `trigger` closure to enable external triggering (e.g., from Cmd+P).
-final class MenuTriggerProvider {
-    var trigger: (() -> Void)?
-}
-
-struct ReportMenuButton: View {
-    let name: String
-    let reports: [ReportSummary]
-    @Binding var flash: Bool
-    let onSelect: (String) -> Void
+/// A clickable status badge that shows a dropdown menu for task state changes.
+/// Used in TaskDetailView header, triggered by mouse click or Cmd+P.
+struct TaskStateMenuButton: View {
+    let currentStatus: String
+    let onSelect: (TaskStateAction) -> Void
     /// Optional trigger provider for programmatic menu display (Cmd+P).
     var triggerProvider: MenuTriggerProvider?
 
     @State private var isHovering = false
+    @State private var flash = false
 
     var body: some View {
-        ReportMenuButtonRepresentable(
-            name: name,
-            reports: reports,
+        TaskStateMenuButtonRepresentable(
+            currentStatus: currentStatus,
             onSelect: onSelect,
             triggerProvider: triggerProvider
         ) {
@@ -30,53 +24,44 @@ struct ReportMenuButton: View {
             }
         }
         .fixedSize()
-        .padding(.horizontal, DesignTokens.Spacing.small)
+        .padding(.horizontal, DesignTokens.Spacing.medium)
         .padding(.vertical, DesignTokens.Spacing.extraSmall)
         .opacity(flash ? 0.6 : 1.0)
         .animation(.easeOut(duration: 0.12), value: flash)
         .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .fill(ThemeManager.current.surface1.opacity(isHovering ? 0.55 : 0.35))
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                .fill(statusColor(currentStatus).opacity(isHovering ? 0.95 : 0.85))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .stroke(
-                    isHovering ? ThemeManager.current.blue.opacity(0.5) : ThemeManager.current.surface2.opacity(0.5),
-                    lineWidth: 1
-                )
-        )
-        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous))
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
-        .help("Switch between saved task views")
+        .help("Click to change task state")
+        .accessibilityIdentifier("taskStateMenuButton")
+        .accessibilityLabel("Status: \(currentStatus)")
     }
 }
 
-private struct ReportBadgeView: View {
-    let name: String
+private struct TaskStateBadgeView: View {
+    let status: String
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.extraSmall) {
-            Image(systemName: "line.3.horizontal.decrease.circle")
-                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                .foregroundColor(ThemeManager.current.subtext0)
-            Text(name)
-                .font(.system(size: DesignTokens.TypeScale.label, weight: .semibold, design: .rounded))
-                .foregroundColor(ThemeManager.current.subtext0)
+            Text(status.uppercased())
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
+                .foregroundColor(ThemeManager.current.crust)
             Image(systemName: "chevron.down")
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold))
-                .foregroundColor(ThemeManager.current.overlay0)
+                .foregroundColor(ThemeManager.current.crust.opacity(0.7))
         }
     }
 }
 
-private struct ReportMenuButtonRepresentable: NSViewRepresentable {
-    let name: String
-    let reports: [ReportSummary]
-    let onSelect: (String) -> Void
+private struct TaskStateMenuButtonRepresentable: NSViewRepresentable {
+    let currentStatus: String
+    let onSelect: (TaskStateAction) -> Void
     let triggerProvider: MenuTriggerProvider?
     let onPress: () -> Void
 
@@ -84,11 +69,10 @@ private struct ReportMenuButtonRepresentable: NSViewRepresentable {
         Coordinator()
     }
 
-    /// Creates the AppKit menu button view.
-    func makeNSView(context: Context) -> ReportMenuButtonView {
-        let view = ReportMenuButtonView(onSelect: onSelect, onPress: onPress)
+    func makeNSView(context: Context) -> TaskStateMenuButtonView {
+        let view = TaskStateMenuButtonView(onSelect: onSelect, onPress: onPress)
         context.coordinator.buttonView = view
-        view.update(name: name, reports: reports)
+        view.update(currentStatus: currentStatus)
         // Set up the trigger provider to call showMenu
         triggerProvider?.trigger = { [weak view] in
             view?.showMenu()
@@ -96,11 +80,10 @@ private struct ReportMenuButtonRepresentable: NSViewRepresentable {
         return view
     }
 
-    /// Updates the AppKit menu button view with the latest data.
-    func updateNSView(_ nsView: ReportMenuButtonView, context: Context) {
+    func updateNSView(_ nsView: TaskStateMenuButtonView, context: Context) {
         nsView.onSelect = onSelect
         nsView.onPress = onPress
-        nsView.update(name: name, reports: reports)
+        nsView.update(currentStatus: currentStatus)
         // Update trigger provider reference
         triggerProvider?.trigger = { [weak nsView] in
             nsView?.showMenu()
@@ -108,18 +91,18 @@ private struct ReportMenuButtonRepresentable: NSViewRepresentable {
     }
 
     class Coordinator {
-        var buttonView: ReportMenuButtonView?
+        var buttonView: TaskStateMenuButtonView?
     }
 }
 
-/// AppKit-backed menu view so we can control placement and press feedback.
-final class ReportMenuButtonView: NSView {
-    private var hostingView: NSHostingView<ReportBadgeView>?
+/// AppKit-backed menu view for task state changes.
+final class TaskStateMenuButtonView: NSView {
+    private var hostingView: NSHostingView<TaskStateBadgeView>?
     var onPress: (() -> Void)?
-    var onSelect: ((String) -> Void)?
+    var onSelect: ((TaskStateAction) -> Void)?
+    private var currentStatus: String = ""
 
-    /// Creates the menu view with selection and press callbacks.
-    init(onSelect: @escaping (String) -> Void, onPress: @escaping () -> Void) {
+    init(onSelect: @escaping (TaskStateAction) -> Void, onPress: @escaping () -> Void) {
         self.onSelect = onSelect
         self.onPress = onPress
         super.init(frame: .zero)
@@ -129,21 +112,22 @@ final class ReportMenuButtonView: NSView {
         setContentCompressionResistancePriority(.required, for: .vertical)
     }
 
-    required init?(coder: NSCoder) {
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
         nil
     }
 
-    /// Provides an intrinsic size so SwiftUI doesn't stretch the control.
     override var intrinsicContentSize: NSSize {
         hostingView?.fittingSize ?? super.intrinsicContentSize
     }
 
-    /// Updates the label and menu items.
-    func update(name: String, reports: [ReportSummary]) {
+    func update(currentStatus: String) {
+        self.currentStatus = currentStatus
+
         if let hostingView {
-            hostingView.rootView = ReportBadgeView(name: name)
+            hostingView.rootView = TaskStateBadgeView(status: currentStatus)
         } else {
-            let hostingView = NSHostingView(rootView: ReportBadgeView(name: name))
+            let hostingView = NSHostingView(rootView: TaskStateBadgeView(status: currentStatus))
             hostingView.translatesAutoresizingMaskIntoConstraints = false
             addSubview(hostingView)
             NSLayoutConstraint.activate([
@@ -156,27 +140,54 @@ final class ReportMenuButtonView: NSView {
         }
         invalidateIntrinsicContentSize()
 
+        // Build menu with state options
         let contextMenu = NSMenu()
-        for report in reports {
+
+        let actions: [(TaskStateAction, String)] = [
+            (.complete, "Completed"),
+            (.start, "Active"),
+            (.stop, "Pending"),
+            (.delete, "Deleted"),
+        ]
+
+        for (action, title) in actions {
             let item = NSMenuItem(
-                title: report.name,
-                action: #selector(handleReportSelection(_:)),
+                title: title,
+                action: #selector(handleSelection(_:)),
                 keyEquivalent: ""
             )
             item.target = self
-            item.representedObject = report.name
-            if report.name == name {
+            item.representedObject = action
+
+            // Mark current state with checkmark
+            if isCurrentState(action) {
                 item.state = .on
             }
+
             contextMenu.addItem(item)
         }
+
         menu = contextMenu
     }
 
-    /// Handles menu item selection and forwards the report name.
-    @objc private func handleReportSelection(_ sender: NSMenuItem) {
-        guard let name = sender.representedObject as? String else { return }
-        onSelect?(name)
+    /// Determines if the given action represents the current state.
+    private func isCurrentState(_ action: TaskStateAction) -> Bool {
+        let status = currentStatus.lowercased()
+        switch action {
+        case .complete:
+            return status == "completed"
+        case .start:
+            return status == "active"
+        case .stop:
+            return status == "pending"
+        case .delete:
+            return status == "deleted"
+        }
+    }
+
+    @objc private func handleSelection(_ sender: NSMenuItem) {
+        guard let action = sender.representedObject as? TaskStateAction else { return }
+        onSelect?(action)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -190,7 +201,7 @@ final class ReportMenuButtonView: NSView {
     }
 
     /// Programmatically shows the menu at the button location.
-    /// Used for keyboard shortcut triggers (Cmd+P in list mode).
+    /// Used for keyboard shortcut triggers (Cmd+P in detail mode).
     func showMenu() {
         onPress?()
         guard let contextMenu = menu else { return }
@@ -199,7 +210,6 @@ final class ReportMenuButtonView: NSView {
     }
 
     #if DEBUG
-        /// Exposes menu items for tests.
         var menuItems: [NSMenuItem] {
             menu?.items ?? []
         }

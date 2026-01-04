@@ -97,8 +97,8 @@ final class TaskDetailUITests: XCTestCase {
 
         let view = try sut.inspect()
 
-        // Status is displayed uppercase
-        _ = try view.find(text: "ACTIVE")
+        // Status is displayed in the TaskStateMenuButton with an accessibility label
+        _ = try view.find(viewWithAccessibilityLabel: "Status: active")
     }
 
     func testTaskDetailDisplaysBackButton() throws {

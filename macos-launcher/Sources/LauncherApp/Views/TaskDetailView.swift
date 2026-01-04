@@ -146,6 +146,13 @@ struct TaskDetailView: View {
     /// Called when the user clicks on a linked task to navigate to it.
     var onNavigateToTask: (String) -> Void = { _ in }
 
+    // MARK: - Task State
+
+    /// Called when the user changes the task state via the status menu.
+    var onTaskStateChange: ((TaskStateAction, String) -> Void)?
+    /// Trigger provider for programmatic menu display (Cmd+P).
+    var taskStateMenuTrigger: MenuTriggerProvider?
+
     // MARK: - Focus Management
 
     /// Called when the user clicks on the background to clear focus.
@@ -234,15 +241,13 @@ struct TaskDetailView: View {
                         .help(isTaskNameFocused ? "Press Enter to edit" : "Click to edit")
                 }
                 Spacer()
-                Text(task.status.uppercased())
-                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .semibold, design: .rounded))
-                    .foregroundColor(ThemeManager.current.text)
-                    .padding(.horizontal, DesignTokens.Spacing.medium)
-                    .padding(.vertical, DesignTokens.Spacing.extraSmall)
-                    .background(
-                        RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                            .fill(ThemeManager.current.surface1)
-                    )
+                TaskStateMenuButton(
+                    currentStatus: task.status,
+                    onSelect: { action in
+                        onTaskStateChange?(action, task.uuid)
+                    },
+                    triggerProvider: taskStateMenuTrigger
+                )
             }
 
             if detailLoading {

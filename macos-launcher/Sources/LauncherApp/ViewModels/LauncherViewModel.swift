@@ -17,6 +17,10 @@ final class LauncherViewModel: ObservableObject {
     @Published var tokens: [TokenSpan] = []
     @Published var actionName: String = ""
     @Published var mode: LauncherMode = .list
+    /// Callback to trigger report menu display (set by TaskListView, used by Cmd+P).
+    var reportMenuTrigger: (() -> Void)?
+    /// Callback to trigger task state menu display (set by ContentView, used by Cmd+P).
+    var taskStateMenuTrigger: (() -> Void)?
     @Published var statusMessage: String?
     /// Whether the text input has keyboard focus (insert mode).
     @Published var isInsertMode: Bool = true

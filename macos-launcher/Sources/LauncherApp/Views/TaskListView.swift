@@ -33,6 +33,8 @@ struct TaskListView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @ObservedObject var completion: CompletionCoordinator
     @State private var reportBadgeFlash = false
+    /// Trigger provider for programmatic report menu display (Cmd+P).
+    @State private var reportMenuTrigger = MenuTriggerProvider()
 
     /// Whether any filters are currently active (search input, filter chips, or project scope)
     private var hasActiveFilters: Bool {
@@ -140,9 +142,17 @@ struct TaskListView: View {
                         ReportMenuButton(
                             name: viewModel.currentReportDisplayName,
                             reports: viewModel.availableReports,
-                            flash: $reportBadgeFlash
-                        ) { name in
-                            viewModel.selectReport(name)
+                            flash: $reportBadgeFlash,
+                            onSelect: { name in
+                                viewModel.selectReport(name)
+                            },
+                            triggerProvider: reportMenuTrigger
+                        )
+                        .onAppear {
+                            // Wire up the Cmd+P trigger
+                            viewModel.reportMenuTrigger = {
+                                reportMenuTrigger.trigger?()
+                            }
                         }
                     }
 

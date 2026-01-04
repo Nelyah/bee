@@ -32,6 +32,20 @@ extension LauncherViewModel {
         commandPalette.navigationStack.push(linkMenu)
     }
 
+    // MARK: - Contextual Menu (Cmd+P)
+
+    /// Handles Cmd+P - dispatches to the appropriate contextual menu based on current mode.
+    /// In list mode: shows report menu. In detail mode: shows task state menu.
+    /// Note: reportMenuTrigger and taskStateMenuTrigger properties are stored in LauncherViewModel.swift
+    func handleContextualMenu() {
+        switch mode {
+        case .list:
+            reportMenuTrigger?()
+        case .detail:
+            taskStateMenuTrigger?()
+        }
+    }
+
     func setupCommandPaletteContributors() {
         // Register the shortcuts section (always visible)
         commandPalette.dataSource.register(ShortcutsSectionContributor())

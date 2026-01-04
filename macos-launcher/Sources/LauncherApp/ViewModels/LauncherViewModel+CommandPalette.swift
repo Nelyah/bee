@@ -35,6 +35,13 @@ extension LauncherViewModel {
             onRemoveColumn: { [weak self] key in self?.removeColumn(key) }
         ))
 
+        // Register the task state section for task actions (complete, delete, start, stop)
+        commandPalette.dataSource.register(TaskStateSectionContributor(
+            onTaskStateChange: { [weak self] action, uuid in
+                self?.handleTaskStateChange(action, taskUUID: uuid)
+            }
+        ))
+
         // Register the go-to section for project navigation
         commandPalette.dataSource.register(GoToSectionContributor(
             currentProjectScope: { [weak self] in self?.projectScope },

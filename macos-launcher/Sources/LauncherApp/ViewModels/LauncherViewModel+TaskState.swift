@@ -26,19 +26,28 @@ extension LauncherViewModel {
             )
             showToast(message: action.successMessage, icon: .success)
 
-            // For delete/complete, remove the task from the local list and clear selection
-            if action == .delete || action == .complete {
+            // Handle each action type appropriately
+            switch action {
+            case .delete:
+                // Delete: Remove task from list and close detail view
                 tasks.removeAll { $0.uuid == taskUUID }
                 selectedIndex = nil
-                // Clear detail view if showing this task
                 if taskDetailState.taskUUID == taskUUID {
                     taskDetailState = TaskDetailState()
+                    mode = .list
                 }
-            } else {
-                // For status changes (start/stop), update the task in the list
+
+            case .complete, .start, .stop:
+                // Status changes: Update task in list, keep detail view open
                 if let idx = tasks.firstIndex(where: { $0.uuid == taskUUID }) {
                     let task = tasks[idx]
-                    let newStatus = action == .start ? "active" : "pending"
+                    let newStatus: String
+                    switch action {
+                    case .complete: newStatus = "completed"
+                    case .start: newStatus = "active"
+                    case .stop: newStatus = "pending"
+                    case .delete: newStatus = task.status // Won't reach here
+                    }
                     tasks[idx] = ApiTask(
                         dbId: task.dbId,
                         uuid: task.uuid,

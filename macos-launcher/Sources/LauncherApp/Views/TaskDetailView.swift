@@ -103,6 +103,25 @@ struct TaskDetailView: View {
     /// Called when the user wants to edit a tag at a specific index (Enter on focused tag).
     var onEditTag: (Int) -> Void = { _ in }
 
+    // MARK: - Due Date Editing
+
+    /// Whether the due date field is being edited.
+    var isEditingDueDate: Bool = false
+    /// Binding to the date picker selection.
+    @Binding var dueDateEditSelection: Date
+    /// Whether due date submission is in progress.
+    var isSubmittingDueDate: Bool = false
+    /// Called when the user clicks on the due date to edit it.
+    var onStartEditingDueDate: () -> Void = {}
+    /// Called when the user submits the due date edit.
+    var onSubmitDueDateEdit: () -> Void = {}
+    /// Called when the user cancels the due date edit.
+    var onCancelDueDateEdit: () -> Void = {}
+    /// Called when the user clears the due date.
+    var onClearDueDate: () -> Void = {}
+    /// Called when the user selects a quick date action.
+    var onQuickDueDateAction: (QuickDueDateAction) -> Void = { _ in }
+
     // MARK: - Collapsible Sections
 
     /// Whether the history section is expanded (collapsed by default).
@@ -275,8 +294,18 @@ struct TaskDetailView: View {
                 let completed = formattedOptionalDate(task.dateCompleted, emptyLabel: "—")
                 DetailRow(label: "Completed", value: completed.display, helpText: completed.help)
 
-                let due = formattedOptionalDate(task.dateDue, emptyLabel: "—")
-                DetailRow(label: "Due", value: due.display, helpText: due.help)
+                EditableDueDateRow(
+                    currentDueDate: task.dateDue,
+                    isEditing: isEditingDueDate,
+                    selectedDate: $dueDateEditSelection,
+                    isSubmitting: isSubmittingDueDate,
+                    isFocused: isDueDateFocused,
+                    onStartEditing: onStartEditingDueDate,
+                    onSubmit: onSubmitDueDateEdit,
+                    onCancel: onCancelDueDateEdit,
+                    onClear: onClearDueDate,
+                    onQuickAction: onQuickDueDateAction
+                )
             }
             .zIndex(0)
         }
@@ -528,6 +557,14 @@ struct TaskDetailView: View {
         return false
     }
 
+    /// Whether the due date row is keyboard-focused.
+    private var isDueDateFocused: Bool {
+        if case .dueDate = focusedItem {
+            return true
+        }
+        return false
+    }
+
     // MARK: - Project Row
 
     private var projectRow: some View {
@@ -696,46 +733,6 @@ private struct AnnotationInputField: View {
     }
 }
 
-/// A timeline row that can be tapped to enter edit mode.
-private struct EditableTimelineRow: View {
-    let timestamp: String
-    let value: String
-    let onTap: () -> Void
-
-    @State private var isHovering: Bool = false
-
-    var body: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.medium) {
-            Text(RelativeDateFormatter.description(for: timestamp))
-                .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
-                .foregroundColor(ThemeManager.current.subtext0)
-                .frame(width: 90, alignment: .leading)
-                .help(timestamp)
-            Text(value)
-                .font(.system(size: DesignTokens.TypeScale.body, weight: .regular))
-                .foregroundColor(ThemeManager.current.annotationText)
-        }
-        .padding(.vertical, 6)
-        .padding(.horizontal, DesignTokens.Spacing.small)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                .fill(isHovering ? ThemeManager.current.surfaceHover : ThemeManager.current.surface1.opacity(0.6))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                .stroke(isHovering ? ThemeManager.current.blue.opacity(0.5) : .clear, lineWidth: 1)
-        )
-        .contentShape(Rectangle())
-        .onHover { hovering in
-            isHovering = hovering
-        }
-        .onTapGesture {
-            onTap()
-        }
-        .help("Click to edit")
-    }
-}
-
 #Preview {
     struct PreviewWrapper: View {
         @State private var annotationInput = ""
@@ -743,6 +740,7 @@ private struct EditableTimelineRow: View {
         @State private var annotationEditInput = ""
         @State private var projectEditInput = ""
         @State private var tagAddQuery = ""
+        @State private var dueDateEditSelection = Date()
 
         var body: some View {
             TaskDetailView(
@@ -765,7 +763,8 @@ private struct EditableTimelineRow: View {
                 taskNameEditInput: $taskNameEditInput,
                 annotationEditInput: $annotationEditInput,
                 projectEditInput: $projectEditInput,
-                tagAddQuery: $tagAddQuery
+                tagAddQuery: $tagAddQuery,
+                dueDateEditSelection: $dueDateEditSelection
             )
             .padding(DesignTokens.Spacing.extraExtraLarge)
             .frame(width: 600, height: 400)

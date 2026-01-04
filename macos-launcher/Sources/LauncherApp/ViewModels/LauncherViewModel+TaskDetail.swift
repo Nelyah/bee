@@ -158,14 +158,17 @@ extension LauncherViewModel {
                 items.append(.tag(tag, index: index))
             }
 
-            // 5. Add tag button (after tags, before external links)
+            // 5. Add tag button (after tags, before due date)
             // Only include when not currently adding a tag
             if !isAddingTag {
                 items.append(.addTagButton)
             }
+
+            // 6. Due date (in the Dates section)
+            items.append(.dueDate(task.dateDue))
         }
 
-        // 6. GitLab MRs
+        // 7. GitLab MRs
         let gitlabLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
         }
@@ -173,7 +176,7 @@ extension LauncherViewModel {
             items.append(.gitlabMR(link))
         }
 
-        // 6. Jira issues
+        // 8. Jira issues
         let jiraLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
         }
@@ -340,6 +343,12 @@ extension LauncherViewModel {
         // Add tag button: Enter starts adding a new tag
         if case .addTagButton = item {
             startAddingTag()
+            return true
+        }
+
+        // Due date: Enter triggers editing
+        if case .dueDate = item {
+            startEditingDueDate()
             return true
         }
 

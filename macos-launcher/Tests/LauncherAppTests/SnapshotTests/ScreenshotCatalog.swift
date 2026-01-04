@@ -298,7 +298,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -335,7 +336,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -361,7 +363,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -389,7 +392,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)
@@ -426,7 +430,8 @@ final class ScreenshotCatalog: SnapshotTestCase {
             isEditingProject: true,
             projectEditInput: .constant("hobby"),
             filteredProjects: sampleProjects,
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.detailViewWide)

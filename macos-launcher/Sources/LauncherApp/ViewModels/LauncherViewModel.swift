@@ -104,6 +104,15 @@ final class LauncherViewModel: ObservableObject {
     /// Whether a project submission is in progress.
     @Published var isSubmittingProject: Bool = false
 
+    // MARK: - Due Date Editing State
+
+    /// Whether the due date field is being edited in task detail.
+    @Published var isEditingDueDate: Bool = false
+    /// The date currently selected in the date picker.
+    @Published var dueDateEditSelection: Date = Date()
+    /// Whether a due date submission is in progress.
+    @Published var isSubmittingDueDate: Bool = false
+
     // MARK: - Tag Editing State
 
     /// Index of the currently selected tag for keyboard navigation (nil = no selection).

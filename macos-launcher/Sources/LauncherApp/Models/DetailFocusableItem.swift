@@ -17,6 +17,9 @@ enum DetailFocusableItem: Equatable, Identifiable {
     case tag(String, index: Int)
     /// The "+" button to add a new tag.
     case addTagButton
+    /// Due date field in the Dates section.
+    /// Associated value is the current due date ISO8601 string (or nil if not set).
+    case dueDate(String?)
 
     var id: String {
         switch self {
@@ -34,6 +37,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             "tag-\(index)"
         case .addTagButton:
             "addTagButton"
+        case .dueDate:
+            "dueDate"
         }
     }
 
@@ -56,6 +61,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             nil // Tags use Enter to edit, not open URL
         case .addTagButton:
             nil // Add button uses Enter to start adding, not open URL
+        case .dueDate:
+            nil // Due date uses Enter to edit, not open URL
         }
     }
 
@@ -82,6 +89,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return name
         case .addTagButton:
             return "" // Nothing to copy from add button
+        case let .dueDate(dateString):
+            return dateString ?? ""
         }
     }
 
@@ -107,6 +116,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "Tag"
         case .addTagButton:
             return "" // Nothing to copy from add button
+        case .dueDate:
+            return "Due date"
         }
     }
 }

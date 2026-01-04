@@ -177,3 +177,22 @@ Hints shown in the hint bar should be clickable to trigger their associated acti
 - Made `HintChip` clickable with pointing hand cursor and hover background effect
 - Created `LauncherViewModel+HintActions.swift` to route actions to existing methods
 - Non-actionable hints (e.g., "hjkl Navigate") remain non-clickable
+
+---
+
+## TICKET-005: Due Date in Task Detail
+**Completed:** 2026-01-04
+
+### Summary
+Add ability to view and edit due date in task detail with both keyboard and mouse support, including a calendar picker with time selection and quick action buttons.
+
+### Resolution
+- Created `QuickDueDateAction.swift` enum with date calculation logic for Today, Tomorrow, Next \<weekday\>, Next Week (Monday), +1 Week
+- Created `EditableDueDateRow.swift` component following the two-state display/edit pattern
+- Extended `DetailFocusableItem` with `.dueDate(String?)` case for keyboard navigation
+- Added state properties in `LauncherViewModel.swift` for due date editing
+- Added editing methods in `LauncherViewModel+TaskDetail.swift` (start/cancel/submit/clear/applyQuickAction)
+- Native SwiftUI DatePicker with `.graphical` style and time selection
+- Popover UI with quick action buttons, DatePicker, and Clear/Cancel/Save controls
+- Uses existing `runAction` API with "modify" action - no new backend endpoints needed
+- 14 unit tests for date calculations in `QuickDueDateActionTests.swift`

@@ -75,7 +75,8 @@ final class TaskDetailUITests: XCTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
     }
 
@@ -127,7 +128,8 @@ final class TaskDetailUITests: XCTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
 
         let view = try sut.inspect()
@@ -246,7 +248,8 @@ final class TaskDetailUITests: XCTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
 
         let view = try sut.inspect()
@@ -279,7 +282,8 @@ final class TaskDetailUITests: XCTestCase {
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
-            tagAddQuery: .constant("")
+            tagAddQuery: .constant(""),
+            dueDateEditSelection: .constant(Date())
         )
 
         // Invoke the callback and verify it works

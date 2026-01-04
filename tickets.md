@@ -6,86 +6,19 @@ This document contains detailed tickets for features requested in `feature-list.
 
 ## Table of Contents
 
-1. [TICKET-005: Due Date in Task Detail](#ticket-005)
-2. [TICKET-007: Task Linking via Command Palette](#ticket-007)
-4. [TICKET-009: File Attachments for Tasks](#ticket-009)
-5. [TICKET-010: macOS Mail Integration](#ticket-010)
-6. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
-7. [TICKET-015: Project Overview View](#ticket-015)
-8. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-9. [TICKET-017: Global Dropdown Menu Trigger (Cmd+P)](#ticket-017)
-10. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-11. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-12. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-13. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+1. [TICKET-007: Task Linking via Command Palette](#ticket-007)
+2. [TICKET-009: File Attachments for Tasks](#ticket-009)
+3. [TICKET-010: macOS Mail Integration](#ticket-010)
+4. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
+5. [TICKET-015: Project Overview View](#ticket-015)
+6. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
+7. [TICKET-017: Global Dropdown Menu Trigger (Cmd+P)](#ticket-017)
+8. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
+9. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+10. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+11. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+
 See [DONE.md](DONE.md) for completed tickets.
-
----
-
-<a name="ticket-005"></a>
-## TICKET-005: Due Date in Task Detail
-
-### Summary
-Add ability to view and edit due date in task detail with both keyboard and mouse support, including a calendar picker with time selection.
-
-### Priority
-High
-
-### Complexity
-High ⚠️
-
-### Affected Layers
-- **Rust API**: `bee-api/src/api.rs` (endpoint for updating due date)
-- **Rust Core**: Already has `date_due` field on Task
-- **macOS**: `TaskDetailView.swift`, new `DateTimePickerView.swift` component, `ApiClientProtocol.swift`
-
-### Current State
-- `Task.date_due` exists in Rust model
-- `ApiTaskDetail.dateDue` exists in Swift model
-- No UI for editing due date currently
-
-### Implementation Notes
-
-#### Phase 1: Display Due Date
-1. Add due date row in `metadataColumn` of TaskDetailView
-2. Show formatted date or "No due date" placeholder
-3. Make row tappable/focusable for editing
-
-#### Phase 2: Date/Time Picker Component
-1. Create `DateTimePickerView` component with:
-   - Calendar grid for date selection
-   - Time picker (hour/minute selectors)
-   - "Clear" button to remove due date
-   - "Today", "Tomorrow", "+1 Week" quick actions
-2. Use native `DatePicker` as foundation, customize styling
-
-#### Phase 3: Keyboard Navigation
-1. Add `.dueDate` to `TaskDetailFocusableItem`
-2. Enter on focused due date opens picker popover
-3. Arrow keys navigate calendar, Enter selects
-
-#### Phase 4: API Integration
-1. Add `PATCH /tasks/{uuid}/due` endpoint or extend existing modify endpoint
-2. Update `ApiClientProtocol` with `updateTaskDueDate(uuid:date:)`
-
-### UX Designer Involvement Required
-- Calendar picker layout and interaction design
-- Quick action buttons placement
-- Time picker format (12h vs 24h, increments)
-- Mobile-friendly date input consideration
-
-### Acceptance Criteria
-- [ ] Due date displayed in task detail metadata
-- [ ] Click/tap opens date picker popover
-- [ ] Calendar allows month navigation
-- [ ] Time can be selected
-- [ ] Keyboard navigation works (hjkl to focus, Enter to open, arrows in calendar)
-- [ ] Quick actions (Today, Tomorrow, etc.) work
-- [ ] Clear button removes due date
-- [ ] Changes persist to backend
-
-### Dependencies
-- Requires UX review before implementation
 
 ---
 
@@ -691,7 +624,6 @@ None
 - TICKET-020: Report Filter Visual Grouping
 
 ### High Complexity (1-2 weeks)
-- TICKET-005: Due Date with Calendar Picker
 - TICKET-015: Project Overview View
 - TICKET-022: Help Mode
 
@@ -704,33 +636,29 @@ None
 
 ## Tickets Requiring UX Designer
 
-1. **TICKET-005**: Due Date Picker - calendar layout, time picker design
-2. **TICKET-007**: Task Linking - task selector modal, link type UX, display in detail
-3. **TICKET-012**: Fuzzy Highlighting - styling decisions
-4. **TICKET-020**: Report Filter Grouping - visual design
+1. **TICKET-007**: Task Linking - task selector modal, link type UX, display in detail
+2. **TICKET-012**: Fuzzy Highlighting - styling decisions
+3. **TICKET-020**: Report Filter Grouping - visual design
 
 ---
 
 ## Suggested Implementation Order
 
-### Phase 1: Task Detail Enhancements
-1. TICKET-005 (due date - after UX review)
+### Phase 1: Command Palette & Navigation
+1. TICKET-017 (global Cmd+P)
+2. TICKET-012 (fuzzy highlighting)
 
-### Phase 2: Command Palette & Navigation
-2. TICKET-017 (global Cmd+P)
-3. TICKET-012 (fuzzy highlighting)
+### Phase 2: Advanced Features
+3. TICKET-007 (task linking - needs UX)
+4. TICKET-019 (multi-select)
+5. TICKET-015 (project overview)
 
-### Phase 3: Advanced Features
-5. TICKET-007 (task linking - needs UX)
-6. TICKET-019 (multi-select)
-7. TICKET-015 (project overview)
+### Phase 3: Polish & Extras
+6. TICKET-020 (filter grouping - needs UX)
+7. TICKET-021 (info tooltips)
+8. TICKET-022 (help mode)
+9. TICKET-016 (important links - after TICKET-007)
 
-### Phase 4: Polish & Extras
-8. TICKET-020 (filter grouping - needs UX)
-9. TICKET-021 (info tooltips)
-10. TICKET-022 (help mode)
-11. TICKET-016 (important links - after TICKET-007)
-
-### Phase 5: Complex Integrations
-13. TICKET-009 (file attachments)
-14. TICKET-010 (mail integration)
+### Phase 4: Complex Integrations
+10. TICKET-009 (file attachments)
+11. TICKET-010 (mail integration)

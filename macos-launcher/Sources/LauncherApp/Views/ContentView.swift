@@ -117,6 +117,25 @@ struct ContentView: View {
                     },
                     onEditTag: { index in
                         viewModel.startEditingTag(at: index)
+                    },
+                    // Due date editing
+                    isEditingDueDate: viewModel.isEditingDueDate,
+                    dueDateEditSelection: $viewModel.dueDateEditSelection,
+                    isSubmittingDueDate: viewModel.isSubmittingDueDate,
+                    onStartEditingDueDate: {
+                        viewModel.startEditingDueDate()
+                    },
+                    onSubmitDueDateEdit: {
+                        viewModel.submitDueDateEdit()
+                    },
+                    onCancelDueDateEdit: {
+                        viewModel.cancelEditingDueDate()
+                    },
+                    onClearDueDate: {
+                        viewModel.clearDueDate()
+                    },
+                    onQuickDueDateAction: { action in
+                        viewModel.applyQuickDueDateAction(action)
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)

@@ -160,3 +160,20 @@ Add command palette options to change task state: delete, completed, active, pen
 - Local state updates after API calls (no full refresh needed)
 - Toast notifications confirm actions
 - No confirmation dialog for delete (undo support planned for future)
+
+---
+
+## TICKET-023: Clickable Hint Bar Items
+**Completed:** 2026-01-04
+
+### Summary
+Hints shown in the hint bar should be clickable to trigger their associated action.
+
+### Resolution
+- Created `Keybinding.swift` with `Keybinding` struct and `KeybindingRegistry` as single source of truth
+- Auto-generated display strings (e.g., "⌘K", "Enter", "Tab") from keyCode + modifiers
+- Added `HintAction` enum for type-safe click handling
+- Updated `BottomHint` model with keybinding initializer for auto-derived display keys
+- Made `HintChip` clickable with pointing hand cursor and hover background effect
+- Created `LauncherViewModel+HintActions.swift` to route actions to existing methods
+- Non-actionable hints (e.g., "hjkl Navigate") remain non-clickable

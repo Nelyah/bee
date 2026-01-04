@@ -73,19 +73,19 @@ enum TaskStateAction: String {
 
     var apiAction: String {
         switch self {
-        case .complete: return "done"
-        case .delete: return "delete"
-        case .start: return "start"
-        case .stop: return "stop"
+        case .complete: "done"
+        case .delete: "delete"
+        case .start: "start"
+        case .stop: "stop"
         }
     }
 
     var successMessage: String {
         switch self {
-        case .complete: return "Task marked complete"
-        case .delete: return "Task deleted"
-        case .start: return "Task started"
-        case .stop: return "Task set to pending"
+        case .complete: "Task marked complete"
+        case .delete: "Task deleted"
+        case .start: "Task started"
+        case .stop: "Task set to pending"
         }
     }
 }

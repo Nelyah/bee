@@ -3,6 +3,7 @@ import SwiftUI
 struct BottomHintBar: View {
     let leftHints: [BottomHint]
     let rightHints: [BottomHint]
+    let onAction: (HintAction) -> Void
     static let height: CGFloat = 34
 
     @State private var isHovered = false
@@ -16,13 +17,13 @@ struct BottomHintBar: View {
         HStack(spacing: DesignTokens.Spacing.small) {
             HStack(spacing: DesignTokens.Spacing.small) {
                 ForEach(leftHints) { hint in
-                    HintChip(hint: hint)
+                    HintChip(hint: hint, onAction: onAction)
                 }
             }
             Spacer(minLength: DesignTokens.Spacing.large)
             HStack(spacing: DesignTokens.Spacing.small) {
                 ForEach(rightHints) { hint in
-                    HintChip(hint: hint)
+                    HintChip(hint: hint, onAction: onAction)
                 }
             }
         }
@@ -56,8 +57,32 @@ struct BottomHintBar: View {
 
 private struct HintChip: View {
     let hint: BottomHint
+    let onAction: (HintAction) -> Void
+
+    @State private var isHovering = false
 
     var body: some View {
+        Group {
+            if hint.isClickable {
+                Button(action: { onAction(hint.action) }) {
+                    chipContent
+                }
+                .buttonStyle(.plain)
+                .onHover { hovering in
+                    isHovering = hovering
+                    if hovering {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
+            } else {
+                chipContent
+            }
+        }
+    }
+
+    private var chipContent: some View {
         HStack(spacing: DesignTokens.Spacing.extraSmall) {
             Text(hint.key)
                 .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
@@ -65,21 +90,42 @@ private struct HintChip: View {
                 .padding(.vertical, 2)
                 .background(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                        .fill(ThemeManager.current.surface1)
+                        .fill(keyBackground)
                 )
             Text(hint.label)
         }
-        .padding(.trailing, DesignTokens.Spacing.extraSmall)
+        .padding(.horizontal, DesignTokens.Spacing.small)
+        .padding(.vertical, DesignTokens.Spacing.extraSmall)
+        .background(chipBackground)
+    }
+
+    @ViewBuilder
+    private var chipBackground: some View {
+        if hint.isClickable, isHovering {
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                .fill(ThemeManager.current.surface1.opacity(0.6))
+        }
+    }
+
+    private var keyBackground: Color {
+        if hint.isClickable, isHovering {
+            return ThemeManager.current.surface2
+        }
+        return ThemeManager.current.surface1
     }
 }
 
 #Preview {
     BottomHintBar(
-        leftHints: [BottomHint(key: "Esc", label: "Back")],
+        leftHints: [BottomHint(key: "Esc", label: "Back", action: .escape)],
         rightHints: [
-            BottomHint(key: "Enter", label: "Open"),
-            BottomHint(key: "⌘K", label: "Command menu"),
-        ]
+            BottomHint(key: "Enter", label: "Open", action: .openTask),
+            BottomHint(key: "⌘K", label: "Command menu", action: .openCommandPalette),
+            BottomHint(key: "hjkl", label: "Navigate"), // Non-clickable
+        ],
+        onAction: { action in
+            print("Hint clicked: \(action)")
+        }
     )
     .padding(DesignTokens.Spacing.extraExtraLarge)
     .frame(width: 500, height: 120)

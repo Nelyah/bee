@@ -46,13 +46,13 @@ final class ComponentSnapshotTests: SnapshotTestCase {
             BottomHint(key: "esc", label: "Close"),
         ]
 
-        let view = BottomHintBar(leftHints: leftHints, rightHints: rightHints)
+        let view = BottomHintBar(leftHints: leftHints, rightHints: rightHints, onAction: { _ in })
 
         assertViewSnapshot(view, size: CGSize(width: 600, height: BottomHintBar.height))
     }
 
     func testBottomHintBarEmpty() {
-        let view = BottomHintBar(leftHints: [], rightHints: [])
+        let view = BottomHintBar(leftHints: [], rightHints: [], onAction: { _ in })
 
         assertViewSnapshot(view, size: CGSize(width: 600, height: BottomHintBar.height))
     }
@@ -63,7 +63,7 @@ final class ComponentSnapshotTests: SnapshotTestCase {
             BottomHint(key: "g", label: "Go to"),
         ]
 
-        let view = BottomHintBar(leftHints: leftHints, rightHints: [])
+        let view = BottomHintBar(leftHints: leftHints, rightHints: [], onAction: { _ in })
 
         assertViewSnapshot(view, size: CGSize(width: 600, height: BottomHintBar.height))
     }

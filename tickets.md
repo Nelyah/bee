@@ -18,8 +18,6 @@ This document contains detailed tickets for features requested in `feature-list.
 11. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
 12. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
 13. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
-14. [TICKET-023: Clickable Hint Bar Items](#ticket-023)
-
 See [DONE.md](DONE.md) for completed tickets.
 
 ---
@@ -680,58 +678,6 @@ None
 
 ---
 
-<a name="ticket-023"></a>
-## TICKET-023: Clickable Hint Bar Items
-
-### Summary
-Hints shown in the hint bar should be clickable to trigger their associated action.
-
-### Priority
-Low
-
-### Complexity
-Medium
-
-### Affected Layers
-- **macOS**: `BottomHintBar.swift`, `HintChip.swift`, `InteractionContextCoordinator.swift`
-
-### Current State
-- `HintChip` displays key + label
-- No tap handling
-
-### Implementation Notes
-
-1. Extend hint model to include action:
-   ```swift
-   struct HintItem {
-       let key: String
-       let label: String
-       let action: (() -> Void)?
-   }
-   ```
-
-2. Make `HintChip` tappable:
-   ```swift
-   HintChip(hint: hint)
-       .onTapGesture {
-           hint.action?()
-       }
-       .cursor(hint.action != nil ? .pointingHand : .arrow)
-   ```
-
-3. Wire up actions in `InteractionContextCoordinator`
-
-### Acceptance Criteria
-- [ ] Hint chips with actions show pointer cursor on hover
-- [ ] Clicking hint triggers associated action
-- [ ] Non-actionable hints remain non-clickable
-- [ ] Visual feedback on click
-
-### Dependencies
-None
-
----
-
 ## Summary by Complexity
 
 ### Low Complexity (1-2 days)
@@ -743,7 +689,6 @@ None
 - TICKET-017: Global Dropdown Menu
 - TICKET-019: Multi-Select Tasks
 - TICKET-020: Report Filter Visual Grouping
-- TICKET-023: Clickable Hint Bar Items
 
 ### High Complexity (1-2 weeks)
 - TICKET-005: Due Date with Calendar Picker
@@ -784,8 +729,7 @@ None
 8. TICKET-020 (filter grouping - needs UX)
 9. TICKET-021 (info tooltips)
 10. TICKET-022 (help mode)
-11. TICKET-023 (clickable hints)
-12. TICKET-016 (important links - after TICKET-007)
+11. TICKET-016 (important links - after TICKET-007)
 
 ### Phase 5: Complex Integrations
 13. TICKET-009 (file attachments)

@@ -316,7 +316,7 @@ extension LauncherViewModel {
         return openFocusedDetailItem()
     }
 
-    private func openFocusedDetailItem() -> Bool {
+    func openFocusedDetailItem() -> Bool {
         guard let item = focusedDetailItem else { return false }
 
         // Task name: Enter triggers editing instead of opening URL
@@ -349,7 +349,7 @@ extension LauncherViewModel {
         return true
     }
 
-    private func copyFocusedDetailItem() -> Bool {
+    func copyFocusedDetailItem() -> Bool {
         guard let item = focusedDetailItem else { return false }
 
         let value = item.copyValue
@@ -361,7 +361,7 @@ extension LauncherViewModel {
         return true
     }
 
-    private func deleteFocusedDetailItem() -> Bool {
+    func deleteFocusedDetailItem() -> Bool {
         guard let item = focusedDetailItem else { return false }
 
         // Only tags can be deleted with x

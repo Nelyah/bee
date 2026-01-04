@@ -136,10 +136,14 @@ struct ContentView: View {
                 .zIndex(2)
         }
         .overlay(alignment: .bottom) {
-            BottomHintBar(leftHints: viewModel.hintModel.left, rightHints: viewModel.hintModel.right)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-                .zIndex(1)
+            BottomHintBar(
+                leftHints: viewModel.hintModel.left,
+                rightHints: viewModel.hintModel.right,
+                onAction: viewModel.handleHintAction
+            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+            .zIndex(1)
         }
         .onExitCommand {
             viewModel.handleEscape()

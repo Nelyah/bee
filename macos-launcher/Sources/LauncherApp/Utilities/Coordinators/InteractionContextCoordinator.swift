@@ -101,15 +101,16 @@ enum BottomHintModelBuilder {
     }
 
     private static func leftHints(for context: InteractionContext) -> [BottomHint] {
-        var hints = [BottomHint(key: "Esc", label: escapeLabel(for: context))]
+        var hints = [BottomHint(keybinding: KeybindingRegistry.escape, label: escapeLabel(for: context))]
         switch context {
         case let .detail(isEditing):
             if !isEditing {
+                // Informational hint - not a single action
                 hints.append(BottomHint(key: "hjkl", label: "Navigate"))
             }
         case let .list(_, isInsertMode):
             if !isInsertMode {
-                hints.append(BottomHint(key: "i", label: "Insert"))
+                hints.append(BottomHint(keybinding: KeybindingRegistry.enterInsertMode, label: "Insert"))
             }
         default:
             break
@@ -128,45 +129,51 @@ enum BottomHintModelBuilder {
         case let .detail(isEditing):
             if isEditing {
                 // Edit mode: show save hint instead of Enter
-                hints.append(BottomHint(key: "⌘↩", label: "Save"))
+                hints.append(BottomHint(keybinding: KeybindingRegistry.saveEdit, label: "Save"))
             } else {
                 // Normal detail mode: show Enter for Open
-                if let enterLabel = enterLabel(for: context) {
-                    hints.append(BottomHint(key: "Enter", label: enterLabel))
-                }
+                hints.append(BottomHint(keybinding: KeybindingRegistry.openFocusedItem, label: "Open"))
                 // Show tag deletion hint when a tag is selected
                 if hasTagSelected {
-                    hints.append(BottomHint(key: "x", label: "Delete tag"))
+                    hints.append(BottomHint(keybinding: KeybindingRegistry.deleteTag, label: "Delete tag"))
                 }
                 // Show action hints for detail mode
-                hints.append(BottomHint(key: "a", label: "Add note"))
-                hints.append(BottomHint(key: "t", label: "Add tag"))
+                hints.append(BottomHint(keybinding: KeybindingRegistry.addAnnotation, label: "Add note"))
+                hints.append(BottomHint(keybinding: KeybindingRegistry.addTag, label: "Add tag"))
                 // Dynamic copy label based on focused item (e.g., "Copy UUID", "Copy Branch")
                 let copyLabel = detailCopyLabel.map { "Copy \($0)" } ?? "Copy"
-                hints.append(BottomHint(key: "y", label: copyLabel))
+                hints.append(BottomHint(keybinding: KeybindingRegistry.copyFocused, label: copyLabel))
             }
         case let .list(selection, isInsertMode):
-            if let enterLabel = enterLabel(for: context) {
-                hints.append(BottomHint(key: "Enter", label: enterLabel))
+            // Enter key action depends on what's selected
+            switch selection {
+            case .groupHeader:
+                hints.append(BottomHint(key: "Enter", label: "Toggle fold", action: .toggleFold))
+            case .task:
+                hints.append(BottomHint(keybinding: KeybindingRegistry.openTask, label: "Open task"))
+            case .none:
+                // No specific Enter action when nothing selected
+                hints.append(BottomHint(key: "Enter", label: "Run action", action: .none))
             }
             // Show Tab hint in normal mode (collapse for headers, expand for tasks)
             if !isInsertMode {
                 switch selection {
                 case .groupHeader:
-                    hints.append(BottomHint(key: "Tab", label: "Collapse"))
+                    hints.append(BottomHint(keybinding: KeybindingRegistry.toggleFold, label: "Collapse"))
                 case .task:
-                    hints.append(BottomHint(key: "Tab", label: "Expand"))
+                    hints.append(BottomHint(keybinding: KeybindingRegistry.toggleFold, label: "Expand"))
                 case .none:
                     break
                 }
             }
-        default:
-            if let enterLabel = enterLabel(for: context) {
-                hints.append(BottomHint(key: "Enter", label: enterLabel))
-            }
+        case .commandPalette:
+            // Command palette Enter selects (not in our registry - internal to palette)
+            hints.append(BottomHint(key: "Enter", label: "Select", action: .none))
+        case .completionMenu:
+            hints.append(BottomHint(key: "Enter", label: "Accept suggestion", action: .acceptSuggestion))
         }
 
-        hints.append(BottomHint(key: "⌘K", label: "Command menu"))
+        hints.append(BottomHint(keybinding: KeybindingRegistry.commandPalette, label: "Command menu"))
         return hints
     }
 
@@ -180,27 +187,6 @@ enum BottomHintModelBuilder {
             isEditing ? "Cancel" : "Back"
         case let .list(_, isInsertMode):
             isInsertMode ? "Exit insert" : "Close"
-        }
-    }
-
-    private static func enterLabel(for context: InteractionContext) -> String? {
-        switch context {
-        case .commandPalette:
-            "Select"
-        case .completionMenu:
-            "Accept suggestion"
-        case let .detail(isEditing):
-            // When editing, we don't show Enter hint (Cmd+Enter Save is shown instead)
-            isEditing ? nil : "Open"
-        case let .list(selection, _):
-            switch selection {
-            case .groupHeader:
-                "Toggle fold"
-            case .task:
-                "Open task"
-            case .none:
-                "Run action"
-            }
         }
     }
 }

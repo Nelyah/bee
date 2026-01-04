@@ -3,7 +3,7 @@ import Foundation
 /// Provides task state actions (complete, delete, start, stop) when a task is selected.
 struct TaskStateSectionContributor: CommandPaletteSectionContributor {
     var contributorId: String { "taskState" }
-    var priority: Int { 3 }  // After actions (0), before save report (5)
+    var priority: Int { 3 } // After actions (0), before save report (5)
 
     private let onTaskStateChange: (TaskStateAction, String) -> Void
 

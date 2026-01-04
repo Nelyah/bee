@@ -201,35 +201,49 @@ impl TaskPropertyParser {
                 TokenType::TagMinusPrefix => {
                     process_tag_prefix!(self, props, tags_remove);
                 }
-                TokenType::DependsOn | TokenType::Blocks => {
-                    let is_blocks = self.current_token.token_type == TokenType::Blocks;
+                TokenType::DependsOn
+                | TokenType::Blocks
+                | TokenType::ParentOf
+                | TokenType::ChildOf
+                | TokenType::RelatedTo
+                | TokenType::Duplicates => {
+                    let link_token_type = self.current_token.token_type.clone();
+                    let link_name = match link_token_type {
+                        TokenType::DependsOn => "depends",
+                        TokenType::Blocks => "blocks",
+                        TokenType::ParentOf => "parent",
+                        TokenType::ChildOf => "child",
+                        TokenType::RelatedTo => "related",
+                        TokenType::Duplicates => "duplicates",
+                        _ => unreachable!(),
+                    };
                     self.next_token();
                     self.skip_whitespace();
 
-                    let mut new_depends_on = match if is_blocks {
-                        &props.blocks
-                    } else {
-                        &props.depends_on
-                    } {
-                        None => Vec::default(),
-                        Some(values) => values.to_owned(),
-                    };
+                    // Get existing identifiers for this link type
+                    let mut identifiers = match &link_token_type {
+                        TokenType::DependsOn => props.depends_on.clone(),
+                        TokenType::Blocks => props.blocks.clone(),
+                        TokenType::ParentOf => props.parent_of.clone(),
+                        TokenType::ChildOf => props.child_of.clone(),
+                        TokenType::RelatedTo => props.related_to.clone(),
+                        TokenType::Duplicates => props.duplicates.clone(),
+                        _ => unreachable!(),
+                    }
+                    .unwrap_or_default();
+
                     match self.current_token.token_type {
                         TokenType::Uuid => {
                             let parsed = Uuid::parse_str(&self.current_token.literal)
                                 .map_err(|err| {
                                     CoreError::parse(format!(
-                                        "Expected a UUID following {}, but could not parse '{}' ({})",
-                                        if is_blocks {
-                                            "TokenTypeBlocks"
-                                        } else {
-                                            "TokenTypeDependsOn"
-                                        },
+                                        "Expected a UUID following {}:, but could not parse '{}' ({})",
+                                        link_name,
                                         self.current_token.literal,
                                         err
                                     ))
                                 })?;
-                            new_depends_on.push(DependsOnIdentifier::Uuid(parsed));
+                            identifiers.push(DependsOnIdentifier::Uuid(parsed));
                         }
                         TokenType::Int => {
                             let parsed = self
@@ -238,49 +252,46 @@ impl TaskPropertyParser {
                                 .parse::<i32>()
                                 .map_err(|err| {
                                     CoreError::parse(format!(
-                                        "Expected an integer following {}, but could not parse '{}' ({})",
-                                        if is_blocks {
-                                            "TokenTypeBlocks"
-                                        } else {
-                                            "TokenTypeDependsOn"
-                                        },
+                                        "Expected an integer following {}:, but could not parse '{}' ({})",
+                                        link_name,
                                         self.current_token.literal,
                                         err
                                     ))
                                 })?;
-                            new_depends_on.push(DependsOnIdentifier::Id(parsed));
+                            identifiers.push(DependsOnIdentifier::Id(parsed));
                         }
                         _ if self.current_token.token_type == TokenType::WordString
                             && self.current_token.literal == *"none" =>
                         {
-                            if is_blocks {
-                                props.blocks = Some(Vec::new());
-                            } else {
-                                props.depends_on = Some(Vec::new());
-                            }
+                            // Clear all links of this type
+                            identifiers.clear();
                         }
                         _ => {
                             return Err(CoreError::parse(
                                 err_msg_prefix
                                     + &format!(
-                                        "Expected a token of type Uuid or Int following a {}, found '{}' (value: '{}')",
-                                        if is_blocks {
-                                            "TokenTypeBlocks"
-                                        } else {
-                                            "TokenTypeDependsOn"
-                                        },
+                                        "Expected a token of type Uuid or Int following {}:, found '{}' (value: '{}')",
+                                        link_name,
                                         self.current_token.token_type,
                                         self.current_token.literal
                                     ),
                             ));
                         }
                     }
-                    if !new_depends_on.is_empty() {
-                        if is_blocks {
-                            props.blocks = Some(new_depends_on);
-                        } else {
-                            props.depends_on = Some(new_depends_on);
-                        }
+                    // Store the updated identifiers
+                    let identifiers_opt = if identifiers.is_empty() {
+                        Some(Vec::new())
+                    } else {
+                        Some(identifiers)
+                    };
+                    match link_token_type {
+                        TokenType::DependsOn => props.depends_on = identifiers_opt,
+                        TokenType::Blocks => props.blocks = identifiers_opt,
+                        TokenType::ParentOf => props.parent_of = identifiers_opt,
+                        TokenType::ChildOf => props.child_of = identifiers_opt,
+                        TokenType::RelatedTo => props.related_to = identifiers_opt,
+                        TokenType::Duplicates => props.duplicates = identifiers_opt,
+                        _ => unreachable!(),
                     }
                     self.next_token();
                 }

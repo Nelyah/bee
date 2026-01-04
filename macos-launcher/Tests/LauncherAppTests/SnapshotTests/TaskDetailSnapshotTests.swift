@@ -158,7 +158,8 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             dateDue: nil,
             urgency: nil,
             annotations: annotations,
-            history: []
+            history: [],
+            links: []
         )
         let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
         let sut = makeSUT(task: task, detailState: detailState)
@@ -201,7 +202,8 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             dateDue: nil,
             urgency: nil,
             annotations: [],
-            history: history
+            history: history,
+            links: []
         )
         let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
         let sut = makeSUT(task: task, detailState: detailState)
@@ -372,7 +374,8 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             dateDue: "2024-02-15T17:00:00Z",
             urgency: 8,
             annotations: annotations,
-            history: history
+            history: history,
+            links: []
         )
         let links = [
             TestHelpers.makeGitLabMRLink(

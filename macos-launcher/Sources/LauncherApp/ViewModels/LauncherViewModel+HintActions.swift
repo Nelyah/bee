@@ -25,6 +25,9 @@ extension LauncherViewModel {
         case .addTag:
             startAddingTag()
 
+        case .linkTask:
+            openLinkPalette()
+
         case .copyFocused:
             _ = copyFocusedDetailItem()
 

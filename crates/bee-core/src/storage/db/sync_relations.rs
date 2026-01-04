@@ -203,145 +203,399 @@ pub(super) async fn sync_history(
     Ok(())
 }
 
+/// Sync links for a task to the database.
+///
+/// Link storage strategy:
+/// - **Asymmetric canonical types** (DependsOn, ParentOf): Stored as-is from this task
+/// - **Asymmetric inferred types** (Blocking, ChildOf): Not stored; we delete the inverse canonical link
+/// - **Symmetric types** (RelatedTo, Duplicates): Stored with canonical ordering (lower UUID = from)
 pub(super) async fn sync_links(
     db: &DatabaseTransaction,
     task_model: &tasks::Model,
     desired_links: &[Link],
 ) -> Result<(), DbErr> {
-    // === PART A: Handle outgoing DependsOn links (links FROM this task) ===
-    // Only persist DependsOn links; Blocking links are virtual (reconstructed at load time)
+    let this_uuid = Uuid::parse_str(&task_model.uuid)
+        .map_err(|e| DbErr::Custom(format!("Invalid UUID: {}", e)))?;
 
-    let desired_depends_on: Vec<&Link> = desired_links
-        .iter()
-        .filter(|link| link.link_type == LinkType::DependsOn)
-        .collect();
+    // === PART A: Handle outgoing canonical links (DependsOn, ParentOf) ===
+    // These are stored as links FROM this task TO the target
 
-    // Only consider existing DependsOn links from this task
-    let existing_rows: Vec<links::Model> = links::Entity::find()
-        .filter(links::Column::FromTaskId.eq(task_model.db_id))
-        .filter(links::Column::Type.eq(LinkType::DependsOn.to_string()))
-        .all(db)
-        .await?;
+    let canonical_asymmetric_types = [LinkType::DependsOn, LinkType::ParentOf];
 
-    let mut existing_map: HashMap<i32, links::Model> = HashMap::new();
-    let mut existing_ids = Vec::new();
-    debug!("Existing outgoing DependsOn rows:");
-    for row in existing_rows {
-        debug!("row: {:?}", row);
-        existing_ids.push(row.id);
-        existing_map.insert(row.id, row);
-    }
+    for link_type in &canonical_asymmetric_types {
+        let desired_of_type: Vec<&Link> = desired_links
+            .iter()
+            .filter(|link| &link.link_type == link_type)
+            .collect();
 
-    let desired_ids: HashSet<i32> = desired_depends_on
-        .iter()
-        .filter_map(|link| link.id)
-        .collect();
-
-    let to_delete: Vec<i32> = existing_ids
-        .into_iter()
-        .filter(|id| !desired_ids.contains(id))
-        .collect();
-    if !to_delete.is_empty() {
-        debug!(
-            "Deleting outgoing DependsOn links with ids: {:?}",
-            to_delete
-        );
-        links::Entity::delete_many()
-            .filter(links::Column::Id.is_in(to_delete))
-            .exec(db)
+        let existing_rows: Vec<links::Model> = links::Entity::find()
+            .filter(links::Column::FromTaskId.eq(task_model.db_id))
+            .filter(links::Column::Type.eq(link_type.to_string()))
+            .all(db)
             .await?;
-    }
 
-    // Build target cache for DependsOn links only
-    let mut target_cache: HashMap<Uuid, Option<i32>> = HashMap::new();
-    for link in &desired_depends_on {
-        target_cache
-            .entry(link.to)
-            .or_insert(resolve_uuid_to_db_id(db, link.to).await?);
-    }
-
-    // Insert or update DependsOn links
-    for link in &desired_depends_on {
-        let to_db_id = target_cache
-            .get(&link.to)
-            .and_then(|id| *id)
-            .ok_or_else(|| DbErr::RecordNotFound(format!("Unknown target {}", link.to)))?;
-
-        if let Some(id) = link.id
-            && let Some(existing_model) = existing_map.get(&id)
-        {
-            let mut active = existing_model.clone().into_active_model();
-            let mut changed = false;
-
-            if existing_model.from_task_id != task_model.db_id {
-                active.from_task_id = Set(task_model.db_id);
-                changed = true;
-            } else {
-                active.from_task_id = ActiveValue::Unchanged(existing_model.from_task_id);
-            }
-
-            if existing_model.to_task_id != to_db_id {
-                active.to_task_id = Set(to_db_id);
-                changed = true;
-            } else {
-                active.to_task_id = ActiveValue::Unchanged(existing_model.to_task_id);
-            }
-
-            // Link type is always DependsOn in this branch, but check for consistency
-            let link_type_string = LinkType::DependsOn.to_string();
-            if existing_model.r#type != link_type_string {
-                active.r#type = Set(link_type_string);
-                changed = true;
-            } else {
-                active.r#type = ActiveValue::Unchanged(existing_model.r#type.clone());
-            }
-
-            if changed {
-                active.save(db).await?;
-            }
-            continue;
+        let mut existing_map: HashMap<i32, links::Model> = HashMap::new();
+        let mut existing_ids = Vec::new();
+        debug!("Existing outgoing {:?} rows:", link_type);
+        for row in existing_rows {
+            debug!("row: {:?}", row);
+            existing_ids.push(row.id);
+            existing_map.insert(row.id, row);
         }
 
-        links::ActiveModel {
-            id: ActiveValue::NotSet,
-            from_task_id: Set(task_model.db_id),
-            to_task_id: Set(to_db_id),
-            r#type: Set(LinkType::DependsOn.to_string()),
-        }
-        .save(db)
-        .await?;
-    }
+        let desired_ids: HashSet<i32> = desired_of_type.iter().filter_map(|link| link.id).collect();
 
-    // === PART B: Handle Blocking link removal (delete incoming DependsOn links) ===
-    // When user removes a Blocking link from this task, we need to delete the corresponding
-    // DependsOn link that was stored from the other task's perspective.
-
-    // Get UUIDs of tasks we want to KEEP blocking (from Blocking links in desired_links)
-    let desired_blocking_targets: HashSet<Uuid> = desired_links
-        .iter()
-        .filter(|l| l.link_type == LinkType::Blocking)
-        .map(|l| l.to) // The task that depends on us
-        .collect();
-
-    // Load existing incoming DependsOn links (other tasks that depend on this one)
-    let existing_incoming: Vec<links::Model> = links::Entity::find()
-        .filter(links::Column::ToTaskId.eq(task_model.db_id))
-        .filter(links::Column::Type.eq(LinkType::DependsOn.to_string()))
-        .all(db)
-        .await?;
-
-    // For each incoming DependsOn, if user removed the Blocking link, delete it
-    for incoming in existing_incoming {
-        let source_uuid = resolve_db_id_to_uuid(db, incoming.from_task_id).await?;
-        if let Some(uuid) = source_uuid
-            && !desired_blocking_targets.contains(&uuid)
-        {
-            // User removed this blocking relationship
+        let to_delete: Vec<i32> = existing_ids
+            .into_iter()
+            .filter(|id| !desired_ids.contains(id))
+            .collect();
+        if !to_delete.is_empty() {
             debug!(
-                "Deleting incoming DependsOn link id {} (from task {} depends on this task)",
-                incoming.id, incoming.from_task_id
+                "Deleting outgoing {:?} links with ids: {:?}",
+                link_type, to_delete
             );
-            links::Entity::delete_by_id(incoming.id).exec(db).await?;
+            links::Entity::delete_many()
+                .filter(links::Column::Id.is_in(to_delete))
+                .exec(db)
+                .await?;
+        }
+
+        // Build target cache
+        let mut target_cache: HashMap<Uuid, Option<i32>> = HashMap::new();
+        for link in &desired_of_type {
+            target_cache
+                .entry(link.to)
+                .or_insert(resolve_uuid_to_db_id(db, link.to).await?);
+        }
+
+        // Insert or update links
+        for link in &desired_of_type {
+            let to_db_id = target_cache
+                .get(&link.to)
+                .and_then(|id| *id)
+                .ok_or_else(|| DbErr::RecordNotFound(format!("Unknown target {}", link.to)))?;
+
+            if let Some(id) = link.id
+                && let Some(existing_model) = existing_map.get(&id)
+            {
+                let mut active = existing_model.clone().into_active_model();
+                let mut changed = false;
+
+                if existing_model.from_task_id != task_model.db_id {
+                    active.from_task_id = Set(task_model.db_id);
+                    changed = true;
+                } else {
+                    active.from_task_id = ActiveValue::Unchanged(existing_model.from_task_id);
+                }
+
+                if existing_model.to_task_id != to_db_id {
+                    active.to_task_id = Set(to_db_id);
+                    changed = true;
+                } else {
+                    active.to_task_id = ActiveValue::Unchanged(existing_model.to_task_id);
+                }
+
+                let link_type_string = link_type.to_string();
+                if existing_model.r#type != link_type_string {
+                    active.r#type = Set(link_type_string);
+                    changed = true;
+                } else {
+                    active.r#type = ActiveValue::Unchanged(existing_model.r#type.clone());
+                }
+
+                if changed {
+                    active.save(db).await?;
+                }
+                continue;
+            }
+
+            links::ActiveModel {
+                id: ActiveValue::NotSet,
+                from_task_id: Set(task_model.db_id),
+                to_task_id: Set(to_db_id),
+                r#type: Set(link_type.to_string()),
+            }
+            .save(db)
+            .await?;
+        }
+    }
+
+    // === PART A2: Handle inferred asymmetric links (Blocking, ChildOf) ===
+    // These are stored with canonical type and SWAPPED direction
+    // e.g., Blocking(from=A, to=B) → DependsOn(from=B, to=A) in database
+    // This means "B depends on A" which displays as "A blocks B"
+
+    let inferred_to_canonical_for_storage = [
+        (LinkType::Blocking, LinkType::DependsOn),
+        (LinkType::ChildOf, LinkType::ParentOf),
+    ];
+
+    for (inferred_type, canonical_type) in &inferred_to_canonical_for_storage {
+        let desired_of_type: Vec<&Link> = desired_links
+            .iter()
+            .filter(|link| &link.link_type == inferred_type)
+            .collect();
+
+        // For inferred types, we store as canonical with swapped from/to
+        // So we query for links TO this task (since we store them swapped)
+        let existing_rows: Vec<links::Model> = links::Entity::find()
+            .filter(links::Column::ToTaskId.eq(task_model.db_id))
+            .filter(links::Column::Type.eq(canonical_type.to_string()))
+            .all(db)
+            .await?;
+
+        let mut existing_map: HashMap<i32, links::Model> = HashMap::new();
+        for row in existing_rows {
+            existing_map.insert(row.id, row);
+        }
+
+        // Build target cache (targets become "from" in the stored link)
+        let mut target_cache: HashMap<Uuid, Option<i32>> = HashMap::new();
+        for link in &desired_of_type {
+            target_cache
+                .entry(link.to)
+                .or_insert(resolve_uuid_to_db_id(db, link.to).await?);
+        }
+
+        // Determine which existing links to keep
+        let desired_targets: HashSet<Uuid> = desired_of_type.iter().map(|l| l.to).collect();
+
+        // Delete links that are no longer desired
+        for row in existing_map.values() {
+            let source_uuid = resolve_db_id_to_uuid(db, row.from_task_id).await?;
+            if let Some(uuid) = source_uuid
+                && !desired_targets.contains(&uuid)
+            {
+                debug!(
+                    "Deleting {:?} link id {} (stored as {:?} from {} to this task)",
+                    inferred_type, row.id, canonical_type, row.from_task_id
+                );
+                links::Entity::delete_by_id(row.id).exec(db).await?;
+            }
+        }
+
+        // Insert new links (stored with swapped direction and canonical type)
+        for link in &desired_of_type {
+            // Check if this link already exists
+            let target_db_id = target_cache
+                .get(&link.to)
+                .and_then(|id| *id)
+                .ok_or_else(|| DbErr::RecordNotFound(format!("Unknown target {}", link.to)))?;
+
+            let already_exists = existing_map
+                .values()
+                .any(|row| row.from_task_id == target_db_id);
+
+            if !already_exists {
+                debug!(
+                    "Inserting {:?} link as {:?}(from={}, to={})",
+                    inferred_type, canonical_type, target_db_id, task_model.db_id
+                );
+                links::ActiveModel {
+                    id: ActiveValue::NotSet,
+                    from_task_id: Set(target_db_id), // Swapped: target becomes "from"
+                    to_task_id: Set(task_model.db_id), // Swapped: this task becomes "to"
+                    r#type: Set(canonical_type.to_string()),
+                }
+                .save(db)
+                .await?;
+            }
+        }
+    }
+
+    // === PART B: Handle symmetric links (RelatedTo, Duplicates) ===
+    // These are stored with canonical ordering: lower UUID is always 'from'
+    // When this task has the lower UUID, store normally
+    // When this task has the higher UUID, store with swapped from/to
+
+    let symmetric_types = [LinkType::RelatedTo, LinkType::Duplicates];
+
+    for link_type in &symmetric_types {
+        // Get all desired links of this type
+        let all_desired: Vec<&Link> = desired_links
+            .iter()
+            .filter(|link| &link.link_type == link_type)
+            .collect();
+
+        // Split into two groups: where we store from this task vs from target
+        let desired_store_from_self: Vec<&Link> = all_desired
+            .iter()
+            .filter(|link| this_uuid < link.to)
+            .copied()
+            .collect();
+        let desired_store_from_target: Vec<&Link> = all_desired
+            .iter()
+            .filter(|link| this_uuid > link.to)
+            .copied()
+            .collect();
+
+        // === Handle links stored FROM this task (this_uuid < target) ===
+        let existing_outgoing: Vec<links::Model> = links::Entity::find()
+            .filter(links::Column::FromTaskId.eq(task_model.db_id))
+            .filter(links::Column::Type.eq(link_type.to_string()))
+            .all(db)
+            .await?;
+
+        let mut existing_outgoing_map: HashMap<i32, links::Model> = HashMap::new();
+        let mut existing_outgoing_ids = Vec::new();
+        for row in existing_outgoing {
+            existing_outgoing_ids.push(row.id);
+            existing_outgoing_map.insert(row.id, row);
+        }
+
+        let desired_outgoing_ids: HashSet<i32> = desired_store_from_self
+            .iter()
+            .filter_map(|link| link.id)
+            .collect();
+
+        let outgoing_to_delete: Vec<i32> = existing_outgoing_ids
+            .into_iter()
+            .filter(|id| !desired_outgoing_ids.contains(id))
+            .collect();
+        if !outgoing_to_delete.is_empty() {
+            debug!(
+                "Deleting outgoing {:?} links with ids: {:?}",
+                link_type, outgoing_to_delete
+            );
+            links::Entity::delete_many()
+                .filter(links::Column::Id.is_in(outgoing_to_delete))
+                .exec(db)
+                .await?;
+        }
+
+        // Build target cache for outgoing
+        let mut target_cache: HashMap<Uuid, Option<i32>> = HashMap::new();
+        for link in &desired_store_from_self {
+            target_cache
+                .entry(link.to)
+                .or_insert(resolve_uuid_to_db_id(db, link.to).await?);
+        }
+
+        // Insert new outgoing links
+        for link in &desired_store_from_self {
+            if link.id.is_some() {
+                continue;
+            }
+
+            let to_db_id = target_cache
+                .get(&link.to)
+                .and_then(|id| *id)
+                .ok_or_else(|| DbErr::RecordNotFound(format!("Unknown target {}", link.to)))?;
+
+            links::ActiveModel {
+                id: ActiveValue::NotSet,
+                from_task_id: Set(task_model.db_id),
+                to_task_id: Set(to_db_id),
+                r#type: Set(link_type.to_string()),
+            }
+            .save(db)
+            .await?;
+        }
+
+        // === Handle links stored FROM target (this_uuid > target, need swapped storage) ===
+        let existing_incoming: Vec<links::Model> = links::Entity::find()
+            .filter(links::Column::ToTaskId.eq(task_model.db_id))
+            .filter(links::Column::Type.eq(link_type.to_string()))
+            .all(db)
+            .await?;
+
+        let mut existing_incoming_map: HashMap<i32, links::Model> = HashMap::new();
+        for row in existing_incoming {
+            existing_incoming_map.insert(row.id, row);
+        }
+
+        // Build target cache for incoming (targets have lower UUID)
+        let mut incoming_target_cache: HashMap<Uuid, Option<i32>> = HashMap::new();
+        for link in &desired_store_from_target {
+            incoming_target_cache
+                .entry(link.to)
+                .or_insert(resolve_uuid_to_db_id(db, link.to).await?);
+        }
+
+        // Determine which targets we want to keep
+        let desired_incoming_targets: HashSet<Uuid> =
+            desired_store_from_target.iter().map(|l| l.to).collect();
+
+        // Delete incoming links that are no longer desired
+        for row in existing_incoming_map.values() {
+            let source_uuid = resolve_db_id_to_uuid(db, row.from_task_id).await?;
+            if let Some(uuid) = source_uuid
+                && !desired_incoming_targets.contains(&uuid)
+            {
+                debug!(
+                    "Deleting incoming {:?} link id {} (from task {})",
+                    link_type, row.id, row.from_task_id
+                );
+                links::Entity::delete_by_id(row.id).exec(db).await?;
+            }
+        }
+
+        // Insert new links with swapped direction (from=target, to=this_task)
+        for link in &desired_store_from_target {
+            let target_db_id = incoming_target_cache
+                .get(&link.to)
+                .and_then(|id| *id)
+                .ok_or_else(|| DbErr::RecordNotFound(format!("Unknown target {}", link.to)))?;
+
+            let already_exists = existing_incoming_map
+                .values()
+                .any(|row| row.from_task_id == target_db_id);
+
+            if !already_exists {
+                debug!(
+                    "Inserting {:?} link with canonical ordering (from={}, to={})",
+                    link_type, target_db_id, task_model.db_id
+                );
+                links::ActiveModel {
+                    id: ActiveValue::NotSet,
+                    from_task_id: Set(target_db_id), // Lower UUID is "from"
+                    to_task_id: Set(task_model.db_id), // Higher UUID (this) is "to"
+                    r#type: Set(link_type.to_string()),
+                }
+                .save(db)
+                .await?;
+            }
+        }
+    }
+
+    // === PART C: Handle inferred link removal (Blocking, ChildOf) ===
+    // This is now handled by PART A2 above - when desired_of_type is empty,
+    // all existing incoming canonical links will be deleted.
+
+    // Legacy cleanup: remove any orphaned incoming canonical links
+    // that don't have corresponding inferred links in our desired set
+    let inferred_to_canonical = [
+        (LinkType::Blocking, LinkType::DependsOn),
+        (LinkType::ChildOf, LinkType::ParentOf),
+    ];
+
+    for (inferred_type, canonical_type) in &inferred_to_canonical {
+        // Get UUIDs of tasks we want to KEEP the relationship with
+        let desired_targets: HashSet<Uuid> = desired_links
+            .iter()
+            .filter(|l| &l.link_type == inferred_type)
+            .map(|l| l.to)
+            .collect();
+
+        // Load existing incoming canonical links (other tasks that have canonical link to us)
+        let existing_incoming: Vec<links::Model> = links::Entity::find()
+            .filter(links::Column::ToTaskId.eq(task_model.db_id))
+            .filter(links::Column::Type.eq(canonical_type.to_string()))
+            .all(db)
+            .await?;
+
+        // For each incoming canonical link, if user removed the inferred link, delete it
+        for incoming in existing_incoming {
+            let source_uuid = resolve_db_id_to_uuid(db, incoming.from_task_id).await?;
+            if let Some(uuid) = source_uuid
+                && !desired_targets.contains(&uuid)
+            {
+                debug!(
+                    "Deleting incoming {:?} link id {} (from task {} to this task)",
+                    canonical_type, incoming.id, incoming.from_task_id
+                );
+                links::Entity::delete_by_id(incoming.id).exec(db).await?;
+            }
         }
     }
 

@@ -38,6 +38,14 @@ This means **all filter content must be wrapped in a `"value"` field**.
 }
 ```
 
+## Filter Type Naming
+
+**IMPORTANT**: Filter type names must use exact casing from the API. Common mistake:
+- Wrong: `"UUIDFilter"` (all caps UUID)
+- Correct: `"UuidFilter"` (Pascal case)
+
+The API will return an error like `unknown variant 'UUIDFilter', expected one of...` if casing is wrong.
+
 ## Common Filter Formats
 
 | Filter Type | Correct JSON |

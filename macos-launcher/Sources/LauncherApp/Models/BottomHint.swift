@@ -15,6 +15,7 @@ enum HintAction: Equatable {
     case openFocusedItem
     case addAnnotation
     case addTag
+    case linkTask
     case copyFocused
     case deleteTag
     case saveEdit

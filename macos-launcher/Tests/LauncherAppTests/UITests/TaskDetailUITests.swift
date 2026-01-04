@@ -323,7 +323,8 @@ final class TaskDetailUITests: XCTestCase {
             dateDue: nil,
             urgency: nil,
             annotations: [],
-            history: history
+            history: history,
+            links: []
         )
         let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
         let sut = makeSUT(task: task, detailState: detailState)

@@ -140,6 +140,7 @@ enum BottomHintModelBuilder {
                 // Show action hints for detail mode
                 hints.append(BottomHint(keybinding: KeybindingRegistry.addAnnotation, label: "Add note"))
                 hints.append(BottomHint(keybinding: KeybindingRegistry.addTag, label: "Add tag"))
+                hints.append(BottomHint(keybinding: KeybindingRegistry.linkTask, label: "Link task"))
                 // Dynamic copy label based on focused item (e.g., "Copy UUID", "Copy Branch")
                 let copyLabel = detailCopyLabel.map { "Copy \($0)" } ?? "Copy"
                 hints.append(BottomHint(keybinding: KeybindingRegistry.copyFocused, label: copyLabel))

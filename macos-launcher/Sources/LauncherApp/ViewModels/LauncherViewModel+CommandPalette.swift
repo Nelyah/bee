@@ -14,13 +14,33 @@ extension LauncherViewModel {
         schedulePendingParseErrorAfterMenuClose()
     }
 
+    /// Opens the command palette directly to the link type menu.
+    /// Requires a task to be selected; shows toast if no task selected.
+    func openLinkPalette() {
+        guard let task = selectedTask else {
+            showToast(message: "Select a task first", icon: .warning)
+            return
+        }
+        // First open the command palette
+        let context = buildCommandPaletteContext()
+        if let errorMessage = commandPalette.open(context: context) {
+            showToast(message: errorMessage)
+            return
+        }
+        // Build and push the link type menu directly using stored handler
+        let linkMenu = paletteActionHandler.buildLinkTypeMenu(taskUUID: task.uuid)
+        commandPalette.navigationStack.push(linkMenu)
+    }
+
     func setupCommandPaletteContributors() {
         // Register the shortcuts section (always visible)
         commandPalette.dataSource.register(ShortcutsSectionContributor())
 
-        // Register the actions section with handlers
-        let actionHandler = CommandPaletteActionHandler(viewModel: self, apiClient: apiClient)
-        commandPalette.dataSource.register(ActionsSectionContributor(actionHandler: actionHandler))
+        // Register the actions section with handlers (use stored handler for lifecycle)
+        commandPalette.dataSource.register(ActionsSectionContributor(actionHandler: paletteActionHandler))
+
+        // Register the task link section (requires selected task)
+        commandPalette.dataSource.register(TaskLinkSectionContributor(actionHandler: paletteActionHandler))
 
         // Register the group-by section
         commandPalette.dataSource.register(GroupBySectionContributor(
@@ -53,7 +73,7 @@ extension LauncherViewModel {
 
         // Register the save report section
         commandPalette.dataSource.register(SaveReportSectionContributor(
-            actionHandler: actionHandler,
+            actionHandler: paletteActionHandler,
             getCurrentFilters: { [weak self] in self?.criteriaFilterChips.map(\.label) ?? [] },
             getUserReports: { [weak self] in self?.availableReports ?? [] }
         ))

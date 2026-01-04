@@ -258,14 +258,16 @@ where
             });
     }
 
+    // === Load all outgoing canonical links ===
+    // Canonical types: DependsOn, ParentOf, RelatedTo, Duplicates
     let outgoing_links = links::Entity::find()
         .filter(links::Column::FromTaskId.is_in(task_ids.clone()))
-        .filter(links::Column::Type.eq(LinkType::DependsOn.to_string()))
         .all(db)
         .await?;
+
+    // === Load incoming links for constructing inverse/symmetric views ===
     let incoming_links = links::Entity::find()
         .filter(links::Column::ToTaskId.is_in(task_ids.clone()))
-        .filter(links::Column::Type.eq(LinkType::DependsOn.to_string()))
         .all(db)
         .await?;
 
@@ -288,6 +290,8 @@ where
     }
 
     let mut links_by_task: HashMap<i32, Vec<Link>> = HashMap::new();
+
+    // Process outgoing links - these are stored as-is with their canonical type
     for link in outgoing_links {
         let from_uuid = *uuid_map.get(&link.from_task_id).ok_or_else(|| {
             CoreError::not_found(format!(
@@ -301,6 +305,12 @@ where
                 link.to_task_id
             ))
         })?;
+
+        let link_type = link
+            .r#type
+            .parse::<LinkType>()
+            .map_err(|_| CoreError::not_found(format!("Unknown link type: {}", link.r#type)))?;
+
         links_by_task
             .entry(link.from_task_id)
             .or_default()
@@ -308,10 +318,11 @@ where
                 id: Some(link.id),
                 from: from_uuid,
                 to: to_uuid,
-                link_type: LinkType::DependsOn,
+                link_type,
             });
     }
 
+    // Process incoming links - construct inverse/symmetric links
     for link in incoming_links {
         let current_uuid = *uuid_map.get(&link.to_task_id).ok_or_else(|| {
             CoreError::not_found(format!(
@@ -319,20 +330,38 @@ where
                 link.to_task_id
             ))
         })?;
-        let blocked_uuid = *uuid_map.get(&link.from_task_id).ok_or_else(|| {
+        let source_uuid = *uuid_map.get(&link.from_task_id).ok_or_else(|| {
             CoreError::not_found(format!(
                 "Could not resolve linked task id {} to a UUID",
                 link.from_task_id
             ))
         })?;
+
+        let stored_type = link
+            .r#type
+            .parse::<LinkType>()
+            .map_err(|_| CoreError::not_found(format!("Unknown link type: {}", link.r#type)))?;
+
+        // Determine the link type to show on this (target) task
+        let display_type = match stored_type {
+            // Asymmetric canonical → inferred inverse
+            LinkType::DependsOn => LinkType::Blocking,
+            LinkType::ParentOf => LinkType::ChildOf,
+            // Symmetric types display the same on both sides
+            LinkType::RelatedTo => LinkType::RelatedTo,
+            LinkType::Duplicates => LinkType::Duplicates,
+            // Inferred types should never be stored
+            LinkType::Blocking | LinkType::ChildOf => continue,
+        };
+
         links_by_task
             .entry(link.to_task_id)
             .or_default()
             .push(Link {
-                id: None,
+                id: None, // Inferred links don't have their own ID
                 from: current_uuid,
-                to: blocked_uuid,
-                link_type: LinkType::Blocking,
+                to: source_uuid,
+                link_type: display_type,
             });
     }
 
@@ -1203,5 +1232,562 @@ mod tests {
             &alpha_pending,
         )
         .await;
+    }
+
+    // =========================================================================
+    // LINK STORAGE TESTS
+    // =========================================================================
+    //
+    // These tests verify that all link types are properly stored and loaded
+    // from the database. The key insight is:
+    // - Canonical types (DependsOn, ParentOf) are stored as-is
+    // - Inferred types (Blocking, ChildOf) should be stored with swapped direction
+    //   as their canonical counterpart
+    // - Symmetric types (RelatedTo, Duplicates) use canonical UUID ordering
+    // =========================================================================
+
+    /// Test: DependsOn link is stored and loaded correctly
+    #[tokio::test]
+    async fn test_depends_on_link_stored_and_loaded() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let target_uuid = Uuid::new_v4();
+        let source_uuid = Uuid::new_v4();
+
+        // Create target task (the one being depended on)
+        let target_task = Task {
+            summary: "Target Task".to_string(),
+            uuid: target_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &target_task).await.unwrap();
+
+        // Create source task with DependsOn link to target
+        let mut source_task = Task {
+            summary: "Source Task".to_string(),
+            uuid: source_uuid,
+            ..Default::default()
+        };
+        source_task.links.push(Link {
+            id: None,
+            from: source_uuid,
+            to: target_uuid,
+            link_type: LinkType::DependsOn,
+        });
+        write_tasks_impl(&db, &source_task).await.unwrap();
+
+        // Load source task and verify DependsOn link exists
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: source_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].links.len(), 1);
+        assert_eq!(results[0].links[0].link_type, LinkType::DependsOn);
+        assert_eq!(results[0].links[0].to, target_uuid);
+
+        // Load target task and verify Blocking link is inferred
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: target_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Target should have inferred Blocking link"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::Blocking);
+        assert_eq!(results[0].links[0].to, source_uuid);
+    }
+
+    /// Test: Blocking link is stored (as DependsOn with swapped direction) and loaded correctly
+    ///
+    /// When task A has a Blocking link to task B, it means:
+    /// - A blocks B (B depends on A)
+    /// - Should be stored as DependsOn(from=B, to=A) in the database
+    /// - When loading A, we should see the Blocking link to B
+    /// - When loading B, we should see the DependsOn link to A
+    #[tokio::test]
+    async fn test_blocking_link_stored_and_loaded() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let blocker_uuid = Uuid::new_v4();
+        let blocked_uuid = Uuid::new_v4();
+
+        // Create blocked task (the one being blocked)
+        let blocked_task = Task {
+            summary: "Blocked Task".to_string(),
+            uuid: blocked_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &blocked_task).await.unwrap();
+
+        // Create blocker task with Blocking link
+        let mut blocker_task = Task {
+            summary: "Blocker Task".to_string(),
+            uuid: blocker_uuid,
+            ..Default::default()
+        };
+        blocker_task.links.push(Link {
+            id: None,
+            from: blocker_uuid,
+            to: blocked_uuid,
+            link_type: LinkType::Blocking,
+        });
+        write_tasks_impl(&db, &blocker_task).await.unwrap();
+
+        // Load blocker task and verify Blocking link exists
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: blocker_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Blocker task should have the Blocking link after round-trip"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::Blocking);
+        assert_eq!(results[0].links[0].to, blocked_uuid);
+
+        // Load blocked task and verify DependsOn link exists (the canonical form)
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: blocked_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Blocked task should have DependsOn link to blocker"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::DependsOn);
+        assert_eq!(results[0].links[0].to, blocker_uuid);
+    }
+
+    /// Test: ParentOf link is stored and loaded correctly
+    #[tokio::test]
+    async fn test_parent_of_link_stored_and_loaded() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let parent_uuid = Uuid::new_v4();
+        let child_uuid = Uuid::new_v4();
+
+        // Create child task
+        let child_task = Task {
+            summary: "Child Task".to_string(),
+            uuid: child_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &child_task).await.unwrap();
+
+        // Create parent task with ParentOf link
+        let mut parent_task = Task {
+            summary: "Parent Task".to_string(),
+            uuid: parent_uuid,
+            ..Default::default()
+        };
+        parent_task.links.push(Link {
+            id: None,
+            from: parent_uuid,
+            to: child_uuid,
+            link_type: LinkType::ParentOf,
+        });
+        write_tasks_impl(&db, &parent_task).await.unwrap();
+
+        // Load parent task and verify ParentOf link exists
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: parent_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].links.len(), 1);
+        assert_eq!(results[0].links[0].link_type, LinkType::ParentOf);
+        assert_eq!(results[0].links[0].to, child_uuid);
+
+        // Load child task and verify ChildOf link is inferred
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: child_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Child should have inferred ChildOf link"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::ChildOf);
+        assert_eq!(results[0].links[0].to, parent_uuid);
+    }
+
+    /// Test: ChildOf link is stored (as ParentOf with swapped direction) and loaded correctly
+    ///
+    /// When task A has a ChildOf link to task B, it means:
+    /// - A is a child of B (B is parent of A)
+    /// - Should be stored as ParentOf(from=B, to=A) in the database
+    /// - When loading A, we should see the ChildOf link to B
+    /// - When loading B, we should see the ParentOf link to A
+    #[tokio::test]
+    async fn test_child_of_link_stored_and_loaded() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let child_uuid = Uuid::new_v4();
+        let parent_uuid = Uuid::new_v4();
+
+        // Create parent task
+        let parent_task = Task {
+            summary: "Parent Task".to_string(),
+            uuid: parent_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &parent_task).await.unwrap();
+
+        // Create child task with ChildOf link
+        let mut child_task = Task {
+            summary: "Child Task".to_string(),
+            uuid: child_uuid,
+            ..Default::default()
+        };
+        child_task.links.push(Link {
+            id: None,
+            from: child_uuid,
+            to: parent_uuid,
+            link_type: LinkType::ChildOf,
+        });
+        write_tasks_impl(&db, &child_task).await.unwrap();
+
+        // Load child task and verify ChildOf link exists
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: child_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Child task should have ChildOf link after round-trip"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::ChildOf);
+        assert_eq!(results[0].links[0].to, parent_uuid);
+
+        // Load parent task and verify ParentOf link exists (the canonical form)
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: parent_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Parent task should have ParentOf link to child"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::ParentOf);
+        assert_eq!(results[0].links[0].to, child_uuid);
+    }
+
+    /// Test: RelatedTo link is stored and loaded with symmetric behavior
+    #[tokio::test]
+    async fn test_related_to_link_stored_and_loaded() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let task_a_uuid = Uuid::new_v4();
+        let task_b_uuid = Uuid::new_v4();
+
+        // Create task B first
+        let task_b = Task {
+            summary: "Task B".to_string(),
+            uuid: task_b_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &task_b).await.unwrap();
+
+        // Create task A with RelatedTo link to B
+        let mut task_a = Task {
+            summary: "Task A".to_string(),
+            uuid: task_a_uuid,
+            ..Default::default()
+        };
+        task_a.links.push(Link {
+            id: None,
+            from: task_a_uuid,
+            to: task_b_uuid,
+            link_type: LinkType::RelatedTo,
+        });
+        write_tasks_impl(&db, &task_a).await.unwrap();
+
+        // Load task A and verify RelatedTo link exists
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: task_a_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].links.len(), 1);
+        assert_eq!(results[0].links[0].link_type, LinkType::RelatedTo);
+        assert_eq!(results[0].links[0].to, task_b_uuid);
+
+        // Load task B and verify RelatedTo link is symmetric
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: task_b_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Task B should have symmetric RelatedTo link"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::RelatedTo);
+        assert_eq!(results[0].links[0].to, task_a_uuid);
+    }
+
+    /// Test: Duplicates link is stored and loaded with symmetric behavior
+    #[tokio::test]
+    async fn test_duplicates_link_stored_and_loaded() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let task_a_uuid = Uuid::new_v4();
+        let task_b_uuid = Uuid::new_v4();
+
+        // Create task B first
+        let task_b = Task {
+            summary: "Task B".to_string(),
+            uuid: task_b_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &task_b).await.unwrap();
+
+        // Create task A with Duplicates link to B
+        let mut task_a = Task {
+            summary: "Task A".to_string(),
+            uuid: task_a_uuid,
+            ..Default::default()
+        };
+        task_a.links.push(Link {
+            id: None,
+            from: task_a_uuid,
+            to: task_b_uuid,
+            link_type: LinkType::Duplicates,
+        });
+        write_tasks_impl(&db, &task_a).await.unwrap();
+
+        // Load task A and verify Duplicates link exists
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: task_a_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].links.len(), 1);
+        assert_eq!(results[0].links[0].link_type, LinkType::Duplicates);
+        assert_eq!(results[0].links[0].to, task_b_uuid);
+
+        // Load task B and verify Duplicates link is symmetric
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: task_b_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Task B should have symmetric Duplicates link"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::Duplicates);
+        assert_eq!(results[0].links[0].to, task_a_uuid);
+    }
+
+    /// Test: Multiple link types on the same task
+    #[tokio::test]
+    async fn test_multiple_link_types() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let main_uuid = Uuid::new_v4();
+        let dep_uuid = Uuid::new_v4();
+        let blocks_uuid = Uuid::new_v4();
+        let parent_uuid = Uuid::new_v4();
+        let related_uuid = Uuid::new_v4();
+
+        // Create all target tasks
+        for (uuid, name) in [
+            (dep_uuid, "Dependency"),
+            (blocks_uuid, "Blocked"),
+            (parent_uuid, "Parent"),
+            (related_uuid, "Related"),
+        ] {
+            let task = Task {
+                summary: name.to_string(),
+                uuid,
+                ..Default::default()
+            };
+            write_tasks_impl(&db, &task).await.unwrap();
+        }
+
+        // Create main task with multiple link types
+        let mut main_task = Task {
+            summary: "Main Task".to_string(),
+            uuid: main_uuid,
+            ..Default::default()
+        };
+        main_task.links.extend(vec![
+            Link {
+                id: None,
+                from: main_uuid,
+                to: dep_uuid,
+                link_type: LinkType::DependsOn,
+            },
+            Link {
+                id: None,
+                from: main_uuid,
+                to: blocks_uuid,
+                link_type: LinkType::Blocking,
+            },
+            Link {
+                id: None,
+                from: main_uuid,
+                to: parent_uuid,
+                link_type: LinkType::ChildOf,
+            },
+            Link {
+                id: None,
+                from: main_uuid,
+                to: related_uuid,
+                link_type: LinkType::RelatedTo,
+            },
+        ]);
+        write_tasks_impl(&db, &main_task).await.unwrap();
+
+        // Load main task and verify all links exist
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: main_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            4,
+            "Main task should have all 4 links after round-trip"
+        );
+
+        // Verify each link type exists
+        let link_types: Vec<LinkType> = results[0]
+            .links
+            .iter()
+            .map(|l| l.link_type.clone())
+            .collect();
+        assert!(link_types.contains(&LinkType::DependsOn));
+        assert!(link_types.contains(&LinkType::Blocking));
+        assert!(link_types.contains(&LinkType::ChildOf));
+        assert!(link_types.contains(&LinkType::RelatedTo));
+    }
+
+    /// Test: Blocking link via Task::apply() - simulates command palette flow
+    ///
+    /// This is the key integration test that simulates what happens when a user
+    /// creates a "blocks" link via the command palette:
+    /// 1. Parse "modify blocks:uuid"
+    /// 2. Apply properties to task (adds Blocking link)
+    /// 3. Save task
+    /// 4. Reload and verify the link persisted
+    #[tokio::test]
+    async fn test_blocking_link_via_apply() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let blocker_uuid = Uuid::new_v4();
+        let blocked_uuid = Uuid::new_v4();
+
+        // Create both tasks first
+        let blocked_task = Task {
+            summary: "Blocked Task".to_string(),
+            uuid: blocked_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &blocked_task).await.unwrap();
+
+        let mut blocker_task = Task {
+            summary: "Blocker Task".to_string(),
+            uuid: blocker_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &blocker_task).await.unwrap();
+
+        // Apply blocks property (simulates parsing "modify blocks:uuid")
+        let props = TaskProperties {
+            blocks: Some(vec![DependsOnIdentifier::Uuid(blocked_uuid)]),
+            ..TaskProperties::default()
+        };
+        blocker_task.apply(&props).unwrap();
+
+        // Verify link was added in memory
+        assert_eq!(blocker_task.links.len(), 1);
+        assert_eq!(blocker_task.links[0].link_type, LinkType::Blocking);
+
+        // Save the modified task
+        write_tasks_impl(&db, &blocker_task).await.unwrap();
+
+        // Reload blocker task and verify Blocking link persisted
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: blocker_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Blocker task should have Blocking link after save and reload"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::Blocking);
+        assert_eq!(results[0].links[0].to, blocked_uuid);
+    }
+
+    /// Test: ChildOf link via Task::apply()
+    #[tokio::test]
+    async fn test_child_of_link_via_apply() {
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        let child_uuid = Uuid::new_v4();
+        let parent_uuid = Uuid::new_v4();
+
+        // Create both tasks first
+        let parent_task = Task {
+            summary: "Parent Task".to_string(),
+            uuid: parent_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &parent_task).await.unwrap();
+
+        let mut child_task = Task {
+            summary: "Child Task".to_string(),
+            uuid: child_uuid,
+            ..Default::default()
+        };
+        write_tasks_impl(&db, &child_task).await.unwrap();
+
+        // Apply child_of property
+        let props = TaskProperties {
+            child_of: Some(vec![DependsOnIdentifier::Uuid(parent_uuid)]),
+            ..TaskProperties::default()
+        };
+        child_task.apply(&props).unwrap();
+
+        // Verify link was added in memory
+        assert_eq!(child_task.links.len(), 1);
+        assert_eq!(child_task.links[0].link_type, LinkType::ChildOf);
+
+        // Save the modified task
+        write_tasks_impl(&db, &child_task).await.unwrap();
+
+        // Reload child task and verify ChildOf link persisted
+        let filter: Box<dyn Filter> = Box::new(UuidFilter { uuid: child_uuid });
+        let results_data = load_tasks_impl(&db, Some(filter), None).await.unwrap();
+        let results = results_data.to_vec();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].links.len(),
+            1,
+            "Child task should have ChildOf link after save and reload"
+        );
+        assert_eq!(results[0].links[0].link_type, LinkType::ChildOf);
+        assert_eq!(results[0].links[0].to, parent_uuid);
     }
 }

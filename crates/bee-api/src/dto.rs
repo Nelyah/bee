@@ -1,4 +1,4 @@
-use bee_core::task::{Task, TaskAnnotation, TaskHistory, TaskStatus};
+use bee_core::task::{Link, LinkType, Task, TaskAnnotation, TaskHistory, TaskStatus};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -133,6 +133,33 @@ impl TaskHistoryDto {
     }
 }
 
+/// Task link payload.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct TaskLinkDto {
+    /// Link type: "depends_on", "blocking", "parent_of", "child_of", "related_to", "duplicates"
+    pub link_type: String,
+    /// Target task UUID
+    #[schema(value_type = String, format = "uuid")]
+    pub target_uuid: Uuid,
+}
+
+impl TaskLinkDto {
+    pub fn from_link(link: &Link) -> Self {
+        let link_type = match link.get_link_type() {
+            LinkType::DependsOn => "depends_on",
+            LinkType::Blocking => "blocking",
+            LinkType::ParentOf => "parent_of",
+            LinkType::ChildOf => "child_of",
+            LinkType::RelatedTo => "related_to",
+            LinkType::Duplicates => "duplicates",
+        };
+        Self {
+            link_type: link_type.to_string(),
+            target_uuid: *link.get_target(),
+        }
+    }
+}
+
 /// Full task payload including annotations and history.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ApiTaskDetail {
@@ -153,6 +180,7 @@ pub struct ApiTaskDetail {
     pub urgency: Option<i64>,
     pub annotations: Vec<TaskAnnotationDto>,
     pub history: Vec<TaskHistoryDto>,
+    pub links: Vec<TaskLinkDto>,
 }
 
 impl ApiTaskDetail {
@@ -181,6 +209,11 @@ impl ApiTaskDetail {
                 .get_history()
                 .iter()
                 .map(TaskHistoryDto::from_history)
+                .collect(),
+            links: task
+                .get_links()
+                .iter()
+                .map(TaskLinkDto::from_link)
                 .collect(),
         }
     }

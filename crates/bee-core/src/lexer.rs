@@ -16,6 +16,10 @@ pub enum TokenType {
     FilterTokDateEndAfter,
     DependsOn,
     Blocks,
+    ParentOf,
+    ChildOf,
+    RelatedTo,
+    Duplicates,
     String,
     WordString,
     TagPlusPrefix,
@@ -41,6 +45,10 @@ impl std::fmt::Display for TokenType {
             TokenType::FilterTokDateDueAfter => "FilterTokDateDueAfter",
             TokenType::DependsOn => "DependsOn",
             TokenType::Blocks => "Blocks",
+            TokenType::ParentOf => "ParentOf",
+            TokenType::ChildOf => "ChildOf",
+            TokenType::RelatedTo => "RelatedTo",
+            TokenType::Duplicates => "Duplicates",
             TokenType::String => "String",
             TokenType::ProjectPrefix => "ProjectPrefix",
             TokenType::WordString => "WordString",
@@ -384,6 +392,16 @@ impl Lexer {
                 }
                 _ if self.match_keyword("blocks:") => {
                     (TokenType::Blocks, self.read_word("blocks:"))
+                }
+                _ if self.match_keyword("parent:") => {
+                    (TokenType::ParentOf, self.read_word("parent:"))
+                }
+                _ if self.match_keyword("child:") => (TokenType::ChildOf, self.read_word("child:")),
+                _ if self.match_keyword("related:") => {
+                    (TokenType::RelatedTo, self.read_word("related:"))
+                }
+                _ if self.match_keyword("duplicates:") => {
+                    (TokenType::Duplicates, self.read_word("duplicates:"))
                 }
                 _ if ch == ")" => {
                     self.read_char();

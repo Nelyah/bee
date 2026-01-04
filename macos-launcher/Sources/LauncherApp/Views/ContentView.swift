@@ -136,6 +136,11 @@ struct ContentView: View {
                     },
                     onQuickDueDateAction: { action in
                         viewModel.applyQuickDueDateAction(action)
+                    },
+                    // Linked tasks navigation
+                    tasks: viewModel.tasks,
+                    onNavigateToTask: { uuid in
+                        viewModel.navigateToTask(uuid: uuid)
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)

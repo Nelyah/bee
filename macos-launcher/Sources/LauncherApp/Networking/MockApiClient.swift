@@ -200,6 +200,9 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         history: [
             TaskHistoryDto(value: "Status changed from 'PENDING' to 'ACTIVE'", datetime: "2024-01-16T12:30:00Z"),
             TaskHistoryDto(value: "Added a UUID to depend on: 'deadbeef'", datetime: "2024-01-15T11:00:00Z"),
+        ],
+        links: [
+            TaskLinkDto(linkType: "depends_on", targetUuid: "deadbeef"),
         ]
     )
 

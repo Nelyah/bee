@@ -312,7 +312,13 @@ impl FilterParser {
 
                     self.next_token();
                 }
-                TokenType::String | TokenType::WordString | TokenType::Blocks => {
+                TokenType::String
+                | TokenType::WordString
+                | TokenType::Blocks
+                | TokenType::ParentOf
+                | TokenType::ChildOf
+                | TokenType::RelatedTo
+                | TokenType::Duplicates => {
                     *has_only_ids = false;
                     filter = add_to_current_filter(
                         filter,

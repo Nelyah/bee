@@ -20,6 +20,11 @@ struct LauncherApp: App {
                     viewModel.openCommandPalette()
                 }
                 .keyboardShortcut("k", modifiers: [.command])
+
+                Button("Link to Task...") {
+                    viewModel.openLinkPalette()
+                }
+                .keyboardShortcut("l", modifiers: [.command])
             }
         }
     }

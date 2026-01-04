@@ -36,6 +36,7 @@
 //! - `m20251230_000002_update_external_links_unique`: Unique constraint on external links
 //! - `m20250101_000001_create_user_reports`: User-defined saved reports
 //! - `m20260101_000001_add_column_settings`: Column widths and sort settings for reports
+//! - `m20260104_000001_add_link_types`: Add new link types (ParentOf, RelatedTo, Duplicates)
 
 pub use sea_orm_migration::prelude::sea_orm;
 pub use sea_orm_migration::{async_trait, MigrationTrait, MigratorTrait};
@@ -45,6 +46,7 @@ mod m20250329_212639_create_task_schema;
 mod m20251230_000001_create_external_links;
 mod m20251230_000002_update_external_links_unique;
 mod m20260101_000001_add_column_settings;
+mod m20260104_000001_add_link_types;
 
 /// The migration runner that applies all schema migrations.
 ///
@@ -61,6 +63,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251230_000002_update_external_links_unique::Migration),
             Box::new(m20250101_000001_create_user_reports::Migration),
             Box::new(m20260101_000001_add_column_settings::Migration),
+            Box::new(m20260104_000001_add_link_types::Migration),
         ]
     }
 }

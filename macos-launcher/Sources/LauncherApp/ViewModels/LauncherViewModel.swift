@@ -155,6 +155,8 @@ final class LauncherViewModel: ObservableObject {
     let actionService: LauncherActionService
     let apiClient: ApiClientProtocol
     let settingsService: SettingsServiceProtocol
+    /// Stored action handler for command palette - keeps closures alive across menu navigations.
+    private(set) lazy var paletteActionHandler = CommandPaletteActionHandler(viewModel: self, apiClient: apiClient)
     private var requestCounter: Int = 0
     private var latestParse: ParseResponse?
     var lastSuccessfulParse: ParseResponse?

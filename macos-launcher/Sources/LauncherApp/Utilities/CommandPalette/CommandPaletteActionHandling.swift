@@ -19,6 +19,12 @@ protocol CommandPaletteActionHandling {
     /// Clears the current project scope
     func clearProjectScope()
 
+    /// Builds a submenu for selecting link type (blocks, depends on, etc.)
+    func buildLinkTypeMenu(taskUUID: String) -> CommandPaletteMenu
+
+    /// Builds a submenu for selecting target task
+    func buildTaskSelectorMenu(linkType: LinkType, sourceTaskUUID: String) -> CommandPaletteMenu
+
     /// Shows the save report sheet
     func showSaveReportSheet()
 

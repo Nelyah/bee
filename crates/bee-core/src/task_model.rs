@@ -130,8 +130,65 @@ impl TaskAnnotation {
     Hash,
 )]
 pub enum LinkType {
+    /// Task A depends on Task B (A cannot proceed until B is done)
+    /// Stored in DB. Inverse: Blocking
     DependsOn,
+    /// Task A blocks Task B (B cannot proceed until A is done)
+    /// Inferred at load time from DependsOn links pointing TO this task
     Blocking,
+    /// Task A is the parent of Task B (hierarchical relationship)
+    /// Stored in DB. Inverse: ChildOf
+    ParentOf,
+    /// Task A is a child of Task B (hierarchical relationship)
+    /// Inferred at load time from ParentOf links pointing TO this task
+    ChildOf,
+    /// Task A is related to Task B (general association)
+    /// Symmetric: stored once with canonical ordering (lower UUID = from)
+    RelatedTo,
+    /// Task A duplicates Task B (same work)
+    /// Symmetric: stored once with canonical ordering (lower UUID = from)
+    Duplicates,
+}
+
+impl LinkType {
+    /// Returns the inverse link type (what the target task sees)
+    pub fn inverse(&self) -> LinkType {
+        match self {
+            LinkType::DependsOn => LinkType::Blocking,
+            LinkType::Blocking => LinkType::DependsOn,
+            LinkType::ParentOf => LinkType::ChildOf,
+            LinkType::ChildOf => LinkType::ParentOf,
+            // Symmetric types are their own inverse
+            LinkType::RelatedTo => LinkType::RelatedTo,
+            LinkType::Duplicates => LinkType::Duplicates,
+        }
+    }
+
+    /// Returns true if this link type is stored in the database
+    /// (as opposed to being inferred at load time)
+    pub fn is_canonical(&self) -> bool {
+        matches!(
+            self,
+            LinkType::DependsOn | LinkType::ParentOf | LinkType::RelatedTo | LinkType::Duplicates
+        )
+    }
+
+    /// Returns true if this link type is symmetric (same in both directions)
+    pub fn is_symmetric(&self) -> bool {
+        matches!(self, LinkType::RelatedTo | LinkType::Duplicates)
+    }
+
+    /// Returns the database string representation for storage
+    pub fn to_db_string(&self) -> &'static str {
+        match self {
+            LinkType::DependsOn => "DependsOn",
+            LinkType::Blocking => "DependsOn", // Stored as DependsOn with swapped from/to
+            LinkType::ParentOf => "ParentOf",
+            LinkType::ChildOf => "ParentOf", // Stored as ParentOf with swapped from/to
+            LinkType::RelatedTo => "RelatedTo",
+            LinkType::Duplicates => "Duplicates",
+        }
+    }
 }
 
 #[derive(
@@ -143,6 +200,64 @@ pub struct Link {
     pub(crate) from: Uuid,
     pub(crate) to: Uuid,
     pub(crate) link_type: LinkType,
+}
+
+impl Link {
+    /// Creates a new link with the given parameters
+    pub fn new(from: Uuid, to: Uuid, link_type: LinkType) -> Self {
+        Link {
+            id: None,
+            from,
+            to,
+            link_type,
+        }
+    }
+
+    /// Creates a link in canonical form for storage.
+    /// For symmetric types (RelatedTo, Duplicates), ensures lower UUID is always 'from'.
+    /// For asymmetric types, returns the link as-is if canonical, or swaps and inverts if not.
+    pub fn to_canonical(self) -> Self {
+        if self.link_type.is_symmetric() {
+            // For symmetric types, canonical form has lower UUID as 'from'
+            if self.from > self.to {
+                Link {
+                    id: self.id,
+                    from: self.to,
+                    to: self.from,
+                    link_type: self.link_type, // Same for symmetric
+                }
+            } else {
+                self
+            }
+        } else if self.link_type.is_canonical() {
+            // Already canonical
+            self
+        } else {
+            // Convert inferred type to canonical by swapping direction
+            // e.g., Blocking(A->B) becomes DependsOn(B->A)
+            Link {
+                id: self.id,
+                from: self.to,
+                to: self.from,
+                link_type: self.link_type.inverse(),
+            }
+        }
+    }
+
+    /// Returns the link type
+    pub fn get_link_type(&self) -> &LinkType {
+        &self.link_type
+    }
+
+    /// Returns the target UUID (the task this link points to)
+    pub fn get_target(&self) -> &Uuid {
+        &self.to
+    }
+
+    /// Returns the source UUID (the task this link originates from)
+    pub fn get_source(&self) -> &Uuid {
+        &self.from
+    }
 }
 
 #[derive(
@@ -242,6 +357,47 @@ impl Task {
             .filter(|link| link.link_type == LinkType::Blocking)
             .map(|link| &link.to)
             .collect()
+    }
+
+    /// Get UUIDs of tasks that this task is a parent of
+    pub fn get_parent_of(&self) -> Vec<&Uuid> {
+        self.links
+            .iter()
+            .filter(|link| link.link_type == LinkType::ParentOf)
+            .map(|link| &link.to)
+            .collect()
+    }
+
+    /// Get UUIDs of tasks that this task is a child of
+    pub fn get_child_of(&self) -> Vec<&Uuid> {
+        self.links
+            .iter()
+            .filter(|link| link.link_type == LinkType::ChildOf)
+            .map(|link| &link.to)
+            .collect()
+    }
+
+    /// Get UUIDs of tasks that this task is related to
+    pub fn get_related_to(&self) -> Vec<&Uuid> {
+        self.links
+            .iter()
+            .filter(|link| link.link_type == LinkType::RelatedTo)
+            .map(|link| &link.to)
+            .collect()
+    }
+
+    /// Get UUIDs of tasks that this task duplicates
+    pub fn get_duplicates(&self) -> Vec<&Uuid> {
+        self.links
+            .iter()
+            .filter(|link| link.link_type == LinkType::Duplicates)
+            .map(|link| &link.to)
+            .collect()
+    }
+
+    /// Get all links for this task
+    pub fn get_links(&self) -> &Vec<Link> {
+        &self.links
     }
 
     pub fn has_property(&self, prop: &str) -> bool {
@@ -350,16 +506,9 @@ impl Task {
         &self.uuid
     }
 
-    /// Send back a list of the UUID that this task knows about or refers to
+    /// Send back a list of all UUIDs that this task references via links
     pub fn get_extra_uuid(&self) -> Vec<Uuid> {
-        let mut uuids = [
-            self.get_depends_on()
-                .into_iter()
-                .cloned()
-                .collect::<Vec<_>>(),
-            self.get_blocking().into_iter().cloned().collect::<Vec<_>>(),
-        ]
-        .concat();
+        let mut uuids: Vec<Uuid> = self.links.iter().map(|link| link.to).collect();
         uuids.sort_unstable();
         uuids.dedup();
         uuids
@@ -589,6 +738,107 @@ impl Task {
                 }
             }
         }
+
+        // Handle parent_of links
+        if let Some(parent_of) = &props.parent_of {
+            let mut existing = HashSet::<Uuid>::new();
+            if !parent_of.is_empty() {
+                self.get_parent_of().iter().for_each(|&uuid| {
+                    existing.insert(uuid.to_owned());
+                });
+            }
+            for item in parent_of {
+                if let DependsOnIdentifier::Uuid(uuid) = item {
+                    if existing.contains(uuid) {
+                        continue;
+                    }
+                    self.history.push(TaskHistory {
+                        id: None,
+                        datetime: Local::now(),
+                        value: format!("Added as parent of: '{}'", uuid),
+                    });
+                    self.links
+                        .push(Link::new(self.uuid, *uuid, LinkType::ParentOf));
+                    existing.insert(*uuid);
+                }
+            }
+        }
+
+        // Handle child_of links (inverse: will be stored as ParentOf from target to self)
+        if let Some(child_of) = &props.child_of {
+            let mut existing = HashSet::<Uuid>::new();
+            if !child_of.is_empty() {
+                self.get_child_of().iter().for_each(|&uuid| {
+                    existing.insert(uuid.to_owned());
+                });
+            }
+            for item in child_of {
+                if let DependsOnIdentifier::Uuid(uuid) = item {
+                    if existing.contains(uuid) {
+                        continue;
+                    }
+                    self.history.push(TaskHistory {
+                        id: None,
+                        datetime: Local::now(),
+                        value: format!("Added as child of: '{}'", uuid),
+                    });
+                    self.links
+                        .push(Link::new(self.uuid, *uuid, LinkType::ChildOf));
+                    existing.insert(*uuid);
+                }
+            }
+        }
+
+        // Handle related_to links (symmetric)
+        if let Some(related_to) = &props.related_to {
+            let mut existing = HashSet::<Uuid>::new();
+            if !related_to.is_empty() {
+                self.get_related_to().iter().for_each(|&uuid| {
+                    existing.insert(uuid.to_owned());
+                });
+            }
+            for item in related_to {
+                if let DependsOnIdentifier::Uuid(uuid) = item {
+                    if existing.contains(uuid) {
+                        continue;
+                    }
+                    self.history.push(TaskHistory {
+                        id: None,
+                        datetime: Local::now(),
+                        value: format!("Added as related to: '{}'", uuid),
+                    });
+                    self.links
+                        .push(Link::new(self.uuid, *uuid, LinkType::RelatedTo));
+                    existing.insert(*uuid);
+                }
+            }
+        }
+
+        // Handle duplicates links (symmetric)
+        if let Some(duplicates) = &props.duplicates {
+            let mut existing = HashSet::<Uuid>::new();
+            if !duplicates.is_empty() {
+                self.get_duplicates().iter().for_each(|&uuid| {
+                    existing.insert(uuid.to_owned());
+                });
+            }
+            for item in duplicates {
+                if let DependsOnIdentifier::Uuid(uuid) = item {
+                    if existing.contains(uuid) {
+                        continue;
+                    }
+                    self.history.push(TaskHistory {
+                        id: None,
+                        datetime: Local::now(),
+                        value: format!("Added as duplicate of: '{}'", uuid),
+                    });
+                    self.links
+                        .push(Link::new(self.uuid, *uuid, LinkType::Duplicates));
+                    existing.insert(*uuid);
+                }
+            }
+        }
+
         self.compute_urgency()?;
         Ok(())
     }

@@ -139,7 +139,7 @@ extension LauncherViewModel {
     // MARK: - Detail Focus Navigation
 
     /// Builds the list of focusable items for the current detail view.
-    /// Order: Task Name → UUID → Project → Tags → GitLab MRs → Jira Issues
+    /// Order: Task Name → UUID → Project → Tags → Add Tag → Due Date → Linked Tasks → GitLab MRs → Jira Issues
     func buildDetailFocusableItems() {
         var items: [DetailFocusableItem] = []
 
@@ -168,7 +168,14 @@ extension LauncherViewModel {
             items.append(.dueDate(task.dateDue))
         }
 
-        // 7. GitLab MRs
+        // 7. Linked tasks (from task detail)
+        if let detail = taskDetailState.detail {
+            for link in detail.links {
+                items.append(.linkedTask(link))
+            }
+        }
+
+        // 8. GitLab MRs
         let gitlabLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
         }
@@ -176,7 +183,7 @@ extension LauncherViewModel {
             items.append(.gitlabMR(link))
         }
 
-        // 8. Jira issues
+        // 9. Jira issues
         let jiraLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
         }
@@ -352,10 +359,29 @@ extension LauncherViewModel {
             return true
         }
 
+        // Linked task: navigate to the target task
+        if case let .linkedTask(link) = item {
+            navigateToTask(uuid: link.targetUuid)
+            return true
+        }
+
         // Links: open URL in browser
         guard let url = item.openURL else { return false }
         NSWorkspace.shared.open(url)
         return true
+    }
+
+    /// Navigate to a linked task by UUID.
+    func navigateToTask(uuid: String) {
+        guard let index = tasks.firstIndex(where: { $0.uuid == uuid }) else {
+            showToast(message: "Task not in current view", icon: .warning)
+            return
+        }
+        selectedIndex = index
+        loadTaskDetail(taskUUID: uuid)
+        loadExternalLinks(taskUUID: uuid)
+        buildDetailFocusableItems()
+        detailFocusedIndex = 0 // Reset focus to top
     }
 
     func copyFocusedDetailItem() -> Bool {

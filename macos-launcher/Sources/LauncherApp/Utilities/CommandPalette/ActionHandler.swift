@@ -100,7 +100,163 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
         viewModel.closeCommandPalette()
     }
 
+    func buildLinkTypeMenu(taskUUID: String) -> CommandPaletteMenu {
+        // All 6 link types in order matching the plan
+        let linkTypes: [LinkType] = [
+            .blocking,
+            .dependsOn,
+            .parentOf,
+            .childOf,
+            .relatedTo,
+            .duplicates,
+        ]
+
+        let items: [CommandPaletteItem] = linkTypes.map { linkType in
+            .submenu(
+                CommandPaletteSubmenuItem(
+                    id: "link-type-\(linkType.rawValue)",
+                    title: "\(linkType.displayName)...",
+                    subtitle: linkTypeDescription(linkType),
+                    icon: .system(linkType.iconName),
+                    menuBuilder: { [weak self] in
+                        self?.buildTaskSelectorMenu(linkType: linkType, sourceTaskUUID: taskUUID)
+                            ?? CommandPaletteMenu(id: "empty", title: "", sections: [])
+                    }
+                )
+            )
+        }
+
+        let section = CommandPaletteSection(id: "linkTypes", title: "Relationship Type", items: items)
+        return CommandPaletteMenu(
+            id: "link-type",
+            title: "Link to Task",
+            sections: [section]
+        )
+    }
+
+    func buildTaskSelectorMenu(linkType: LinkType, sourceTaskUUID: String) -> CommandPaletteMenu {
+        guard let viewModel else {
+            return CommandPaletteMenu(id: "empty", title: "", sections: [])
+        }
+
+        // Get all tasks except the source task
+        let availableTasks = viewModel.tasks.filter { $0.uuid != sourceTaskUUID }
+
+        let items: [CommandPaletteItem] = availableTasks.map { task in
+            .action(
+                CommandPaletteActionItem(
+                    id: "task-\(task.uuid)",
+                    title: task.summary,
+                    subtitle: task.project ?? "No project",
+                    icon: .system("circle.fill"),
+                    handler: { [weak self] in
+                        self?.handleTaskLinkSelection(
+                            linkType: linkType,
+                            sourceTaskUUID: sourceTaskUUID,
+                            targetTask: task
+                        )
+                    }
+                )
+            )
+        }
+
+        let section = CommandPaletteSection(
+            id: "taskSelector",
+            title: "Select Task to Link",
+            items: items
+        )
+        return CommandPaletteMenu(
+            id: "task-selector-\(linkType.rawValue)",
+            title: linkType.displayName,
+            sections: [section]
+        )
+    }
+
     // MARK: - Private Methods
+
+    private func linkTypeDescription(_ linkType: LinkType) -> String {
+        switch linkType {
+        case .blocking:
+            "This task blocks..."
+        case .dependsOn:
+            "This task depends on..."
+        case .parentOf:
+            "This task is parent of..."
+        case .childOf:
+            "This task is child of..."
+        case .relatedTo:
+            "Related tasks"
+        case .duplicates:
+            "This task duplicates..."
+        }
+    }
+
+    private func handleTaskLinkSelection(
+        linkType: LinkType,
+        sourceTaskUUID: String,
+        targetTask: ApiTask
+    ) {
+        guard let viewModel else { return }
+
+        // Build property string for the modify action
+        // The property syntax depends on link type
+        let propertyKey = linkTypeToPropertyKey(linkType)
+        let propertyValue = targetTask.uuid
+
+        Task {
+            do {
+                // Use the action system to create the link via modify action
+                let parseInput = "modify \(propertyKey):\(propertyValue)"
+                let parsed = try await apiClient.parse(input: parseInput)
+
+                // Run the action with the source task's UUID as filter
+                // Note: Filter type must be "UuidFilter" (not "UUIDFilter") to match API expectations
+                let filterValue: JSONValue = .object([
+                    "type": .string("UuidFilter"),
+                    "value": .object([
+                        "uuid": .string(sourceTaskUUID),
+                    ]),
+                ])
+
+                _ = try await apiClient.runAction(
+                    action: "modify",
+                    properties: parsed.properties,
+                    filter: filterValue
+                )
+
+                viewModel.showToast(
+                    message: "Linked to \"\(targetTask.summary)\"",
+                    icon: .success
+                )
+
+                // Refresh task detail to show the new link
+                viewModel.loadTaskDetail(taskUUID: sourceTaskUUID)
+            } catch {
+                viewModel.showToast(
+                    message: "Failed to create link: \(error.localizedDescription)"
+                )
+            }
+        }
+
+        viewModel.closeCommandPalette()
+    }
+
+    private func linkTypeToPropertyKey(_ linkType: LinkType) -> String {
+        switch linkType {
+        case .dependsOn:
+            "depends"
+        case .blocking:
+            "blocks"
+        case .parentOf:
+            "parent"
+        case .childOf:
+            "child"
+        case .relatedTo:
+            "related"
+        case .duplicates:
+            "duplicates"
+        }
+    }
 
     private func loadGitlabSuggestions(taskUUID: String) async {
         guard let viewModel else { return }

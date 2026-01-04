@@ -1,0 +1,41 @@
+- I need to be able to modify the task name with the keyyboard navigation in task detail (hjkl --> select task name --> enter to modify)
+- The hint bar should be updated so that the `Enter` keybind disappears
+- The hint bar should be updated so that it shows that `cmd+Enter` saves changes
+- Escape should be interpreted as "cancel edit" -- the hint bar should be updated
+- I should be able to add a DUE date in the task detail
+    - This should be doable as both keyboard and mouse
+    - We should get a date time field and a calendar selection + time selection
+    - You need to ask the UX UI designer to think very hard on this feature
+    - You need to use context7 for best practices for this feature
+- In task details, the command palette should propose options to change task state
+    - delete / completed / active / pending
+- We should have a way to link a task to another task (in command palette)
+    - This should start by letting us filtering the tasks (reusing the task list view we have, but in a different context). That new task list view should not let you go down into the task detail / go elsewhere. It is only to select tasks
+    - then we should be able to choose what link type we want
+    - The task detail view should show what tasks a current task is currently linked to (and link type)
+    - The UI UX designer should be involved at multiple stages of that process, this is a very very complex task in terms of design.
+- The history pane should be collapsed by default in the TaskDestail view
+- We should be able to attach files to tasks. We should support any standard mime file type
+- We should be integrating with MacOS mail and link a mail to a task by drag and drop into the task
+- In task detail, the UUID should become highlighted when we hover over it to signify we can click it anywhere
+- In the command palette, the fuzzy matching should highlight the text that has been matched by making it bold and underlined.
+    - Ask the UX UI designer for this task to figure what it should look like best.
+- In the task detail, we should be able to select the project with both mouse and keyboard, and we should be able to modify it (with autocomplete, inline)
+- In the task detail, we should be able to select the tags with both mouse and keyboard, and we should be able to modify them (with autocomplete, inline)
+- We should be adding a Project overview View
+    - This should list all projects with details and stats about them
+- In task detail, we should be able to have a section with Important links for a task (above "External links"). It should only show if we have any link existing
+- We tend to have a upper right button in multiple view that could expand in a drop down
+    - Report in task list view
+    - Task state in Task detail view
+    - We should add a global cmd+p binding to trigger that drop down menu in the current view if the menu exists
+- The filter chip in the task list view for task ID is showing a float with decimals. The ID is an int 
+- We should have a way to be able to select multiple tasks from the task list view by selecting them and pressing space. 
+- In the task list view It is not clear that some filter chips come from the report. They should be visually grouped to indicate that they're coming from the report
+    - Ask the UX UI designer on this one how it should look
+- The sub text of "Filters" and "Properties" should have a circled "I" information which, on hover with the mouse would show a tooltip window explaining what they are and do
+- In the text input box, the user should be able to ask for help with cmd+shift+h
+    - This should make the hint bar grow with an animation to take a large portion of the screen
+    - inside the new big hint bar, we should have the list of actions available, the list of filters available and the list of properties available
+    - A key binding allows to reduce the hint bar
+- hints on the hint bar should be clickable

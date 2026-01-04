@@ -132,6 +132,12 @@ enum KeybindingRegistry {
         action: .addTag
     )
 
+    static let linkTask = Keybinding(
+        keyCode: KeyCode.keyL,
+        modifiers: .command,
+        action: .linkTask
+    )
+
     static let copyFocused = Keybinding(
         keyCode: KeyCode.keyY,
         modifiers: [],

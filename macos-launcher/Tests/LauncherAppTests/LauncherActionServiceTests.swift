@@ -301,7 +301,8 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
             dateDue: nil,
             urgency: nil,
             annotations: [],
-            history: []
+            history: [],
+            links: []
         )
     }
 

@@ -376,4 +376,12 @@ private final class MockActionHandler: CommandPaletteActionHandling {
     func deleteUserReport(name: String) {
         // No-op for test
     }
+
+    func buildLinkTypeMenu(taskUUID: String) -> CommandPaletteMenu {
+        CommandPaletteMenu(id: "link-type", title: "Link to Task", sections: [])
+    }
+
+    func buildTaskSelectorMenu(linkType: LinkType, sourceTaskUUID: String) -> CommandPaletteMenu {
+        CommandPaletteMenu(id: "task-selector", title: "Select Task", sections: [])
+    }
 }

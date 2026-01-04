@@ -198,7 +198,8 @@ enum TestHelpers {
         tags: [String] = [],
         status: String = "pending",
         annotations: [TaskAnnotationDto] = [],
-        history: [TaskHistoryDto] = []
+        history: [TaskHistoryDto] = [],
+        links: [TaskLinkDto] = []
     ) -> ApiTaskDetail {
         ApiTaskDetail(
             dbId: 1,
@@ -212,8 +213,45 @@ enum TestHelpers {
             dateDue: nil,
             urgency: nil,
             annotations: annotations,
-            history: history
+            history: history,
+            links: links
         )
+    }
+
+    // MARK: - Task Link Helpers
+
+    /// Create a test TaskLinkDto.
+    static func makeTaskLink(
+        linkType: LinkType = .blocking,
+        targetUuid: String = "target-uuid"
+    ) -> TaskLinkDto {
+        // We need to create via JSON since TaskLinkDto has no memberwise init
+        let json = """
+        {
+            "link_type": "\(linkType.rawValue)",
+            "target_uuid": "\(targetUuid)"
+        }
+        """
+        // Safe to force-unwrap since we control the input format
+        do {
+            return try decode(TaskLinkDto.self, from: json)
+        } catch {
+            fatalError("Failed to decode TaskLinkDto: \(error)")
+        }
+    }
+
+    /// Create task links grouped by type for testing LinkedTasksSection.
+    static func makeTaskLinksGrouped(
+        _ specs: [(LinkType, String)]
+    ) -> (links: [TaskLinkDto], byType: [LinkType: [TaskLinkDto]]) {
+        let links = specs.map { makeTaskLink(linkType: $0.0, targetUuid: $0.1) }
+        var byType: [LinkType: [TaskLinkDto]] = [:]
+        for link in links {
+            if let type = link.type {
+                byType[type, default: []].append(link)
+            }
+        }
+        return (links, byType)
     }
 
     // MARK: - Token Helpers

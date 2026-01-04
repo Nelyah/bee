@@ -36,6 +36,10 @@ pub struct TaskProperties {
     pub(crate) date_due: Option<DateTime<chrono::Local>>,
     pub(crate) depends_on: Option<Vec<DependsOnIdentifier>>,
     pub(crate) blocks: Option<Vec<DependsOnIdentifier>>,
+    pub(crate) parent_of: Option<Vec<DependsOnIdentifier>>,
+    pub(crate) child_of: Option<Vec<DependsOnIdentifier>>,
+    pub(crate) related_to: Option<Vec<DependsOnIdentifier>>,
+    pub(crate) duplicates: Option<Vec<DependsOnIdentifier>>,
 }
 
 fn is_project_absent(project: &Option<Option<Project>>) -> bool {
@@ -131,10 +135,26 @@ impl TaskProperties {
     }
 
     pub fn get_referenced_tasks(&self) -> Vec<DependsOnIdentifier> {
-        match &self.depends_on {
-            Some(deps) => deps.to_owned(),
-            None => Vec::default(),
+        let mut refs = Vec::new();
+        if let Some(deps) = &self.depends_on {
+            refs.extend(deps.iter().cloned());
         }
+        if let Some(blocks) = &self.blocks {
+            refs.extend(blocks.iter().cloned());
+        }
+        if let Some(parents) = &self.parent_of {
+            refs.extend(parents.iter().cloned());
+        }
+        if let Some(children) = &self.child_of {
+            refs.extend(children.iter().cloned());
+        }
+        if let Some(related) = &self.related_to {
+            refs.extend(related.iter().cloned());
+        }
+        if let Some(dupes) = &self.duplicates {
+            refs.extend(dupes.iter().cloned());
+        }
+        refs
     }
 }
 

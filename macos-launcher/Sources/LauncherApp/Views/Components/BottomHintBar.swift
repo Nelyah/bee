@@ -14,14 +14,14 @@ struct BottomHintBar: View {
     private let hoveredOpacity: Double = 1.0
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.small) {
-            HStack(spacing: DesignTokens.Spacing.small) {
+        HStack(spacing: DesignTokens.Spacing.extraSmall) {
+            HStack(spacing: DesignTokens.Spacing.extraSmall) {
                 ForEach(leftHints) { hint in
                     HintChip(hint: hint, onAction: onAction)
                 }
             }
             Spacer(minLength: DesignTokens.Spacing.large)
-            HStack(spacing: DesignTokens.Spacing.small) {
+            HStack(spacing: DesignTokens.Spacing.extraSmall) {
                 ForEach(rightHints) { hint in
                     HintChip(hint: hint, onAction: onAction)
                 }
@@ -29,7 +29,7 @@ struct BottomHintBar: View {
         }
         .frame(maxWidth: .infinity)
         .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .rounded))
-        .foregroundColor(ThemeManager.current.subtext0)
+        .foregroundColor(ThemeManager.current.subtext1)
         .padding(.horizontal, DesignTokens.Spacing.extraLarge)
         .padding(.vertical, DesignTokens.Spacing.small)
         .background(
@@ -94,7 +94,7 @@ private struct HintChip: View {
                 )
             Text(hint.label)
         }
-        .padding(.horizontal, DesignTokens.Spacing.small)
+        .padding(.horizontal, DesignTokens.Spacing.extraSmall)
         .padding(.vertical, DesignTokens.Spacing.extraSmall)
         .background(chipBackground)
     }

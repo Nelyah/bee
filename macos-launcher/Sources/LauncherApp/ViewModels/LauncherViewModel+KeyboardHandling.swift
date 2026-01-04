@@ -29,6 +29,12 @@ extension LauncherViewModel {
             return true
         }
 
+        // Cancel adding tag if active
+        if isAddingTag {
+            cancelAddingTag()
+            return true
+        }
+
         // Cancel annotation editing if active
         if editingAnnotationId != nil {
             cancelEditingAnnotation()

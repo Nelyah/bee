@@ -168,22 +168,6 @@ struct CompletionField<Item: CompletableItem>: View {
                     return .handled
                 }
                 // Vim-style navigation
-                .onKeyPress(KeyEquivalent("j")) {
-                    selectNext()
-                    return .handled
-                }
-                .onKeyPress(KeyEquivalent("l")) {
-                    selectNext()
-                    return .handled
-                }
-                .onKeyPress(KeyEquivalent("k")) {
-                    selectPrevious()
-                    return .handled
-                }
-                .onKeyPress(KeyEquivalent("h")) {
-                    selectPrevious()
-                    return .handled
-                }
                 .onKeyPress(.return) {
                     handleReturnKey()
                     return .handled

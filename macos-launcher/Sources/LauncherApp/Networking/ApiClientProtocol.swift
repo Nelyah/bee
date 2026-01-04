@@ -19,4 +19,9 @@ protocol ApiClientProtocol: Sendable {
     func createUserReport(_ request: UserReportRequest) async throws -> UserReportDto
     func updateUserReport(name: String, _ request: UserReportRequest) async throws -> UserReportDto
     func deleteUserReport(name: String) async throws
+
+    // Attachments
+    func uploadAttachment(taskUUID: String, fileURL: URL) async throws -> TaskAttachmentDto
+    func downloadAttachment(attachmentId: Int) async throws -> Data
+    func deleteAttachment(attachmentId: Int) async throws
 }

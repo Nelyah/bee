@@ -23,6 +23,11 @@ enum DetailFocusableItem: Equatable, Identifiable {
     /// A linked task in the Linked Tasks section.
     /// Associated value is the link DTO containing type and target UUID.
     case linkedTask(TaskLinkDto)
+    /// A file attachment in the Attachments section.
+    /// Associated value is the attachment DTO.
+    case attachment(TaskAttachmentDto)
+    /// The "+" button to add a new attachment.
+    case addAttachmentButton
 
     var id: String {
         switch self {
@@ -44,6 +49,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             "dueDate"
         case let .linkedTask(link):
             "linkedTask-\(link.id)"
+        case let .attachment(attachment):
+            "attachment-\(attachment.id)"
+        case .addAttachmentButton:
+            "addAttachmentButton"
         }
     }
 
@@ -70,6 +79,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             nil // Due date uses Enter to edit, not open URL
         case .linkedTask:
             nil // Linked task uses Enter to navigate, not open URL
+        case .attachment:
+            nil // Attachments use Enter to download and open, handled separately
+        case .addAttachmentButton:
+            nil // Add button uses Enter to start adding, not open URL
         }
     }
 
@@ -100,6 +113,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return dateString ?? ""
         case let .linkedTask(link):
             return link.targetUuid
+        case let .attachment(attachment):
+            return attachment.filename
+        case .addAttachmentButton:
+            return "" // Nothing to copy from add button
         }
     }
 
@@ -129,6 +146,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "Due date"
         case .linkedTask:
             return "Task UUID"
+        case .attachment:
+            return "Filename"
+        case .addAttachmentButton:
+            return "" // Nothing to copy from add button
         }
     }
 }

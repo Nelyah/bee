@@ -2,12 +2,12 @@ use crate::external_links;
 use crate::{
     config::ApiConfig,
     dto::{
-        ActionRequest, ActionResponse, ApiEvent, ApiTask, ApiTaskDetail, CompletionItem,
-        CompletionsResponse, ConfigResponse, ExternalLinkCreateRequest, ExternalLinkDto,
-        ExternalLinkResolveRequest, ExternalLinkResolveResponse, ExternalLinkSyncRequest,
-        ExternalLinkSyncResponse, GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse,
-        ReportConfigDto, ReportSummary, TaskAnnotationDto, TaskHistoryDto, TokenSpan,
-        UserReportDto, UserReportRequest, UserReportsListResponse,
+        ActionRequest, ActionResponse, ApiEvent, ApiTask, ApiTaskDetail, AttachmentDto,
+        CompletionItem, CompletionsResponse, ConfigResponse, ExternalLinkCreateRequest,
+        ExternalLinkDto, ExternalLinkResolveRequest, ExternalLinkResolveResponse,
+        ExternalLinkSyncRequest, ExternalLinkSyncResponse, GitlabMergeRequestDto, JiraIssueDto,
+        ParseRequest, ParseResponse, ReportConfigDto, ReportSummary, TaskAnnotationDto,
+        TaskHistoryDto, TokenSpan, UserReportDto, UserReportRequest, UserReportsListResponse,
     },
     error_type::{ApiError, ApiErrorResponse, ApiResult},
     parse::{parse_input, tokenize_with_spans},
@@ -15,8 +15,10 @@ use crate::{
 };
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
-    http::StatusCode,
+    body::Bytes,
+    extract::{Multipart, Path, Query, State},
+    http::{StatusCode, header},
+    response::IntoResponse,
     routing::{delete, get, post, put},
 };
 use bee_actions::{ActionRegistry, command_parser::ParsedCommand};
@@ -111,6 +113,10 @@ pub fn router(state: AppState) -> Router {
             get(list_external_links_handler).post(create_external_link_handler),
         )
         .route(
+            "/v1/tasks/:task_uuid/attachments",
+            get(list_attachments_handler).post(upload_attachment_handler),
+        )
+        .route(
             "/v1/external-links/:link_id",
             delete(delete_external_link_handler),
         )
@@ -139,6 +145,15 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/reports/:name",
             put(update_user_report_handler).delete(delete_user_report_handler),
+        )
+        // Attachments (individual operations by ID)
+        .route(
+            "/v1/attachments/:attachment_id/download",
+            get(download_attachment_handler),
+        )
+        .route(
+            "/v1/attachments/:attachment_id",
+            delete(delete_attachment_handler),
         )
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
         .layer(
@@ -240,7 +255,11 @@ async fn task_detail_handler(Path(task_uuid): Path<Uuid>) -> ApiResult<Json<ApiT
     let Some(task) = DbStore::get_task_by_uuid(task_uuid).await? else {
         return Err(ApiError::not_found("Task not found"));
     };
-    Ok(Json(ApiTaskDetail::from_task(&task)))
+    let attachments = DbStore::list_attachments_by_task(task_uuid).await?;
+    Ok(Json(ApiTaskDetail::from_task_with_attachments(
+        &task,
+        attachments,
+    )))
 }
 
 /// Query parameters for the completions endpoint.
@@ -726,6 +745,136 @@ async fn delete_user_report_handler(Path(name): Path<String>) -> ApiResult<Statu
     Ok(StatusCode::NO_CONTENT)
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Attachment endpoints
+// ───────────────────────────────────────────────────────────────────────────
+
+#[utoipa::path(
+    get,
+    path = "/v1/tasks/{task_uuid}/attachments",
+    params(("task_uuid" = String, Path, description = "Task UUID")),
+    responses(
+        (status = 200, description = "List of attachments", body = Vec<AttachmentDto>)
+    )
+)]
+async fn list_attachments_handler(
+    Path(task_uuid): Path<Uuid>,
+) -> ApiResult<Json<Vec<AttachmentDto>>> {
+    let attachments = DbStore::list_attachments_by_task(task_uuid).await?;
+    let dtos: Vec<AttachmentDto> = attachments
+        .into_iter()
+        .map(AttachmentDto::from_attachment)
+        .collect();
+    Ok(Json(dtos))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/tasks/{task_uuid}/attachments",
+    params(("task_uuid" = String, Path, description = "Task UUID")),
+    request_body(content_type = "multipart/form-data", content = inline(UploadAttachmentForm)),
+    responses(
+        (status = 201, description = "Attachment uploaded", body = AttachmentDto),
+        (status = 400, description = "Invalid file upload", body = ApiErrorResponse)
+    )
+)]
+async fn upload_attachment_handler(
+    Path(task_uuid): Path<Uuid>,
+    mut multipart: Multipart,
+) -> ApiResult<(StatusCode, Json<AttachmentDto>)> {
+    // Extract the file from the multipart form
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| ApiError::bad_request(format!("Failed to read multipart: {}", e)))?
+        .ok_or_else(|| ApiError::bad_request("No file provided"))?;
+
+    let filename = field
+        .file_name()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "unnamed".to_string());
+
+    let content_type = field
+        .content_type()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "application/octet-stream".to_string());
+
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| ApiError::bad_request(format!("Failed to read file data: {}", e)))?;
+
+    let attachment =
+        DbStore::insert_attachment(task_uuid, filename, content_type, data.to_vec()).await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(AttachmentDto::from_attachment(attachment)),
+    ))
+}
+
+/// Form schema for file upload (for OpenAPI documentation).
+#[derive(utoipa::ToSchema)]
+#[allow(dead_code)]
+struct UploadAttachmentForm {
+    /// The file to upload
+    #[schema(value_type = String, format = Binary)]
+    file: Vec<u8>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/attachments/{attachment_id}/download",
+    params(("attachment_id" = i32, Path, description = "Attachment ID")),
+    responses(
+        (status = 200, description = "File data", content_type = "application/octet-stream"),
+        (status = 404, description = "Attachment not found", body = ApiErrorResponse)
+    )
+)]
+async fn download_attachment_handler(
+    Path(attachment_id): Path<i32>,
+) -> ApiResult<impl IntoResponse> {
+    let attachment = DbStore::get_attachment_by_id(attachment_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Attachment not found"))?;
+
+    let data = DbStore::get_attachment_data(attachment_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Attachment data not found"))?;
+
+    let headers = [
+        (header::CONTENT_TYPE, attachment.mime_type),
+        (
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", attachment.filename),
+        ),
+    ];
+
+    Ok((headers, Bytes::from(data)))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/attachments/{attachment_id}",
+    params(("attachment_id" = i32, Path, description = "Attachment ID")),
+    responses(
+        (status = 204, description = "Attachment deleted"),
+        (status = 404, description = "Attachment not found", body = ApiErrorResponse)
+    )
+)]
+async fn delete_attachment_handler(Path(attachment_id): Path<i32>) -> ApiResult<StatusCode> {
+    // Verify it exists first
+    if DbStore::get_attachment_by_id(attachment_id)
+        .await?
+        .is_none()
+    {
+        return Err(ApiError::not_found("Attachment not found"));
+    }
+
+    DbStore::delete_attachment_by_id(attachment_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Validate report name: non-empty, <= 64 chars, no control characters
 fn validate_report_name(name: &str) -> ApiResult<()> {
     let trimmed = name.trim();
@@ -912,7 +1061,11 @@ fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<
         sync_external_links_handler,
         recent_gitlab_merge_requests_handler,
         recent_jira_issues_handler,
-        resolve_external_link_handler
+        resolve_external_link_handler,
+        list_attachments_handler,
+        upload_attachment_handler,
+        download_attachment_handler,
+        delete_attachment_handler
     ),
     components(schemas(
         ActionRequest,
@@ -938,7 +1091,9 @@ fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<
         TaskAnnotationDto,
         TaskHistoryDto,
         TokenSpan,
-        ApiErrorResponse
+        ApiErrorResponse,
+        AttachmentDto,
+        UploadAttachmentForm
     )),
     tags((name = "bee-api", description = "Bee REST API"))
 )]

@@ -1,3 +1,4 @@
+mod attachments;
 mod blocking;
 mod connection;
 mod external_links;
@@ -11,11 +12,13 @@ mod user_reports;
 
 use crate::{
     CoreResult,
+    attachment::Attachment,
     external_links::ExternalLink,
     filters::{Filter, filters_impl::UuidFilter},
     storage::{
         AsyncStore,
         db::{
+            attachments as attachments_db,
             connection::get_database,
             external_links as external_links_db,
             task_read::{get_projects_with_counts, get_tags_with_counts, load_tasks_impl},
@@ -168,6 +171,49 @@ impl DbStore {
         let db = get_database(None).await?;
         let names = user_reports_db::list_names(&db).await?;
         Ok(names)
+    }
+
+    // Attachments CRUD methods
+
+    /// List all attachments for a task (metadata only, no file data).
+    pub async fn list_attachments_by_task(task_uuid: uuid::Uuid) -> CoreResult<Vec<Attachment>> {
+        let db = get_database(None).await?;
+        let attachments = attachments_db::list_by_task_uuid(&db, task_uuid).await?;
+        Ok(attachments)
+    }
+
+    /// Get attachment metadata by ID.
+    pub async fn get_attachment_by_id(attachment_id: i32) -> CoreResult<Option<Attachment>> {
+        let db = get_database(None).await?;
+        let attachment = attachments_db::get_by_id(&db, attachment_id).await?;
+        Ok(attachment)
+    }
+
+    /// Get the raw file data (BLOB) for an attachment.
+    pub async fn get_attachment_data(attachment_id: i32) -> CoreResult<Option<Vec<u8>>> {
+        let db = get_database(None).await?;
+        let data = attachments_db::get_data_by_id(&db, attachment_id).await?;
+        Ok(data)
+    }
+
+    /// Upload a new attachment with file data.
+    pub async fn insert_attachment(
+        task_uuid: uuid::Uuid,
+        filename: String,
+        mime_type: String,
+        data: Vec<u8>,
+    ) -> CoreResult<Attachment> {
+        let db = get_database(None).await?;
+        let attachment =
+            attachments_db::insert_attachment(&db, task_uuid, filename, mime_type, data).await?;
+        Ok(attachment)
+    }
+
+    /// Delete an attachment by ID.
+    pub async fn delete_attachment_by_id(attachment_id: i32) -> CoreResult<()> {
+        let db = get_database(None).await?;
+        attachments_db::delete_by_id(&db, attachment_id).await?;
+        Ok(())
     }
 }
 

@@ -1,4 +1,7 @@
-use bee_core::task::{Link, LinkType, Task, TaskAnnotation, TaskHistory, TaskStatus};
+use bee_core::{
+    attachment::Attachment,
+    task::{Link, LinkType, Task, TaskAnnotation, TaskHistory, TaskStatus},
+};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -160,7 +163,7 @@ impl TaskLinkDto {
     }
 }
 
-/// Full task payload including annotations and history.
+/// Full task payload including annotations, history, and attachments.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ApiTaskDetail {
     pub id: Option<i32>,
@@ -181,10 +184,12 @@ pub struct ApiTaskDetail {
     pub annotations: Vec<TaskAnnotationDto>,
     pub history: Vec<TaskHistoryDto>,
     pub links: Vec<TaskLinkDto>,
+    pub attachments: Vec<AttachmentDto>,
 }
 
 impl ApiTaskDetail {
-    pub fn from_task(task: &Task) -> Self {
+    /// Build detail from task with attachments loaded separately.
+    pub fn from_task_with_attachments(task: &Task, attachments: Vec<Attachment>) -> Self {
         let urgency = {
             let task = task.clone();
             *task.get_urgency()
@@ -214,6 +219,10 @@ impl ApiTaskDetail {
                 .get_links()
                 .iter()
                 .map(TaskLinkDto::from_link)
+                .collect(),
+            attachments: attachments
+                .into_iter()
+                .map(AttachmentDto::from_attachment)
                 .collect(),
         }
     }
@@ -252,6 +261,32 @@ impl ExternalLinkDto {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ExternalLinkCreateRequest {
     pub url: String,
+}
+
+/// File attachment response payload.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AttachmentDto {
+    pub id: i32,
+    #[schema(value_type = String, format = "uuid")]
+    pub uuid: Uuid,
+    pub filename: String,
+    pub mime_type: String,
+    pub size_bytes: i64,
+    #[schema(value_type = String, format = DateTime)]
+    pub created_at: DateTime<Local>,
+}
+
+impl AttachmentDto {
+    pub fn from_attachment(attachment: Attachment) -> Self {
+        Self {
+            id: attachment.id,
+            uuid: attachment.uuid,
+            filename: attachment.filename,
+            mime_type: attachment.mime_type,
+            size_bytes: attachment.size_bytes,
+            created_at: attachment.created_at,
+        }
+    }
 }
 
 /// Batch sync request for external links.

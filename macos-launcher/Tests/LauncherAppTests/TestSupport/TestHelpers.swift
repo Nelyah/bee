@@ -199,7 +199,8 @@ enum TestHelpers {
         status: String = "pending",
         annotations: [TaskAnnotationDto] = [],
         history: [TaskHistoryDto] = [],
-        links: [TaskLinkDto] = []
+        links: [TaskLinkDto] = [],
+        attachments: [TaskAttachmentDto] = []
     ) -> ApiTaskDetail {
         ApiTaskDetail(
             dbId: 1,
@@ -214,7 +215,8 @@ enum TestHelpers {
             urgency: nil,
             annotations: annotations,
             history: history,
-            links: links
+            links: links,
+            attachments: attachments
         )
     }
 

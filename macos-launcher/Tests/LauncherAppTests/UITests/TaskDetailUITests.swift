@@ -324,7 +324,8 @@ final class TaskDetailUITests: XCTestCase {
             urgency: nil,
             annotations: [],
             history: history,
-            links: []
+            links: [],
+            attachments: []
         )
         let detailState = makeDetailState(taskUUID: "uuid-123", detail: detail)
         let sut = makeSUT(task: task, detailState: detailState)

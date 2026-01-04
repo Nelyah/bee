@@ -122,6 +122,23 @@ struct TaskDetailView: View {
     /// Called when the user selects a quick date action.
     var onQuickDueDateAction: (QuickDueDateAction) -> Void = { _ in }
 
+    // MARK: - Attachments
+
+    /// ID of attachment currently showing delete confirmation.
+    var confirmingDeleteAttachmentId: Int?
+    /// Called when the user wants to add an attachment.
+    var onAddAttachment: () -> Void = {}
+    /// Called when the user wants to open an attachment.
+    var onOpenAttachment: (TaskAttachmentDto) -> Void = { _ in }
+    /// Called when the user starts the delete confirmation.
+    var onDeleteAttachment: (TaskAttachmentDto) -> Void = { _ in }
+    /// Called when the user confirms deletion.
+    var onConfirmDeleteAttachment: (TaskAttachmentDto) -> Void = { _ in }
+    /// Called when the user cancels deletion.
+    var onCancelDeleteAttachment: () -> Void = {}
+    /// Called when files are dropped onto the attachments section.
+    var onDropAttachments: ([URL]) -> Void = { _ in }
+
     // MARK: - Linked Tasks
 
     /// All tasks for looking up linked task details (title, status).
@@ -151,6 +168,7 @@ struct TaskDetailView: View {
                     }
 
                     annotationsSection
+                    attachmentsSection
                     linkedTasksSection
                     historySection
                 }
@@ -385,6 +403,25 @@ struct TaskDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Attachments Section
+
+    @ViewBuilder
+    private var attachmentsSection: some View {
+        if let detail = detailForTask {
+            AttachmentsSection(
+                attachments: detail.attachments,
+                focusedItem: focusedItem,
+                confirmingDeleteId: confirmingDeleteAttachmentId,
+                onAdd: onAddAttachment,
+                onOpen: onOpenAttachment,
+                onDelete: onDeleteAttachment,
+                onConfirmDelete: onConfirmDeleteAttachment,
+                onCancelDelete: onCancelDeleteAttachment,
+                onDrop: onDropAttachments
+            )
         }
     }
 

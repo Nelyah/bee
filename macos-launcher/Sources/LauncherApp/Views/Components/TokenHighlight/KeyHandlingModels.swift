@@ -51,10 +51,12 @@ enum DetailModeAction: Equatable {
     case moveFocusLeft // h - move to left column (UUID)
     case moveFocusRight // l - move to right column (links) or open
     case openFocused // o/Enter - open in browser or edit
-    case copyFocused // y - copy to clipboard
-    case deleteFocused // x - delete focused item (tags only)
+    case copyFocused // y - copy to clipboard (or confirm delete if attachment is confirming)
+    case deleteFocused // x - delete focused item (tags, attachments)
     case selectFirst // g - jump to first
     case selectLast // G - jump to last
     case addAnnotation // a - add annotation
     case addTag // t - add new tag
+    case quickLookFocused // Space - Quick Look preview (attachments)
+    case cancelDelete // n - cancel pending delete (attachments only)
 }

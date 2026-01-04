@@ -137,6 +137,26 @@ struct ContentView: View {
                     onQuickDueDateAction: { action in
                         viewModel.applyQuickDueDateAction(action)
                     },
+                    // Attachments
+                    confirmingDeleteAttachmentId: viewModel.confirmingDeleteAttachmentId,
+                    onAddAttachment: {
+                        viewModel.addAttachment()
+                    },
+                    onOpenAttachment: { attachment in
+                        viewModel.openAttachment(attachment)
+                    },
+                    onDeleteAttachment: { attachment in
+                        viewModel.startDeleteAttachment(attachment)
+                    },
+                    onConfirmDeleteAttachment: { attachment in
+                        Task { await viewModel.confirmDeleteAttachment(attachment) }
+                    },
+                    onCancelDeleteAttachment: {
+                        viewModel.cancelDeleteAttachment()
+                    },
+                    onDropAttachments: { urls in
+                        viewModel.handleAttachmentDrop(urls)
+                    },
                     // Linked tasks navigation
                     tasks: viewModel.tasks,
                     onNavigateToTask: { uuid in

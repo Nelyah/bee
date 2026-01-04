@@ -42,6 +42,54 @@ struct TaskHistoryDto: Decodable, Identifiable {
     var id: String { "\(datetime)-\(value)" }
 }
 
+/// DTO for file attachments.
+struct TaskAttachmentDto: Decodable, Identifiable, Equatable {
+    let id: Int
+    let uuid: String
+    let filename: String
+    let mimeType: String
+    let sizeBytes: Int64
+    let createdAt: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case uuid
+        case filename
+        case mimeType = "mime_type"
+        case sizeBytes = "size_bytes"
+        case createdAt = "created_at"
+    }
+
+    /// Human-readable file size.
+    var formattedSize: String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useBytes, .useKB, .useMB, .useGB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: sizeBytes)
+    }
+
+    /// SF Symbol name based on MIME type.
+    var iconName: String {
+        if mimeType.hasPrefix("image/") {
+            "photo"
+        } else if mimeType.hasPrefix("video/") {
+            "video"
+        } else if mimeType.hasPrefix("audio/") {
+            "waveform"
+        } else if mimeType == "application/pdf" {
+            "doc.text"
+        } else if mimeType.contains("spreadsheet") || mimeType.contains("excel") {
+            "tablecells"
+        } else if mimeType.contains("document") || mimeType.contains("word") {
+            "doc.richtext"
+        } else if mimeType.contains("zip") || mimeType.contains("archive") || mimeType.contains("compressed") {
+            "archivebox"
+        } else {
+            "doc"
+        }
+    }
+}
+
 /// Link type enum with display names and icons
 enum LinkType: String, CaseIterable {
     case dependsOn = "depends_on"
@@ -107,6 +155,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
     let annotations: [TaskAnnotationDto]
     let history: [TaskHistoryDto]
     let links: [TaskLinkDto]
+    let attachments: [TaskAttachmentDto]
 
     var id: String { uuid }
 
@@ -124,6 +173,59 @@ struct ApiTaskDetail: Decodable, Identifiable {
         case annotations
         case history
         case links
+        case attachments
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        dbId = try container.decodeIfPresent(Int.self, forKey: .dbId)
+        uuid = try container.decode(String.self, forKey: .uuid)
+        status = try container.decode(String.self, forKey: .status)
+        summary = try container.decode(String.self, forKey: .summary)
+        project = try container.decodeIfPresent(String.self, forKey: .project)
+        tags = try container.decode([String].self, forKey: .tags)
+        dateCreated = try container.decode(String.self, forKey: .dateCreated)
+        dateCompleted = try container.decodeIfPresent(String.self, forKey: .dateCompleted)
+        dateDue = try container.decodeIfPresent(String.self, forKey: .dateDue)
+        urgency = try container.decodeIfPresent(Int.self, forKey: .urgency)
+        annotations = try container.decode([TaskAnnotationDto].self, forKey: .annotations)
+        history = try container.decode([TaskHistoryDto].self, forKey: .history)
+        links = try container.decode([TaskLinkDto].self, forKey: .links)
+        // Backwards compatibility: default to empty array if attachments not present
+        attachments = try container.decodeIfPresent([TaskAttachmentDto].self, forKey: .attachments) ?? []
+    }
+
+    // For test/preview convenience
+    init(
+        dbId: Int?,
+        uuid: String,
+        status: String,
+        summary: String,
+        project: String?,
+        tags: [String],
+        dateCreated: String,
+        dateCompleted: String?,
+        dateDue: String?,
+        urgency: Int?,
+        annotations: [TaskAnnotationDto],
+        history: [TaskHistoryDto],
+        links: [TaskLinkDto],
+        attachments: [TaskAttachmentDto]
+    ) {
+        self.dbId = dbId
+        self.uuid = uuid
+        self.status = status
+        self.summary = summary
+        self.project = project
+        self.tags = tags
+        self.dateCreated = dateCreated
+        self.dateCompleted = dateCompleted
+        self.dateDue = dateDue
+        self.urgency = urgency
+        self.annotations = annotations
+        self.history = history
+        self.links = links
+        self.attachments = attachments
     }
 
     /// Group links by type for display

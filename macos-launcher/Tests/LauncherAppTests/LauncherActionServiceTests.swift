@@ -302,7 +302,8 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
             urgency: nil,
             annotations: [],
             history: [],
-            links: []
+            links: [],
+            attachments: []
         )
     }
 
@@ -340,6 +341,23 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
             syncError: nil
         )
     }
+
+    func uploadAttachment(taskUUID: String, fileURL: URL) async throws -> TaskAttachmentDto {
+        TaskAttachmentDto(
+            id: 1,
+            uuid: "test-attachment",
+            filename: fileURL.lastPathComponent,
+            mimeType: "application/octet-stream",
+            sizeBytes: 0,
+            createdAt: "2024-01-01T00:00:00Z"
+        )
+    }
+
+    func downloadAttachment(attachmentId: Int) async throws -> Data {
+        Data()
+    }
+
+    func deleteAttachment(attachmentId: Int) async throws {}
 
     func emptyParse() -> ParseResponse {
         ParseResponse(action: "", properties: nil, filter: nil, tokens: [])

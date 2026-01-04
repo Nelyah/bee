@@ -176,6 +176,10 @@ enum KeyHandlingDecider {
             .addAnnotation
         case KeyCode.keyT:
             .addTag
+        case KeyCode.space:
+            .quickLookFocused
+        case KeyCode.keyN:
+            .cancelDelete
         default:
             nil
         }

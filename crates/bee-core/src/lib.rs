@@ -12,6 +12,7 @@
 //! Most consumers will interact with [`task::Task`], [`filters::Filter`],
 //! and the storage traits.
 
+pub mod attachment;
 pub mod config;
 pub mod external_links;
 pub mod filters;

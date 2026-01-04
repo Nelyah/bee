@@ -42,6 +42,9 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
     var createUserReportResult: Result<UserReportDto, Error> = .success(MockApiClient.sampleUserReport)
     var updateUserReportResult: Result<UserReportDto, Error> = .success(MockApiClient.sampleUserReport)
     var deleteUserReportResult: Result<Void, Error> = .success(())
+    var uploadAttachmentResult: Result<TaskAttachmentDto, Error> = .success(MockApiClient.sampleAttachment)
+    var downloadAttachmentResult: Result<Data, Error> = .success(Data("mock file content".utf8))
+    var deleteAttachmentResult: Result<Void, Error> = .success(())
     var lastParseInput: String?
     var lastRunActionFilter: JSONValue?
 
@@ -110,6 +113,20 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func deleteUserReport(name: String) async throws {
         _ = try deleteUserReportResult.get()
+    }
+
+    // MARK: - Attachments
+
+    func uploadAttachment(taskUUID: String, fileURL: URL) async throws -> TaskAttachmentDto {
+        try uploadAttachmentResult.get()
+    }
+
+    func downloadAttachment(attachmentId: Int) async throws -> Data {
+        try downloadAttachmentResult.get()
+    }
+
+    func deleteAttachment(attachmentId: Int) async throws {
+        _ = try deleteAttachmentResult.get()
     }
 
     // MARK: - Sample Data
@@ -183,6 +200,15 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         ),
     ]
 
+    static let sampleAttachment = TaskAttachmentDto(
+        id: 1,
+        uuid: "attach-001",
+        filename: "design-spec.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 245_760,
+        createdAt: "2024-01-17T14:30:00Z"
+    )
+
     static let sampleTaskDetail = ApiTaskDetail(
         dbId: 1,
         uuid: "a1b2c3d4",
@@ -203,7 +229,8 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         ],
         links: [
             TaskLinkDto(linkType: "depends_on", targetUuid: "deadbeef"),
-        ]
+        ],
+        attachments: [sampleAttachment]
     )
 
     static let sampleExternalLinks: [ExternalLinkDto] = [

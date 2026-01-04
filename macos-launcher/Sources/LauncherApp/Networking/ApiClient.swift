@@ -141,6 +141,53 @@ final class ApiClient: ApiClientProtocol, Sendable {
         try await delete(path: "/v1/reports/\(name)")
     }
 
+    // MARK: - Attachments
+
+    func uploadAttachment(taskUUID: String, fileURL: URL) async throws -> TaskAttachmentDto {
+        let url = baseURL.appendingPathComponent("/v1/tasks/\(taskUUID)/attachments")
+        logger
+            .info("HTTP POST (multipart) /v1/tasks/\(taskUUID)/attachments -> \(url.absoluteString, privacy: .public)")
+
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        // Read file data
+        let fileData = try Data(contentsOf: fileURL)
+        let filename = fileURL.lastPathComponent
+
+        // Build multipart body
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data, path: "/v1/tasks/\(taskUUID)/attachments")
+        return try JSONDecoder().decode(TaskAttachmentDto.self, from: data)
+    }
+
+    func downloadAttachment(attachmentId: Int) async throws -> Data {
+        let path = "/v1/attachments/\(attachmentId)/download"
+        let url = baseURL.appendingPathComponent(path)
+        logger.info("HTTP GET \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response, data: data, path: path)
+        return data
+    }
+
+    func deleteAttachment(attachmentId: Int) async throws {
+        try await delete(path: "/v1/attachments/\(attachmentId)")
+    }
+
     /// Send a JSON POST request to the API and decode the response type.
     private func send<Response: Decodable>(
         _ body: some Encodable,

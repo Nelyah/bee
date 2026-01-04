@@ -124,6 +124,13 @@ final class LauncherViewModel: ObservableObject {
     /// Whether a tag operation (add/remove) is in progress.
     @Published var isSubmittingTag: Bool = false
 
+    // MARK: - Attachment State
+
+    /// ID of attachment currently showing delete confirmation.
+    @Published var _confirmingDeleteAttachmentId: Int?
+    /// URL for Quick Look preview (temporary file).
+    @Published var _quickLookURL: URL?
+
     // MARK: - Project Scope State
 
     /// The currently scoped project (layers on top of report filters).

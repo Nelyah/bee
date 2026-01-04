@@ -260,6 +260,43 @@ Add ability to link tasks together through the command palette, with task select
 
 ---
 
+## TICKET-012: Fuzzy Match Text Highlighting
+**Completed:** 2026-01-04
+
+### Summary
+In command palette, highlight the matched characters in fuzzy search results with bold and colored text.
+
+### Resolution
+
+#### Architecture
+- Replaced `CommandPaletteFuzzyScorer` (score-only) with `FuzzyMatcher` (score + indices) to reuse the same algorithm as `CompletionField`
+- Created `FuzzyMatchedPaletteItem` wrapper to hold items with title/subtitle match info
+- Extended `CommandPaletteSection` with `sectionTitleMatch` for highlighting section headers
+
+#### Combined Match Handling
+- When query spans both section title and item title (e.g., "groua" matching "Group by" + "Due Date"), extracts indices from combined match and splits them:
+  - Indices < sectionTitle.count → section highlighting
+  - Indices > sectionTitle.count → item highlighting
+
+#### View Layer
+- Updated `CommandPaletteView` to render with `FuzzyMatcher.highlightedText()`
+- Added `sectionHeader(title:match:)` for highlighted section headers
+- Title and subtitle highlighting with blue color for matched characters
+
+#### Files Modified
+- `CommandPaletteModels.swift` - Added `FuzzyMatchedPaletteItem`, updated `CommandPaletteSection`
+- `DataSource.swift` - Switched to `FuzzyMatcher`, added combined match index extraction
+- `CommandPaletteCoordinator.swift` - Added `selectableMatchedItems` computed property
+- `CommandPaletteView.swift` - Render with highlighting
+- Deleted `FuzzyScorer.swift` (replaced by `FuzzyMatcher`)
+
+#### Tests Added
+- `testCombinedMatchHighlightsBothSectionAndItem` - Verifies combined match highlighting
+- `testDirectMatchTakesPrecedenceOverCombinedMatch` - Direct match priority
+- `testNoHighlightingForUnmatchedParts` - Section not highlighted when only item matches
+
+---
+
 ## TICKET-009: File Attachments for Tasks
 **Completed:** 2026-01-04
 

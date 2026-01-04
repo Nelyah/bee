@@ -13,8 +13,8 @@ struct CommandPaletteView: View {
         commandPalette.currentSections
     }
 
-    private var selectableItems: [CommandPaletteItem] {
-        commandPalette.selectableItems
+    private var selectableMatchedItems: [FuzzyMatchedPaletteItem] {
+        commandPalette.selectableMatchedItems
     }
 
     // MARK: - Body
@@ -158,8 +158,8 @@ struct CommandPaletteView: View {
             }
             .frame(maxHeight: 300)
             .onChange(of: commandPalette.selectionIndex) { _, newIndex in
-                guard newIndex < selectableItems.count else { return }
-                let itemId = selectableItems[newIndex].id
+                guard newIndex < selectableMatchedItems.count else { return }
+                let itemId = selectableMatchedItems[newIndex].id
                 withAnimation(.easeInOut(duration: 0.15)) {
                     proxy.scrollTo(itemId, anchor: nil)
                 }
@@ -169,59 +169,114 @@ struct CommandPaletteView: View {
 
     @ViewBuilder
     private func sectionView(_ section: CommandPaletteSection) -> some View {
-        // Section header
+        // Section header with optional highlighting
         if let title = section.title {
-            Text(title.uppercased())
-                .font(.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded))
-                .foregroundColor(ThemeManager.current.subtext0)
-                .padding(.horizontal, DesignTokens.Spacing.large)
-                .padding(.top, DesignTokens.Spacing.medium)
-                .padding(.bottom, DesignTokens.Spacing.extraSmall)
+            sectionHeader(title: title, match: section.sectionTitleMatch)
         }
 
-        // Section items
-        ForEach(section.items) { item in
-            itemRow(item)
+        // Section items with match info for highlighting
+        ForEach(section.matchedItems) { matchedItem in
+            itemRow(matchedItem)
         }
     }
 
     @ViewBuilder
-    private func itemRow(_ item: CommandPaletteItem) -> some View {
-        if let globalIndex = selectableItems.firstIndex(where: { $0.id == item.id }) {
+    private func sectionHeader(title: String, match: FuzzyMatch?) -> some View {
+        let uppercasedTitle = title.uppercased()
+        let headerFont = Font.system(size: DesignTokens.TypeScale.caption, weight: .semibold, design: .rounded)
+        let baseColor = ThemeManager.current.subtext0
+        let matchColor = ThemeManager.current.blue
+
+        Group {
+            if let match, !match.matchedIndices.isEmpty {
+                // Highlight matched characters in section header
+                FuzzyMatcher.highlightedText(
+                    uppercasedTitle,
+                    matchedIndices: match.matchedIndices,
+                    baseFont: headerFont,
+                    baseColor: baseColor,
+                    matchColor: matchColor,
+                    matchWeight: .bold
+                )
+            } else {
+                Text(uppercasedTitle)
+                    .font(headerFont)
+                    .foregroundColor(baseColor)
+            }
+        }
+        .padding(.horizontal, DesignTokens.Spacing.large)
+        .padding(.top, DesignTokens.Spacing.medium)
+        .padding(.bottom, DesignTokens.Spacing.extraSmall)
+    }
+
+    @ViewBuilder
+    private func itemRow(_ matchedItem: FuzzyMatchedPaletteItem) -> some View {
+        let item = matchedItem.item
+        if let globalIndex = selectableMatchedItems.firstIndex(where: { $0.id == matchedItem.id }) {
             let isSelected = globalIndex == commandPalette.selectionIndex
 
             Button {
                 commandPalette.selectionIndex = globalIndex
                 commandPalette.handleEnter()
             } label: {
-                itemContent(item, isSelected: isSelected)
+                itemContent(matchedItem, isSelected: isSelected)
             }
             .buttonStyle(.plain)
             .id(item.id)
         } else {
-            itemContent(item, isSelected: false)
+            itemContent(matchedItem, isSelected: false)
                 .id(item.id)
         }
     }
 
     @ViewBuilder
-    private func itemContent(_ item: CommandPaletteItem, isSelected: Bool) -> some View {
+    private func itemContent(_ matchedItem: FuzzyMatchedPaletteItem, isSelected: Bool) -> some View {
+        let item = matchedItem.item
+        let textColor = ThemeManager.current.text
+        let subtextColor = ThemeManager.current.subtext0
+        let matchColor = ThemeManager.current.blue
+
         HStack(spacing: 10) {
             // Icon
             if let icon = item.icon {
                 iconView(icon, isSelected: isSelected)
             }
 
-            // Title + subtitle
+            // Title + subtitle with highlighting
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.displayTitle)
-                    .foregroundColor(ThemeManager.current.text)
+                // Title with optional highlighting
+                if let titleMatch = matchedItem.titleMatch, !titleMatch.matchedIndices.isEmpty {
+                    FuzzyMatcher.highlightedText(
+                        item.displayTitle,
+                        matchedIndices: titleMatch.matchedIndices,
+                        baseFont: .body,
+                        baseColor: textColor,
+                        matchColor: matchColor,
+                        matchWeight: .bold
+                    )
+                } else {
+                    Text(item.displayTitle)
+                        .foregroundColor(textColor)
+                }
 
+                // Subtitle with optional highlighting
                 if let subtitle = item.subtitle {
-                    Text(subtitle)
-                        .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
-                        .foregroundColor(ThemeManager.current.subtext0)
+                    if let subtitleMatch = matchedItem.subtitleMatch, !subtitleMatch.matchedIndices.isEmpty {
+                        FuzzyMatcher.highlightedText(
+                            subtitle,
+                            matchedIndices: subtitleMatch.matchedIndices,
+                            baseFont: .system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded),
+                            baseColor: subtextColor,
+                            matchColor: matchColor,
+                            matchWeight: .bold
+                        )
                         .lineLimit(1)
+                    } else {
+                        Text(subtitle)
+                            .font(.system(size: DesignTokens.TypeScale.label, weight: .medium, design: .rounded))
+                            .foregroundColor(subtextColor)
+                            .lineLimit(1)
+                    }
                 }
             }
 
@@ -231,14 +286,14 @@ struct CommandPaletteView: View {
             if case .submenu = item {
                 Image(systemName: "chevron.right")
                     .font(.system(size: DesignTokens.TypeScale.label))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(subtextColor)
             }
 
             // Shortcut display
             if case let .shortcut(shortcut) = item {
                 Text(shortcut.keys)
                     .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium, design: .monospaced))
-                    .foregroundColor(ThemeManager.current.subtext0)
+                    .foregroundColor(subtextColor)
                     .padding(.horizontal, DesignTokens.Spacing.small)
                     .padding(.vertical, DesignTokens.Spacing.extraSmall)
                     .background(ThemeManager.current.surface1)

@@ -19,16 +19,39 @@ enum CommandPaletteSuggestionMetadata {
     case rawInput(String)
 }
 
-/// A section in the command palette containing items with an optional title
+/// A section in the command palette containing items with an optional title.
+///
+/// Sections can hold either raw items (from contributors) or fuzzy-matched items
+/// (after filtering). The `matchedItems` property provides access to the matched
+/// items with their fuzzy match information for highlighting.
 struct CommandPaletteSection: Identifiable {
     let id: String
     let title: String?
-    let items: [CommandPaletteItem]
+    let matchedItems: [FuzzyMatchedPaletteItem]
+    let sectionTitleMatch: FuzzyMatch?
 
+    /// Backward compatibility: access raw items without match info.
+    var items: [CommandPaletteItem] { matchedItems.map(\.item) }
+
+    /// Initializer for section contributors (no highlighting yet).
     init(id: String = UUID().uuidString, title: String? = nil, items: [CommandPaletteItem]) {
         self.id = id
         self.title = title
-        self.items = items
+        matchedItems = items.map { FuzzyMatchedPaletteItem(item: $0, titleMatch: nil, subtitleMatch: nil) }
+        sectionTitleMatch = nil
+    }
+
+    /// Initializer for filtered sections with match info for highlighting.
+    init(
+        id: String = UUID().uuidString,
+        title: String? = nil,
+        matchedItems: [FuzzyMatchedPaletteItem],
+        sectionTitleMatch: FuzzyMatch? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.matchedItems = matchedItems
+        self.sectionTitleMatch = sectionTitleMatch
     }
 }
 
@@ -80,6 +103,25 @@ enum CommandPaletteItem: Identifiable {
         case .shortcut: false
         default: true
         }
+    }
+}
+
+/// A command palette item wrapped with fuzzy match information for highlighting.
+///
+/// This struct pairs a `CommandPaletteItem` with optional match results from
+/// `FuzzyMatcher`, enabling the view layer to highlight matched characters
+/// in the title and subtitle.
+struct FuzzyMatchedPaletteItem: Identifiable {
+    let item: CommandPaletteItem
+    let titleMatch: FuzzyMatch?
+    let subtitleMatch: FuzzyMatch?
+
+    var id: String { item.id }
+
+    /// Combined score for sorting (best of title/subtitle matches).
+    /// Returns 0 if neither matched.
+    var score: Double {
+        max(titleMatch?.score ?? 0, subtitleMatch?.score ?? 0)
     }
 }
 
@@ -184,9 +226,14 @@ struct CommandPaletteMenu: Identifiable {
         self.sections = sections
     }
 
-    /// All selectable items across all sections
+    /// All selectable items across all sections (without match info).
     var selectableItems: [CommandPaletteItem] {
         sections.flatMap { $0.items.filter(\.isSelectable) }
+    }
+
+    /// All selectable matched items across all sections (with match info for highlighting).
+    var selectableMatchedItems: [FuzzyMatchedPaletteItem] {
+        sections.flatMap { $0.matchedItems.filter(\.item.isSelectable) }
     }
 }
 

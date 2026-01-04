@@ -38,6 +38,11 @@ final class CommandPaletteCoordinator: ObservableObject {
         currentSections.flatMap { $0.items.filter(\.isSelectable) }
     }
 
+    /// Flat list of selectable matched items with fuzzy match info (for highlighting).
+    var selectableMatchedItems: [FuzzyMatchedPaletteItem] {
+        currentSections.flatMap { $0.matchedItems.filter(\.item.isSelectable) }
+    }
+
     /// The currently selected item based on selection index.
     var selectedItem: CommandPaletteItem? {
         guard selectionIndex >= 0, selectionIndex < selectableItems.count else { return nil }

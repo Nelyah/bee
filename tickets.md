@@ -7,13 +7,12 @@ This document contains detailed tickets for features requested in `feature-list.
 ## Table of Contents
 
 1. [TICKET-010: macOS Mail Integration](#ticket-010)
-2. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
-3. [TICKET-015: Project Overview View](#ticket-015)
-4. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-5. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-6. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-7. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-8. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+2. [TICKET-015: Project Overview View](#ticket-015)
+3. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
+4. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
+5. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+6. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+7. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
 
@@ -50,63 +49,6 @@ Very High ⚠️⚠️
 ### Dependencies
 - TICKET-009 (attachments) or TICKET-007 (links) as storage mechanism
 - macOS-specific, not portable
-
----
-<a name="ticket-012"></a>
-## TICKET-012: Fuzzy Match Text Highlighting
-
-### Summary
-In command palette, highlight the matched characters in fuzzy search results by making them bold and underlined.
-
-### Priority
-Medium
-
-### Complexity
-Medium
-
-### Affected Layers
-- **macOS**: `CommandPaletteFuzzyScorer.swift`, `CommandPaletteView.swift`
-
-### Current State
-- `CommandPaletteFuzzyScorer` has `fuzzyMatches(_:in:)` method that returns match info
-- Currently only used for scoring, not highlighting
-
-### Implementation Notes
-
-1. Extend `fuzzyMatches` to return matched character indices:
-   ```swift
-   struct FuzzyMatchResult {
-       let score: Int
-       let matchedIndices: [String.Index]
-   }
-   ```
-
-2. Create `HighlightedText` view component:
-   ```swift
-   struct HighlightedText: View {
-       let text: String
-       let highlightedIndices: [String.Index]
-
-       var body: some View {
-           // Build attributed string with bold+underline at indices
-       }
-   }
-   ```
-
-3. Update `CommandPaletteItemRow` to use `HighlightedText`
-
-### UX Designer Involvement Required
-- Exact styling for highlighted text (bold only? underline only? both? color?)
-- Handling of long text with highlights
-
-### Acceptance Criteria
-- [ ] Matched characters shown in bold
-- [ ] Matched characters shown with underline
-- [ ] Highlighting updates as query changes
-- [ ] Performance acceptable with many results
-
-### Dependencies
-- Requires UX input on styling
 
 ---
 
@@ -421,7 +363,6 @@ None
 - TICKET-021: Info Tooltips
 
 ### Medium Complexity (3-5 days)
-- TICKET-012: Fuzzy Match Highlighting
 - TICKET-019: Multi-Select Tasks
 - TICKET-020: Report Filter Visual Grouping
 
@@ -436,25 +377,21 @@ None
 
 ## Tickets Requiring UX Designer
 
-1. **TICKET-012**: Fuzzy Highlighting - styling decisions
-2. **TICKET-020**: Report Filter Grouping - visual design
+1. **TICKET-020**: Report Filter Grouping - visual design
 
 ---
 
 ## Suggested Implementation Order
 
-### Phase 1: Command Palette & Navigation
-1. TICKET-012 (fuzzy highlighting)
+### Phase 1: Advanced Features
+1. TICKET-019 (multi-select)
+2. TICKET-015 (project overview)
+3. TICKET-016 (important links - builds on TICKET-007)
 
-### Phase 2: Advanced Features
-3. TICKET-019 (multi-select)
-4. TICKET-015 (project overview)
-5. TICKET-016 (important links - builds on TICKET-007)
+### Phase 2: Polish & Extras
+4. TICKET-020 (filter grouping - needs UX)
+5. TICKET-021 (info tooltips)
+6. TICKET-022 (help mode)
 
-### Phase 3: Polish & Extras
-6. TICKET-020 (filter grouping - needs UX)
-7. TICKET-021 (info tooltips)
-8. TICKET-022 (help mode)
-
-### Phase 4: Complex Integrations
-9. TICKET-010 (mail integration)
+### Phase 3: Complex Integrations
+7. TICKET-010 (mail integration)

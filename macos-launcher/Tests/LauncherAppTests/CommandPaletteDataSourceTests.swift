@@ -336,6 +336,121 @@ final class CommandPaletteDataSourceTests: XCTestCase {
         // Prefix match should be first
         XCTAssertEqual(sections[0].items[0].displayTitle, "GitLab link")
     }
+
+    // MARK: - Fuzzy Match Highlighting Tests
+
+    func testCombinedMatchHighlightsBothSectionAndItem() throws {
+        // When query "groua" matches across "Group by" and "Due Date":
+        // - "grou" matches in "Group by"
+        // - "a" matches in "Due Date"
+        // Both should have match indices for highlighting
+        let contributor = MockContributor(
+            id: "test",
+            priority: 0,
+            sections: [
+                CommandPaletteSection(
+                    id: "grouping",
+                    title: "Group by",
+                    items: [
+                        .action(
+                            CommandPaletteActionItem(id: "due", title: "Due Date", handler: {})),
+                        .action(
+                            // Use "None" which has no 'a' so it won't match "groua"
+                            CommandPaletteActionItem(id: "none", title: "None", handler: {})),
+                    ]
+                ),
+            ]
+        )
+        dataSource.register(contributor)
+
+        let sections = dataSource.buildSections(context: CommandPaletteContext(), query: "groua")
+
+        XCTAssertEqual(sections.count, 1, "Section should be included")
+        XCTAssertEqual(sections[0].items.count, 1, "Only Due Date should match (None has no 'a')")
+        XCTAssertEqual(sections[0].items[0].displayTitle, "Due Date")
+
+        // Verify section title has match indices for highlighting
+        let sectionMatch = try XCTUnwrap(sections[0].sectionTitleMatch, "Section should have match info")
+        XCTAssertFalse(sectionMatch.matchedIndices.isEmpty, "Section title should have highlighted indices")
+        // "grou" matches indices 0,1,2,3 in "Group by"
+        XCTAssertTrue(
+            sectionMatch.matchedIndices.contains(0),
+            "Should highlight 'G' in Group"
+        )
+        XCTAssertTrue(
+            sectionMatch.matchedIndices.contains(3),
+            "Should highlight 'u' in Group"
+        )
+
+        // Verify item title has match indices for the "a" in "Due Date"
+        let titleMatch = try XCTUnwrap(
+            sections[0].matchedItems[0].titleMatch,
+            "Item should have title match info"
+        )
+        XCTAssertFalse(titleMatch.matchedIndices.isEmpty, "Item title should have highlighted indices")
+        // "a" matches index 5 in "Due Date" (the 'a' in Date)
+        XCTAssertTrue(
+            titleMatch.matchedIndices.contains(5),
+            "Should highlight 'a' in Date"
+        )
+    }
+
+    func testDirectMatchTakesPrecedenceOverCombinedMatch() throws {
+        // When query "group" matches section title directly,
+        // the direct match should be used (not extracted from combined)
+        let contributor = MockContributor(
+            id: "test",
+            priority: 0,
+            sections: [
+                CommandPaletteSection(
+                    id: "grouping",
+                    title: "Group by",
+                    items: [
+                        .action(
+                            CommandPaletteActionItem(id: "due", title: "Due Date", handler: {})),
+                    ]
+                ),
+            ]
+        )
+        dataSource.register(contributor)
+
+        let sections = dataSource.buildSections(context: CommandPaletteContext(), query: "group")
+
+        XCTAssertEqual(sections.count, 1)
+        // Direct section title match should have indices for "Group"
+        let sectionMatch = try XCTUnwrap(sections[0].sectionTitleMatch)
+        XCTAssertEqual(sectionMatch.matchedIndices.count, 5, "Should match all 5 chars of 'group'")
+    }
+
+    func testNoHighlightingForUnmatchedParts() throws {
+        // When query matches only the item title (not spanning section),
+        // section should not be highlighted
+        let contributor = MockContributor(
+            id: "test",
+            priority: 0,
+            sections: [
+                CommandPaletteSection(
+                    id: "grouping",
+                    title: "Group by",
+                    items: [
+                        .action(
+                            CommandPaletteActionItem(id: "due", title: "Due Date", handler: {})),
+                    ]
+                ),
+            ]
+        )
+        dataSource.register(contributor)
+
+        let sections = dataSource.buildSections(context: CommandPaletteContext(), query: "due")
+
+        XCTAssertEqual(sections.count, 1)
+        // Section title should NOT be highlighted (query doesn't match "Group by")
+        XCTAssertNil(sections[0].sectionTitleMatch, "Section title should not be highlighted")
+
+        // Item title should be highlighted
+        let titleMatch = try XCTUnwrap(sections[0].matchedItems[0].titleMatch)
+        XCTAssertFalse(titleMatch.matchedIndices.isEmpty)
+    }
 }
 
 // MARK: - Mock Contributor

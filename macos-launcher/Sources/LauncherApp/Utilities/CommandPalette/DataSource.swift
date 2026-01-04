@@ -24,14 +24,12 @@ protocol CommandPaletteSectionContributor {
 ///
 /// The DataSource manages a registry of section contributors and handles
 /// filtering and ranking of items based on the current search query.
+/// Uses `FuzzyMatcher` for fuzzy matching with match index tracking for highlighting.
 @MainActor
 final class CommandPaletteDataSource: ObservableObject {
     private var contributors: [CommandPaletteSectionContributor] = []
-    private let scorer: CommandPaletteFuzzyScorer
 
-    init(scorer: CommandPaletteFuzzyScorer = CommandPaletteFuzzyScorer()) {
-        self.scorer = scorer
-    }
+    init() {}
 
     /// Registers a section contributor.
     ///
@@ -58,13 +56,15 @@ final class CommandPaletteDataSource: ObservableObject {
     /// Builds and filters sections from all contributors.
     ///
     /// Sections are built in priority order. Items within each section are
-    /// filtered and ranked based on the query using fuzzy scoring.
+    /// filtered and ranked based on the query using fuzzy matching.
+    /// Match indices are captured for highlighting in the view layer.
     ///
     /// - Parameters:
     ///   - context: The current palette context
     ///   - query: The current search query
     /// - Returns: An array of filtered sections with non-empty item lists
     func buildSections(context: CommandPaletteContext, query: String) -> [CommandPaletteSection] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         var allSections: [CommandPaletteSection] = []
 
         for contributor in contributors {
@@ -72,18 +72,47 @@ final class CommandPaletteDataSource: ObservableObject {
             for section in sections {
                 let filteredItems = filterAndRank(
                     items: section.items,
-                    query: query,
+                    query: trimmedQuery,
                     sectionTitle: section.title
                 )
-                if !filteredItems.isEmpty {
-                    allSections.append(
-                        CommandPaletteSection(
-                            id: section.id,
-                            title: section.title,
-                            items: filteredItems
-                        )
-                    )
+
+                guard !filteredItems.isEmpty else { continue }
+
+                // Match section title for highlighting
+                var sectionTitleMatch: FuzzyMatch?
+                if !trimmedQuery.isEmpty, let title = section.title {
+                    // Try direct section title match first
+                    sectionTitleMatch = FuzzyMatcher.match(trimmedQuery, in: title)
+
+                    // If no direct match, try to extract from combined matches
+                    if sectionTitleMatch == nil {
+                        // Find an item that matched via combined and extract section indices
+                        for matchedItem in filteredItems {
+                            let combined = "\(title) \(matchedItem.item.displayTitle)"
+                            if let combinedMatch = FuzzyMatcher.match(trimmedQuery, in: combined) {
+                                let sectionLength = title.count
+                                // Indices < sectionLength are in the section title
+                                let sectionIndices = combinedMatch.matchedIndices.filter { $0 < sectionLength }
+                                if !sectionIndices.isEmpty {
+                                    sectionTitleMatch = FuzzyMatch(
+                                        score: combinedMatch.score,
+                                        matchedIndices: sectionIndices
+                                    )
+                                    break // Found section highlighting, no need to check more items
+                                }
+                            }
+                        }
+                    }
                 }
+
+                allSections.append(
+                    CommandPaletteSection(
+                        id: section.id,
+                        title: section.title,
+                        matchedItems: filteredItems,
+                        sectionTitleMatch: sectionTitleMatch
+                    )
+                )
             }
         }
 
@@ -92,70 +121,121 @@ final class CommandPaletteDataSource: ObservableObject {
 
     /// Filters and ranks items inside the provided sections based on the query.
     func filterSections(_ sections: [CommandPaletteSection], query: String) -> [CommandPaletteSection] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         var filteredSections: [CommandPaletteSection] = []
 
         for section in sections {
             let filteredItems = filterAndRank(
                 items: section.items,
-                query: query,
+                query: trimmedQuery,
                 sectionTitle: section.title
             )
-            if !filteredItems.isEmpty {
-                filteredSections.append(
-                    CommandPaletteSection(
-                        id: section.id,
-                        title: section.title,
-                        items: filteredItems
-                    )
-                )
+
+            guard !filteredItems.isEmpty else { continue }
+
+            // Match section title for highlighting
+            var sectionTitleMatch: FuzzyMatch?
+            if !trimmedQuery.isEmpty, let title = section.title {
+                // Try direct section title match first
+                sectionTitleMatch = FuzzyMatcher.match(trimmedQuery, in: title)
+
+                // If no direct match, try to extract from combined matches
+                if sectionTitleMatch == nil {
+                    for matchedItem in filteredItems {
+                        let combined = "\(title) \(matchedItem.item.displayTitle)"
+                        if let combinedMatch = FuzzyMatcher.match(trimmedQuery, in: combined) {
+                            let sectionLength = title.count
+                            let sectionIndices = combinedMatch.matchedIndices.filter { $0 < sectionLength }
+                            if !sectionIndices.isEmpty {
+                                sectionTitleMatch = FuzzyMatch(
+                                    score: combinedMatch.score,
+                                    matchedIndices: sectionIndices
+                                )
+                                break
+                            }
+                        }
+                    }
+                }
             }
+
+            filteredSections.append(
+                CommandPaletteSection(
+                    id: section.id,
+                    title: section.title,
+                    matchedItems: filteredItems,
+                    sectionTitleMatch: sectionTitleMatch
+                )
+            )
         }
 
         return filteredSections
     }
 
-    /// Filters and ranks items based on the query.
+    /// Filters and ranks items based on the query using `FuzzyMatcher`.
     ///
     /// Items that don't match the query are filtered out. Matching items
-    /// are sorted by score (highest first).
+    /// are sorted by score (highest first). Match indices are captured
+    /// for highlighting in the view layer.
     ///
     /// - Parameters:
     ///   - items: The items to filter
-    ///   - query: The search query
-    ///   - sectionTitle: The section title to include in matching
-    /// - Returns: Filtered and ranked items
+    ///   - query: The trimmed search query
+    ///   - sectionTitle: The section title to include in combined matching
+    /// - Returns: Filtered and ranked items with match info
     private func filterAndRank(
         items: [CommandPaletteItem],
         query: String,
         sectionTitle: String? = nil
-    ) -> [CommandPaletteItem] {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedQuery.isEmpty else { return items }
+    ) -> [FuzzyMatchedPaletteItem] {
+        // Empty query: return all items without highlighting
+        guard !query.isEmpty else {
+            return items.map { FuzzyMatchedPaletteItem(item: $0, titleMatch: nil, subtitleMatch: nil) }
+        }
 
         return items
-            .compactMap { item -> (item: CommandPaletteItem, score: Int)? in
-                // Score against display title
-                if let score = scorer.score(query: trimmedQuery, target: item.displayTitle) {
-                    return (item, score)
+            .compactMap { item -> FuzzyMatchedPaletteItem? in
+                // Try matching title directly
+                var titleMatch = FuzzyMatcher.match(query, in: item.displayTitle)
+
+                // Try matching subtitle
+                let subtitleMatch: FuzzyMatch? = if let subtitle = item.subtitle {
+                    FuzzyMatcher.match(query, in: subtitle)
+                } else {
+                    nil
                 }
-                // Also check subtitle if available
-                if let subtitle = item.subtitle,
-                   let score = scorer.score(query: trimmedQuery, target: subtitle) {
-                    return (item, score)
-                }
+
                 // Try matching against section title + item title combined
-                // This allows "project biran" to match item "biran" in section "Go to project"
-                if let sectionTitle,
-                   let score = scorer.score(
-                       query: trimmedQuery,
-                       target: "\(sectionTitle) \(item.displayTitle)"
-                   ) {
-                    return (item, score)
+                // This allows "groua" to match "Group by" + "Due Date" spanning both
+                var combinedMatch: FuzzyMatch?
+                if let sectionTitle {
+                    let combined = "\(sectionTitle) \(item.displayTitle)"
+                    combinedMatch = FuzzyMatcher.match(query, in: combined)
+
+                    // If combined matched but title didn't, extract title portion of indices
+                    if titleMatch == nil, let match = combinedMatch {
+                        let sectionLength = sectionTitle.count
+                        // Indices > sectionLength are in the item title (after the space)
+                        let titleIndices = match.matchedIndices
+                            .filter { $0 > sectionLength }
+                            .map { $0 - sectionLength - 1 } // Subtract section length + 1 for space
+                        if !titleIndices.isEmpty {
+                            titleMatch = FuzzyMatch(score: match.score, matchedIndices: titleIndices)
+                        }
+                    }
                 }
-                return nil
+
+                // Must have at least one match to include the item
+                guard titleMatch != nil || subtitleMatch != nil || combinedMatch != nil else {
+                    return nil
+                }
+
+                return FuzzyMatchedPaletteItem(
+                    item: item,
+                    titleMatch: titleMatch,
+                    subtitleMatch: subtitleMatch
+                )
             }
             .sorted { $0.score > $1.score }
-            .map(\.item)
     }
 
     /// Returns the number of registered contributors.

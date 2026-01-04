@@ -502,6 +502,13 @@ final class ScreenshotCatalog: SnapshotTestCase {
         .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.reportMenuButton)
     }
+
+    func testComponent_largeCalendarPicker() {
+        // Calendar intrinsic size ~232x180, scaled 1.8x = ~418x324
+        let view = LargeCalendarPicker(selection: .constant(Date()))
+            .background(ThemeManager.current.base)
+        assertViewSnapshot(view, size: CGSize(width: 420, height: 326))
+    }
 }
 
 // MARK: - Helper Views

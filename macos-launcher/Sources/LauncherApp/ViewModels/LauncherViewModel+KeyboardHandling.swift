@@ -41,6 +41,12 @@ extension LauncherViewModel {
             return true
         }
 
+        // Cancel due date editing if active
+        if isEditingDueDate {
+            cancelEditingDueDate()
+            return true
+        }
+
         if interactionContext == .commandPalette {
             if commandPalette.handleEscape() {
                 return true

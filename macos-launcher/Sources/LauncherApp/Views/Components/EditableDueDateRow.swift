@@ -58,13 +58,55 @@ struct EditableDueDateRow: View {
             .help(isFocused ? "Press Enter to edit" : "Click to edit")
     }
 
-    /// Formats the due date for display using RelativeDateFormatter.
+    /// Formats the due date for display using specific rules:
+    /// - Today: "today at 13:00"
+    /// - Tomorrow: "tomorrow at 09:00"
+    /// - Within 7 days: "Wednesday at 14:30"
+    /// - Within 3 months: "January 24 at 13:00"
+    /// - Beyond 3 months: "January 24, 2027 at 13:00"
     private var formattedDueDate: (display: String, help: String?) {
-        guard let dateString = currentDueDate else {
+        guard let dateString = currentDueDate,
+              let date = RelativeDateFormatter.date(from: dateString)
+        else {
             return ("—", nil)
         }
-        let display = RelativeDateFormatter.description(for: dateString)
-        return (display, dateString)
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Format time
+        let timeFormatter = DateFormatter()
+        timeFormatter.timeStyle = .short
+        let timeString = timeFormatter.string(from: date)
+
+        // Calculate days difference from start of day
+        let startOfToday = calendar.startOfDay(for: now)
+        let startOfDate = calendar.startOfDay(for: date)
+        let daysDiff = calendar.dateComponents([.day], from: startOfToday, to: startOfDate).day ?? 0
+
+        let dateDisplay: String
+        if daysDiff == 0 {
+            dateDisplay = "today"
+        } else if daysDiff == 1 {
+            dateDisplay = "tomorrow"
+        } else if daysDiff > 1, daysDiff < 7 {
+            // Weekday name (Wednesday, Thursday, etc.)
+            let weekdayFormatter = DateFormatter()
+            weekdayFormatter.dateFormat = "EEEE"
+            dateDisplay = weekdayFormatter.string(from: date)
+        } else {
+            // Check if within 3 months
+            let monthsDiff = calendar.dateComponents([.month], from: now, to: date).month ?? 0
+            let dateFormatter = DateFormatter()
+            if abs(monthsDiff) < 3 {
+                dateFormatter.dateFormat = "MMMM d" // "January 24"
+            } else {
+                dateFormatter.dateFormat = "MMMM d, yyyy" // "January 24, 2027"
+            }
+            dateDisplay = dateFormatter.string(from: date)
+        }
+
+        return ("\(dateDisplay) at \(timeString)", dateString)
     }
 
     // MARK: - Editing Mode
@@ -132,20 +174,40 @@ struct EditableDueDateRow: View {
 
             Divider()
 
-            DatePicker(
-                "",
-                selection: $selectedDate,
-                displayedComponents: [.date, .hourAndMinute]
-            )
-            .datePickerStyle(.graphical)
-            .labelsHidden()
+            // Calendar picker using AppKit's NSDatePicker for proper sizing
+            // Native size ~260x290, scaled 1.8x = ~468x522, minimal padding
+            LargeCalendarPicker(selection: $selectedDate)
+
+            Divider()
+
+            // Time preset buttons
+            timePresetsRow
+
+            Divider()
+
+            // Time input - digital style with manual entry
+            HStack {
+                Text("Time:")
+                    .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
+                    .foregroundColor(ThemeManager.current.subtext0)
+
+                DatePicker(
+                    "",
+                    selection: $selectedDate,
+                    displayedComponents: [.hourAndMinute]
+                )
+                .datePickerStyle(.stepperField)
+                .labelsHidden()
+
+                Spacer()
+            }
+            .padding(.horizontal, DesignTokens.Spacing.small)
 
             Divider()
 
             actionButtonsRow
         }
         .padding(DesignTokens.Spacing.medium)
-        .frame(minWidth: 320)
     }
 
     /// Row of quick action buttons for common dates.
@@ -162,6 +224,34 @@ struct EditableDueDateRow: View {
                 }
             }
         }
+    }
+
+    /// Row of time preset buttons for common times.
+    private var timePresetsRow: some View {
+        HStack(spacing: DesignTokens.Spacing.small) {
+            timePresetButton("Morning", hour: 9)
+            timePresetButton("Noon", hour: 12)
+            timePresetButton("EOD", hour: 17)
+            timePresetButton("Evening", hour: 20)
+        }
+    }
+
+    /// A single time preset button that sets the hour.
+    private func timePresetButton(_ label: String, hour: Int) -> some View {
+        Button(label) {
+            var components = Calendar.current.dateComponents(
+                [.year, .month, .day],
+                from: selectedDate
+            )
+            components.hour = hour
+            components.minute = 0
+            if let newDate = Calendar.current.date(from: components) {
+                selectedDate = newDate
+            }
+        }
+        .buttonStyle(.bordered)
+        .font(.system(size: DesignTokens.TypeScale.bodySm))
+        .controlSize(.small)
     }
 
     /// A single quick action button.

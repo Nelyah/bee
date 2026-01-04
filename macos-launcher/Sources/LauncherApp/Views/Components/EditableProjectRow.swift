@@ -16,6 +16,8 @@ struct EditableProjectRow: View {
     let onCancel: () -> Void
     let onSelectCompletion: (CompletionItem) -> Void
 
+    @State private var isHovering = false
+
     var body: some View {
         if isEditing {
             VStack(alignment: .leading, spacing: 0) {
@@ -55,13 +57,40 @@ struct EditableProjectRow: View {
                 }
             }
         } else {
-            DetailRow(label: "Project", value: currentProject ?? "None", helpText: nil)
-                .modifier(DetailFocusRing(isFocused: isFocused))
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    onStartEditing()
+            HStack(alignment: .top, spacing: DesignTokens.Spacing.large) {
+                Text("PROJECT")
+                    .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
+                    .foregroundColor(ThemeManager.current.subtext0)
+                    .frame(width: 90, alignment: .leading)
+
+                Text(currentProject ?? "None")
+                    .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .rounded))
+                    .foregroundColor(ThemeManager.current.text)
+                    .help(currentProject ?? "None")
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .background(
+                GeometryReader { geo in
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                        .fill(isHovering ? ThemeManager.current.surface1.opacity(0.5) : Color.clear)
+                        .frame(
+                            width: geo.size.width + 2 * DesignTokens.Spacing.small,
+                            height: geo.size.height + 2 * DesignTokens.Spacing.extraSmall
+                        )
+                        .offset(
+                            x: -DesignTokens.Spacing.small,
+                            y: -DesignTokens.Spacing.extraSmall
+                        )
                 }
-                .help(isFocused ? "Press Enter to edit" : "Click to edit")
+            )
+            .modifier(DetailFocusRing(isFocused: isFocused))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onStartEditing()
+            }
+            .onHover { isHovering = $0 }
+            .help(isFocused ? "Press Enter to edit" : "Click to edit")
         }
     }
 

@@ -37,6 +37,8 @@ struct EditableDueDateRow: View {
     /// Called when the user selects a quick date action.
     let onQuickAction: (QuickDueDateAction) -> Void
 
+    @State private var isHovering = false
+
     var body: some View {
         if isEditing {
             editingView
@@ -55,13 +57,40 @@ struct EditableDueDateRow: View {
 
     private var displayView: some View {
         let formatted = formattedDueDate
-        return DetailRow(label: "Due", value: formatted.display, helpText: formatted.help)
-            .modifier(DetailFocusRing(isFocused: isFocused))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onStartEditing()
+        return HStack(alignment: .top, spacing: DesignTokens.Spacing.large) {
+            Text("DUE")
+                .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
+                .foregroundColor(ThemeManager.current.subtext0)
+                .frame(width: 90, alignment: .leading)
+
+            Text(formatted.display)
+                .font(.system(size: DesignTokens.TypeScale.body, weight: .medium, design: .rounded))
+                .foregroundColor(ThemeManager.current.text)
+                .help(formatted.help ?? formatted.display)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .background(
+            GeometryReader { geo in
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                    .fill(isHovering ? ThemeManager.current.surface1.opacity(0.5) : Color.clear)
+                    .frame(
+                        width: geo.size.width + 2 * DesignTokens.Spacing.small,
+                        height: geo.size.height + 2 * DesignTokens.Spacing.extraSmall
+                    )
+                    .offset(
+                        x: -DesignTokens.Spacing.small,
+                        y: -DesignTokens.Spacing.extraSmall
+                    )
             }
-            .help(isFocused ? "Press Enter to edit" : "Click to edit")
+        )
+        .modifier(DetailFocusRing(isFocused: isFocused))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onStartEditing()
+        }
+        .onHover { isHovering = $0 }
+        .help(isFocused ? "Press Enter to edit" : "Click to edit")
     }
 
     /// Formats the due date for display using specific rules:

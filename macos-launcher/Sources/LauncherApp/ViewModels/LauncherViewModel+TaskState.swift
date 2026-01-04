@@ -26,44 +26,30 @@ extension LauncherViewModel {
             )
             showToast(message: action.successMessage, icon: .success)
 
-            // Handle each action type appropriately
-            switch action {
-            case .delete:
-                // Delete: Remove task from list and close detail view
-                tasks.removeAll { $0.uuid == taskUUID }
-                selectedIndex = nil
-                if taskDetailState.taskUUID == taskUUID {
-                    taskDetailState = TaskDetailState()
-                    mode = .list
+            // All actions are status changes: update task in list, keep detail view open
+            if let idx = tasks.firstIndex(where: { $0.uuid == taskUUID }) {
+                let task = tasks[idx]
+                let newStatus = switch action {
+                case .complete: "completed"
+                case .delete: "deleted"
+                case .start: "active"
+                case .stop: "pending"
                 }
-
-            case .complete, .start, .stop:
-                // Status changes: Update task in list, keep detail view open
-                if let idx = tasks.firstIndex(where: { $0.uuid == taskUUID }) {
-                    let task = tasks[idx]
-                    let newStatus: String
-                    switch action {
-                    case .complete: newStatus = "completed"
-                    case .start: newStatus = "active"
-                    case .stop: newStatus = "pending"
-                    case .delete: newStatus = task.status // Won't reach here
-                    }
-                    tasks[idx] = ApiTask(
-                        dbId: task.dbId,
-                        uuid: task.uuid,
-                        status: newStatus,
-                        summary: task.summary,
-                        project: task.project,
-                        tags: task.tags,
-                        dateCreated: task.dateCreated,
-                        dateCompleted: task.dateCompleted,
-                        dateDue: task.dateDue,
-                        urgency: task.urgency
-                    )
-                    // Refresh detail view if showing this task
-                    if taskDetailState.taskUUID == taskUUID {
-                        loadTaskDetail(taskUUID: taskUUID)
-                    }
+                tasks[idx] = ApiTask(
+                    dbId: task.dbId,
+                    uuid: task.uuid,
+                    status: newStatus,
+                    summary: task.summary,
+                    project: task.project,
+                    tags: task.tags,
+                    dateCreated: task.dateCreated,
+                    dateCompleted: task.dateCompleted,
+                    dateDue: task.dateDue,
+                    urgency: task.urgency
+                )
+                // Refresh detail view if showing this task
+                if taskDetailState.taskUUID == taskUUID {
+                    loadTaskDetail(taskUUID: taskUUID)
                 }
             }
         } catch {
@@ -92,7 +78,7 @@ enum TaskStateAction: String {
     var successMessage: String {
         switch self {
         case .complete: "Task marked complete"
-        case .delete: "Task deleted"
+        case .delete: "Task marked deleted"
         case .start: "Task started"
         case .stop: "Task set to pending"
         }

@@ -239,7 +239,7 @@ final class TaskStateActionTests: XCTestCase {
 
     func testSuccessMessageMapping() {
         XCTAssertEqual(TaskStateAction.complete.successMessage, "Task marked complete")
-        XCTAssertEqual(TaskStateAction.delete.successMessage, "Task deleted")
+        XCTAssertEqual(TaskStateAction.delete.successMessage, "Task marked deleted")
         XCTAssertEqual(TaskStateAction.start.successMessage, "Task started")
         XCTAssertEqual(TaskStateAction.stop.successMessage, "Task set to pending")
     }

@@ -37,6 +37,23 @@ struct ActionsSectionContributor: CommandPaletteSectionContributor {
             )
         )
 
+        // Add Attachment (requires selected task)
+        if context.hasSelectedTask {
+            items.append(
+                .action(
+                    CommandPaletteActionItem(
+                        id: "add-attachment",
+                        title: "Add Attachment",
+                        subtitle: nil,
+                        icon: .system("paperclip"),
+                        handler: { [actionHandler] in
+                            Task { @MainActor in actionHandler.addAttachment() }
+                        }
+                    )
+                )
+            )
+        }
+
         // Add GitLab link (requires selected task)
         if context.hasSelectedTask, let taskUUID = context.selectedTaskUUID {
             items.append(

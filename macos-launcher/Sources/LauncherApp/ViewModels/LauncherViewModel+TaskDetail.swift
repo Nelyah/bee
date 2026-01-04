@@ -50,6 +50,8 @@ extension LauncherViewModel {
                     detail: detail,
                     errorMessage: nil
                 )
+                // Rebuild focusable items now that attachments are loaded
+                buildDetailFocusableItems()
             } catch {
                 taskDetailState = TaskDetailState(
                     isLoading: false,

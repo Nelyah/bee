@@ -146,6 +146,11 @@ struct TaskDetailView: View {
     /// Called when the user clicks on a linked task to navigate to it.
     var onNavigateToTask: (String) -> Void = { _ in }
 
+    // MARK: - Focus Management
+
+    /// Called when the user clicks on the background to clear focus.
+    var onClearFocus: () -> Void = {}
+
     // MARK: - Collapsible Sections
 
     /// Whether the history section is expanded (collapsed by default).
@@ -174,6 +179,10 @@ struct TaskDetailView: View {
                 }
                 .frame(maxWidth: TaskDetailLayout.maxContentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity) // Centers content when view is wider
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onClearFocus()
+                }
             }
             .onExitCommand {
                 onClose()

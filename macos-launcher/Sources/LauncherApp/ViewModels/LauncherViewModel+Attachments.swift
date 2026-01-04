@@ -96,12 +96,8 @@ extension LauncherViewModel {
 
     /// Shows the Quick Look panel for the current preview URL.
     private func showQuickLookPanel() {
-        guard let panel = QLPreviewPanel.shared() else { return }
-        if panel.isVisible {
-            panel.orderOut(nil)
-        } else {
-            panel.makeKeyAndOrderFront(nil)
-        }
+        quickLookCoordinator.previewURL = _quickLookURL
+        quickLookCoordinator.showPanel()
     }
 
     // MARK: - Delete Attachment
@@ -133,6 +129,24 @@ extension LauncherViewModel {
     @MainActor
     func cancelDeleteAttachment() {
         _confirmingDeleteAttachmentId = nil
+    }
+
+    // MARK: - Selection
+
+    /// Selects an attachment and activates keyboard focus on it.
+    /// Used when user clicks on an attachment row.
+    @MainActor
+    func selectAttachment(_ attachment: TaskAttachmentDto) {
+        // Find the attachment's index in focusable items
+        guard let index = detailFocusableItems.firstIndex(where: { item in
+            if case let .attachment(a) = item {
+                return a.id == attachment.id
+            }
+            return false
+        }) else { return }
+
+        detailFocusedIndex = index
+        detailKeyboardNavigationActive = true
     }
 
     // MARK: - Keyboard Actions

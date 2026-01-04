@@ -130,6 +130,8 @@ final class LauncherViewModel: ObservableObject {
     @Published var _confirmingDeleteAttachmentId: Int?
     /// URL for Quick Look preview (temporary file).
     @Published var _quickLookURL: URL?
+    /// Coordinator for Quick Look preview panel.
+    let quickLookCoordinator = QuickLookCoordinator()
 
     // MARK: - Project Scope State
 

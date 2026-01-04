@@ -88,6 +88,12 @@ extension LauncherViewModel {
         return detailFocusableItems[detailFocusedIndex]
     }
 
+    /// Clears the current focus in detail view.
+    /// Call this when user clicks outside of a focused item.
+    func clearDetailFocus() {
+        detailKeyboardNavigationActive = false
+    }
+
     /// Index of the first external link in the focusable items list.
     /// Returns the count if no external links are present.
     private var firstExternalLinkIndex: Int {

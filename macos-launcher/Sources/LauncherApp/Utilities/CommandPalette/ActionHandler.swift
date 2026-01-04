@@ -100,6 +100,11 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
         viewModel.closeCommandPalette()
     }
 
+    func addAttachment() {
+        viewModel?.closeCommandPalette()
+        viewModel?.addAttachment()
+    }
+
     func buildLinkTypeMenu(taskUUID: String) -> CommandPaletteMenu {
         // All 6 link types in order matching the plan
         let linkTypes: [LinkType] = [

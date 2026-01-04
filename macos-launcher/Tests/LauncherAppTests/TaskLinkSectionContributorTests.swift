@@ -296,6 +296,8 @@ private final class MockActionHandler: CommandPaletteActionHandling {
 
     func deleteUserReport(name: String) {}
 
+    func addAttachment() {}
+
     func buildLinkTypeMenu(taskUUID: String) -> CommandPaletteMenu {
         onBuildLinkTypeMenu?(taskUUID)
         return CommandPaletteMenu(id: "link-type", title: "Link to Task", sections: [])

@@ -75,7 +75,9 @@ final class ScreenshotCatalog: SnapshotTestCase {
     override func setUp() async throws {
         try await super.setUp()
         mockApiClient = MockApiClient()
-        viewModel = LauncherViewModel(apiClient: mockApiClient)
+        // Use MockSettingsService to avoid reading from real UserDefaults,
+        // which could have leftover state from previous test runs
+        viewModel = LauncherViewModel(apiClient: mockApiClient, settingsService: MockSettingsService())
         viewModel.reportConfig = MockApiClient.sampleConfig.report
         viewModel.availableReports = MockApiClient.sampleConfig.reports
     }

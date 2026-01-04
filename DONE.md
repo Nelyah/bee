@@ -230,3 +230,34 @@ Add ability to link tasks together through the command palette, with task select
 - Added `LinkedTasksSectionUITests` (17 tests)
 - Added `DetailSectionUITests`
 - Updated snapshots for new hint bar and status badges
+
+---
+
+## TICKET-009: File Attachments for Tasks
+**Completed:** 2026-01-04
+
+### Summary
+Allow attaching files of any standard MIME type to tasks.
+
+### Resolution
+
+#### Backend (Rust)
+- Created `Attachment` struct with id, task_uuid, filename, mime_type, size_bytes, storage_path, created_at
+- Added migration for `attachments` table
+- File storage in local filesystem with configurable path
+- API endpoints: POST upload, GET list, GET download, DELETE remove
+
+#### macOS Launcher
+- Created `AttachmentsSection` component with keyboard navigation
+- Created `AttachmentRow` with MIME type icons, filename, size display
+- Added file picker via `NSOpenPanel`
+- Added drag-and-drop support via `.dropDestination`
+- Added Quick Look preview with `QuickLookCoordinator` implementing `QLPreviewPanelDataSource`
+- Added inline delete confirmation with y/n keys
+- Added `clearDetailFocus()` for click-outside-to-deselect
+- Attachments keyboard navigable via j/k after tags/due date
+
+#### Tests
+- Added `AttachmentFocusTests` (10 tests)
+- Added `QuickLookCoordinatorTests` (4 tests)
+- Added attachment row snapshot tests

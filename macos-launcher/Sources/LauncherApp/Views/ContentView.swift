@@ -161,6 +161,10 @@ struct ContentView: View {
                     tasks: viewModel.tasks,
                     onNavigateToTask: { uuid in
                         viewModel.navigateToTask(uuid: uuid)
+                    },
+                    // Focus management
+                    onClearFocus: {
+                        viewModel.clearDetailFocus()
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)

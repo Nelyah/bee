@@ -377,6 +377,10 @@ private final class MockActionHandler: CommandPaletteActionHandling {
         // No-op for test
     }
 
+    func addAttachment() {
+        // No-op for test
+    }
+
     func buildLinkTypeMenu(taskUUID: String) -> CommandPaletteMenu {
         CommandPaletteMenu(id: "link-type", title: "Link to Task", sections: [])
     }

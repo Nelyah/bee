@@ -6,85 +6,17 @@ This document contains detailed tickets for features requested in `feature-list.
 
 ## Table of Contents
 
-1. [TICKET-009: File Attachments for Tasks](#ticket-009)
-2. [TICKET-010: macOS Mail Integration](#ticket-010)
-3. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
-4. [TICKET-015: Project Overview View](#ticket-015)
-5. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-6. [TICKET-017: Global Dropdown Menu Trigger (Cmd+P)](#ticket-017)
-7. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-8. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-9. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-10. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+1. [TICKET-010: macOS Mail Integration](#ticket-010)
+2. [TICKET-012: Fuzzy Match Text Highlighting](#ticket-012)
+3. [TICKET-015: Project Overview View](#ticket-015)
+4. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
+5. [TICKET-017: Global Dropdown Menu Trigger (Cmd+P)](#ticket-017)
+6. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
+7. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+8. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+9. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
-
----
-
-<a name="ticket-009"></a>
-## TICKET-009: File Attachments for Tasks
-
-### Summary
-Allow attaching files of any standard MIME type to tasks.
-
-### Priority
-Medium
-
-### Complexity
-Very High ⚠️⚠️
-
-### Affected Layers
-- **Rust Core**: New `Attachment` model, storage handling
-- **Rust API**: File upload/download endpoints
-- **Database**: New `attachments` table (migration)
-- **macOS**: Attachment UI components, file picker, drag-drop handling
-
-### Implementation Notes
-
-#### Phase 1: Backend Model & Storage
-1. Create `Attachment` struct:
-   ```rust
-   pub struct Attachment {
-       pub id: i32,
-       pub task_uuid: Uuid,
-       pub filename: String,
-       pub mime_type: String,
-       pub size_bytes: i64,
-       pub storage_path: String,
-       pub created_at: DateTime<Local>,
-   }
-   ```
-2. Migration for `attachments` table
-3. File storage strategy (local filesystem with configurable path)
-
-#### Phase 2: API Endpoints
-1. `POST /tasks/{uuid}/attachments` - multipart upload
-2. `GET /tasks/{uuid}/attachments` - list attachments
-3. `GET /attachments/{id}` - download file
-4. `DELETE /attachments/{id}` - remove attachment
-
-#### Phase 3: macOS UI
-1. Add "Attachments" section in TaskDetailView
-2. "Add Attachment" button with file picker
-3. Drag-and-drop zone
-4. Attachment list with:
-   - Filename and icon based on MIME type
-   - File size
-   - Click to open/preview
-   - Delete button
-
-### Acceptance Criteria
-- [ ] Can add attachments via file picker
-- [ ] Can add attachments via drag-and-drop
-- [ ] Attachments listed in task detail
-- [ ] Can download/open attachments
-- [ ] Can delete attachments
-- [ ] File size limits enforced
-- [ ] MIME type validation
-
-### Dependencies
-- Significant backend work required
-- Storage strategy decision needed
 
 ---
 
@@ -547,7 +479,6 @@ None
 - TICKET-022: Help Mode
 
 ### Very High Complexity (2+ weeks)
-- TICKET-009: File Attachments
 - TICKET-010: macOS Mail Integration
 
 ---
@@ -576,5 +507,4 @@ None
 8. TICKET-022 (help mode)
 
 ### Phase 4: Complex Integrations
-9. TICKET-009 (file attachments)
-10. TICKET-010 (mail integration)
+9. TICKET-010 (mail integration)

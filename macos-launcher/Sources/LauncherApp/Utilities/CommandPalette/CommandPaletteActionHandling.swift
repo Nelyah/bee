@@ -30,4 +30,7 @@ protocol CommandPaletteActionHandling {
 
     /// Deletes a user report
     func deleteUserReport(name: String)
+
+    /// Opens file picker to add an attachment to the current task
+    func addAttachment()
 }

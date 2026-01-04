@@ -178,4 +178,52 @@ final class ComponentSnapshotTests: SnapshotTestCase {
 
         assertViewSnapshot(view, size: CGSize(width: 100, height: 24))
     }
+
+    // MARK: - AttachmentRow Tests
+
+    func testAttachmentRowDefault() {
+        let attachment = TaskAttachmentDto(
+            id: 1,
+            uuid: "attach-001",
+            filename: "design-spec.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 245_760,
+            createdAt: "2024-01-17T14:30:00Z"
+        )
+
+        let view = AttachmentRow(
+            attachment: attachment,
+            isFocused: false,
+            isConfirmingDelete: false,
+            onOpen: {},
+            onDelete: {},
+            onConfirmDelete: {},
+            onCancelDelete: {}
+        )
+
+        assertViewSnapshot(view, size: CGSize(width: 350, height: 36))
+    }
+
+    func testAttachmentRowFocused() {
+        let attachment = TaskAttachmentDto(
+            id: 1,
+            uuid: "attach-001",
+            filename: "design-spec.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 245_760,
+            createdAt: "2024-01-17T14:30:00Z"
+        )
+
+        let view = AttachmentRow(
+            attachment: attachment,
+            isFocused: true,
+            isConfirmingDelete: false,
+            onOpen: {},
+            onDelete: {},
+            onConfirmDelete: {},
+            onCancelDelete: {}
+        )
+
+        assertViewSnapshot(view, size: CGSize(width: 350, height: 36))
+    }
 }

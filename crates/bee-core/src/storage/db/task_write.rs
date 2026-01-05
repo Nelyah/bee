@@ -469,4 +469,82 @@ mod tests {
             .unwrap();
         assert!(tags_after.is_empty(), "Task-tag links should be removed");
     }
+
+    /// Test that reproduces the attachment history bug:
+    /// When uploading an attachment, history should be persisted to the DB.
+    #[tokio::test]
+    async fn test_attachment_add_history_persisted() {
+        use crate::attachment::AttachmentAddInput;
+        use crate::task::{TaskData, TaskProperties};
+
+        let db = get_database(Some("sqlite::memory:")).await.unwrap();
+
+        // Step 1: Create a task and write to DB (simulates existing task)
+        let task = Task {
+            summary: "Test task".to_string(),
+            ..Default::default()
+        };
+        let task_uuid = task.uuid;
+        write_tasks_impl(&db, &task).await.unwrap();
+
+        // Get the db_id for the persisted task
+        let persisted_task = tables::tasks::Entity::find()
+            .filter(tables::tasks::Column::Uuid.eq(task_uuid.to_string()))
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("Task should exist after insert");
+
+        // Step 2: Simulate loading task back (with db_id set, like get_task_by_uuid)
+        let loaded_task = Task {
+            uuid: task_uuid,
+            summary: "Test task".to_string(),
+            db_id: Some(persisted_task.db_id),
+            ..Default::default()
+        };
+
+        // Step 3: Create TaskData, add loaded task, apply attachment_add
+        // (This is exactly what upload_attachment_handler does)
+        let mut task_data = TaskData::default();
+        task_data.add_task_object(loaded_task);
+
+        let mut props = TaskProperties::default();
+        props.set_attachment_add(AttachmentAddInput::new("document.pdf".to_string()));
+
+        task_data.apply(&task_uuid, &props).unwrap();
+
+        // Verify history was added in memory
+        let task_after_apply = task_data.get_owned(&task_uuid).unwrap();
+        assert_eq!(
+            task_after_apply.history.len(),
+            1,
+            "History should be added in memory after apply"
+        );
+
+        // Step 4: Write back to DB (simulates DbStore::write_tasks)
+        for t in task_data.to_vec() {
+            write_tasks_impl(&db, t).await.unwrap();
+        }
+
+        // Step 5: Verify history is in DB by querying directly
+        let history_rows = tables::history::Entity::find()
+            .filter(tables::history::Column::TaskId.eq(persisted_task.db_id))
+            .all(&db)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            history_rows.len(),
+            1,
+            "Expected one history entry for attachment add in DB"
+        );
+        assert!(
+            history_rows[0].value.contains("Added attachment"),
+            "History should contain 'Added attachment'"
+        );
+        assert!(
+            history_rows[0].value.contains("document.pdf"),
+            "History should contain filename"
+        );
+    }
 }

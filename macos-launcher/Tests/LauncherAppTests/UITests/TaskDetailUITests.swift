@@ -76,7 +76,9 @@ final class TaskDetailUITests: XCTestCase {
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
-            dueDateEditSelection: .constant(Date())
+            dueDateEditSelection: .constant(Date()),
+            importantLinkUrlInput: .constant(""),
+            importantLinkTitleInput: .constant("")
         )
     }
 
@@ -129,7 +131,9 @@ final class TaskDetailUITests: XCTestCase {
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
-            dueDateEditSelection: .constant(Date())
+            dueDateEditSelection: .constant(Date()),
+            importantLinkUrlInput: .constant(""),
+            importantLinkTitleInput: .constant("")
         )
 
         let view = try sut.inspect()
@@ -249,7 +253,9 @@ final class TaskDetailUITests: XCTestCase {
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
-            dueDateEditSelection: .constant(Date())
+            dueDateEditSelection: .constant(Date()),
+            importantLinkUrlInput: .constant(""),
+            importantLinkTitleInput: .constant("")
         )
 
         let view = try sut.inspect()
@@ -283,7 +289,9 @@ final class TaskDetailUITests: XCTestCase {
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
-            dueDateEditSelection: .constant(Date())
+            dueDateEditSelection: .constant(Date()),
+            importantLinkUrlInput: .constant(""),
+            importantLinkTitleInput: .constant("")
         )
 
         // Invoke the callback and verify it works

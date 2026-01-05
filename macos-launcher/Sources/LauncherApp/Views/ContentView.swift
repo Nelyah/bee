@@ -168,6 +168,27 @@ struct ContentView: View {
                     onOpenEmailLink: { emailLink in
                         viewModel.openEmailLinkUrl(emailLink.mailUrl)
                     },
+                    onOpenImportantLink: { importantLink in
+                        if let url = URL(string: importantLink.url) {
+                            NSWorkspace.shared.open(url)
+                        }
+                    },
+                    onRemoveImportantLink: { link in
+                        Task { await viewModel.removeImportantLink(link) }
+                    },
+                    onStartAddingImportantLink: {
+                        viewModel.startAddingImportantLink()
+                    },
+                    isAddingImportantLink: viewModel.isAddingImportantLink,
+                    importantLinkUrlInput: $viewModel.importantLinkUrlInput,
+                    importantLinkTitleInput: $viewModel.importantLinkTitleInput,
+                    isSubmittingImportantLink: viewModel.isSubmittingImportantLink,
+                    onSubmitImportantLink: {
+                        Task { await viewModel.submitImportantLink() }
+                    },
+                    onCancelAddingImportantLink: {
+                        viewModel.cancelAddingImportantLink()
+                    },
                     // Linked tasks navigation
                     tasks: viewModel.tasks,
                     onNavigateToTask: { uuid in

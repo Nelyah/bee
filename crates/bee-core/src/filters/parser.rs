@@ -318,7 +318,9 @@ impl FilterParser {
                 | TokenType::ParentOf
                 | TokenType::ChildOf
                 | TokenType::RelatedTo
-                | TokenType::Duplicates => {
+                | TokenType::Duplicates
+                | TokenType::ImportantLink
+                | TokenType::ImportantLinkRemove => {
                     *has_only_ids = false;
                     filter = add_to_current_filter(
                         filter,

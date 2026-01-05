@@ -51,6 +51,7 @@ mod m20260101_000001_add_column_settings;
 mod m20260104_000001_add_link_types;
 mod m20260105_000001_create_attachments;
 mod m20260106_000001_create_email_links;
+mod m20260107_000001_create_important_links;
 
 /// The migration runner that applies all schema migrations.
 ///
@@ -70,6 +71,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260104_000001_add_link_types::Migration),
             Box::new(m20260105_000001_create_attachments::Migration),
             Box::new(m20260106_000001_create_email_links::Migration),
+            Box::new(m20260107_000001_create_important_links::Migration),
         ]
     }
 }

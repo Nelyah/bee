@@ -446,6 +446,54 @@ Add a new view listing all projects with statistics, burndown charts, and nested
 
 ---
 
+## TICKET-016: Important Links Section in Task Detail
+**Completed:** 2026-01-05
+
+### Summary
+Add ability to save and display important links for tasks, with both backend CLI support and macOS UI for adding/removing links.
+
+### Resolution
+
+#### Backend (Rust)
+- Created `ImportantLink` domain model with id, uuid, url, title, created_at
+- Added migration for `important_links` table
+- CLI syntax: `link:URL` to add, `link:URL:"Title"` to add with title, `-link:URL` to remove
+- API DTOs: `ImportantLinkDto` in task detail response
+- URL parsing extracts domain for display when no title provided
+
+#### macOS Launcher - Sample Data
+- Added `sampleImportantLink` to `MockApiClient.swift`
+- Included in `sampleTaskDetail` so section appears in previews
+
+#### macOS Launcher - ViewModel Layer
+- Added state properties to `LauncherViewModel.swift`:
+  - `isAddingImportantLink`, `importantLinkUrlInput`, `importantLinkTitleInput`, `isSubmittingImportantLink`
+- Created `LauncherViewModel+ImportantLinks.swift` extension with:
+  - `startAddingImportantLink()` - Show add form
+  - `cancelAddingImportantLink()` - Hide form, clear inputs
+  - `submitImportantLink()` async - Call API with `important_link_add` property
+  - `removeImportantLink(_:)` async - Call API with `important_link_remove` property
+
+#### macOS Launcher - View Layer
+- Updated `ImportantLinksSection.swift` with editing UI:
+  - Add button with URL/title input form
+  - Remove button on each link row (visible on hover)
+  - Loading spinner during submission
+- Updated `TaskDetailView.swift` with handler props for important links
+- Updated `ContentView.swift` to connect ViewModel to TaskDetailView
+
+#### Refactoring (File Length)
+- Extracted `HistorySection.swift` from TaskDetailView to reduce file length
+- History section now manages its own `isExpanded` state
+
+#### Tests
+- Updated test files with required bindings:
+  - `ScreenshotCatalog.swift`
+  - `TaskDetailUITests.swift`
+  - `TaskDetailSnapshotTests.swift`
+
+---
+
 ## TICKET-020: Visual Grouping for Report Filter Chips
 **Completed:** 2026-01-05
 

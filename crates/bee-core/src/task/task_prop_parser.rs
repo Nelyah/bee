@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     CoreError, CoreResult,
+    important_link::ImportantLinkInput,
     lexer::{Lexer, Token, TokenType},
     parser::BaseParser,
     task::{DependsOnIdentifier, Project, TaskProperties, TaskStatus},
@@ -314,6 +315,63 @@ impl TaskPropertyParser {
                     let time = self.read_date_expr()?;
                     props.date_due = Some(time);
                     self.next_token();
+                }
+                TokenType::ImportantLink => {
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    // Parse URL (WordString or String)
+                    let url = match self.current_token.token_type {
+                        TokenType::WordString | TokenType::String => {
+                            self.current_token.literal.clone()
+                        }
+                        _ => {
+                            return Err(CoreError::parse(format!(
+                                "{}Expected URL after link:, found '{}' (value: '{}')",
+                                err_msg_prefix,
+                                self.current_token.token_type,
+                                self.current_token.literal
+                            )));
+                        }
+                    };
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    // Optionally parse title (quoted string)
+                    let title = if self.current_token.token_type == TokenType::String {
+                        let t = self.current_token.literal.clone();
+                        self.next_token();
+                        Some(t)
+                    } else {
+                        None
+                    };
+
+                    props.set_important_link_add(ImportantLinkInput::new(url, title));
+                }
+                TokenType::ImportantLinkRemove => {
+                    self.next_token();
+                    self.skip_whitespace();
+
+                    // Parse URL to remove
+                    let url = match self.current_token.token_type {
+                        TokenType::WordString | TokenType::String => {
+                            self.current_token.literal.clone()
+                        }
+                        _ => {
+                            return Err(CoreError::parse(format!(
+                                "{}Expected URL after -link:, found '{}' (value: '{}')",
+                                err_msg_prefix,
+                                self.current_token.token_type,
+                                self.current_token.literal
+                            )));
+                        }
+                    };
+                    self.next_token();
+
+                    // Add to removal list
+                    let mut urls = props.important_link_remove.clone().unwrap_or_default();
+                    urls.push(url);
+                    props.set_important_link_remove(urls);
                 }
                 TokenType::Eof => {
                     return Err(CoreError::parse(

@@ -5,6 +5,7 @@ pub mod attachments;
 pub mod email_links;
 pub mod external_links;
 pub mod history;
+pub mod important_links;
 pub mod links;
 pub mod projects;
 pub mod tags;

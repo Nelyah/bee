@@ -164,6 +164,23 @@ struct EmailLinkDto: Decodable, Identifiable, Equatable {
     }
 }
 
+/// DTO for important links (user-defined URLs attached to tasks).
+struct ImportantLinkDto: Decodable, Identifiable, Equatable {
+    let id: Int
+    let uuid: String
+    let url: String
+    let title: String
+    let createdAt: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case uuid
+        case url
+        case title
+        case createdAt = "created_at"
+    }
+}
+
 struct ApiTaskDetail: Decodable, Identifiable {
     let dbId: Int?
     let uuid: String
@@ -180,6 +197,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
     let links: [TaskLinkDto]
     let attachments: [TaskAttachmentDto]
     let emailLinks: [EmailLinkDto]
+    let importantLinks: [ImportantLinkDto]
 
     var id: String { uuid }
 
@@ -199,6 +217,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         case links
         case attachments
         case emailLinks = "email_links"
+        case importantLinks = "important_links"
     }
 
     init(from decoder: Decoder) throws {
@@ -220,6 +239,8 @@ struct ApiTaskDetail: Decodable, Identifiable {
         attachments = try container.decodeIfPresent([TaskAttachmentDto].self, forKey: .attachments) ?? []
         // Backwards compatibility: default to empty array if email_links not present
         emailLinks = try container.decodeIfPresent([EmailLinkDto].self, forKey: .emailLinks) ?? []
+        // Backwards compatibility: default to empty array if important_links not present
+        importantLinks = try container.decodeIfPresent([ImportantLinkDto].self, forKey: .importantLinks) ?? []
     }
 
     // For test/preview convenience
@@ -238,7 +259,8 @@ struct ApiTaskDetail: Decodable, Identifiable {
         history: [TaskHistoryDto],
         links: [TaskLinkDto],
         attachments: [TaskAttachmentDto],
-        emailLinks: [EmailLinkDto] = []
+        emailLinks: [EmailLinkDto] = [],
+        importantLinks: [ImportantLinkDto] = []
     ) {
         self.dbId = dbId
         self.uuid = uuid
@@ -255,6 +277,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         self.links = links
         self.attachments = attachments
         self.emailLinks = emailLinks
+        self.importantLinks = importantLinks
     }
 
     /// Group links by type for display

@@ -10,6 +10,7 @@ use std::{cmp::Ordering, fmt};
 
 use super::task_properties::TaskProperties;
 use crate::email_link::EmailLink;
+use crate::important_link::ImportantLink;
 use crate::{CoreError, CoreResult};
 
 #[derive(
@@ -314,6 +315,8 @@ pub struct Task {
     pub(crate) history: Vec<TaskHistory>,
     #[serde(default)]
     pub(crate) email_links: Vec<crate::email_link::EmailLink>,
+    #[serde(default)]
+    pub(crate) important_links: Vec<ImportantLink>,
 }
 
 impl Default for Task {
@@ -334,6 +337,7 @@ impl Default for Task {
             links: Vec::default(),
             history: Vec::default(),
             email_links: Vec::default(),
+            important_links: Vec::default(),
         }
     }
 }
@@ -467,6 +471,10 @@ impl Task {
 
     pub fn get_email_links(&self) -> &Vec<crate::email_link::EmailLink> {
         &self.email_links
+    }
+
+    pub fn get_important_links(&self) -> &Vec<ImportantLink> {
+        &self.important_links
     }
 
     pub fn get_annotations(&self) -> &Vec<TaskAnnotation> {
@@ -895,6 +903,34 @@ impl Task {
                 datetime: Local::now(),
                 value: format!("Added attachment: {}", input.filename),
             });
+        }
+
+        // Handle important link removal by URL
+        if let Some(urls) = &props.important_link_remove {
+            for url in urls {
+                if let Some(pos) = self.important_links.iter().position(|l| &l.url == url) {
+                    let removed = self.important_links.remove(pos);
+                    self.history.push(TaskHistory {
+                        id: None,
+                        datetime: Local::now(),
+                        value: format!("Removed important link: '{}'", removed.title),
+                    });
+                }
+            }
+        }
+
+        // Handle important link addition
+        if let Some(input) = &props.important_link_add {
+            // Check for duplicate URL (avoid re-adding same link)
+            if !self.important_links.iter().any(|l| l.url == input.url) {
+                let link = ImportantLink::new(input.url.clone(), input.title.clone());
+                self.history.push(TaskHistory {
+                    id: None,
+                    datetime: Local::now(),
+                    value: format!("Added important link: '{}'", link.get_title()),
+                });
+                self.important_links.push(link);
+            }
         }
 
         self.compute_urgency()?;

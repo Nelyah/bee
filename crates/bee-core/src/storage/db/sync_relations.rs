@@ -1,7 +1,8 @@
 use super::tables;
 use crate::email_link::EmailLink;
+use crate::important_link::ImportantLink;
 use crate::task::{Link, LinkType, TaskAnnotation, TaskHistory};
-use tables::{annotations, email_links, history, links, tags, tasks, tasks_tags};
+use tables::{annotations, email_links, history, important_links, links, tags, tasks, tasks_tags};
 
 use log::debug;
 use std::collections::{HashMap, HashSet};
@@ -770,6 +771,101 @@ pub(super) async fn sync_email_links(
             subject: Set(link.subject.clone()),
             sender: Set(link.sender.clone()),
             sent_date: Set(sent_date),
+            created_at: Set(created_at),
+        }
+        .save(db)
+        .await?;
+    }
+    Ok(())
+}
+
+/// Sync important links for a task to the database.
+///
+/// Important links are user-defined URLs attached to tasks with a title.
+/// This allows tasks to link to relevant documentation, tickets, or web resources.
+pub(super) async fn sync_important_links(
+    db: &DatabaseTransaction,
+    task_model: &tasks::Model,
+    desired_links: &[ImportantLink],
+) -> Result<(), DbErr> {
+    let existing_rows: Vec<important_links::Model> = important_links::Entity::find()
+        .filter(important_links::Column::TaskId.eq(task_model.db_id))
+        .all(db)
+        .await?;
+
+    let mut existing_map: HashMap<i32, important_links::Model> = HashMap::new();
+    let mut existing_ids = Vec::new();
+    for row in existing_rows {
+        existing_ids.push(row.id);
+        existing_map.insert(row.id, row);
+    }
+
+    let desired_ids: HashSet<i32> = desired_links.iter().filter_map(|link| link.id).collect();
+
+    let to_delete: Vec<i32> = existing_ids
+        .into_iter()
+        .filter(|id| !desired_ids.contains(id))
+        .collect();
+    if !to_delete.is_empty() {
+        important_links::Entity::delete_many()
+            .filter(
+                Condition::all()
+                    .add(important_links::Column::TaskId.eq(task_model.db_id))
+                    .add(important_links::Column::Id.is_in(to_delete)),
+            )
+            .exec(db)
+            .await?;
+    }
+
+    for link in desired_links {
+        let created_at = link.created_at.to_rfc3339();
+
+        if let Some(id) = link.id
+            && let Some(existing_model) = existing_map.get(&id)
+        {
+            let mut active = existing_model.clone().into_active_model();
+            let mut changed = false;
+
+            if existing_model.url != link.url {
+                active.url = Set(link.url.clone());
+                changed = true;
+            } else {
+                active.url = ActiveValue::Unchanged(existing_model.url.clone());
+            }
+
+            if existing_model.title != link.title {
+                active.title = Set(link.title.clone());
+                changed = true;
+            } else {
+                active.title = ActiveValue::Unchanged(existing_model.title.clone());
+            }
+
+            if existing_model.created_at != created_at {
+                active.created_at = Set(created_at.clone());
+                changed = true;
+            } else {
+                active.created_at = ActiveValue::Unchanged(existing_model.created_at.clone());
+            }
+
+            if existing_model.task_id != task_model.db_id {
+                active.task_id = Set(task_model.db_id);
+                changed = true;
+            } else {
+                active.task_id = ActiveValue::Unchanged(existing_model.task_id);
+            }
+
+            if changed {
+                active.save(db).await?;
+            }
+            continue;
+        }
+
+        important_links::ActiveModel {
+            id: ActiveValue::NotSet,
+            task_id: Set(task_model.db_id),
+            uuid: Set(link.uuid.to_string()),
+            url: Set(link.url.clone()),
+            title: Set(link.title.clone()),
             created_at: Set(created_at),
         }
         .save(db)

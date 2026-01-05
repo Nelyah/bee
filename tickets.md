@@ -6,49 +6,10 @@ This document contains detailed tickets for features requested in `feature-list.
 
 ## Table of Contents
 
-1. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-2. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-3. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+1. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+2. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
-
----
-
-<a name="ticket-016"></a>
-## TICKET-016: Important Links Section in Task Detail
-
-### Summary
-Add "Important Links" section in task detail (above "External Links") that only shows when links exist.
-
-### Priority
-Low
-
-### Complexity
-Low
-
-### Affected Layers
-- **macOS**: `TaskDetailView.swift`
-
-### Implementation Notes
-1. Define what constitutes "important" links (task dependencies? specific link types?)
-2. Add conditional section before `externalLinksSection`:
-   ```swift
-   if !importantLinks.isEmpty {
-       DetailSection(title: "Important Links") {
-           // Link list
-       }
-   }
-   ```
-3. Style distinctly from external links
-
-### Acceptance Criteria
-- [ ] Section only shown when important links exist
-- [ ] Links displayed with appropriate icons
-- [ ] Can click to navigate to linked item
-- [ ] Positioned above External Links
-
-### Dependencies
-- TICKET-007 (task linking) - defines what links exist
 
 ---
 

@@ -20,6 +20,8 @@ pub enum TokenType {
     ChildOf,
     RelatedTo,
     Duplicates,
+    ImportantLink,
+    ImportantLinkRemove,
     String,
     WordString,
     TagPlusPrefix,
@@ -49,6 +51,8 @@ impl std::fmt::Display for TokenType {
             TokenType::ChildOf => "ChildOf",
             TokenType::RelatedTo => "RelatedTo",
             TokenType::Duplicates => "Duplicates",
+            TokenType::ImportantLink => "ImportantLink",
+            TokenType::ImportantLinkRemove => "ImportantLinkRemove",
             TokenType::String => "String",
             TokenType::ProjectPrefix => "ProjectPrefix",
             TokenType::WordString => "WordString",
@@ -304,6 +308,9 @@ impl Lexer {
                     self.read_char();
                     (TokenType::TagPlusPrefix, "+".to_owned())
                 }
+                _ if self.match_keyword("-link:") => {
+                    (TokenType::ImportantLinkRemove, self.read_word("-link:"))
+                }
                 _ if ch == "-" => {
                     trace!("Token '{}' is a TagMinusPrefix", ch);
                     self.read_char();
@@ -402,6 +409,9 @@ impl Lexer {
                 }
                 _ if self.match_keyword("duplicates:") => {
                     (TokenType::Duplicates, self.read_word("duplicates:"))
+                }
+                _ if self.match_keyword("link:") => {
+                    (TokenType::ImportantLink, self.read_word("link:"))
                 }
                 _ if ch == ")" => {
                     self.read_char();

@@ -26,12 +26,15 @@ use crate::{
         self, Filter,
         filters_impl::{OrFilter, TaskIdFilter, UuidFilter},
     },
+    important_link::ImportantLink,
     task::{
         DependsOnIdentifier, Link, LinkType, Project, Task, TaskAnnotation, TaskData, TaskHistory,
         TaskProperties, TaskStatus,
     },
 };
-use tables::{annotations, email_links, history, links, projects, tags, tasks, tasks_tags};
+use tables::{
+    annotations, email_links, history, important_links, links, projects, tags, tasks, tasks_tags,
+};
 
 use chrono::{DateTime, Local};
 use std::collections::{HashMap, HashSet};
@@ -425,6 +428,29 @@ where
             });
     }
 
+    // Load important links
+    let important_link_models = important_links::Entity::find()
+        .filter(important_links::Column::TaskId.is_in(task_ids.clone()))
+        .order_by_asc(important_links::Column::CreatedAt)
+        .all(db)
+        .await?;
+    let mut important_links_by_task: HashMap<i32, Vec<ImportantLink>> = HashMap::new();
+    for model in important_link_models {
+        let created_at = parse_datetime(&model.created_at)?;
+        let uuid = Uuid::parse_str(&model.uuid)?;
+
+        important_links_by_task
+            .entry(model.task_id)
+            .or_default()
+            .push(ImportantLink {
+                id: Some(model.id),
+                uuid,
+                url: model.url,
+                title: model.title,
+                created_at,
+            });
+    }
+
     // === Load all outgoing canonical links ===
     // Canonical types: DependsOn, ParentOf, RelatedTo, Duplicates
     let outgoing_links = links::Entity::find()
@@ -569,6 +595,9 @@ where
         let email_links = email_links_by_task
             .remove(&task_model.db_id)
             .unwrap_or_default();
+        let important_links = important_links_by_task
+            .remove(&task_model.db_id)
+            .unwrap_or_default();
 
         tasks_obj.push(Task {
             db_id: Some(task_model.db_id),
@@ -586,6 +615,7 @@ where
             urgency,
             history,
             email_links,
+            important_links,
         });
     }
 

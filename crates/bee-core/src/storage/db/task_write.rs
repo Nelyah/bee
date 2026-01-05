@@ -1,6 +1,6 @@
 use super::blocking::{resequence_task_ids_txn, update_blocking_status};
 use super::sync_relations::{
-    sync_annotations, sync_email_links, sync_history, sync_links, sync_tags,
+    sync_annotations, sync_email_links, sync_history, sync_important_links, sync_links, sync_tags,
 };
 use super::tables;
 use crate::{
@@ -41,6 +41,7 @@ pub(super) async fn write_tasks_impl(db: &DatabaseConnection, task: &Task) -> Co
     sync_links(&txn, &model_task, &task.links).await?;
     sync_tags(&txn, &model_task, &task.tags).await?;
     sync_email_links(&txn, &model_task, &task.email_links).await?;
+    sync_important_links(&txn, &model_task, &task.important_links).await?;
     resequence_task_ids_txn(&txn).await?;
     update_blocking_status(&txn).await?;
 

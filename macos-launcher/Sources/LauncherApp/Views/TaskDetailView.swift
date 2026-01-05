@@ -144,6 +144,24 @@ struct TaskDetailView: View {
     var onEmailDrop: (ParsedEmail) -> Void = { _ in }
     /// Called when the user clicks on an email link to open it.
     var onOpenEmailLink: (EmailLinkDto) -> Void = { _ in }
+    /// Called when the user clicks on an important link to open it.
+    var onOpenImportantLink: (ImportantLinkDto) -> Void = { _ in }
+    /// Called when the user removes an important link.
+    var onRemoveImportantLink: (ImportantLinkDto) -> Void = { _ in }
+    /// Called when the user starts adding an important link.
+    var onStartAddingImportantLink: () -> Void = {}
+    /// Whether the user is adding a new important link.
+    var isAddingImportantLink: Bool = false
+    /// URL input for the new important link.
+    @Binding var importantLinkUrlInput: String
+    /// Title input for the new important link (optional).
+    @Binding var importantLinkTitleInput: String
+    /// Whether an important link operation is in progress.
+    var isSubmittingImportantLink: Bool = false
+    /// Called when the user submits the new important link.
+    var onSubmitImportantLink: () -> Void = {}
+    /// Called when the user cancels adding an important link.
+    var onCancelAddingImportantLink: () -> Void = {}
 
     // MARK: - Linked Tasks
 
@@ -164,11 +182,6 @@ struct TaskDetailView: View {
     /// Called when the user clicks on the background to clear focus.
     var onClearFocus: () -> Void = {}
 
-    // MARK: - Collapsible Sections
-
-    /// Whether the history section is expanded (collapsed by default).
-    @State private var isHistoryExpanded: Bool = false
-
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -187,6 +200,7 @@ struct TaskDetailView: View {
 
                     annotationsSection
                     attachmentsSection
+                    importantLinksSection
                     emailLinksSection
                     linkedTasksSection
                     historySection
@@ -455,6 +469,26 @@ struct TaskDetailView: View {
         }
     }
 
+    // MARK: - Important Links Section
+
+    @ViewBuilder
+    private var importantLinksSection: some View {
+        if let detail = detailForTask {
+            ImportantLinksSection(
+                importantLinks: detail.importantLinks,
+                onOpen: onOpenImportantLink,
+                onRemove: onRemoveImportantLink,
+                onStartAdding: onStartAddingImportantLink,
+                isAdding: isAddingImportantLink,
+                urlInput: $importantLinkUrlInput,
+                titleInput: $importantLinkTitleInput,
+                isSubmitting: isSubmittingImportantLink,
+                onSubmit: onSubmitImportantLink,
+                onCancelAdding: onCancelAddingImportantLink
+            )
+        }
+    }
+
     // MARK: - Email Links Section
 
     @ViewBuilder
@@ -483,54 +517,7 @@ struct TaskDetailView: View {
     }
 
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
-            // Collapsible header (styled like DetailSection)
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isHistoryExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: DesignTokens.Spacing.small) {
-                    Image(systemName: isHistoryExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(ThemeManager.current.subtext0)
-                        .frame(width: 12)
-                    Text("HISTORY")
-                        .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
-                        .foregroundColor(ThemeManager.current.subtext0)
-                }
-            }
-            .buttonStyle(.plain)
-
-            // Collapsible content
-            if isHistoryExpanded {
-                let history = sortedHistory(detailForTask?.history ?? [])
-                if history.isEmpty {
-                    Text("—")
-                        .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
-                        .foregroundColor(ThemeManager.current.overlay0)
-                } else {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
-                        ForEach(history) { entry in
-                            TimelineRow(
-                                timestamp: entry.datetime,
-                                value: entry.value
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        .padding(DesignTokens.Spacing.medium)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .fill(ThemeManager.current.surface0)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous)
-                .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
-        )
+        HistorySection(history: detailForTask?.history ?? [])
     }
 
     private func shortUUID(_ value: String) -> String {
@@ -556,17 +543,6 @@ struct TaskDetailView: View {
                   let right = RelativeDateFormatter.date(from: rhs.time)
             else {
                 return lhs.time > rhs.time
-            }
-            return left > right
-        }
-    }
-
-    private func sortedHistory(_ items: [TaskHistoryDto]) -> [TaskHistoryDto] {
-        items.sorted { lhs, rhs in
-            guard let left = RelativeDateFormatter.date(from: lhs.datetime),
-                  let right = RelativeDateFormatter.date(from: rhs.datetime)
-            else {
-                return lhs.datetime > rhs.datetime
             }
             return left > right
         }
@@ -756,6 +732,8 @@ private struct AnnotationInputField: View {
         @State private var projectEditInput = ""
         @State private var tagAddQuery = ""
         @State private var dueDateEditSelection = Date()
+        @State private var importantLinkUrlInput = ""
+        @State private var importantLinkTitleInput = ""
 
         var body: some View {
             TaskDetailView(
@@ -779,7 +757,9 @@ private struct AnnotationInputField: View {
                 annotationEditInput: $annotationEditInput,
                 projectEditInput: $projectEditInput,
                 tagAddQuery: $tagAddQuery,
-                dueDateEditSelection: $dueDateEditSelection
+                dueDateEditSelection: $dueDateEditSelection,
+                importantLinkUrlInput: $importantLinkUrlInput,
+                importantLinkTitleInput: $importantLinkTitleInput
             )
             .padding(DesignTokens.Spacing.extraExtraLarge)
             .frame(width: 600, height: 400)

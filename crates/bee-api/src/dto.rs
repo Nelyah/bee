@@ -1,6 +1,7 @@
 use bee_core::{
     attachment::Attachment,
     email_link::EmailLink,
+    important_link::ImportantLink,
     task::{Link, LinkType, Task, TaskAnnotation, TaskHistory, TaskStatus},
 };
 use chrono::{DateTime, Local};
@@ -187,6 +188,7 @@ pub struct ApiTaskDetail {
     pub links: Vec<TaskLinkDto>,
     pub attachments: Vec<AttachmentDto>,
     pub email_links: Vec<EmailLinkDto>,
+    pub important_links: Vec<ImportantLinkDto>,
 }
 
 impl ApiTaskDetail {
@@ -230,6 +232,11 @@ impl ApiTaskDetail {
                 .get_email_links()
                 .iter()
                 .map(EmailLinkDto::from_email_link)
+                .collect(),
+            important_links: task
+                .get_important_links()
+                .iter()
+                .map(ImportantLinkDto::from_important_link)
                 .collect(),
         }
     }
@@ -323,6 +330,30 @@ impl EmailLinkDto {
             sent_date: link.get_sent_date(),
             created_at: link.get_created_at(),
             mail_url: link.mail_url(),
+        }
+    }
+}
+
+/// Important link response payload (user-defined URL attached to a task).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ImportantLinkDto {
+    pub id: i32,
+    #[schema(value_type = String, format = "uuid")]
+    pub uuid: Uuid,
+    pub url: String,
+    pub title: String,
+    #[schema(value_type = String, format = DateTime)]
+    pub created_at: DateTime<Local>,
+}
+
+impl ImportantLinkDto {
+    pub fn from_important_link(link: &ImportantLink) -> Self {
+        Self {
+            id: link.get_id().unwrap_or(0),
+            uuid: link.get_uuid(),
+            url: link.get_url().to_string(),
+            title: link.get_title().to_string(),
+            created_at: link.get_created_at(),
         }
     }
 }

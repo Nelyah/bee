@@ -221,6 +221,14 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         createdAt: "2024-01-17T14:30:00Z"
     )
 
+    static let sampleImportantLink = ImportantLinkDto(
+        id: 1,
+        uuid: "imp-link-001",
+        url: "https://github.com/example/project/issues/123",
+        title: "GitHub Issue #123",
+        createdAt: "2024-01-17T15:00:00Z"
+    )
+
     static let sampleTaskDetail = ApiTaskDetail(
         dbId: 1,
         uuid: "a1b2c3d4",
@@ -242,7 +250,8 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         links: [
             TaskLinkDto(linkType: "depends_on", targetUuid: "deadbeef"),
         ],
-        attachments: [sampleAttachment]
+        attachments: [sampleAttachment],
+        importantLinks: [sampleImportantLink]
     )
 
     static let sampleExternalLinks: [ExternalLinkDto] = [

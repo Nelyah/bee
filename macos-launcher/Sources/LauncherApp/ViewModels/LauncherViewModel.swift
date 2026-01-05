@@ -137,6 +137,17 @@ final class LauncherViewModel: ObservableObject {
     /// Coordinator for Quick Look preview panel.
     let quickLookCoordinator = QuickLookCoordinator()
 
+    // MARK: - Important Links State
+
+    /// Whether the user is adding a new important link.
+    @Published var isAddingImportantLink: Bool = false
+    /// URL input for new important link.
+    @Published var importantLinkUrlInput: String = ""
+    /// Title input for new important link (optional).
+    @Published var importantLinkTitleInput: String = ""
+    /// Whether an important link operation (add/remove) is in progress.
+    @Published var isSubmittingImportantLink: Bool = false
+
     // MARK: - Project Scope State
 
     /// The currently scoped project (layers on top of report filters).

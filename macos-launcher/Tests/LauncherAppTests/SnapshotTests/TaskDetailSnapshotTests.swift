@@ -83,7 +83,9 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             annotationEditInput: .constant(""),
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
-            dueDateEditSelection: .constant(Date())
+            dueDateEditSelection: .constant(Date()),
+            importantLinkUrlInput: .constant(""),
+            importantLinkTitleInput: .constant("")
         )
     }
 

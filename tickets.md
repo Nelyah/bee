@@ -7,9 +7,8 @@ This document contains detailed tickets for features requested in `feature-list.
 ## Table of Contents
 
 1. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-2. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-3. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-4. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+2. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+3. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
 
@@ -50,59 +49,6 @@ Low
 
 ### Dependencies
 - TICKET-007 (task linking) - defines what links exist
-
----
-
-<a name="ticket-020"></a>
-## TICKET-020: Visual Grouping for Report Filter Chips
-
-### Summary
-Filter chips that come from the current report should be visually grouped/distinguished from manually added filters.
-
-### Priority
-Medium
-
-### Complexity
-Medium
-
-### Affected Layers
-- **macOS**: `CriteriaStripView.swift`, filter tracking
-
-### Current State
-- Filter chips displayed in criteria strip
-- No distinction between report filters and manual filters
-
-### Implementation Notes
-
-1. Track filter source:
-   ```swift
-   struct FilterChip {
-       let criteria: FilterCriteria
-       let source: FilterSource  // .report | .manual
-   }
-   ```
-
-2. Visual differentiation options (need UX input):
-   - Different background color
-   - Group separator
-   - "From Report" label
-   - Different border style
-
-3. Behavior consideration:
-   - Can manual filters override report filters?
-   - Should report filters be removable?
-
-### UX Designer Involvement Required
-- Visual design for grouped chips
-- Interaction design for filter removal
-
-### Acceptance Criteria
-- [ ] Report filters visually distinct from manual filters
-- [ ] Clear indication of filter source
-- [ ] Intuitive grouping
-
-### Dependencies
-- Requires UX design input
 
 ---
 
@@ -214,17 +160,8 @@ None
 - TICKET-016: Important Links Section
 - TICKET-021: Info Tooltips
 
-### Medium Complexity (3-5 days)
-- TICKET-020: Report Filter Visual Grouping
-
 ### High Complexity (1-2 weeks)
 - TICKET-022: Help Mode
-
----
-
-## Tickets Requiring UX Designer
-
-1. **TICKET-020**: Report Filter Grouping - visual design
 
 ---
 
@@ -234,6 +171,5 @@ None
 1. TICKET-016 (important links - builds on TICKET-007)
 
 ### Phase 2: Polish & Extras
-2. TICKET-020 (filter grouping - needs UX)
-3. TICKET-021 (info tooltips)
-4. TICKET-022 (help mode)
+2. TICKET-021 (info tooltips)
+3. TICKET-022 (help mode)

@@ -164,8 +164,12 @@ struct TaskListView: View {
                 }
 
                 CriteriaStripView(
-                    filterChips: viewModel.criteriaFilterChips,
-                    propertyChips: viewModel.criteriaPropertyChips
+                    activeReportName: viewModel.currentReportDisplayName,
+                    reportFilterChips: viewModel.criteriaReportFilterChips,
+                    manualFilterChips: viewModel.criteriaManualFilterChips,
+                    propertyChips: viewModel.criteriaPropertyChips,
+                    onRemoveReportFilter: { _ in viewModel.switchToAllReport() },
+                    onRemoveManualFilter: nil // Manual filter removal not yet implemented
                 )
                 .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
                 .padding(.top, TaskListLayout.criteriaTopPadding)

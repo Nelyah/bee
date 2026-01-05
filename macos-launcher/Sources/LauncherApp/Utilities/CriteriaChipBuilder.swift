@@ -1,12 +1,12 @@
 import Foundation
 
 enum CriteriaChipBuilder {
-    static func reportFilterChips(from reportConfig: ReportConfig?) -> [CriteriaChip] {
+    static func reportFilterChips(from reportConfig: ReportConfig?, reportName: String?) -> [CriteriaChip] {
         guard let reportConfig else { return [] }
 
         // User reports have pre-parsed filter JSON - parse chips from it
         if let userFilter = reportConfig.userFilter {
-            return filterChips(from: userFilter)
+            return filterChips(from: userFilter, source: .report, reportName: reportName)
         }
 
         // Static reports have filter expressions - show them as-is
@@ -14,16 +14,22 @@ enum CriteriaChipBuilder {
         return reportConfig.staticFilters.map {
             CriteriaChip(
                 kind: .filter,
+                source: .report,
                 label: $0,
                 systemImage: "line.3.horizontal.decrease.circle",
-                tone: .teal
+                tone: .teal,
+                reportName: reportName
             )
         }
     }
 
-    static func filterChips(from value: JSONValue?) -> [CriteriaChip] {
+    static func filterChips(
+        from value: JSONValue?,
+        source: CriteriaChipSource = .manual,
+        reportName: String? = nil
+    ) -> [CriteriaChip] {
         guard let value else { return [] }
-        return parseFilterValue(value)
+        return parseFilterValue(value, source: source, reportName: reportName)
     }
 
     /// Build a human-readable subtitle for a report (used in command palette menus).
@@ -238,27 +244,35 @@ enum CriteriaChipBuilder {
         return chips
     }
 
-    private static func parseFilterValue(_ value: JSONValue) -> [CriteriaChip] {
+    private static func parseFilterValue(
+        _ value: JSONValue,
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         switch value {
         case let .string(text):
             return [CriteriaChip(
                 kind: .filter,
+                source: source,
                 label: text,
                 systemImage: "line.3.horizontal.decrease.circle",
-                tone: .teal
+                tone: .teal,
+                reportName: reportName
             )]
         case let .array(values):
-            return values.flatMap { parseFilterValue($0) }
+            return values.flatMap { parseFilterValue($0, source: source, reportName: reportName) }
         case let .object(obj):
-            if let chips = parseFilterObject(obj) {
+            if let chips = parseFilterObject(obj, source: source, reportName: reportName) {
                 return chips
             }
             if let value = obj["value"]?.stringValue {
                 return [CriteriaChip(
                     kind: .filter,
+                    source: source,
                     label: value,
                     systemImage: "line.3.horizontal.decrease.circle",
-                    tone: .teal
+                    tone: .teal,
+                    reportName: reportName
                 )]
             }
             return []
@@ -267,117 +281,232 @@ enum CriteriaChipBuilder {
         }
     }
 
-    private static func parseFilterObject(_ obj: [String: JSONValue]) -> [CriteriaChip]? {
+    private static func parseFilterObject(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip]? {
         guard let type = obj["type"]?.stringValue else { return nil }
         let valueObj = obj["value"]?.objectValue ?? obj
 
         switch type {
         case "AndFilter", "OrFilter", "XorFilter", "RootFilter":
-            return valueObj["children"]?.arrayValue?.flatMap { parseFilterValue($0) } ?? []
+            return valueObj["children"]?.arrayValue?.flatMap {
+                parseFilterValue($0, source: source, reportName: reportName)
+            } ?? []
         case "TagFilter":
-            return handleTagFilter(valueObj)
+            return handleTagFilter(valueObj, source: source, reportName: reportName)
         case "ProjectFilter":
-            return handleProjectFilter(valueObj)
+            return handleProjectFilter(valueObj, source: source, reportName: reportName)
         case "DateDueFilter":
-            return handleDateDueFilter(valueObj)
+            return handleDateDueFilter(valueObj, source: source, reportName: reportName)
         case "DateCreatedFilter":
-            return handleDateCreatedFilter(valueObj)
+            return handleDateCreatedFilter(valueObj, source: source, reportName: reportName)
         case "DateEndFilter":
-            return handleDateEndFilter(valueObj)
+            return handleDateEndFilter(valueObj, source: source, reportName: reportName)
         case "StatusFilter":
-            return handleStatusFilter(valueObj)
+            return handleStatusFilter(valueObj, source: source, reportName: reportName)
         case "StringFilter":
-            return handleStringFilter(valueObj)
+            return handleStringFilter(valueObj, source: source, reportName: reportName)
         case "UuidFilter":
-            return handleUuidFilter(valueObj)
+            return handleUuidFilter(valueObj, source: source, reportName: reportName)
         case "TaskIdFilter":
-            return handleTaskIdFilter(valueObj)
+            return handleTaskIdFilter(valueObj, source: source, reportName: reportName)
         case "DependsOnFilter":
-            return handleDependsOnFilter(valueObj)
+            return handleDependsOnFilter(valueObj, source: source, reportName: reportName)
         default:
             return nil
         }
     }
 
-    private static func handleTagFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleTagFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let include = obj["include"]?.boolValue ?? true
         let tag = obj["tag_name"]?.stringValue ?? "tag"
         let prefix = include ? "+" : "-"
         let icon = include ? "tag" : "tag.slash"
-        return [CriteriaChip(kind: .filter, label: "Tag \(prefix)\(tag)", systemImage: icon, tone: .peach)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: "Tag \(prefix)\(tag)",
+            systemImage: icon,
+            tone: .peach,
+            reportName: reportName
+        )]
     }
 
-    private static func handleProjectFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleProjectFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let projectName = obj["name"]?.objectValue?["name"]?.stringValue
             ?? obj["name"]?.stringValue
             ?? "project"
-        return [CriteriaChip(kind: .filter, label: "Project: \(projectName)", systemImage: "folder", tone: .mauve)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: "Project: \(projectName)",
+            systemImage: "folder",
+            tone: .mauve,
+            reportName: reportName
+        )]
     }
 
-    private static func handleDateDueFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleDateDueFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let when = obj["type_when"]?.stringValue?.lowercased() ?? "day"
         let time = obj["time"]?.stringValue.map(formatDate) ?? "date"
-        return [CriteriaChip(kind: .filter, label: "Due \(when): \(time)", systemImage: "calendar", tone: .teal)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: "Due \(when): \(time)",
+            systemImage: "calendar",
+            tone: .teal,
+            reportName: reportName
+        )]
     }
 
-    private static func handleDateCreatedFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleDateCreatedFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let before = obj["before"]?.boolValue ?? false
         let time = obj["time"]?.stringValue.map(formatDate) ?? "date"
         let label = "Created \(before ? "before" : "after"): \(time)"
-        return [CriteriaChip(kind: .filter, label: label, systemImage: "calendar.badge.clock", tone: .teal)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: label,
+            systemImage: "calendar.badge.clock",
+            tone: .teal,
+            reportName: reportName
+        )]
     }
 
-    private static func handleDateEndFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleDateEndFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let before = obj["before"]?.boolValue ?? false
         let time = obj["time"]?.stringValue.map(formatDate) ?? "date"
         let label = "End \(before ? "before" : "after"): \(time)"
-        return [CriteriaChip(kind: .filter, label: label, systemImage: "calendar.badge.minus", tone: .teal)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: label,
+            systemImage: "calendar.badge.minus",
+            tone: .teal,
+            reportName: reportName
+        )]
     }
 
-    private static func handleStatusFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleStatusFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let status = obj["status"]?.stringValue ?? "status"
-        return [CriteriaChip(kind: .filter, label: "Status: \(status)", systemImage: "circle.fill", tone: .pink)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: "Status: \(status)",
+            systemImage: "circle.fill",
+            tone: .pink,
+            reportName: reportName
+        )]
     }
 
-    private static func handleStringFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleStringFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let value = obj["value"]?.stringValue ?? "text"
         return [CriteriaChip(
             kind: .filter,
+            source: source,
             label: "Text: \(truncate(value))",
             systemImage: "text.magnifyingglass",
-            tone: .blue
+            tone: .blue,
+            reportName: reportName
         )]
     }
 
-    private static func handleUuidFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleUuidFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         let uuid = obj["uuid"]?.stringValue ?? "uuid"
         return [CriteriaChip(
             kind: .filter,
+            source: source,
             label: "UUID: \(truncate(uuid, limit: 10))",
             systemImage: "number",
-            tone: .rosewater
+            tone: .rosewater,
+            reportName: reportName
         )]
     }
 
-    private static func handleTaskIdFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleTaskIdFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         // Check numberValue first to format integers correctly (avoiding "1.0" display)
         let id = obj["id"]?.numberValue.map { String(Int($0)) } ?? obj["id"]?.stringValue ?? "id"
-        return [CriteriaChip(kind: .filter, label: "ID: \(id)", systemImage: "number", tone: .rosewater)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: "ID: \(id)",
+            systemImage: "number",
+            tone: .rosewater,
+            reportName: reportName
+        )]
     }
 
-    private static func handleDependsOnFilter(_ obj: [String: JSONValue]) -> [CriteriaChip] {
+    private static func handleDependsOnFilter(
+        _ obj: [String: JSONValue],
+        source: CriteriaChipSource,
+        reportName: String?
+    ) -> [CriteriaChip] {
         if let uuid = obj["uuid"]?.stringValue {
             return [CriteriaChip(
                 kind: .filter,
+                source: source,
                 label: "Depends: \(truncate(uuid, limit: 10))",
                 systemImage: "link",
-                tone: .lavender
+                tone: .lavender,
+                reportName: reportName
             )]
         }
         if let id = obj["id"]?.numberValue {
-            return [CriteriaChip(kind: .filter, label: "Depends: \(Int(id))", systemImage: "link", tone: .lavender)]
+            return [CriteriaChip(
+                kind: .filter,
+                source: source,
+                label: "Depends: \(Int(id))",
+                systemImage: "link",
+                tone: .lavender,
+                reportName: reportName
+            )]
         }
-        return [CriteriaChip(kind: .filter, label: "Depends on", systemImage: "link", tone: .lavender)]
+        return [CriteriaChip(
+            kind: .filter,
+            source: source,
+            label: "Depends on",
+            systemImage: "link",
+            tone: .lavender,
+            reportName: reportName
+        )]
     }
 
     private static func dateLabelPrefix(for tokenType: TokenType) -> String {
@@ -400,13 +529,17 @@ enum CriteriaChipBuilder {
             "Date"
         }
     }
+}
 
-    private static func truncate(_ value: String, limit: Int = 28) -> String {
+// MARK: - Private Helpers
+
+private extension CriteriaChipBuilder {
+    static func truncate(_ value: String, limit: Int = 28) -> String {
         guard value.count > limit else { return value }
         return String(value.prefix(limit - 1)) + "…"
     }
 
-    private static func formatDate(_ value: String) -> String {
+    static func formatDate(_ value: String) -> String {
         if let datePart = value.split(separator: "T").first {
             return String(datePart)
         }

@@ -296,26 +296,68 @@ enum TestHelpers {
     /// Create a test CriteriaChip for filter display tests.
     static func makeCriteriaChip(
         kind: CriteriaChipKind = .filter,
+        source: CriteriaChipSource = .manual,
         label: String = "status:pending",
         systemImage: String = "line.3.horizontal.decrease.circle",
-        tone: CriteriaChipTone = .blue
+        tone: CriteriaChipTone = .blue,
+        reportName: String? = nil
     ) -> CriteriaChip {
-        CriteriaChip(kind: kind, label: label, systemImage: systemImage, tone: tone)
+        CriteriaChip(
+            kind: kind,
+            source: source,
+            label: label,
+            systemImage: systemImage,
+            tone: tone,
+            reportName: reportName
+        )
     }
 
-    /// Sample criteria chips for testing criteria strip display.
+    /// Sample filter chips (manual source) for testing criteria strip display.
     static let sampleFilterChips: [CriteriaChip] = [
         CriteriaChip(
             kind: .filter,
+            source: .manual,
             label: "status:pending",
             systemImage: "line.3.horizontal.decrease.circle",
             tone: .blue
         ),
         CriteriaChip(
             kind: .filter,
+            source: .manual,
             label: "+work",
             systemImage: "tag",
             tone: .teal
+        ),
+    ]
+
+    /// Sample report filter chips (from a report) for testing criteria strip display.
+    static let sampleReportFilterChips: [CriteriaChip] = [
+        CriteriaChip(
+            kind: .filter,
+            source: .report,
+            label: "status:pending",
+            systemImage: "circle.fill",
+            tone: .pink,
+            reportName: "Sprint 42"
+        ),
+        CriteriaChip(
+            kind: .filter,
+            source: .report,
+            label: "project:backend",
+            systemImage: "folder",
+            tone: .mauve,
+            reportName: "Sprint 42"
+        ),
+    ]
+
+    /// Sample manual filter chips for testing criteria strip display.
+    static let sampleManualFilterChips: [CriteriaChip] = [
+        CriteriaChip(
+            kind: .filter,
+            source: .manual,
+            label: "+urgent",
+            systemImage: "tag",
+            tone: .peach
         ),
     ]
 

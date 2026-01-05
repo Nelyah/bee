@@ -5,6 +5,14 @@ enum CriteriaChipKind: String, Hashable {
     case property
 }
 
+/// Tracks where a filter chip originated from
+enum CriteriaChipSource: String, Hashable {
+    /// From a saved report definition (baseline filters)
+    case report
+    /// User-added via input field (active refinement)
+    case manual
+}
+
 enum CriteriaChipTone: String, Hashable {
     case blue
     case teal
@@ -49,15 +57,27 @@ enum CriteriaChipTone: String, Hashable {
 struct CriteriaChip: Identifiable, Hashable {
     let id: String
     let kind: CriteriaChipKind
+    let source: CriteriaChipSource
     let label: String
     let systemImage: String
     let tone: CriteriaChipTone
+    /// For report-sourced chips, the name of the report (used for tooltips)
+    let reportName: String?
 
-    init(kind: CriteriaChipKind, label: String, systemImage: String, tone: CriteriaChipTone) {
+    init(
+        kind: CriteriaChipKind,
+        source: CriteriaChipSource = .manual,
+        label: String,
+        systemImage: String,
+        tone: CriteriaChipTone,
+        reportName: String? = nil
+    ) {
         self.kind = kind
+        self.source = source
         self.label = label
         self.systemImage = systemImage
         self.tone = tone
-        id = "\(kind.rawValue)-\(systemImage)-\(label)"
+        self.reportName = reportName
+        id = "\(kind.rawValue)-\(source.rawValue)-\(systemImage)-\(label)"
     }
 }

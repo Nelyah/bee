@@ -244,7 +244,22 @@ final class SmallModelsTests: XCTestCase {
             systemImage: "circle.fill",
             tone: .green
         )
-        XCTAssertEqual(chip.id, "filter-circle.fill-status:active")
+        // ID now includes source (default is .manual)
+        XCTAssertEqual(chip.id, "filter-manual-circle.fill-status:active")
+    }
+
+    func testCriteriaChipReportSourceId() {
+        let chip = CriteriaChip(
+            kind: .filter,
+            source: .report,
+            label: "status:pending",
+            systemImage: "circle.fill",
+            tone: .pink,
+            reportName: "Sprint 42"
+        )
+        XCTAssertEqual(chip.id, "filter-report-circle.fill-status:pending")
+        XCTAssertEqual(chip.source, .report)
+        XCTAssertEqual(chip.reportName, "Sprint 42")
     }
 
     func testCriteriaChipHashable() {

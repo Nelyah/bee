@@ -5,17 +5,39 @@ import XCTest
 
 /// Snapshot tests for CriteriaStripView to catch visual regressions.
 ///
-/// CriteriaStripView displays filter and property chips in two columns.
-/// These tests verify the layout and styling of the criteria strip.
+/// CriteriaStripView displays filter chips (grouped by source) and property chips.
+/// Report filters appear above manual filters with distinct muted styling.
 final class CriteriaStripSnapshotTests: SnapshotTestCase {
     // MARK: - Helper Methods
 
-    private func makeFilterChip(
+    private func makeReportFilterChip(
+        label: String,
+        systemImage: String = "circle.fill",
+        tone: CriteriaChipTone = .pink,
+        reportName: String = "Test Report"
+    ) -> CriteriaChip {
+        CriteriaChip(
+            kind: .filter,
+            source: .report,
+            label: label,
+            systemImage: systemImage,
+            tone: tone,
+            reportName: reportName
+        )
+    }
+
+    private func makeManualFilterChip(
         label: String,
         systemImage: String = "line.3.horizontal.decrease",
         tone: CriteriaChipTone = .blue
     ) -> CriteriaChip {
-        CriteriaChip(kind: .filter, label: label, systemImage: systemImage, tone: tone)
+        CriteriaChip(
+            kind: .filter,
+            source: .manual,
+            label: label,
+            systemImage: systemImage,
+            tone: tone
+        )
     }
 
     private func makePropertyChip(
@@ -26,11 +48,25 @@ final class CriteriaStripSnapshotTests: SnapshotTestCase {
         CriteriaChip(kind: .property, label: label, systemImage: systemImage, tone: tone)
     }
 
+    private func makeCriteriaStripView(
+        activeReportName: String? = nil,
+        reportFilterChips: [CriteriaChip] = [],
+        manualFilterChips: [CriteriaChip] = [],
+        propertyChips: [CriteriaChip] = []
+    ) -> some View {
+        CriteriaStripView(
+            activeReportName: activeReportName,
+            reportFilterChips: reportFilterChips,
+            manualFilterChips: manualFilterChips,
+            propertyChips: propertyChips
+        )
+        .background(ThemeManager.current.base)
+    }
+
     // MARK: - Empty States
 
     func testEmptyStrip() {
-        let view = CriteriaStripView(filterChips: [], propertyChips: [])
-
+        let view = makeCriteriaStripView()
         assertViewSnapshot(view, size: TestSizes.criteriaStrip)
     }
 
@@ -39,147 +75,108 @@ final class CriteriaStripSnapshotTests: SnapshotTestCase {
             makePropertyChip(label: "Summary"),
             makePropertyChip(label: "Project"),
         ]
-        let view = CriteriaStripView(filterChips: [], propertyChips: propertyChips)
-
+        let view = makeCriteriaStripView(propertyChips: propertyChips)
         assertViewSnapshot(view, size: TestSizes.criteriaStrip)
     }
 
-    func testFiltersWithEmptyProperties() {
-        let filterChips = [
-            makeFilterChip(label: "status:pending"),
-        ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: [])
+    // MARK: - Report Filters Only
 
+    func testReportFiltersOnly() {
+        let reportChips = [
+            makeReportFilterChip(label: "status:pending"),
+            makeReportFilterChip(label: "project:backend", systemImage: "folder", tone: .mauve),
+        ]
+        let view = makeCriteriaStripView(
+            activeReportName: "Sprint 42",
+            reportFilterChips: reportChips
+        )
         assertViewSnapshot(view, size: TestSizes.criteriaStrip)
     }
 
-    // MARK: - Single Items
+    // MARK: - Manual Filters Only
 
-    func testSingleFilter() {
-        let filterChips = [
-            makeFilterChip(label: "status:pending"),
+    func testManualFiltersOnly() {
+        let manualChips = [
+            makeManualFilterChip(label: "status:pending"),
+            makeManualFilterChip(label: "+urgent", systemImage: "tag", tone: .peach),
         ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: [])
-
+        let view = makeCriteriaStripView(manualFilterChips: manualChips)
         assertViewSnapshot(view, size: TestSizes.criteriaStrip)
     }
 
-    func testSingleProperty() {
-        let propertyChips = [
-            makePropertyChip(label: "Summary"),
-        ]
-        let view = CriteriaStripView(filterChips: [], propertyChips: propertyChips)
+    // MARK: - Grouped Layout (Report + Manual)
 
-        assertViewSnapshot(view, size: TestSizes.criteriaStrip)
+    func testGroupedFilters() {
+        let reportChips = [
+            makeReportFilterChip(label: "status:pending"),
+            makeReportFilterChip(label: "project:backend", systemImage: "folder", tone: .mauve),
+        ]
+        let manualChips = [
+            makeManualFilterChip(label: "+urgent", systemImage: "tag", tone: .peach),
+        ]
+        let view = makeCriteriaStripView(
+            activeReportName: "Sprint 42",
+            reportFilterChips: reportChips,
+            manualFilterChips: manualChips
+        )
+        assertViewSnapshot(view, size: CGSize(width: 600, height: 120))
     }
 
-    // MARK: - Multiple Items
-
-    func testMultipleFilters() {
-        let filterChips = [
-            makeFilterChip(label: "status:pending", tone: .blue),
-            makeFilterChip(label: "project:backend", systemImage: "folder", tone: .green),
-            makeFilterChip(label: "tag:urgent", systemImage: "tag", tone: .red),
-        ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: [])
-
-        assertViewSnapshot(view, size: CGSize(width: 600, height: 80))
-    }
-
-    func testMultipleProperties() {
-        let propertyChips = [
-            makePropertyChip(label: "Summary"),
-            makePropertyChip(label: "Project", systemImage: "folder"),
-            makePropertyChip(label: "Tags", systemImage: "tag"),
-            makePropertyChip(label: "Due Date", systemImage: "calendar"),
-        ]
-        let view = CriteriaStripView(filterChips: [], propertyChips: propertyChips)
-
-        assertViewSnapshot(view, size: CGSize(width: 600, height: 80))
-    }
-
-    // MARK: - Mixed Content
-
-    func testMixedContent() {
-        let filterChips = [
-            makeFilterChip(label: "status:active", tone: .blue),
-            makeFilterChip(label: "project:api", systemImage: "folder", tone: .green),
-        ]
-        let propertyChips = [
-            makePropertyChip(label: "Summary"),
-            makePropertyChip(label: "Tags", systemImage: "tag"),
-        ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: propertyChips)
-
-        assertViewSnapshot(view, size: TestSizes.criteriaStrip)
-    }
+    // MARK: - Full Content
 
     func testFullContent() {
-        let filterChips = [
-            makeFilterChip(label: "status:pending", tone: .blue),
-            makeFilterChip(label: "project:frontend", systemImage: "folder", tone: .green),
-            makeFilterChip(label: "tag:feature", systemImage: "tag", tone: .peach),
-            makeFilterChip(label: "+urgent", systemImage: "exclamationmark.triangle", tone: .red),
+        let reportChips = [
+            makeReportFilterChip(label: "status:pending"),
+            makeReportFilterChip(label: "project:frontend", systemImage: "folder", tone: .mauve),
+        ]
+        let manualChips = [
+            makeManualFilterChip(label: "+urgent", systemImage: "tag", tone: .peach),
+            makeManualFilterChip(label: "due:today", systemImage: "calendar", tone: .teal),
         ]
         let propertyChips = [
             makePropertyChip(label: "Summary"),
-            makePropertyChip(label: "Project", systemImage: "folder"),
             makePropertyChip(label: "Tags", systemImage: "tag"),
-            makePropertyChip(label: "Due", systemImage: "calendar"),
-            makePropertyChip(label: "Urgency", systemImage: "flame"),
         ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: propertyChips)
-
-        assertViewSnapshot(view, size: CGSize(width: 700, height: 100))
+        let view = makeCriteriaStripView(
+            activeReportName: "Sprint 42",
+            reportFilterChips: reportChips,
+            manualFilterChips: manualChips,
+            propertyChips: propertyChips
+        )
+        assertViewSnapshot(view, size: CGSize(width: 700, height: 140))
     }
 
-    // MARK: - Tone Variations
+    // MARK: - Visual Differentiation
 
-    func testDifferentTones() {
-        let filterChips = [
-            makeFilterChip(label: "blue", tone: .blue),
-            makeFilterChip(label: "teal", tone: .teal),
-            makeFilterChip(label: "green", tone: .green),
-            makeFilterChip(label: "yellow", tone: .yellow),
-            makeFilterChip(label: "peach", tone: .peach),
-            makeFilterChip(label: "red", tone: .red),
+    func testReportVsManualStyling() {
+        // Same filter content but different sources - should look different
+        let reportChips = [
+            makeReportFilterChip(label: "status:pending", tone: .pink),
         ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: [])
-
-        assertViewSnapshot(view, size: CGSize(width: 600, height: 100))
+        let manualChips = [
+            makeManualFilterChip(label: "status:active", tone: .pink),
+        ]
+        let view = makeCriteriaStripView(
+            activeReportName: "Test Report",
+            reportFilterChips: reportChips,
+            manualFilterChips: manualChips
+        )
+        assertViewSnapshot(view, size: CGSize(width: 500, height: 120))
     }
 
-    func testAllTones() {
-        let filterChips = [
-            makeFilterChip(label: "blue", tone: .blue),
-            makeFilterChip(label: "teal", tone: .teal),
-            makeFilterChip(label: "green", tone: .green),
-            makeFilterChip(label: "yellow", tone: .yellow),
-            makeFilterChip(label: "peach", tone: .peach),
-            makeFilterChip(label: "mauve", tone: .mauve),
-            makeFilterChip(label: "lavender", tone: .lavender),
-            makeFilterChip(label: "pink", tone: .pink),
-            makeFilterChip(label: "sky", tone: .sky),
-            makeFilterChip(label: "rosewater", tone: .rosewater),
-            makeFilterChip(label: "red", tone: .red),
+    // MARK: - Long Labels
+
+    func testLongReportName() {
+        let reportChips = [
+            makeReportFilterChip(
+                label: "status:pending",
+                reportName: "Very Long Report Name That Should Truncate"
+            ),
         ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: [])
-
-        assertViewSnapshot(view, size: CGSize(width: 700, height: 120))
-    }
-
-    // MARK: - Long Content
-
-    func testLongLabels() {
-        let filterChips = [
-            makeFilterChip(label: "status:pending OR status:active", tone: .blue),
-            makeFilterChip(label: "project:very-long-project-name", systemImage: "folder", tone: .green),
-        ]
-        let propertyChips = [
-            makePropertyChip(label: "Summary with extended description"),
-        ]
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: propertyChips)
-
-        assertViewSnapshot(view, size: CGSize(width: 700, height: 80))
+        let view = makeCriteriaStripView(
+            activeReportName: "Very Long Report Name That Should Truncate",
+            reportFilterChips: reportChips
+        )
+        assertViewSnapshot(view, size: TestSizes.criteriaStrip)
     }
 }

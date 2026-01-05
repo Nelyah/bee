@@ -1582,6 +1582,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_projects_endpoint() {
+        // Use in-memory database for isolated test
+        // SAFETY: This test runs in isolation and no other threads depend on this env var
+        unsafe {
+            std::env::set_var("BEE_DATABASE_URL", "sqlite::memory:");
+        }
+
         let state = AppState::from_config(ApiConfig::default());
         let app = router(state);
         let response = app
@@ -1598,8 +1604,12 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let parsed: ProjectsResponse = serde_json::from_slice(&body).unwrap();
-        // Response should be valid JSON (may have 0+ projects depending on database)
-        // Just verify it deserializes correctly
-        let _ = parsed.projects;
+        // Response should be valid JSON (may have 0 projects for empty database)
+        assert!(parsed.projects.is_empty());
+
+        // SAFETY: Cleaning up env var set by this test
+        unsafe {
+            std::env::remove_var("BEE_DATABASE_URL");
+        }
     }
 }

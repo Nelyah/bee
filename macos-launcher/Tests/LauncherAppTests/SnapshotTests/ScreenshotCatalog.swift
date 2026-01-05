@@ -477,10 +477,16 @@ final class ScreenshotCatalog: SnapshotTestCase {
     }
 
     func testComponent_criteriaStrip() {
-        let filterChips = TestHelpers.sampleFilterChips
+        let reportChips = TestHelpers.sampleReportFilterChips
+        let manualChips = TestHelpers.sampleManualFilterChips
         let propertyChips = TestHelpers.samplePropertyChips
-        let view = CriteriaStripView(filterChips: filterChips, propertyChips: propertyChips)
-            .background(ThemeManager.current.base)
+        let view = CriteriaStripView(
+            activeReportName: "Sprint 42",
+            reportFilterChips: reportChips,
+            manualFilterChips: manualChips,
+            propertyChips: propertyChips
+        )
+        .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: TestSizes.criteriaStrip)
     }
 

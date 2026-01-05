@@ -11,20 +11,27 @@ extension LauncherViewModel {
         return selectedReportName
     }
 
-    var criteriaFilterChips: [CriteriaChip] {
-        var chips = reportFilterChips
-        if let parsed = lastSuccessfulParse {
-            let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter)
-            if parsedChips.isEmpty, shouldAutoList(actionName: parsed.action) {
-                chips.append(contentsOf: CriteriaChipBuilder.filterChips(
-                    from: parsed.tokens,
-                    actionName: parsed.action
-                ))
-            } else if !parsedChips.isEmpty {
-                chips.append(contentsOf: parsedChips)
-            }
+    /// Filter chips from the currently selected report (displayed with muted styling).
+    var criteriaReportFilterChips: [CriteriaChip] {
+        reportFilterChips
+    }
+
+    /// Filter chips added manually by the user via input (displayed with vibrant styling).
+    var criteriaManualFilterChips: [CriteriaChip] {
+        guard let parsed = lastSuccessfulParse else { return [] }
+        let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter, source: .manual)
+        if parsedChips.isEmpty, shouldAutoList(actionName: parsed.action) {
+            return CriteriaChipBuilder.filterChips(
+                from: parsed.tokens,
+                actionName: parsed.action
+            )
         }
-        return deduplicateChips(chips)
+        return parsedChips
+    }
+
+    /// All filter chips combined (for backward compatibility).
+    var criteriaFilterChips: [CriteriaChip] {
+        deduplicateChips(reportFilterChips + criteriaManualFilterChips)
     }
 
     var criteriaPropertyChips: [CriteriaChip] {
@@ -44,9 +51,15 @@ extension LauncherViewModel {
             return
         }
 
+        let reportName = currentReportDisplayName
+
         // User reports have pre-parsed filter JSON - use it directly
         if let userFilter = reportConfig.userFilter {
-            let chips = CriteriaChipBuilder.filterChips(from: userFilter)
+            let chips = CriteriaChipBuilder.filterChips(
+                from: userFilter,
+                source: .report,
+                reportName: reportName
+            )
             reportFilterChips = deduplicateChips(chips)
             return
         }
@@ -61,12 +74,30 @@ extension LauncherViewModel {
 
         do {
             let parsed = try await actionService.parse(input: "list \(filterExpr)")
-            let parsedChips = CriteriaChipBuilder.filterChips(from: parsed.filter)
+            let parsedChips = CriteriaChipBuilder.filterChips(
+                from: parsed.filter,
+                source: .report,
+                reportName: reportName
+            )
             let fallbackChips = CriteriaChipBuilder.filterChips(from: parsed.tokens, actionName: parsed.action)
-            reportFilterChips = deduplicateChips(parsedChips.isEmpty ? fallbackChips : parsedChips)
+            // Add source to fallback chips
+            let fallbackWithSource = fallbackChips.map { chip in
+                CriteriaChip(
+                    kind: chip.kind,
+                    source: .report,
+                    label: chip.label,
+                    systemImage: chip.systemImage,
+                    tone: chip.tone,
+                    reportName: reportName
+                )
+            }
+            reportFilterChips = deduplicateChips(parsedChips.isEmpty ? fallbackWithSource : parsedChips)
         } catch {
             logger.error("Failed to parse report filters: \(error.localizedDescription, privacy: .public)")
-            reportFilterChips = CriteriaChipBuilder.reportFilterChips(from: reportConfig)
+            reportFilterChips = CriteriaChipBuilder.reportFilterChips(
+                from: reportConfig,
+                reportName: reportName
+            )
         }
     }
 
@@ -96,5 +127,19 @@ extension LauncherViewModel {
         }
         // Refresh task list with new report filters
         handleInputChange(input)
+    }
+
+    /// Switch to the "all" report (no filters). Called when user removes a report filter chip.
+    func switchToAllReport() {
+        // Find the "all" report or first available report without filters
+        let allReport = availableReports.first(where: { $0.name.lowercased() == "all" })
+            ?? availableReports.first(where: { $0.staticFilters.isEmpty && $0.userFilter == nil })
+        if let report = allReport {
+            selectReport(report.name)
+        } else {
+            // Fallback: clear report filters but keep current report structure
+            reportFilterChips = []
+            handleInputChange(input)
+        }
     }
 }

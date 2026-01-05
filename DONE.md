@@ -443,3 +443,42 @@ Add a new view listing all projects with statistics, burndown charts, and nested
 - `test_build_project_hierarchy_nested`: hierarchy building unit test
 - `test_openapi_schema_generates_without_overflow`: OpenAPI schema generation
 - `test_projects_endpoint`: integration test for endpoint
+
+---
+
+## TICKET-020: Visual Grouping for Report Filter Chips
+**Completed:** 2026-01-05
+
+### Summary
+Filter chips that come from the current report should be visually grouped/distinguished from manually added filters.
+
+### Resolution
+
+#### Visual Design
+- Report filters appear **above** manual filters (vertical stacking)
+- Report filters: muted gray styling (`surface0` background, `subtext0` icon, `subtext1` text)
+- Manual filters: vibrant tinted styling (original colors)
+- Section labels: "From '[ReportName]'" and "Your Filters"
+
+#### Data Model Changes
+- Added `CriteriaChipSource` enum with `.report` and `.manual` cases
+- Extended `CriteriaChip` with `source` and `reportName` properties
+- ID format now includes source to prevent deduplication collisions
+
+#### Behavior
+- Removing a report filter chip switches to "all" report (clean mental model)
+- Remove button: hover-reveal for report chips, always visible for manual
+- Tooltip shows report name on hover for report chips
+
+#### Files Modified
+- `Models/CriteriaChip.swift` - Added source tracking
+- `Utilities/CriteriaChipBuilder.swift` - Thread source through all filter creation methods
+- `ViewModels/LauncherViewModel+Reports.swift` - Split chips by source, added `switchToAllReport()`
+- `Views/Components/CriteriaStripView.swift` - Complete redesign with vertical grouped layout
+- `Views/TaskListView.swift` - Updated call site
+
+#### Tests
+- Updated `CriteriaStripSnapshotTests` with grouped layout tests
+- Added `testCriteriaChipReportSourceId` unit test
+- Updated `ScreenshotCatalog` snapshot
+- Updated `TaskListViewSnapshotTests` snapshots

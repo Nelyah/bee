@@ -179,7 +179,9 @@
       "Bash(macos-launcher/Tests/LauncherAppTests/TaskStateSectionContributorTests.swift )",
       "Bash(DONE.md )",
       "Bash(tickets.md)",
-      "Bash(git -C /Users/chloe/builds/bee status:*)"
+      "Bash(git -C /Users/chloe/builds/bee status:*)",
+      "Bash(git -C /Users/chloe/builds/bee diff:*)",
+      "Bash(pgrep:*)"
     ]
   },
   "outputStyle": "Explanatory"

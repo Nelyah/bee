@@ -188,6 +188,20 @@ final class ApiClient: ApiClientProtocol, Sendable {
         try await delete(path: "/v1/attachments/\(attachmentId)")
     }
 
+    // MARK: - Project Overview
+
+    func fetchProjects() async throws -> ProjectsResponse {
+        try await get(path: "/v1/projects")
+    }
+
+    func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse {
+        let encodedProject = project.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? project
+        return try await get(
+            path: "/v1/projects/\(encodedProject)/burndown",
+            queryItems: [URLQueryItem(name: "days", value: String(days))]
+        )
+    }
+
     /// Send a JSON POST request to the API and decode the response type.
     private func send<Response: Decodable>(
         _ body: some Encodable,

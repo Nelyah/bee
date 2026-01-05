@@ -43,6 +43,9 @@ extension LauncherViewModel {
             reportMenuTrigger?()
         case .detail:
             taskStateMenuTrigger?()
+        case .projectOverview:
+            // No contextual menu in project overview - do nothing
+            break
         }
     }
 
@@ -81,6 +84,14 @@ extension LauncherViewModel {
             currentProjectScope: { [weak self] in self?.projectScope },
             onProjectSelect: { [weak self] project in
                 self?.setProjectScope(project)
+                self?.closeCommandPalette()
+            }
+        ))
+
+        // Register the project overview section
+        commandPalette.dataSource.register(ProjectOverviewSectionContributor(
+            onNavigate: { [weak self] in
+                self?.navigateToProjectOverview()
                 self?.closeCommandPalette()
             }
         ))

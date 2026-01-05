@@ -6,71 +6,13 @@ This document contains detailed tickets for features requested in `feature-list.
 
 ## Table of Contents
 
-1. [TICKET-015: Project Overview View](#ticket-015)
-2. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-3. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-4. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-5. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-6. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+1. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
+2. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
+3. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+4. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+5. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
-
----
-
-<a name="ticket-015"></a>
-## TICKET-015: Project Overview View
-
-### Summary
-Add a new view that lists all projects with details and statistics.
-
-### Priority
-Medium
-
-### Complexity
-High
-
-### Affected Layers
-- **Rust API**: New endpoint for project stats
-- **macOS**: New `ProjectOverviewView.swift`, navigation integration
-
-### Implementation Notes
-
-#### Backend
-1. Create `GET /projects` endpoint returning:
-   ```json
-   {
-     "projects": [
-       {
-         "name": "backend",
-         "taskCount": 45,
-         "pendingCount": 12,
-         "activeCount": 3,
-         "completedCount": 30,
-         "overdueCount": 2
-       }
-     ]
-   }
-   ```
-
-#### Frontend
-1. Create `ProjectOverviewView`:
-   - List of projects with stats
-   - Click project to filter task list
-   - Search/filter projects
-
-2. Navigation integration:
-   - Add to sidebar or mode switcher
-   - Keyboard shortcut to access
-
-### Acceptance Criteria
-- [ ] Project overview accessible from main navigation
-- [ ] Shows all projects with task counts
-- [ ] Shows breakdown by status
-- [ ] Can click project to see its tasks
-- [ ] Can search/filter projects
-
-### Dependencies
-- Backend endpoint required
 
 ---
 
@@ -332,7 +274,6 @@ None
 - TICKET-020: Report Filter Visual Grouping
 
 ### High Complexity (1-2 weeks)
-- TICKET-015: Project Overview View
 - TICKET-022: Help Mode
 
 ---
@@ -347,10 +288,9 @@ None
 
 ### Phase 1: Advanced Features
 1. TICKET-019 (multi-select)
-2. TICKET-015 (project overview)
-3. TICKET-016 (important links - builds on TICKET-007)
+2. TICKET-016 (important links - builds on TICKET-007)
 
 ### Phase 2: Polish & Extras
-4. TICKET-020 (filter grouping - needs UX)
-5. TICKET-021 (info tooltips)
-6. TICKET-022 (help mode)
+3. TICKET-020 (filter grouping - needs UX)
+4. TICKET-021 (info tooltips)
+5. TICKET-022 (help mode)

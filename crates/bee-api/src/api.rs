@@ -3,11 +3,13 @@ use crate::{
     config::ApiConfig,
     dto::{
         ActionRequest, ActionResponse, ApiEvent, ApiTask, ApiTaskDetail, AttachmentDto,
-        CompletionItem, CompletionsResponse, ConfigResponse, ExternalLinkCreateRequest,
-        ExternalLinkDto, ExternalLinkResolveRequest, ExternalLinkResolveResponse,
-        ExternalLinkSyncRequest, ExternalLinkSyncResponse, GitlabMergeRequestDto, JiraIssueDto,
-        ParseRequest, ParseResponse, ReportConfigDto, ReportSummary, TaskAnnotationDto,
-        TaskHistoryDto, TokenSpan, UserReportDto, UserReportRequest, UserReportsListResponse,
+        BurndownDataPoint, CompletionItem, CompletionsResponse, ConfigResponse,
+        ExternalLinkCreateRequest, ExternalLinkDto, ExternalLinkResolveRequest,
+        ExternalLinkResolveResponse, ExternalLinkSyncRequest, ExternalLinkSyncResponse,
+        GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse, ProjectBurndownResponse,
+        ProjectNodeDto, ProjectStatsDto, ProjectsResponse, ReportConfigDto, ReportSummary,
+        TaskAnnotationDto, TaskHistoryDto, TokenSpan, UserReportDto, UserReportRequest,
+        UserReportsListResponse,
     },
     error_type::{ApiError, ApiErrorResponse, ApiResult},
     parse::{parse_input, tokenize_with_spans},
@@ -137,6 +139,9 @@ pub fn router(state: AppState) -> Router {
             "/v1/external-links/resolve",
             post(resolve_external_link_handler),
         )
+        // Project overview
+        .route("/v1/projects", get(projects_handler))
+        .route("/v1/projects/:name/burndown", get(project_burndown_handler))
         // User reports CRUD
         .route(
             "/v1/reports",
@@ -388,6 +393,205 @@ async fn completions_handler(
     };
 
     Ok(Json(CompletionsResponse { items }))
+}
+
+// ============================================================================
+// Project Overview Handlers
+// ============================================================================
+
+/// Query parameters for project burndown endpoint.
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+struct BurndownQuery {
+    /// Number of days to include (default: 30).
+    #[serde(default = "default_burndown_days")]
+    days: u32,
+}
+
+fn default_burndown_days() -> u32 {
+    30
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/projects",
+    responses(
+        (status = 200, description = "Project hierarchy with statistics", body = ProjectsResponse)
+    )
+)]
+async fn projects_handler() -> ApiResult<Json<ProjectsResponse>> {
+    let stats = DbStore::get_projects_with_stats().await?;
+
+    // Build hierarchical tree from flat list
+    let projects = build_project_hierarchy(stats);
+
+    Ok(Json(ProjectsResponse { projects }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/projects/{name}/burndown",
+    params(
+        ("name" = String, Path, description = "Project name (URL-encoded)"),
+        BurndownQuery
+    ),
+    responses(
+        (status = 200, description = "Burndown data for project", body = ProjectBurndownResponse),
+        (status = 404, description = "Project not found", body = ApiErrorResponse)
+    )
+)]
+async fn project_burndown_handler(
+    Path(name): Path<String>,
+    Query(query): Query<BurndownQuery>,
+) -> ApiResult<Json<ProjectBurndownResponse>> {
+    let (total_tasks, total_completed) = DbStore::get_project_totals(&name).await?;
+
+    if total_tasks == 0 {
+        return Err(ApiError::not_found(format!(
+            "Project '{}' not found or has no tasks",
+            name
+        )));
+    }
+
+    let burndown_rows = DbStore::get_burndown(&name, query.days).await?;
+
+    // Convert to cumulative data points
+    let mut data_points = Vec::new();
+    let mut cumulative = 0i64;
+
+    for row in burndown_rows {
+        cumulative += row.completed_on_day;
+        data_points.push(BurndownDataPoint {
+            date: row.date,
+            completed_cumulative: cumulative,
+            remaining: total_tasks - cumulative,
+        });
+    }
+
+    Ok(Json(ProjectBurndownResponse {
+        project: name,
+        data_points,
+        total_tasks,
+        total_completed,
+    }))
+}
+
+/// Build a hierarchical project tree from flat project stats.
+///
+/// Projects use dot notation for hierarchy (e.g., "backend.api").
+/// This function groups them into a tree structure.
+///
+/// Uses an iterative bottom-up approach to avoid stack overflow with deep hierarchies.
+fn build_project_hierarchy(
+    stats: Vec<bee_core::storage::db::ProjectStatusRow>,
+) -> Vec<ProjectNodeDto> {
+    use std::collections::{HashMap, HashSet};
+
+    if stats.is_empty() {
+        return Vec::new();
+    }
+
+    // First, collect all projects with their stats
+    let mut project_stats: HashMap<String, ProjectStatsDto> = HashMap::new();
+    for row in &stats {
+        project_stats.insert(
+            row.project_name.clone(),
+            ProjectStatsDto {
+                name: row
+                    .project_name
+                    .rsplit('.')
+                    .next()
+                    .unwrap_or(&row.project_name)
+                    .to_string(),
+                pending_count: row.pending_count,
+                active_count: row.active_count,
+                completed_count: row.completed_count,
+                overdue_count: row.overdue_count,
+                total_count: row.total_count,
+            },
+        );
+    }
+
+    // Identify all unique project paths (including intermediate parents)
+    let mut all_paths: HashSet<String> = HashSet::new();
+    for row in &stats {
+        let parts: Vec<&str> = row.project_name.split('.').collect();
+        let mut path = String::new();
+        for (i, part) in parts.iter().enumerate() {
+            if i > 0 {
+                path.push('.');
+            }
+            path.push_str(part);
+            all_paths.insert(path.clone());
+        }
+    }
+
+    // Build nodes bottom-up: start with deepest nodes, work up to root
+    // Sort paths by depth (number of dots), descending
+    let mut sorted_paths: Vec<String> = all_paths.into_iter().collect();
+    sorted_paths.sort_by(|a, b| {
+        let depth_a = a.matches('.').count();
+        let depth_b = b.matches('.').count();
+        // Sort by depth descending, then by name ascending for stable order
+        depth_b.cmp(&depth_a).then_with(|| a.cmp(b))
+    });
+
+    // Map from full_path to built node
+    let mut nodes: HashMap<String, ProjectNodeDto> = HashMap::new();
+
+    // Process from deepest to shallowest
+    for full_path in sorted_paths {
+        let name = full_path
+            .rsplit('.')
+            .next()
+            .unwrap_or(&full_path)
+            .to_string();
+
+        // Get stats if this is an actual project, or default stats
+        let mut stats = project_stats.get(&full_path).cloned().unwrap_or_default();
+        stats.name = name.clone();
+
+        // Find and collect children (already built since we process bottom-up)
+        let prefix = format!("{}.", full_path);
+        let child_keys: Vec<String> = nodes
+            .keys()
+            .filter(|k| k.starts_with(&prefix) && !k[prefix.len()..].contains('.'))
+            .cloned()
+            .collect();
+
+        let mut children: Vec<ProjectNodeDto> = child_keys
+            .into_iter()
+            .filter_map(|k| nodes.remove(&k))
+            .collect();
+        children.sort_by(|a, b| a.name.cmp(&b.name));
+
+        // Aggregate children stats into parent
+        for child in &children {
+            stats.pending_count += child.stats.pending_count;
+            stats.active_count += child.stats.active_count;
+            stats.completed_count += child.stats.completed_count;
+            stats.overdue_count += child.stats.overdue_count;
+            stats.total_count += child.stats.total_count;
+        }
+
+        nodes.insert(
+            full_path.clone(),
+            ProjectNodeDto {
+                name,
+                full_path,
+                stats,
+                children,
+            },
+        );
+    }
+
+    // Collect top-level nodes (no dots in path)
+    let mut result: Vec<ProjectNodeDto> = nodes
+        .into_iter()
+        .filter(|(path, _)| !path.contains('.'))
+        .map(|(_, node)| node)
+        .collect();
+    result.sort_by(|a, b| a.name.cmp(&b.name));
+    result
 }
 
 #[utoipa::path(
@@ -1051,6 +1255,8 @@ fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<
         health_handler,
         config_handler,
         completions_handler,
+        projects_handler,
+        project_burndown_handler,
         parse_handler,
         action_handler,
         task_detail_handler,
@@ -1085,6 +1291,11 @@ fn serialize_properties(properties: Option<TaskProperties>) -> ApiResult<Option<
         ReportSummary,
         CompletionsResponse,
         CompletionItem,
+        ProjectsResponse,
+        ProjectNodeDto,
+        ProjectStatsDto,
+        ProjectBurndownResponse,
+        BurndownDataPoint,
         ApiTask,
         ApiTaskDetail,
         ApiEvent,
@@ -1284,5 +1495,93 @@ mod tests {
         assert!(validate_report_name("report\tname").is_err());
         assert!(validate_report_name("report\x00name").is_err());
         assert!(validate_report_name("report\x1Fname").is_err());
+    }
+
+    #[test]
+    fn test_build_project_hierarchy_nested() {
+        use bee_core::storage::db::ProjectStatusRow;
+
+        let stats = vec![
+            ProjectStatusRow {
+                project_name: "backend".to_string(),
+                pending_count: 2,
+                active_count: 1,
+                completed_count: 5,
+                overdue_count: 0,
+                total_count: 8,
+            },
+            ProjectStatusRow {
+                project_name: "backend.api".to_string(),
+                pending_count: 1,
+                active_count: 0,
+                completed_count: 3,
+                overdue_count: 0,
+                total_count: 4,
+            },
+            ProjectStatusRow {
+                project_name: "frontend".to_string(),
+                pending_count: 3,
+                active_count: 2,
+                completed_count: 10,
+                overdue_count: 1,
+                total_count: 16,
+            },
+        ];
+
+        let hierarchy = build_project_hierarchy(stats);
+
+        // Should have 2 top-level projects
+        assert_eq!(hierarchy.len(), 2);
+
+        // Find backend and check it has children
+        let backend = hierarchy.iter().find(|p| p.name == "backend").unwrap();
+        assert_eq!(backend.children.len(), 1);
+        assert_eq!(backend.children[0].name, "api");
+
+        // Frontend should have no children
+        let frontend = hierarchy.iter().find(|p| p.name == "frontend").unwrap();
+        assert!(frontend.children.is_empty());
+    }
+
+    #[test]
+    fn test_openapi_schema_generates_without_overflow() {
+        // This test ensures the OpenAPI schema can be generated without stack overflow.
+        // The recursive ProjectNodeDto was causing utoipa to infinitely recurse.
+        let doc = ApiDoc::openapi();
+        let json = doc.to_json();
+        assert!(
+            json.is_ok(),
+            "OpenAPI schema should serialize without error"
+        );
+
+        // Verify that ProjectNodeDto appears in the schema
+        let json_str = json.unwrap();
+        assert!(
+            json_str.contains("ProjectNodeDto"),
+            "Schema should contain ProjectNodeDto"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_projects_endpoint() {
+        let state = AppState::from_config(ApiConfig::default());
+        let app = router(state);
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/v1/projects")
+                    .method("GET")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("projects response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let parsed: ProjectsResponse = serde_json::from_slice(&body).unwrap();
+        // Response should be valid JSON (may have 0+ projects depending on database)
+        // Just verify it deserializes correctly
+        let _ = parsed.projects;
     }
 }

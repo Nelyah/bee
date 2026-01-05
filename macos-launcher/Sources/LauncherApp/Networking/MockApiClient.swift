@@ -45,6 +45,8 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
     var uploadAttachmentResult: Result<TaskAttachmentDto, Error> = .success(MockApiClient.sampleAttachment)
     var downloadAttachmentResult: Result<Data, Error> = .success(Data("mock file content".utf8))
     var deleteAttachmentResult: Result<Void, Error> = .success(())
+    var projectsResult: Result<ProjectsResponse, Error> = .success(MockApiClient.sampleProjects)
+    var projectBurndownResult: Result<ProjectBurndownResponse, Error> = .success(MockApiClient.sampleBurndown)
     var lastParseInput: String?
     var lastRunActionFilter: JSONValue?
 
@@ -127,6 +129,16 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func deleteAttachment(attachmentId: Int) async throws {
         _ = try deleteAttachmentResult.get()
+    }
+
+    // MARK: - Project Overview
+
+    func fetchProjects() async throws -> ProjectsResponse {
+        try projectsResult.get()
+    }
+
+    func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse {
+        try projectBurndownResult.get()
     }
 
     // MARK: - Sample Data
@@ -315,5 +327,74 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         sortDirection: "ascending",
         createdAt: "2024-12-31T10:00:00Z",
         updatedAt: "2024-12-31T10:00:00Z"
+    )
+
+    static let sampleProjects = ProjectsResponse(projects: [
+        ProjectNode(
+            name: "backend",
+            fullPath: "backend",
+            stats: ProjectStats(
+                name: "backend",
+                pendingCount: 5,
+                activeCount: 3,
+                completedCount: 12,
+                overdueCount: 1,
+                totalCount: 20
+            ),
+            children: [
+                ProjectNode(
+                    name: "api",
+                    fullPath: "backend.api",
+                    stats: ProjectStats(
+                        name: "api",
+                        pendingCount: 2,
+                        activeCount: 1,
+                        completedCount: 5,
+                        overdueCount: 0,
+                        totalCount: 8
+                    ),
+                    children: []
+                ),
+                ProjectNode(
+                    name: "db",
+                    fullPath: "backend.db",
+                    stats: ProjectStats(
+                        name: "db",
+                        pendingCount: 3,
+                        activeCount: 2,
+                        completedCount: 7,
+                        overdueCount: 1,
+                        totalCount: 12
+                    ),
+                    children: []
+                ),
+            ]
+        ),
+        ProjectNode(
+            name: "frontend",
+            fullPath: "frontend",
+            stats: ProjectStats(
+                name: "frontend",
+                pendingCount: 8,
+                activeCount: 2,
+                completedCount: 15,
+                overdueCount: 2,
+                totalCount: 25
+            ),
+            children: []
+        ),
+    ])
+
+    static let sampleBurndown = ProjectBurndownResponse(
+        project: "backend",
+        dataPoints: [
+            BurndownDataPoint(date: "2024-12-01", completedCumulative: 2, remaining: 18),
+            BurndownDataPoint(date: "2024-12-08", completedCumulative: 5, remaining: 15),
+            BurndownDataPoint(date: "2024-12-15", completedCumulative: 8, remaining: 12),
+            BurndownDataPoint(date: "2024-12-22", completedCumulative: 10, remaining: 10),
+            BurndownDataPoint(date: "2024-12-29", completedCumulative: 12, remaining: 8),
+        ],
+        totalTasks: 20,
+        totalCompleted: 12
     )
 }

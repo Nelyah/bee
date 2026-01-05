@@ -24,4 +24,8 @@ protocol ApiClientProtocol: Sendable {
     func uploadAttachment(taskUUID: String, fileURL: URL) async throws -> TaskAttachmentDto
     func downloadAttachment(attachmentId: Int) async throws -> Data
     func deleteAttachment(attachmentId: Int) async throws
+
+    // Project Overview
+    func fetchProjects() async throws -> ProjectsResponse
+    func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse
 }

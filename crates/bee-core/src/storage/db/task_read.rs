@@ -85,6 +85,143 @@ pub async fn get_tags_with_counts(db: &DatabaseConnection) -> CoreResult<Vec<Com
     Ok(results)
 }
 
+// ============================================================================
+// Project Overview Queries
+// ============================================================================
+
+/// A row representing project statistics with status breakdown.
+#[derive(Debug, Clone, FromQueryResult)]
+pub struct ProjectStatusRow {
+    /// Project name (full path with dots).
+    pub project_name: String,
+    /// Number of pending tasks.
+    pub pending_count: i64,
+    /// Number of active tasks.
+    pub active_count: i64,
+    /// Number of completed tasks.
+    pub completed_count: i64,
+    /// Number of overdue tasks (pending/active with past due date).
+    pub overdue_count: i64,
+    /// Total task count.
+    pub total_count: i64,
+}
+
+/// Get all projects with status breakdown counts.
+///
+/// Returns a flat list of projects with counts by status. The caller is
+/// responsible for building the hierarchy from the project names.
+pub async fn get_projects_with_status_breakdown(
+    db: &DatabaseConnection,
+) -> CoreResult<Vec<ProjectStatusRow>> {
+    let results = ProjectStatusRow::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        r#"
+            SELECT
+                p.name as project_name,
+                SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+                SUM(CASE WHEN t.status = 'active' THEN 1 ELSE 0 END) as active_count,
+                SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_count,
+                SUM(CASE
+                    WHEN t.status IN ('pending', 'active')
+                         AND t.date_due IS NOT NULL
+                         AND datetime(t.date_due) < datetime('now')
+                    THEN 1 ELSE 0
+                END) as overdue_count,
+                COUNT(t.db_id) as total_count
+            FROM projects p
+            LEFT JOIN tasks t ON t.project_id = p.id
+            GROUP BY p.id, p.name
+            ORDER BY total_count DESC, p.name ASC
+        "#,
+        [],
+    ))
+    .all(db)
+    .await?;
+    Ok(results)
+}
+
+/// A row representing a single day's burndown data.
+#[derive(Debug, Clone, FromQueryResult)]
+pub struct BurndownRow {
+    /// Date in YYYY-MM-DD format.
+    pub date: String,
+    /// Number of tasks completed on this day.
+    pub completed_on_day: i64,
+}
+
+/// Get burndown data for a specific project (and its subprojects).
+///
+/// Returns daily completion counts over the past `days` days.
+/// Uses prefix matching so "backend" includes "backend.api", "backend.db", etc.
+pub async fn get_project_burndown(
+    db: &DatabaseConnection,
+    project_name: &str,
+    days: u32,
+) -> CoreResult<Vec<BurndownRow>> {
+    // Escape special characters in the project name for LIKE pattern
+    let escaped_name = project_name.replace('%', "\\%").replace('_', "\\_");
+    // Match exact project OR subprojects (project.*)
+    let like_pattern = format!("{}%", escaped_name);
+
+    let results = BurndownRow::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        r#"
+            SELECT
+                date(t.date_completed) as date,
+                COUNT(*) as completed_on_day
+            FROM tasks t
+            JOIN projects p ON t.project_id = p.id
+            WHERE p.name LIKE ?
+                AND t.date_completed IS NOT NULL
+                AND date(t.date_completed) >= date('now', '-' || ? || ' days')
+            GROUP BY date(t.date_completed)
+            ORDER BY date ASC
+        "#,
+        [like_pattern.into(), days.into()],
+    ))
+    .all(db)
+    .await?;
+    Ok(results)
+}
+
+/// Get total task counts for a project (for burndown chart baseline).
+///
+/// Returns (total_tasks, total_completed) for the project and its subprojects.
+pub async fn get_project_task_totals(
+    db: &DatabaseConnection,
+    project_name: &str,
+) -> CoreResult<(i64, i64)> {
+    #[derive(Debug, FromQueryResult)]
+    struct TotalRow {
+        total: i64,
+        completed: i64,
+    }
+
+    let escaped_name = project_name.replace('%', "\\%").replace('_', "\\_");
+    let like_pattern = format!("{}%", escaped_name);
+
+    let result = TotalRow::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        r#"
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed
+            FROM tasks t
+            JOIN projects p ON t.project_id = p.id
+            WHERE p.name LIKE ?
+        "#,
+        [like_pattern.into()],
+    ))
+    .one(db)
+    .await?
+    .unwrap_or(TotalRow {
+        total: 0,
+        completed: 0,
+    });
+
+    Ok((result.total, result.completed))
+}
+
 pub(super) async fn load_tasks_impl(
     db: &DatabaseConnection,
     filter_opt: Option<Box<dyn Filter>>,

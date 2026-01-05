@@ -356,3 +356,43 @@ Allow attaching files of any standard MIME type to tasks.
 - Added `AttachmentFocusTests` (10 tests)
 - Added `QuickLookCoordinatorTests` (4 tests)
 - Added attachment row snapshot tests
+
+---
+
+## TICKET-015: Project Overview View
+**Completed:** 2026-01-05
+
+### Summary
+Add a new view listing all projects with statistics, burndown charts, and nested hierarchy display.
+
+### Resolution
+
+#### Backend (Rust)
+- Added DTOs: `ProjectStatsDto`, `ProjectNodeDto`, `ProjectsResponse`, `BurndownDataPoint`, `ProjectBurndownResponse`
+- Added SQL queries in `task_read.rs` for project stats breakdown and burndown data
+- Added `GET /v1/projects` endpoint returning hierarchical project tree with aggregated stats
+- Added `GET /v1/projects/{name}/burndown` endpoint for burndown chart data
+- Iterative bottom-up hierarchy building algorithm (fixed stack overflow from recursive approach)
+
+#### macOS Launcher
+- Created `ProjectStatsModels.swift` with Swift models matching API DTOs
+- Added `LauncherMode.projectOverview` case
+- Created `LauncherViewModel+ProjectOverview.swift` with state management:
+  - `ProjectOverviewState` struct with loading, projects, expanded, burndown states
+  - Navigation methods: `navigateToProjectOverview()`, `exitProjectOverview()`
+  - Data loading: `loadProjectOverview()`, `loadBurndown(for:)`
+  - Tree interaction: `toggleProjectExpansion()`, `selectProjectForFilter()`
+- Created `ProjectOverviewView.swift` with header, loading/error/empty states, project list
+- Created `ProjectStatsRow.swift` with expand chevron, name, stats pills, burndown button
+- Created `BurndownChartView.swift` using Swift Charts (LineMark + AreaMark)
+- Created `ProjectOverviewSectionContributor.swift` for command palette "Go to Projects" action
+- Updated `ContentView.swift` with `.projectOverview` mode routing
+- Updated `InteractionContextCoordinator.swift` with `.projectOverview` handling
+
+#### Tests
+- `ProjectOverviewSectionContributorTests` (9 tests): contributor behavior, query filtering
+- `ProjectStatsModelsTests` (13 tests): model decoding, hierarchy, equatable
+- `ProjectOverviewSnapshotTests` (9 tests): visual snapshots for rows, chart, header
+- `test_build_project_hierarchy_nested`: hierarchy building unit test
+- `test_openapi_schema_generates_without_overflow`: OpenAPI schema generation
+- `test_projects_endpoint`: integration test for endpoint

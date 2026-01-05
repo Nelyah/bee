@@ -147,6 +147,11 @@ final class LauncherViewModel: ObservableObject {
     /// Whether to show the save report sheet.
     @Published var showingSaveReportSheet: Bool = false
 
+    // MARK: - Project Overview State
+
+    /// State for the project overview view.
+    @Published var projectOverviewState = ProjectOverviewState()
+
     /// The current grouping option for UI display.
     var currentGroupByOption: GroupByOption {
         switch groupingStrategy {

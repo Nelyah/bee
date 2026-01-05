@@ -394,4 +394,17 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
     func deleteUserReport(name: String) async throws {
         // No-op for test
     }
+
+    func fetchProjects() async throws -> ProjectsResponse {
+        ProjectsResponse(projects: [])
+    }
+
+    func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse {
+        ProjectBurndownResponse(
+            project: project,
+            dataPoints: [],
+            totalTasks: 0,
+            totalCompleted: 0
+        )
+    }
 }

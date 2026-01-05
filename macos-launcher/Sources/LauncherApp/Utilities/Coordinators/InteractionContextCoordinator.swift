@@ -33,7 +33,7 @@ enum InteractionContextCoordinator {
         rows: [GroupedListRow]
     ) -> BaseInteractionContext {
         switch mode {
-        case .detail:
+        case .detail, .projectOverview:
             return .detail
         case .list:
             let selection = selectionKind(selectedRowIndex: selectedRowIndex, rows: rows)

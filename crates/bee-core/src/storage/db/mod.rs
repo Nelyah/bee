@@ -21,7 +21,10 @@ use crate::{
             attachments as attachments_db,
             connection::get_database,
             external_links as external_links_db,
-            task_read::{get_projects_with_counts, get_tags_with_counts, load_tasks_impl},
+            task_read::{
+                get_project_burndown, get_project_task_totals, get_projects_with_counts,
+                get_projects_with_status_breakdown, get_tags_with_counts, load_tasks_impl,
+            },
             task_write::write_tasks_impl,
             undo::{append_undo_action_impl, load_undos_impl},
             user_reports as user_reports_db,
@@ -32,7 +35,7 @@ use crate::{
 
 pub use user_reports::{UserReport, UserReportParams};
 
-pub use task_read::CompletionRow;
+pub use task_read::{BurndownRow, CompletionRow, ProjectStatusRow};
 
 // TODO: Need to update SeaORM to use the newer related entities and subtypes
 // https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/
@@ -52,6 +55,29 @@ impl DbStore {
     pub async fn get_tags() -> CoreResult<Vec<CompletionRow>> {
         let db = get_database(None).await?;
         get_tags_with_counts(&db).await
+    }
+
+    // Project Overview methods
+
+    /// Get all projects with status breakdown (pending, active, completed, overdue counts).
+    pub async fn get_projects_with_stats() -> CoreResult<Vec<ProjectStatusRow>> {
+        let db = get_database(None).await?;
+        get_projects_with_status_breakdown(&db).await
+    }
+
+    /// Get burndown data for a project (daily completion counts).
+    ///
+    /// Returns data points for the past `days` days. Uses prefix matching
+    /// so "backend" includes "backend.api", "backend.db", etc.
+    pub async fn get_burndown(project_name: &str, days: u32) -> CoreResult<Vec<BurndownRow>> {
+        let db = get_database(None).await?;
+        get_project_burndown(&db, project_name, days).await
+    }
+
+    /// Get total task counts for a project (total, completed).
+    pub async fn get_project_totals(project_name: &str) -> CoreResult<(i64, i64)> {
+        let db = get_database(None).await?;
+        get_project_task_totals(&db, project_name).await
     }
 
     /// Load a single task by UUID, including annotations and history.

@@ -537,6 +537,71 @@ pub struct CompletionItem {
     pub count: Option<i64>,
 }
 
+// ============================================================================
+// Project Overview DTOs
+// ============================================================================
+
+/// Statistics breakdown for a single project.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
+pub struct ProjectStatsDto {
+    /// Display name (leaf name, e.g., "api" for "backend.api").
+    pub name: String,
+    /// Number of pending tasks.
+    pub pending_count: i64,
+    /// Number of active tasks.
+    pub active_count: i64,
+    /// Number of completed tasks.
+    pub completed_count: i64,
+    /// Number of overdue tasks (pending/active with past due date).
+    pub overdue_count: i64,
+    /// Total task count.
+    pub total_count: i64,
+}
+
+/// Hierarchical project node with nested children.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProjectNodeDto {
+    /// Display name (leaf name, e.g., "api").
+    pub name: String,
+    /// Full path with dot notation (e.g., "backend.api").
+    pub full_path: String,
+    /// Statistics for this project (including children aggregated).
+    pub stats: ProjectStatsDto,
+    /// Child projects.
+    pub children: Vec<ProjectNodeDto>,
+}
+
+/// Response payload for GET /v1/projects.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProjectsResponse {
+    /// Hierarchical list of top-level projects.
+    pub projects: Vec<ProjectNodeDto>,
+}
+
+/// Single data point for burndown chart.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct BurndownDataPoint {
+    /// Date in YYYY-MM-DD format.
+    pub date: String,
+    /// Cumulative completed tasks up to this date.
+    pub completed_cumulative: i64,
+    /// Remaining tasks (total - completed cumulative).
+    pub remaining: i64,
+}
+
+/// Response payload for GET /v1/projects/{name}/burndown.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProjectBurndownResponse {
+    /// Project name (full path).
+    pub project: String,
+    /// Data points for the burndown chart (sorted by date ascending).
+    pub data_points: Vec<BurndownDataPoint>,
+    /// Total tasks in this project (historical max).
+    pub total_tasks: i64,
+    /// Total completed tasks.
+    pub total_completed: i64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::ApiTask;

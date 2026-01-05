@@ -190,6 +190,9 @@ struct ContentView: View {
                         taskStateMenuTrigger.trigger?()
                     }
                 }
+            } else if viewModel.mode == .projectOverview {
+                ProjectOverviewView(viewModel: viewModel)
+                    .padding(DesignTokens.Spacing.extraExtraLarge)
             } else {
                 TaskListView(viewModel: viewModel, completion: viewModel.completion)
                     .padding(DesignTokens.Spacing.extraLarge)

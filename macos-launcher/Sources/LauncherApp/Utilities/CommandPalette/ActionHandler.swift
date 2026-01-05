@@ -50,12 +50,25 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
             await self?.loadGitlabSuggestions(taskUUID: taskUUID)
         }
 
-        // Return empty menu initially - items will be added when loaded
-        let section = CommandPaletteSection(id: "gitlab", title: nil, items: [])
+        // URL entry action (always visible at top, pinned so it's not filtered out)
+        let urlEntryItem = CommandPaletteActionItem(
+            id: "gitlab-url-entry",
+            title: "Enter GitLab URL...",
+            subtitle: "Paste any merge request or issue URL",
+            icon: .system("link"),
+            isPinned: true,
+            handler: { [weak self] in
+                self?.handleGitlabUrlEntry(taskUUID: taskUUID)
+            }
+        )
+
+        let urlSection = CommandPaletteSection(id: "gitlab-url", title: nil, items: [.action(urlEntryItem)])
+        let suggestionsSection = CommandPaletteSection(id: "gitlab", title: "Recent", items: [])
+
         return CommandPaletteMenu(
             id: "add-gitlab",
             title: "Add GitLab Link",
-            sections: [section]
+            sections: [urlSection, suggestionsSection]
         )
     }
 
@@ -65,12 +78,25 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
             await self?.loadJiraSuggestions(taskUUID: taskUUID)
         }
 
-        // Return empty menu initially - items will be added when loaded
-        let section = CommandPaletteSection(id: "jira", title: nil, items: [])
+        // URL entry action (always visible at top, pinned so it's not filtered out)
+        let urlEntryItem = CommandPaletteActionItem(
+            id: "jira-url-entry",
+            title: "Enter Jira URL...",
+            subtitle: "Paste any issue URL",
+            icon: .system("link"),
+            isPinned: true,
+            handler: { [weak self] in
+                self?.handleJiraUrlEntry(taskUUID: taskUUID)
+            }
+        )
+
+        let urlSection = CommandPaletteSection(id: "jira-url", title: nil, items: [.action(urlEntryItem)])
+        let suggestionsSection = CommandPaletteSection(id: "jira", title: "Recent", items: [])
+
         return CommandPaletteMenu(
             id: "add-jira",
             title: "Add Jira Link",
-            sections: [section]
+            sections: [urlSection, suggestionsSection]
         )
     }
 
@@ -273,18 +299,35 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
             let suggestions = try await apiClient.fetchRecentGitlabMergeRequests(limit: 20)
             let items = buildGitlabItems(suggestions: suggestions, taskUUID: taskUUID)
 
-            // Update the current menu with the loaded items
-            if !items.isEmpty {
-                let section = CommandPaletteSection(id: "gitlab", title: nil, items: items)
-                let menu = CommandPaletteMenu(
-                    id: "add-gitlab",
-                    title: "Add GitLab Link",
-                    sections: [section]
-                )
-                // Replace current menu on stack
-                viewModel.commandPalette.navigationStack.pop()
-                viewModel.commandPalette.navigationStack.push(menu)
-            }
+            // URL entry section (always present at top, pinned so it's not filtered out)
+            let urlEntryItem = CommandPaletteActionItem(
+                id: "gitlab-url-entry",
+                title: "Enter GitLab URL...",
+                subtitle: "Paste any merge request or issue URL",
+                icon: .system("link"),
+                isPinned: true,
+                handler: { [weak self] in
+                    self?.handleGitlabUrlEntry(taskUUID: taskUUID)
+                }
+            )
+            let urlSection = CommandPaletteSection(id: "gitlab-url", title: nil, items: [.action(urlEntryItem)])
+
+            // Suggestions section (may be empty)
+            let suggestionsSection = CommandPaletteSection(
+                id: "gitlab",
+                title: items.isEmpty ? nil : "Recent",
+                items: items
+            )
+
+            let menu = CommandPaletteMenu(
+                id: "add-gitlab",
+                title: "Add GitLab Link",
+                sections: [urlSection, suggestionsSection]
+            )
+
+            // Replace current menu on stack
+            viewModel.commandPalette.navigationStack.pop()
+            viewModel.commandPalette.navigationStack.push(menu)
         } catch {
             viewModel.showToast(message: "Failed to load GitLab suggestions: \(error.localizedDescription)")
         }
@@ -300,18 +343,35 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
             let suggestions = try await apiClient.fetchRecentJiraIssues(limit: 20, scope: .both)
             let items = buildJiraItems(suggestions: suggestions, taskUUID: taskUUID)
 
-            // Update the current menu with the loaded items
-            if !items.isEmpty {
-                let section = CommandPaletteSection(id: "jira", title: nil, items: items)
-                let menu = CommandPaletteMenu(
-                    id: "add-jira",
-                    title: "Add Jira Link",
-                    sections: [section]
-                )
-                // Replace current menu on stack
-                viewModel.commandPalette.navigationStack.pop()
-                viewModel.commandPalette.navigationStack.push(menu)
-            }
+            // URL entry section (always present at top, pinned so it's not filtered out)
+            let urlEntryItem = CommandPaletteActionItem(
+                id: "jira-url-entry",
+                title: "Enter Jira URL...",
+                subtitle: "Paste any issue URL",
+                icon: .system("link"),
+                isPinned: true,
+                handler: { [weak self] in
+                    self?.handleJiraUrlEntry(taskUUID: taskUUID)
+                }
+            )
+            let urlSection = CommandPaletteSection(id: "jira-url", title: nil, items: [.action(urlEntryItem)])
+
+            // Suggestions section (may be empty)
+            let suggestionsSection = CommandPaletteSection(
+                id: "jira",
+                title: items.isEmpty ? nil : "Recent",
+                items: items
+            )
+
+            let menu = CommandPaletteMenu(
+                id: "add-jira",
+                title: "Add Jira Link",
+                sections: [urlSection, suggestionsSection]
+            )
+
+            // Replace current menu on stack
+            viewModel.commandPalette.navigationStack.pop()
+            viewModel.commandPalette.navigationStack.push(menu)
         } catch {
             viewModel.showToast(message: "Failed to load Jira suggestions: \(error.localizedDescription)")
         }
@@ -375,6 +435,29 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
         viewModel.closeCommandPalette()
     }
 
+    private func handleGitlabUrlEntry(taskUUID: String) {
+        guard let viewModel else { return }
+
+        let query = viewModel.commandPalette.query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !query.isEmpty else {
+            viewModel.showToast(message: "Please enter a GitLab URL")
+            return
+        }
+
+        viewModel.closeCommandPalette()
+
+        Task {
+            do {
+                _ = try await apiClient.addExternalLink(taskUUID: taskUUID, url: query)
+                viewModel.showToast(message: "GitLab link added", icon: .success)
+                viewModel.loadExternalLinks(taskUUID: taskUUID)
+            } catch {
+                viewModel.showToast(message: "Failed to add link: \(error.localizedDescription)")
+            }
+        }
+    }
+
     private func handleJiraSelection(issue: JiraIssueSuggestion, taskUUID: String) {
         guard let viewModel else { return }
 
@@ -391,5 +474,28 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
             }
         }
         viewModel.closeCommandPalette()
+    }
+
+    private func handleJiraUrlEntry(taskUUID: String) {
+        guard let viewModel else { return }
+
+        let query = viewModel.commandPalette.query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !query.isEmpty else {
+            viewModel.showToast(message: "Please enter a Jira URL")
+            return
+        }
+
+        viewModel.closeCommandPalette()
+
+        Task {
+            do {
+                _ = try await apiClient.addExternalLink(taskUUID: taskUUID, url: query)
+                viewModel.showToast(message: "Jira link added", icon: .success)
+                viewModel.loadExternalLinks(taskUUID: taskUUID)
+            } catch {
+                viewModel.showToast(message: "Failed to add link: \(error.localizedDescription)")
+            }
+        }
     }
 }

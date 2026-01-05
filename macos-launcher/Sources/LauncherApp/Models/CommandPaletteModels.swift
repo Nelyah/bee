@@ -104,6 +104,14 @@ enum CommandPaletteItem: Identifiable {
         default: true
         }
     }
+
+    /// Returns true if this item should always be shown regardless of filtering.
+    var isPinned: Bool {
+        switch self {
+        case let .action(item): item.isPinned
+        default: false
+        }
+    }
 }
 
 /// A command palette item wrapped with fuzzy match information for highlighting.
@@ -133,6 +141,8 @@ struct CommandPaletteActionItem: Identifiable {
     let icon: CommandPaletteIcon?
     let shortcut: String?
     let requiresSelectedTask: Bool
+    /// When true, this item is always shown regardless of search query filtering.
+    let isPinned: Bool
     let handler: () -> Void
 
     init(
@@ -142,6 +152,7 @@ struct CommandPaletteActionItem: Identifiable {
         icon: CommandPaletteIcon? = nil,
         shortcut: String? = nil,
         requiresSelectedTask: Bool = false,
+        isPinned: Bool = false,
         handler: @escaping () -> Void
     ) {
         self.id = id
@@ -150,6 +161,7 @@ struct CommandPaletteActionItem: Identifiable {
         self.icon = icon
         self.shortcut = shortcut
         self.requiresSelectedTask = requiresSelectedTask
+        self.isPinned = isPinned
         self.handler = handler
     }
 }

@@ -173,9 +173,10 @@ final class CommandPaletteDataSource: ObservableObject {
 
     /// Filters and ranks items based on the query using `FuzzyMatcher`.
     ///
-    /// Items that don't match the query are filtered out. Matching items
-    /// are sorted by score (highest first). Match indices are captured
-    /// for highlighting in the view layer.
+    /// Items that don't match the query are filtered out, except for pinned items
+    /// which are always included. Matching items are sorted by score (highest first).
+    /// Pinned items appear at the top. Match indices are captured for highlighting
+    /// in the view layer.
     ///
     /// - Parameters:
     ///   - items: The items to filter
@@ -192,50 +193,57 @@ final class CommandPaletteDataSource: ObservableObject {
             return items.map { FuzzyMatchedPaletteItem(item: $0, titleMatch: nil, subtitleMatch: nil) }
         }
 
-        return items
-            .compactMap { item -> FuzzyMatchedPaletteItem? in
-                // Try matching title directly
-                var titleMatch = FuzzyMatcher.match(query, in: item.displayTitle)
+        var pinnedItems: [FuzzyMatchedPaletteItem] = []
+        var matchedItems: [FuzzyMatchedPaletteItem] = []
 
-                // Try matching subtitle
-                let subtitleMatch: FuzzyMatch? = if let subtitle = item.subtitle {
-                    FuzzyMatcher.match(query, in: subtitle)
-                } else {
-                    nil
-                }
+        for item in items {
+            // Try matching title directly
+            var titleMatch = FuzzyMatcher.match(query, in: item.displayTitle)
 
-                // Try matching against section title + item title combined
-                // This allows "groua" to match "Group by" + "Due Date" spanning both
-                var combinedMatch: FuzzyMatch?
-                if let sectionTitle {
-                    let combined = "\(sectionTitle) \(item.displayTitle)"
-                    combinedMatch = FuzzyMatcher.match(query, in: combined)
+            // Try matching subtitle
+            let subtitleMatch: FuzzyMatch? = if let subtitle = item.subtitle {
+                FuzzyMatcher.match(query, in: subtitle)
+            } else {
+                nil
+            }
 
-                    // If combined matched but title didn't, extract title portion of indices
-                    if titleMatch == nil, let match = combinedMatch {
-                        let sectionLength = sectionTitle.count
-                        // Indices > sectionLength are in the item title (after the space)
-                        let titleIndices = match.matchedIndices
-                            .filter { $0 > sectionLength }
-                            .map { $0 - sectionLength - 1 } // Subtract section length + 1 for space
-                        if !titleIndices.isEmpty {
-                            titleMatch = FuzzyMatch(score: match.score, matchedIndices: titleIndices)
-                        }
+            // Try matching against section title + item title combined
+            // This allows "groua" to match "Group by" + "Due Date" spanning both
+            var combinedMatch: FuzzyMatch?
+            if let sectionTitle {
+                let combined = "\(sectionTitle) \(item.displayTitle)"
+                combinedMatch = FuzzyMatcher.match(query, in: combined)
+
+                // If combined matched but title didn't, extract title portion of indices
+                if titleMatch == nil, let match = combinedMatch {
+                    let sectionLength = sectionTitle.count
+                    // Indices > sectionLength are in the item title (after the space)
+                    let titleIndices = match.matchedIndices
+                        .filter { $0 > sectionLength }
+                        .map { $0 - sectionLength - 1 } // Subtract section length + 1 for space
+                    if !titleIndices.isEmpty {
+                        titleMatch = FuzzyMatch(score: match.score, matchedIndices: titleIndices)
                     }
                 }
-
-                // Must have at least one match to include the item
-                guard titleMatch != nil || subtitleMatch != nil || combinedMatch != nil else {
-                    return nil
-                }
-
-                return FuzzyMatchedPaletteItem(
-                    item: item,
-                    titleMatch: titleMatch,
-                    subtitleMatch: subtitleMatch
-                )
             }
-            .sorted { $0.score > $1.score }
+
+            let hasMatch = titleMatch != nil || subtitleMatch != nil || combinedMatch != nil
+            let matchedItem = FuzzyMatchedPaletteItem(
+                item: item,
+                titleMatch: titleMatch,
+                subtitleMatch: subtitleMatch
+            )
+
+            // Pinned items are always included (at the top)
+            if item.isPinned {
+                pinnedItems.append(matchedItem)
+            } else if hasMatch {
+                matchedItems.append(matchedItem)
+            }
+        }
+
+        // Return pinned items first (in original order), then matched items sorted by score
+        return pinnedItems + matchedItems.sorted { $0.score > $1.score }
     }
 
     /// Returns the number of registered contributors.

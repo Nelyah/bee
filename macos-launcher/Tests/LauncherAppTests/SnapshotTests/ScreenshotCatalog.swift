@@ -507,7 +507,9 @@ final class ScreenshotCatalog: SnapshotTestCase {
 
     func testComponent_largeCalendarPicker() {
         // Calendar intrinsic size ~232x180, scaled 1.8x = ~418x324
-        let view = LargeCalendarPicker(selection: .constant(Date()))
+        // Use a fixed date (Jan 15, 2020) to avoid flakiness from "today" highlighting
+        let fixedDate = DateComponents(calendar: .current, year: 2020, month: 1, day: 15).date!
+        let view = LargeCalendarPicker(selection: .constant(fixedDate))
             .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: CGSize(width: 420, height: 326))
     }

@@ -4,15 +4,22 @@ use migration::sea_orm::{
 };
 use migration::{Migrator, MigratorTrait};
 
+use std::collections::hash_map::RandomState;
+use std::hash::{BuildHasher, Hasher};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Builds a unique SQLite file URL for a test database.
+///
+/// Uses both nanosecond timestamp AND a random component to ensure uniqueness
+/// even when tests run in parallel and start at the same nanosecond.
 fn temp_sqlite_url() -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards")
         .as_nanos();
-    let path = std::env::temp_dir().join(format!("bee-migration-{}.sqlite", nanos));
+    // RandomState provides per-process randomness, making collisions extremely unlikely
+    let random = RandomState::new().build_hasher().finish();
+    let path = std::env::temp_dir().join(format!("bee-migration-{}-{}.sqlite", nanos, random));
     format!("sqlite://{}?mode=rwc", path.display())
 }
 

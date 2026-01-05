@@ -190,6 +190,9 @@ struct TaskDetailView: View {
                     emailLinksSection
                     linkedTasksSection
                     historySection
+
+                    // Reserve space for BottomHintBar overlay so scroll content isn't hidden
+                    Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.large)
                 }
                 .frame(maxWidth: TaskDetailLayout.maxContentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity) // Centers content when view is wider

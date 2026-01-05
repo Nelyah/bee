@@ -144,6 +144,9 @@ struct ContentView: View {
                     onAddAttachment: {
                         viewModel.addAttachment()
                     },
+                    onSelectAttachment: { attachment in
+                        viewModel.selectAttachment(attachment)
+                    },
                     onOpenAttachment: { attachment in
                         viewModel.openAttachment(attachment)
                     },

@@ -128,6 +128,8 @@ struct TaskDetailView: View {
     var confirmingDeleteAttachmentId: Int?
     /// Called when the user wants to add an attachment.
     var onAddAttachment: () -> Void = {}
+    /// Called when the user clicks to select an attachment.
+    var onSelectAttachment: (TaskAttachmentDto) -> Void = { _ in }
     /// Called when the user wants to open an attachment.
     var onOpenAttachment: (TaskAttachmentDto) -> Void = { _ in }
     /// Called when the user starts the delete confirmation.
@@ -191,9 +193,13 @@ struct TaskDetailView: View {
                 }
                 .frame(maxWidth: TaskDetailLayout.maxContentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity) // Centers content when view is wider
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    onClearFocus()
+                .background {
+                    // Tap on empty space clears focus, but doesn't steal events from child views
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onClearFocus()
+                        }
                 }
             }
             .onExitCommand {
@@ -435,6 +441,7 @@ struct TaskDetailView: View {
                 focusedItem: focusedItem,
                 confirmingDeleteId: confirmingDeleteAttachmentId,
                 onAdd: onAddAttachment,
+                onSelect: onSelectAttachment,
                 onOpen: onOpenAttachment,
                 onDelete: onDeleteAttachment,
                 onConfirmDelete: onConfirmDeleteAttachment,

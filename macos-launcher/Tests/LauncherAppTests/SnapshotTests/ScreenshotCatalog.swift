@@ -513,6 +513,76 @@ final class ScreenshotCatalog: SnapshotTestCase {
             .background(ThemeManager.current.base)
         assertViewSnapshot(view, size: CGSize(width: 420, height: 326))
     }
+
+    // MARK: - Attachment Row States
+
+    func testComponent_attachmentRow_default() {
+        let attachment = TaskAttachmentDto(
+            id: 1,
+            uuid: "attach-001",
+            filename: "design-spec.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 245_760,
+            createdAt: "2024-01-17T14:30:00Z"
+        )
+        let view = AttachmentRow(
+            attachment: attachment,
+            isFocused: false,
+            isConfirmingDelete: false,
+            onSelect: {},
+            onOpen: {},
+            onDelete: {},
+            onConfirmDelete: {},
+            onCancelDelete: {}
+        )
+        .frame(width: 350)
+        .background(ThemeManager.current.base)
+        assertViewSnapshot(view, size: CGSize(width: 350, height: 40))
+    }
+
+    func testComponent_attachmentRow_focused() {
+        let attachment = TaskAttachmentDto(
+            id: 1,
+            uuid: "attach-001",
+            filename: "design-spec.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 245_760,
+            createdAt: "2024-01-17T14:30:00Z"
+        )
+        // isFocused: true shows the same UI as hover (delete button visible + focus ring)
+        let view = AttachmentRow(
+            attachment: attachment,
+            isFocused: true,
+            isConfirmingDelete: false,
+            onSelect: {},
+            onOpen: {},
+            onDelete: {},
+            onConfirmDelete: {},
+            onCancelDelete: {}
+        )
+        .frame(width: 350)
+        .background(ThemeManager.current.base)
+        assertViewSnapshot(view, size: CGSize(width: 350, height: 40))
+    }
+
+    // MARK: - Email Link Row States
+
+    func testComponent_emailLinkRow_default() {
+        let link = EmailLinkDto(
+            id: 1,
+            uuid: "link-001",
+            messageId: "<test@example.com>",
+            subject: "Meeting notes from standup",
+            sender: "alice@example.com",
+            sentDate: "2024-01-17T14:30:00Z",
+            createdAt: "2024-01-17T15:00:00Z",
+            mailUrl: "message://%3ctest%40example.com%3e"
+        )
+        let view = EmailLinkRow(link: link, onOpen: {})
+            .frame(width: 350)
+            .background(ThemeManager.current.base)
+        assertViewSnapshot(view, size: CGSize(width: 350, height: 50))
+    }
 }
 
 // MARK: - Helper Views

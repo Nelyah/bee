@@ -297,6 +297,37 @@ In command palette, highlight the matched characters in fuzzy search results wit
 
 ---
 
+## TICKET-010: macOS Mail Integration
+**Completed:** 2026-01-05
+
+### Summary
+Allow linking emails to tasks by dragging from Apple Mail into the task.
+
+### Resolution
+
+#### Backend (Rust)
+- Created `EmailLink` struct with id, task_uuid, message_id, subject, sender, sent_date, mail_url
+- Added migration for `email_links` table
+- API endpoints: POST create, GET list, DELETE remove
+- Returns `mail_url` formatted as `message://<encoded-message-id>` for Mail.app
+
+#### macOS Launcher
+- Created `EmailLinksSection` and `EmailLinkRow` components
+- Implemented drag-and-drop from Apple Mail using file promises (`NSFilePromiseReceiver`)
+- Created `FilePromiseDropView.swift` with AppKit NSView for reliable file promise handling
+- Parses `.eml` files dropped from Mail to extract message-id, subject, sender
+- Created `EmailDropHandler.swift` for parsing email metadata
+- Click to open email in Mail.app via `message://` URL scheme
+- Created `ReliableHover.swift` using AppKit `NSTrackingArea` for hover effects (workaround for Apple bug FB11988707)
+
+#### Files Created
+- `Sources/LauncherApp/Views/Components/EmailLinksSection.swift`
+- `Sources/LauncherApp/Utilities/FilePromiseDropView.swift`
+- `Sources/LauncherApp/Utilities/EmailDropHandler.swift`
+- `Sources/LauncherApp/Utilities/ReliableHover.swift`
+
+---
+
 ## TICKET-009: File Attachments for Tasks
 **Completed:** 2026-01-04
 

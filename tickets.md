@@ -6,49 +6,14 @@ This document contains detailed tickets for features requested in `feature-list.
 
 ## Table of Contents
 
-1. [TICKET-010: macOS Mail Integration](#ticket-010)
-2. [TICKET-015: Project Overview View](#ticket-015)
-3. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-4. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-5. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-6. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-7. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+1. [TICKET-015: Project Overview View](#ticket-015)
+2. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
+3. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
+4. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+5. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+6. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
-
----
-
-<a name="ticket-010"></a>
-## TICKET-010: macOS Mail Integration
-
-### Summary
-Allow linking emails to tasks by dragging from Apple Mail into the task.
-
-### Priority
-Low
-
-### Complexity
-Very High ⚠️⚠️
-
-### Affected Layers
-- **macOS**: Drag-drop handling, `NSItemProvider` processing, Mail URL scheme handling
-
-### Implementation Notes
-1. Research Apple Mail drag-and-drop data format
-2. Register for `NSItemProvider` types that Mail provides
-3. Extract email metadata (subject, sender, date, message ID)
-4. Create link using `message://` URL scheme
-5. Store as special link type or attachment
-
-### Acceptance Criteria
-- [ ] Can drag email from Mail.app to task detail
-- [ ] Email metadata captured (subject, sender)
-- [ ] Clicking link opens email in Mail.app
-- [ ] Works with multiple emails
-
-### Dependencies
-- TICKET-009 (attachments) or TICKET-007 (links) as storage mechanism
-- macOS-specific, not portable
 
 ---
 
@@ -370,9 +335,6 @@ None
 - TICKET-015: Project Overview View
 - TICKET-022: Help Mode
 
-### Very High Complexity (2+ weeks)
-- TICKET-010: macOS Mail Integration
-
 ---
 
 ## Tickets Requiring UX Designer
@@ -392,6 +354,3 @@ None
 4. TICKET-020 (filter grouping - needs UX)
 5. TICKET-021 (info tooltips)
 6. TICKET-022 (help mode)
-
-### Phase 3: Complex Integrations
-7. TICKET-010 (mail integration)

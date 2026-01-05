@@ -14,6 +14,7 @@ struct AttachmentsSection: View {
     let focusedItem: DetailFocusableItem?
     let confirmingDeleteId: Int?
     let onAdd: () -> Void
+    let onSelect: (TaskAttachmentDto) -> Void
     let onOpen: (TaskAttachmentDto) -> Void
     let onDelete: (TaskAttachmentDto) -> Void
     let onConfirmDelete: (TaskAttachmentDto) -> Void
@@ -63,6 +64,7 @@ struct AttachmentsSection: View {
                     attachment: attachment,
                     isFocused: isAttachmentFocused(attachment),
                     isConfirmingDelete: confirmingDeleteId == attachment.id,
+                    onSelect: { onSelect(attachment) },
                     onOpen: { onOpen(attachment) },
                     onDelete: { onDelete(attachment) },
                     onConfirmDelete: { onConfirmDelete(attachment) },
@@ -117,6 +119,7 @@ struct AttachmentRow: View {
     let attachment: TaskAttachmentDto
     let isFocused: Bool
     let isConfirmingDelete: Bool
+    let onSelect: () -> Void
     let onOpen: () -> Void
     let onDelete: () -> Void
     let onConfirmDelete: () -> Void
@@ -155,8 +158,13 @@ struct AttachmentRow: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.small)
         .padding(.vertical, DesignTokens.Spacing.extraSmall)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isHovering ? ThemeManager.current.surface1.opacity(0.5) : Color.clear)
+        )
         .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
+        .onReliableHover { isHovering = $0 }
+        .onTapGesture { onSelect() }
         .onTapGesture(count: 2) { onOpen() }
         .modifier(DetailFocusRing(isFocused: isFocused))
         .help(isFocused ? "Enter: Open • Space: Quick Look • y: Copy filename • x: Delete" : "Double-click to open")
@@ -231,6 +239,7 @@ struct AttachmentRow: View {
         focusedItem: .attachment(attachments[0]),
         confirmingDeleteId: nil,
         onAdd: {},
+        onSelect: { _ in },
         onOpen: { _ in },
         onDelete: { _ in },
         onConfirmDelete: { _ in },
@@ -249,6 +258,7 @@ struct AttachmentRow: View {
         focusedItem: .addAttachmentButton,
         confirmingDeleteId: nil,
         onAdd: {},
+        onSelect: { _ in },
         onOpen: { _ in },
         onDelete: { _ in },
         onConfirmDelete: { _ in },
@@ -276,6 +286,7 @@ struct AttachmentRow: View {
         focusedItem: .attachment(attachment),
         confirmingDeleteId: 1,
         onAdd: {},
+        onSelect: { _ in },
         onOpen: { _ in },
         onDelete: { _ in },
         onConfirmDelete: { _ in },

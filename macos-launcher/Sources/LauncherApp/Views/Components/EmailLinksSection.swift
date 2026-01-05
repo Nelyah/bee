@@ -67,12 +67,12 @@ struct EmailLinkRow: View {
             .padding(.vertical, DesignTokens.Spacing.extraSmall)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(isHovering ? ThemeManager.current.surface0 : Color.clear)
+                    .fill(isHovering ? ThemeManager.current.surface1.opacity(0.5) : Color.clear)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
+        .onReliableHover { isHovering = $0 }
         .help("Click to open in Mail.app")
     }
 }

@@ -35,6 +35,18 @@ final class FilePromiseDropNSView: NSView {
         ])
     }
 
+    // MARK: - Mouse Event Passthrough
+
+    /// Allow mouse events to pass through to underlying SwiftUI views.
+    ///
+    /// This view is used as an overlay for drag-and-drop support. Without this override,
+    /// NSView intercepts all mouse events (clicks, hovers) and blocks them from reaching
+    /// the SwiftUI views underneath. By returning nil, we make this view "transparent"
+    /// to regular mouse events while still receiving drag events via registerForDraggedTypes.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+
     // MARK: - NSDraggingDestination
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -200,6 +212,11 @@ struct FilePromiseDropOverlay: NSViewRepresentable {
 
 extension View {
     /// Adds file promise drop support for Apple Mail emails.
+    ///
+    /// Uses an AppKit NSView overlay for drag-and-drop because Apple Mail provides
+    /// emails as file promises that require `NSDraggingDestination` to handle properly.
+    /// The overlay is made non-interactive for regular mouse events (hover, click)
+    /// so they pass through to the SwiftUI content underneath.
     func onFilePromiseDrop(
         onFileDropped: @escaping ([URL]) -> Void,
         onEmailDropped: @escaping (ParsedEmail) -> Void
@@ -209,6 +226,10 @@ extension View {
                 onFileDropped: onFileDropped,
                 onEmailDropped: onEmailDropped
             )
+            // Allow hover and click events to pass through to SwiftUI content.
+            // Drag-and-drop still works because NSDraggingDestination uses a
+            // separate event delivery system independent of hit-testing.
+            .allowsHitTesting(false)
         }
     }
 }

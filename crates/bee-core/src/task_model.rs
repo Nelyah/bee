@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::{cmp::Ordering, fmt};
 
 use super::task_properties::TaskProperties;
+use crate::email_link::EmailLink;
 use crate::{CoreError, CoreResult};
 
 #[derive(
@@ -311,6 +312,8 @@ pub struct Task {
     pub(crate) links: Vec<Link>,
     #[serde(default)]
     pub(crate) history: Vec<TaskHistory>,
+    #[serde(default)]
+    pub(crate) email_links: Vec<crate::email_link::EmailLink>,
 }
 
 impl Default for Task {
@@ -330,6 +333,7 @@ impl Default for Task {
             project: None,
             links: Vec::default(),
             history: Vec::default(),
+            email_links: Vec::default(),
         }
     }
 }
@@ -459,6 +463,10 @@ impl Task {
 
     pub fn get_history(&self) -> &Vec<TaskHistory> {
         &self.history
+    }
+
+    pub fn get_email_links(&self) -> &Vec<crate::email_link::EmailLink> {
+        &self.email_links
     }
 
     pub fn get_annotations(&self) -> &Vec<TaskAnnotation> {
@@ -836,6 +844,47 @@ impl Task {
                         .push(Link::new(self.uuid, *uuid, LinkType::Duplicates));
                     existing.insert(*uuid);
                 }
+            }
+        }
+
+        // Handle email link removal by message_id
+        if let Some(message_ids) = &props.email_link_remove {
+            for msg_id in message_ids {
+                if let Some(pos) = self
+                    .email_links
+                    .iter()
+                    .position(|e| &e.message_id == msg_id)
+                {
+                    let removed = self.email_links.remove(pos);
+                    self.history.push(TaskHistory {
+                        id: None,
+                        datetime: Local::now(),
+                        value: format!("Removed email link: '{}'", removed.subject),
+                    });
+                }
+            }
+        }
+
+        // Handle email link addition
+        if let Some(input) = &props.email_link_add {
+            // Check for duplicate message_id (avoid re-adding same email)
+            if !self
+                .email_links
+                .iter()
+                .any(|e| e.message_id == input.message_id)
+            {
+                let link = EmailLink::new(
+                    input.message_id.clone(),
+                    input.subject.clone(),
+                    input.sender.clone(),
+                    input.sent_date,
+                );
+                self.history.push(TaskHistory {
+                    id: None,
+                    datetime: Local::now(),
+                    value: format!("Added email link: '{}'", link.get_subject()),
+                });
+                self.email_links.push(link);
             }
         }
 

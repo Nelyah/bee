@@ -2,6 +2,7 @@
 
 pub mod annotations;
 pub mod attachments;
+pub mod email_links;
 pub mod external_links;
 pub mod history;
 pub mod links;

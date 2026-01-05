@@ -635,3 +635,236 @@ fn test_apply_properties_to_completed_task_succeeds() {
         "Completed task should still have urgency = None"
     );
 }
+
+// ===== Email Link Tests =====
+
+#[test]
+fn test_apply_email_link_add() {
+    let mut task = setup_task();
+    assert!(task.email_links.is_empty());
+
+    let input = crate::email_link::EmailLinkInput::new(
+        "<test123@example.com>".to_string(),
+        "Meeting Notes".to_string(),
+        "alice@example.com".to_string(),
+        None,
+    );
+
+    let props = TaskProperties {
+        email_link_add: Some(input),
+        ..Default::default()
+    };
+
+    let result = task.apply(&props);
+    assert!(result.is_ok());
+
+    // Email link should be added
+    assert_eq!(task.email_links.len(), 1);
+    assert_eq!(task.email_links[0].message_id, "<test123@example.com>");
+    assert_eq!(task.email_links[0].subject, "Meeting Notes");
+    assert_eq!(task.email_links[0].sender, "alice@example.com");
+
+    // History should record the addition
+    let history_entry = task.history.last().unwrap();
+    assert!(history_entry.value.contains("Added email link"));
+    assert!(history_entry.value.contains("Meeting Notes"));
+}
+
+#[test]
+fn test_apply_email_link_add_with_sent_date() {
+    let mut task = setup_task();
+    let sent_date = Local::now();
+
+    let input = crate::email_link::EmailLinkInput::new(
+        "<dated@example.com>".to_string(),
+        "With Date".to_string(),
+        "bob@example.com".to_string(),
+        Some(sent_date),
+    );
+
+    let props = TaskProperties {
+        email_link_add: Some(input),
+        ..Default::default()
+    };
+
+    task.apply(&props).unwrap();
+
+    assert_eq!(task.email_links.len(), 1);
+    assert_eq!(task.email_links[0].get_sent_date(), Some(sent_date));
+}
+
+#[test]
+fn test_apply_email_link_add_duplicate_ignored() {
+    let mut task = setup_task();
+
+    let input = crate::email_link::EmailLinkInput::new(
+        "<unique@example.com>".to_string(),
+        "First Add".to_string(),
+        "alice@example.com".to_string(),
+        None,
+    );
+
+    // Add first time
+    let props1 = TaskProperties {
+        email_link_add: Some(input.clone()),
+        ..Default::default()
+    };
+    task.apply(&props1).unwrap();
+    assert_eq!(task.email_links.len(), 1);
+    let history_count_after_first = task.history.len();
+
+    // Try to add same message_id again
+    let input2 = crate::email_link::EmailLinkInput::new(
+        "<unique@example.com>".to_string(), // Same message_id
+        "Second Add Attempt".to_string(),   // Different subject
+        "bob@example.com".to_string(),
+        None,
+    );
+    let props2 = TaskProperties {
+        email_link_add: Some(input2),
+        ..Default::default()
+    };
+    task.apply(&props2).unwrap();
+
+    // Should still be only 1 email link (duplicate ignored)
+    assert_eq!(task.email_links.len(), 1);
+    // Original subject should be preserved
+    assert_eq!(task.email_links[0].subject, "First Add");
+    // No new history entry for duplicate
+    assert_eq!(task.history.len(), history_count_after_first);
+}
+
+#[test]
+fn test_apply_email_link_remove() {
+    let mut task = setup_task();
+
+    // First add an email link
+    let input = crate::email_link::EmailLinkInput::new(
+        "<to-remove@example.com>".to_string(),
+        "Will Be Removed".to_string(),
+        "alice@example.com".to_string(),
+        None,
+    );
+    task.apply(&TaskProperties {
+        email_link_add: Some(input),
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(task.email_links.len(), 1);
+
+    // Now remove it
+    let props = TaskProperties {
+        email_link_remove: Some(vec!["<to-remove@example.com>".to_string()]),
+        ..Default::default()
+    };
+    task.apply(&props).unwrap();
+
+    // Email link should be removed
+    assert!(task.email_links.is_empty());
+
+    // History should record the removal
+    let history_entry = task.history.last().unwrap();
+    assert!(history_entry.value.contains("Removed email link"));
+    assert!(history_entry.value.contains("Will Be Removed"));
+}
+
+#[test]
+fn test_apply_email_link_remove_nonexistent_no_error() {
+    let mut task = setup_task();
+    let history_before = task.history.len();
+
+    // Try to remove a non-existent email link
+    let props = TaskProperties {
+        email_link_remove: Some(vec!["<nonexistent@example.com>".to_string()]),
+        ..Default::default()
+    };
+
+    // Should not error
+    let result = task.apply(&props);
+    assert!(result.is_ok());
+
+    // No history entry should be added
+    assert_eq!(task.history.len(), history_before);
+}
+
+#[test]
+fn test_apply_email_link_add_and_remove_multiple() {
+    let mut task = setup_task();
+
+    // Add two email links
+    for i in 1..=2 {
+        let input = crate::email_link::EmailLinkInput::new(
+            format!("<email{}@example.com>", i),
+            format!("Email {}", i),
+            "sender@example.com".to_string(),
+            None,
+        );
+        task.apply(&TaskProperties {
+            email_link_add: Some(input),
+            ..Default::default()
+        })
+        .unwrap();
+    }
+    assert_eq!(task.email_links.len(), 2);
+
+    // Remove the first one
+    let props = TaskProperties {
+        email_link_remove: Some(vec!["<email1@example.com>".to_string()]),
+        ..Default::default()
+    };
+    task.apply(&props).unwrap();
+
+    assert_eq!(task.email_links.len(), 1);
+    assert_eq!(task.email_links[0].message_id, "<email2@example.com>");
+}
+
+#[test]
+fn test_apply_email_link_combined_with_other_changes() {
+    let mut task = setup_task();
+
+    // Apply multiple changes including email link
+    let input = crate::email_link::EmailLinkInput::new(
+        "<combined@example.com>".to_string(),
+        "Combined Test".to_string(),
+        "sender@example.com".to_string(),
+        None,
+    );
+
+    let props = TaskProperties {
+        summary: Some("Updated Summary".to_string()),
+        tags_add: Some(vec!["new_tag".to_string()]),
+        email_link_add: Some(input),
+        ..Default::default()
+    };
+
+    task.apply(&props).unwrap();
+
+    // All changes should be applied
+    assert_eq!(task.summary, "Updated Summary");
+    assert!(task.tags.contains(&"new_tag".to_string()));
+    assert_eq!(task.email_links.len(), 1);
+    assert_eq!(task.email_links[0].subject, "Combined Test");
+}
+
+#[test]
+fn test_email_link_getter() {
+    let mut task = setup_task();
+
+    let input = crate::email_link::EmailLinkInput::new(
+        "<getter@example.com>".to_string(),
+        "Getter Test".to_string(),
+        "sender@example.com".to_string(),
+        None,
+    );
+
+    task.apply(&TaskProperties {
+        email_link_add: Some(input),
+        ..Default::default()
+    })
+    .unwrap();
+
+    // Test the getter method
+    let links = task.get_email_links();
+    assert_eq!(links.len(), 1);
+    assert_eq!(links[0].get_message_id(), "<getter@example.com>");
+}

@@ -138,6 +138,10 @@ struct TaskDetailView: View {
     var onCancelDeleteAttachment: () -> Void = {}
     /// Called when files are dropped onto the attachments section.
     var onDropAttachments: ([URL]) -> Void = { _ in }
+    /// Called when an email is dropped from Apple Mail.
+    var onEmailDrop: (ParsedEmail) -> Void = { _ in }
+    /// Called when the user clicks on an email link to open it.
+    var onOpenEmailLink: (EmailLinkDto) -> Void = { _ in }
 
     // MARK: - Linked Tasks
 
@@ -181,6 +185,7 @@ struct TaskDetailView: View {
 
                     annotationsSection
                     attachmentsSection
+                    emailLinksSection
                     linkedTasksSection
                     historySection
                 }
@@ -434,7 +439,20 @@ struct TaskDetailView: View {
                 onDelete: onDeleteAttachment,
                 onConfirmDelete: onConfirmDeleteAttachment,
                 onCancelDelete: onCancelDeleteAttachment,
-                onDrop: onDropAttachments
+                onDrop: onDropAttachments,
+                onEmailDrop: onEmailDrop
+            )
+        }
+    }
+
+    // MARK: - Email Links Section
+
+    @ViewBuilder
+    private var emailLinksSection: some View {
+        if let detail = detailForTask {
+            EmailLinksSection(
+                emailLinks: detail.emailLinks,
+                onOpen: onOpenEmailLink
             )
         }
     }
@@ -577,68 +595,6 @@ struct TaskDetailView: View {
         return externalLinksState.errorMessage
     }
 
-    // MARK: - Focus Helpers
-
-    /// Whether the task name is currently keyboard-focused.
-    private var isTaskNameFocused: Bool {
-        if case .taskName = focusedItem {
-            return true
-        }
-        return false
-    }
-
-    /// Whether the UUID row is currently keyboard-focused.
-    private var isUUIDFocused: Bool {
-        if case .uuid = focusedItem {
-            return true
-        }
-        return false
-    }
-
-    /// Whether the project row is currently keyboard-focused.
-    private var isProjectFocused: Bool {
-        if case .project = focusedItem {
-            return true
-        }
-        return false
-    }
-
-    /// Returns the focused link ID if the current focused item is an external link.
-    private var focusedLinkId: Int? {
-        switch focusedItem {
-        case let .gitlabMR(link), let .jiraIssue(link):
-            link.id
-        default:
-            nil
-        }
-    }
-
-    /// Returns the focused tag index if the current focused item is a tag.
-    private var keyboardFocusedTagIndex: Int? {
-        switch focusedItem {
-        case let .tag(_, index):
-            index
-        default:
-            nil
-        }
-    }
-
-    /// Whether the add tag button is keyboard-focused.
-    private var isAddButtonFocused: Bool {
-        if case .addTagButton = focusedItem {
-            return true
-        }
-        return false
-    }
-
-    /// Whether the due date row is keyboard-focused.
-    private var isDueDateFocused: Bool {
-        if case .dueDate = focusedItem {
-            return true
-        }
-        return false
-    }
-
     // MARK: - Project Row
 
     private var projectRow: some View {
@@ -655,6 +611,70 @@ struct TaskDetailView: View {
             onSelectCompletion: onSelectProjectCompletion
         )
         .zIndex(2) // Ensure project completion dropdown overlays Dates section
+    }
+}
+
+// MARK: - Focus Helpers
+
+private extension TaskDetailView {
+    /// Whether the task name is currently keyboard-focused.
+    var isTaskNameFocused: Bool {
+        if case .taskName = focusedItem {
+            return true
+        }
+        return false
+    }
+
+    /// Whether the UUID row is currently keyboard-focused.
+    var isUUIDFocused: Bool {
+        if case .uuid = focusedItem {
+            return true
+        }
+        return false
+    }
+
+    /// Whether the project row is currently keyboard-focused.
+    var isProjectFocused: Bool {
+        if case .project = focusedItem {
+            return true
+        }
+        return false
+    }
+
+    /// Returns the focused link ID if the current focused item is an external link.
+    var focusedLinkId: Int? {
+        switch focusedItem {
+        case let .gitlabMR(link), let .jiraIssue(link):
+            link.id
+        default:
+            nil
+        }
+    }
+
+    /// Returns the focused tag index if the current focused item is a tag.
+    var keyboardFocusedTagIndex: Int? {
+        switch focusedItem {
+        case let .tag(_, index):
+            index
+        default:
+            nil
+        }
+    }
+
+    /// Whether the add tag button is keyboard-focused.
+    var isAddButtonFocused: Bool {
+        if case .addTagButton = focusedItem {
+            return true
+        }
+        return false
+    }
+
+    /// Whether the due date row is keyboard-focused.
+    var isDueDateFocused: Bool {
+        if case .dueDate = focusedItem {
+            return true
+        }
+        return false
     }
 }
 

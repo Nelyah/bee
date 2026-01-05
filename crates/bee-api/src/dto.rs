@@ -1,5 +1,6 @@
 use bee_core::{
     attachment::Attachment,
+    email_link::EmailLink,
     task::{Link, LinkType, Task, TaskAnnotation, TaskHistory, TaskStatus},
 };
 use chrono::{DateTime, Local};
@@ -185,6 +186,7 @@ pub struct ApiTaskDetail {
     pub history: Vec<TaskHistoryDto>,
     pub links: Vec<TaskLinkDto>,
     pub attachments: Vec<AttachmentDto>,
+    pub email_links: Vec<EmailLinkDto>,
 }
 
 impl ApiTaskDetail {
@@ -223,6 +225,11 @@ impl ApiTaskDetail {
             attachments: attachments
                 .into_iter()
                 .map(AttachmentDto::from_attachment)
+                .collect(),
+            email_links: task
+                .get_email_links()
+                .iter()
+                .map(EmailLinkDto::from_email_link)
                 .collect(),
         }
     }
@@ -285,6 +292,37 @@ impl AttachmentDto {
             mime_type: attachment.mime_type,
             size_bytes: attachment.size_bytes,
             created_at: attachment.created_at,
+        }
+    }
+}
+
+/// Email link response payload (reference to email in Apple Mail).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct EmailLinkDto {
+    pub id: i32,
+    #[schema(value_type = String, format = "uuid")]
+    pub uuid: Uuid,
+    pub message_id: String,
+    pub subject: String,
+    pub sender: String,
+    #[schema(value_type = String, format = DateTime)]
+    pub sent_date: Option<DateTime<Local>>,
+    #[schema(value_type = String, format = DateTime)]
+    pub created_at: DateTime<Local>,
+    pub mail_url: String,
+}
+
+impl EmailLinkDto {
+    pub fn from_email_link(link: &EmailLink) -> Self {
+        Self {
+            id: link.get_id().unwrap_or(0),
+            uuid: link.get_uuid(),
+            message_id: link.get_message_id().to_string(),
+            subject: link.get_subject().to_string(),
+            sender: link.get_sender().to_string(),
+            sent_date: link.get_sent_date(),
+            created_at: link.get_created_at(),
+            mail_url: link.mail_url(),
         }
     }
 }

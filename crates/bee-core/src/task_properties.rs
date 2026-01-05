@@ -5,6 +5,7 @@ use serde_json::Value;
 use super::task_prop_parser::TaskPropertyParser;
 use super::{DependsOnIdentifier, Project, TaskAnnotation, TaskStatus};
 use crate::CoreResult;
+use crate::email_link::EmailLinkInput;
 use crate::lexer::Lexer;
 
 /// This structure contains information regarding setting fields for a Task
@@ -40,6 +41,10 @@ pub struct TaskProperties {
     pub(crate) child_of: Option<Vec<DependsOnIdentifier>>,
     pub(crate) related_to: Option<Vec<DependsOnIdentifier>>,
     pub(crate) duplicates: Option<Vec<DependsOnIdentifier>>,
+    /// Email link to add to the task
+    pub(crate) email_link_add: Option<EmailLinkInput>,
+    /// Message IDs of email links to remove from the task
+    pub(crate) email_link_remove: Option<Vec<String>>,
 }
 
 fn is_project_absent(project: &Option<Option<Project>>) -> bool {
@@ -126,6 +131,16 @@ impl TaskProperties {
     /// This will ONLY impact tasks that are PENDING
     pub fn set_active_status(&mut self, status: bool) {
         self.active_status = Some(status);
+    }
+
+    /// Sets an email link to add to the task
+    pub fn set_email_link_add(&mut self, input: EmailLinkInput) {
+        self.email_link_add = Some(input);
+    }
+
+    /// Sets message IDs of email links to remove from the task
+    pub fn set_email_link_remove(&mut self, message_ids: Vec<String>) {
+        self.email_link_remove = Some(message_ids);
     }
 
     pub fn from(values: &[String]) -> CoreResult<TaskProperties> {

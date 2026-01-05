@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Displays file attachments for a task with keyboard navigation and actions.
 ///
@@ -6,7 +7,7 @@ import SwiftUI
 /// - Compact list layout for keyboard-first navigation
 /// - MIME-type icons, filename, size display
 /// - Inline delete confirmation ("Delete? y/n")
-/// - Drag-and-drop support for adding files
+/// - Drag-and-drop support for adding files and emails from Apple Mail
 /// - Add button + "a" keyboard shortcut
 struct AttachmentsSection: View {
     let attachments: [TaskAttachmentDto]
@@ -18,6 +19,7 @@ struct AttachmentsSection: View {
     let onConfirmDelete: (TaskAttachmentDto) -> Void
     let onCancelDelete: () -> Void
     let onDrop: ([URL]) -> Void
+    let onEmailDrop: (ParsedEmail) -> Void
 
     var body: some View {
         DetailSectionWithAction(
@@ -32,10 +34,11 @@ struct AttachmentsSection: View {
                 attachmentsList
             }
         }
-        .dropDestination(for: URL.self) { urls, _ in
-            onDrop(urls)
-            return !urls.isEmpty
-        }
+        // Use AppKit-based drop handler for proper file promise support (Apple Mail)
+        .onFilePromiseDrop(
+            onFileDropped: onDrop,
+            onEmailDropped: onEmailDrop
+        )
     }
 
     @ViewBuilder
@@ -232,7 +235,8 @@ struct AttachmentRow: View {
         onDelete: { _ in },
         onConfirmDelete: { _ in },
         onCancelDelete: {},
-        onDrop: { _ in }
+        onDrop: { _ in },
+        onEmailDrop: { _ in }
     )
     .padding()
     .frame(width: 400)
@@ -249,7 +253,8 @@ struct AttachmentRow: View {
         onDelete: { _ in },
         onConfirmDelete: { _ in },
         onCancelDelete: {},
-        onDrop: { _ in }
+        onDrop: { _ in },
+        onEmailDrop: { _ in }
     )
     .padding()
     .frame(width: 400)
@@ -275,7 +280,8 @@ struct AttachmentRow: View {
         onDelete: { _ in },
         onConfirmDelete: { _ in },
         onCancelDelete: {},
-        onDrop: { _ in }
+        onDrop: { _ in },
+        onEmailDrop: { _ in }
     )
     .padding()
     .frame(width: 400)

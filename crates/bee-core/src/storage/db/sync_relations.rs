@@ -1,6 +1,7 @@
 use super::tables;
+use crate::email_link::EmailLink;
 use crate::task::{Link, LinkType, TaskAnnotation, TaskHistory};
-use tables::{annotations, history, links, tags, tasks, tasks_tags};
+use tables::{annotations, email_links, history, links, tags, tasks, tasks_tags};
 
 use log::debug;
 use std::collections::{HashMap, HashSet};
@@ -659,5 +660,120 @@ pub(super) async fn sync_tags(
             .await?;
     }
 
+    Ok(())
+}
+
+/// Sync email links for a task to the database.
+///
+/// Email links store references to emails in Apple Mail, identified by
+/// RFC 5322 Message-ID. This allows tasks to be linked to specific emails.
+pub(super) async fn sync_email_links(
+    db: &DatabaseTransaction,
+    task_model: &tasks::Model,
+    desired_email_links: &[EmailLink],
+) -> Result<(), DbErr> {
+    let existing_rows: Vec<email_links::Model> = email_links::Entity::find()
+        .filter(email_links::Column::TaskId.eq(task_model.db_id))
+        .all(db)
+        .await?;
+
+    let mut existing_map: HashMap<i32, email_links::Model> = HashMap::new();
+    let mut existing_ids = Vec::new();
+    for row in existing_rows {
+        existing_ids.push(row.id);
+        existing_map.insert(row.id, row);
+    }
+
+    let desired_ids: HashSet<i32> = desired_email_links
+        .iter()
+        .filter_map(|link| link.id)
+        .collect();
+
+    let to_delete: Vec<i32> = existing_ids
+        .into_iter()
+        .filter(|id| !desired_ids.contains(id))
+        .collect();
+    if !to_delete.is_empty() {
+        email_links::Entity::delete_many()
+            .filter(
+                Condition::all()
+                    .add(email_links::Column::TaskId.eq(task_model.db_id))
+                    .add(email_links::Column::Id.is_in(to_delete)),
+            )
+            .exec(db)
+            .await?;
+    }
+
+    for link in desired_email_links {
+        let created_at = link.created_at.to_rfc3339();
+        let sent_date = link.sent_date.map(|dt| dt.to_rfc3339());
+
+        if let Some(id) = link.id
+            && let Some(existing_model) = existing_map.get(&id)
+        {
+            let mut active = existing_model.clone().into_active_model();
+            let mut changed = false;
+
+            if existing_model.message_id != link.message_id {
+                active.message_id = Set(link.message_id.clone());
+                changed = true;
+            } else {
+                active.message_id = ActiveValue::Unchanged(existing_model.message_id.clone());
+            }
+
+            if existing_model.subject != link.subject {
+                active.subject = Set(link.subject.clone());
+                changed = true;
+            } else {
+                active.subject = ActiveValue::Unchanged(existing_model.subject.clone());
+            }
+
+            if existing_model.sender != link.sender {
+                active.sender = Set(link.sender.clone());
+                changed = true;
+            } else {
+                active.sender = ActiveValue::Unchanged(existing_model.sender.clone());
+            }
+
+            if existing_model.sent_date != sent_date {
+                active.sent_date = Set(sent_date.clone());
+                changed = true;
+            } else {
+                active.sent_date = ActiveValue::Unchanged(existing_model.sent_date.clone());
+            }
+
+            if existing_model.created_at != created_at {
+                active.created_at = Set(created_at.clone());
+                changed = true;
+            } else {
+                active.created_at = ActiveValue::Unchanged(existing_model.created_at.clone());
+            }
+
+            if existing_model.task_id != task_model.db_id {
+                active.task_id = Set(task_model.db_id);
+                changed = true;
+            } else {
+                active.task_id = ActiveValue::Unchanged(existing_model.task_id);
+            }
+
+            if changed {
+                active.save(db).await?;
+            }
+            continue;
+        }
+
+        email_links::ActiveModel {
+            id: ActiveValue::NotSet,
+            task_id: Set(task_model.db_id),
+            uuid: Set(link.uuid.to_string()),
+            message_id: Set(link.message_id.clone()),
+            subject: Set(link.subject.clone()),
+            sender: Set(link.sender.clone()),
+            sent_date: Set(sent_date),
+            created_at: Set(created_at),
+        }
+        .save(db)
+        .await?;
+    }
     Ok(())
 }

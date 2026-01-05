@@ -2,6 +2,7 @@
 
 pub use super::annotations::Entity as Annotations;
 pub use super::attachments::Entity as Attachments;
+pub use super::email_links::Entity as EmailLinks;
 pub use super::external_links::Entity as ExternalLinks;
 pub use super::history::Entity as History;
 pub use super::links::Entity as Links;

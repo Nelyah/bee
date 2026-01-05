@@ -141,6 +141,29 @@ struct TaskLinkDto: Decodable, Identifiable, Equatable {
     }
 }
 
+/// DTO for email links (references to emails in Apple Mail).
+struct EmailLinkDto: Decodable, Identifiable, Equatable {
+    let id: Int
+    let uuid: String
+    let messageId: String
+    let subject: String
+    let sender: String
+    let sentDate: String?
+    let createdAt: String
+    let mailUrl: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case uuid
+        case messageId = "message_id"
+        case subject
+        case sender
+        case sentDate = "sent_date"
+        case createdAt = "created_at"
+        case mailUrl = "mail_url"
+    }
+}
+
 struct ApiTaskDetail: Decodable, Identifiable {
     let dbId: Int?
     let uuid: String
@@ -156,6 +179,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
     let history: [TaskHistoryDto]
     let links: [TaskLinkDto]
     let attachments: [TaskAttachmentDto]
+    let emailLinks: [EmailLinkDto]
 
     var id: String { uuid }
 
@@ -174,6 +198,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         case history
         case links
         case attachments
+        case emailLinks = "email_links"
     }
 
     init(from decoder: Decoder) throws {
@@ -193,6 +218,8 @@ struct ApiTaskDetail: Decodable, Identifiable {
         links = try container.decode([TaskLinkDto].self, forKey: .links)
         // Backwards compatibility: default to empty array if attachments not present
         attachments = try container.decodeIfPresent([TaskAttachmentDto].self, forKey: .attachments) ?? []
+        // Backwards compatibility: default to empty array if email_links not present
+        emailLinks = try container.decodeIfPresent([EmailLinkDto].self, forKey: .emailLinks) ?? []
     }
 
     // For test/preview convenience
@@ -210,7 +237,8 @@ struct ApiTaskDetail: Decodable, Identifiable {
         annotations: [TaskAnnotationDto],
         history: [TaskHistoryDto],
         links: [TaskLinkDto],
-        attachments: [TaskAttachmentDto]
+        attachments: [TaskAttachmentDto],
+        emailLinks: [EmailLinkDto] = []
     ) {
         self.dbId = dbId
         self.uuid = uuid
@@ -226,6 +254,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         self.history = history
         self.links = links
         self.attachments = attachments
+        self.emailLinks = emailLinks
     }
 
     /// Group links by type for display

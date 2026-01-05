@@ -488,6 +488,7 @@ dependencies = [
  "typetag",
  "unicode-normalization",
  "unicode-segmentation",
+ "urlencoding",
  "uuid",
 ]
 

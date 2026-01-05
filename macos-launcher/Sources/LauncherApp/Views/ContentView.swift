@@ -159,6 +159,12 @@ struct ContentView: View {
                     onDropAttachments: { urls in
                         viewModel.handleAttachmentDrop(urls)
                     },
+                    onEmailDrop: { email in
+                        viewModel.handleEmailDrop(email)
+                    },
+                    onOpenEmailLink: { emailLink in
+                        viewModel.openEmailLinkUrl(emailLink.mailUrl)
+                    },
                     // Linked tasks navigation
                     tasks: viewModel.tasks,
                     onNavigateToTask: { uuid in

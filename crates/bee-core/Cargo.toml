@@ -29,6 +29,9 @@ shellexpand = "3.1"
 # Easily Serialise / deserialise `&dyn Type` objects
 typetag = "0.2"
 
+# URL encoding for email message:// URLs
+urlencoding = "2.1"
+
 
 
 # Use SQLx 0.7 to match SeaORM

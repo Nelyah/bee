@@ -21,6 +21,7 @@ use super::filter_sql::{condition_expression_to_condition, filter_to_condition_e
 use super::tables;
 use crate::{
     CoreError, CoreResult,
+    email_link::EmailLink,
     filters::{
         self, Filter,
         filters_impl::{OrFilter, TaskIdFilter, UuidFilter},
@@ -30,7 +31,7 @@ use crate::{
         TaskProperties, TaskStatus,
     },
 };
-use tables::{annotations, history, links, projects, tags, tasks, tasks_tags};
+use tables::{annotations, email_links, history, links, projects, tags, tasks, tasks_tags};
 
 use chrono::{DateTime, Local};
 use std::collections::{HashMap, HashSet};
@@ -258,6 +259,35 @@ where
             });
     }
 
+    // Load email links
+    let email_link_models = email_links::Entity::find()
+        .filter(email_links::Column::TaskId.is_in(task_ids.clone()))
+        .order_by_asc(email_links::Column::CreatedAt)
+        .all(db)
+        .await?;
+    let mut email_links_by_task: HashMap<i32, Vec<EmailLink>> = HashMap::new();
+    for model in email_link_models {
+        let sent_date = model
+            .sent_date
+            .as_ref()
+            .and_then(|s| parse_datetime(s).ok());
+        let created_at = parse_datetime(&model.created_at)?;
+        let uuid = Uuid::parse_str(&model.uuid)?;
+
+        email_links_by_task
+            .entry(model.task_id)
+            .or_default()
+            .push(EmailLink {
+                id: Some(model.id),
+                uuid,
+                message_id: model.message_id,
+                subject: model.subject,
+                sender: model.sender,
+                sent_date,
+                created_at,
+            });
+    }
+
     // === Load all outgoing canonical links ===
     // Canonical types: DependsOn, ParentOf, RelatedTo, Duplicates
     let outgoing_links = links::Entity::find()
@@ -399,6 +429,9 @@ where
             .remove(&task_model.db_id)
             .unwrap_or_default();
         let links = links_by_task.remove(&task_model.db_id).unwrap_or_default();
+        let email_links = email_links_by_task
+            .remove(&task_model.db_id)
+            .unwrap_or_default();
 
         tasks_obj.push(Task {
             db_id: Some(task_model.db_id),
@@ -415,6 +448,7 @@ where
             date_due,
             urgency,
             history,
+            email_links,
         });
     }
 

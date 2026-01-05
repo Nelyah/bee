@@ -38,6 +38,7 @@
 //! - `m20260101_000001_add_column_settings`: Column widths and sort settings for reports
 //! - `m20260104_000001_add_link_types`: Add new link types (ParentOf, RelatedTo, Duplicates)
 //! - `m20260105_000001_create_attachments`: File attachments stored as BLOBs
+//! - `m20260106_000001_create_email_links`: Email links for Apple Mail integration
 
 pub use sea_orm_migration::prelude::sea_orm;
 pub use sea_orm_migration::{async_trait, MigrationTrait, MigratorTrait};
@@ -49,6 +50,7 @@ mod m20251230_000002_update_external_links_unique;
 mod m20260101_000001_add_column_settings;
 mod m20260104_000001_add_link_types;
 mod m20260105_000001_create_attachments;
+mod m20260106_000001_create_email_links;
 
 /// The migration runner that applies all schema migrations.
 ///
@@ -67,6 +69,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260101_000001_add_column_settings::Migration),
             Box::new(m20260104_000001_add_link_types::Migration),
             Box::new(m20260105_000001_create_attachments::Migration),
+            Box::new(m20260106_000001_create_email_links::Migration),
         ]
     }
 }

@@ -10,6 +10,8 @@ mod task_write;
 mod undo;
 mod user_reports;
 
+use std::collections::HashSet;
+
 use crate::{
     CoreResult,
     attachment::Attachment,
@@ -19,6 +21,7 @@ use crate::{
         AsyncStore,
         db::{
             attachments as attachments_db,
+            blocking::{resequence_task_ids_txn, update_blocking_status},
             connection::get_database,
             external_links as external_links_db,
             task_read::{
@@ -32,6 +35,7 @@ use crate::{
     },
     task::{ActionUndo, Task, TaskData, TaskProperties},
 };
+use sea_orm::TransactionTrait;
 
 pub use user_reports::{UserReport, UserReportParams};
 
@@ -251,11 +255,37 @@ impl AsyncStore for DbStore {
         let db = get_database(None).await?;
         load_tasks_impl(&db, filter, props).await
     }
-    async fn write_tasks(data: &TaskData) -> CoreResult<()> {
+    async fn write_tasks(data: &TaskData, changes: &[ActionUndo]) -> CoreResult<()> {
         let db = get_database(None).await?;
-        for task in data.to_vec().iter() {
-            write_tasks_impl(&db, task).await?;
+
+        let mut changed_uuids: HashSet<uuid::Uuid> = HashSet::new();
+        for undo in changes {
+            for task in &undo.tasks {
+                changed_uuids.insert(*task.get_uuid());
+                for linked_uuid in task.get_extra_uuid() {
+                    changed_uuids.insert(linked_uuid);
+                }
+            }
         }
+
+        if changed_uuids.is_empty() {
+            return Ok(());
+        }
+
+        for uuid in &changed_uuids {
+            if let Some(task) = data.get_task_map().get(uuid) {
+                write_tasks_impl(&db, task).await?;
+                continue;
+            }
+            if let Some(task) = data.get_extra_tasks().get(uuid) {
+                write_tasks_impl(&db, task).await?;
+            }
+        }
+
+        let txn = db.begin().await?;
+        resequence_task_ids_txn(&txn).await?;
+        update_blocking_status(&txn).await?;
+        txn.commit().await?;
         Ok(())
     }
 

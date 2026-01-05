@@ -43,11 +43,11 @@ pub trait Store {
         props: Option<TaskProperties>,
     ) -> CoreResult<TaskData>;
 
-    /// Persist all tasks in the given TaskData to storage.
+    /// Persist tasks affected by the latest action.
     ///
-    /// Creates new tasks, updates existing ones, and handles deletions based
-    /// on task status. The TaskData's internal state is the source of truth.
-    fn write_tasks(data: &TaskData) -> CoreResult<()>;
+    /// The TaskData provides the authoritative state for tasks, while `changes`
+    /// indicates which tasks were modified by the action (via undo entries).
+    fn write_tasks(data: &TaskData, changes: &[ActionUndo]) -> CoreResult<()>;
 
     /// Load the most recent undo entries, up to `limit`.
     ///
@@ -76,10 +76,13 @@ pub trait AsyncStore {
         props: Option<TaskProperties>,
     ) -> impl std::future::Future<Output = CoreResult<TaskData>> + Send;
 
-    /// Persist all tasks in the given TaskData to storage.
+    /// Persist tasks affected by the latest action.
     ///
     /// See [`Store::write_tasks`] for details.
-    fn write_tasks(data: &TaskData) -> impl std::future::Future<Output = CoreResult<()>> + Send;
+    fn write_tasks(
+        data: &TaskData,
+        changes: &[ActionUndo],
+    ) -> impl std::future::Future<Output = CoreResult<()>> + Send;
 
     /// Load the most recent undo entries, up to `limit`.
     ///

@@ -283,7 +283,7 @@ mod tests {
     use chrono::{Duration, Local, TimeZone};
     use log::debug;
     use sea_orm::sea_query::Query;
-    use sea_orm::{EntityTrait, QueryOrder};
+    use sea_orm::{DatabaseConnection, DbErr, EntityTrait, QueryOrder, TransactionTrait};
     use sea_orm_migration::prelude::SqliteQueryBuilder;
     use std::collections::HashSet;
     use uuid::Uuid;
@@ -324,6 +324,14 @@ mod tests {
             .is_test(true)
             .filter_module("sqlx", log::LevelFilter::Off)
             .try_init();
+    }
+
+    async fn refresh_task_state(db: &DatabaseConnection) -> Result<(), DbErr> {
+        let txn = db.begin().await?;
+        resequence_task_ids_txn(&txn).await?;
+        update_blocking_status(&txn).await?;
+        txn.commit().await?;
+        Ok(())
     }
 
     #[test]
@@ -405,6 +413,7 @@ mod tests {
             ..Default::default()
         };
         write_tasks_impl(&db, &completed_latest).await.unwrap();
+        refresh_task_state(&db).await.unwrap();
 
         let rows = tables::tasks::Entity::find()
             .order_by_asc(tables::tasks::Column::DateCreated)
@@ -463,6 +472,7 @@ mod tests {
             id: None,
         });
         write_tasks_impl(&db, &blocked_task).await.unwrap();
+        refresh_task_state(&db).await.unwrap();
 
         let all_tasks = tables::tasks::Entity::find().all(&db).await.unwrap();
         assert_eq!(all_tasks.len(), 2);
@@ -482,6 +492,7 @@ mod tests {
 
         blocking_task.status = TaskStatus::Completed;
         write_tasks_impl(&db, &blocking_task).await.unwrap();
+        refresh_task_state(&db).await.unwrap();
         let blocked_task_filter: Box<dyn Filter> = Box::new(UuidFilter {
             uuid: blocked_task.uuid.to_owned(),
         });
@@ -528,6 +539,7 @@ mod tests {
         });
         blocked_task.db_id = Some(1);
         write_tasks_impl(&db, &blocked_task).await.unwrap();
+        refresh_task_state(&db).await.unwrap();
 
         let all_links = tables::links::Entity::find().all(&db).await.unwrap();
         assert_eq!(all_links.len(), 1);
@@ -547,6 +559,7 @@ mod tests {
         blocking_task.links = [].to_vec();
         write_tasks_impl(&db, &blocking_task).await.unwrap();
         write_tasks_impl(&db, &blocked_task).await.unwrap();
+        refresh_task_state(&db).await.unwrap();
         let all_links = tables::links::Entity::find().all(&db).await.unwrap();
         assert_eq!(all_links.len(), 0);
 

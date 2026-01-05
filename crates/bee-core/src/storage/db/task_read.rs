@@ -640,7 +640,9 @@ mod tests {
     use all_asserts::assert_true;
     use chrono::{Duration, Local, TimeZone};
     use log::debug;
-    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+    use sea_orm::{
+        ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, TransactionTrait,
+    };
     use uuid::Uuid;
 
     /// Compare the filtered results against a single expected task.
@@ -679,6 +681,13 @@ mod tests {
             .is_test(true)
             .filter_module("sqlx", log::LevelFilter::Off)
             .try_init();
+    }
+
+    async fn refresh_blocking_status(db: &DatabaseConnection) -> Result<(), DbErr> {
+        let txn = db.begin().await?;
+        crate::storage::db::blocking::update_blocking_status(&txn).await?;
+        txn.commit().await?;
+        Ok(())
     }
 
     #[tokio::test]
@@ -1213,6 +1222,7 @@ mod tests {
             link_type: LinkType::DependsOn,
         });
         write_tasks_impl(&db, &dependent_task).await.unwrap();
+        refresh_blocking_status(&db).await.unwrap();
 
         let independent_task = Task {
             summary: "Independent Task".to_string(),

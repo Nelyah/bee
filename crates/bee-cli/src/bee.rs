@@ -47,11 +47,19 @@ async fn main() {
 async fn run() -> CliResult<()> {
     let mut logger =
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
+    let sql_log_enabled = std::env::var("BEE_SQL_LOG")
+        .map(|val| !val.is_empty() && val != "0")
+        .unwrap_or(false);
+    let sql_log_level = if sql_log_enabled {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Warn
+    };
     logger
-        .filter_module("sqlx", log::LevelFilter::Warn)
-        .filter_module("sea_orm", log::LevelFilter::Warn)
-        .filter_module("sea_orm::query", log::LevelFilter::Warn)
-        .filter_module("sea_orm::executor", log::LevelFilter::Warn)
+        .filter_module("sqlx", sql_log_level)
+        .filter_module("sea_orm", sql_log_level)
+        .filter_module("sea_orm::query", sql_log_level)
+        .filter_module("sea_orm::executor", sql_log_level)
         .init();
 
     let undo_count = 1;
@@ -97,7 +105,7 @@ async fn run() -> CliResult<()> {
     action.set_undos(undos);
     action.do_action(&SimpleTaskTextPrinter)?;
 
-    DbStore::write_tasks(action.get_tasks()).await?;
+    DbStore::write_tasks(action.get_tasks(), action.get_undos()).await?;
 
     DbStore::log_undo(undo_count, action.get_undos().to_owned()).await?;
 

@@ -30,7 +30,7 @@ use bee_core::{
     filters::Filter,
     storage::AsyncStore,
     storage::db::{DbStore, UserReportParams},
-    task::{TaskData, TaskProperties},
+    task::TaskProperties,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -984,6 +984,7 @@ async fn list_attachments_handler(
     )
 )]
 async fn upload_attachment_handler(
+    State(state): State<AppState>,
     Path(task_uuid): Path<Uuid>,
     mut multipart: Multipart,
 ) -> ApiResult<(StatusCode, Json<AttachmentDto>)> {
@@ -1013,21 +1014,33 @@ async fn upload_attachment_handler(
         DbStore::insert_attachment(task_uuid, filename.clone(), content_type, data.to_vec())
             .await?;
 
-    // Create history entry via TaskProperties (matches email link pattern)
-    let task = DbStore::get_task_by_uuid(task_uuid)
-        .await?
-        .ok_or_else(|| ApiError::not_found("Task not found"))?;
+    // Use the action system to add history entry (enables undo support)
+    let filter_json = serde_json::json!({"type": "UuidFilter", "value": {"uuid": task_uuid}});
+    let filter = deserialize_filter(Some(filter_json))?;
+    let undos = DbStore::load_undos(state.undo_count).await?;
+    let mut tasks = DbStore::load_tasks(filter, None).await?;
 
-    let mut task_data = TaskData::default();
-    task_data.add_task_object(task);
+    for undo_action in &undos {
+        tasks.set_undos(&undo_action.tasks);
+    }
+
+    let mut action = ActionRegistry::get_action_from_command_parser(&ParsedCommand {
+        command: "modify".to_string(),
+        report_kind: state.report.clone(),
+        ..Default::default()
+    });
 
     let mut props = TaskProperties::default();
     props.set_attachment_add(AttachmentAddInput::new(filename));
-    task_data
-        .apply(&task_uuid, &props)
-        .map_err(|e| ApiError::internal(format!("Failed to apply properties: {e}")))?;
+    action.set_properties(props);
+    action.set_tasks(tasks);
+    action.set_undos(undos);
 
-    DbStore::write_tasks(&task_data).await?;
+    let printer = JsonPrinter::new();
+    action.do_action(&printer)?;
+
+    DbStore::write_tasks(action.get_tasks(), action.get_undos()).await?;
+    DbStore::log_undo(state.undo_count, action.get_undos().to_owned()).await?;
 
     Ok((
         StatusCode::CREATED,

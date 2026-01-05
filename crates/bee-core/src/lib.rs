@@ -20,6 +20,7 @@ pub mod filters;
 pub mod important_link;
 pub mod storage;
 pub mod task;
+pub mod urgency;
 
 pub mod lexer;
 mod parser;

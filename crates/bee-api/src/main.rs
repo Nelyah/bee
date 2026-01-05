@@ -1,4 +1,5 @@
 mod api;
+mod background;
 mod config;
 mod dto;
 mod error_type;
@@ -37,6 +38,12 @@ async fn run() -> error_type::ApiResult<()> {
         .map_err(|err| error_type::ApiError::internal(format!("Failed to bind: {err}")))?;
 
     log::info!("beed listening on {}", config.bind_addr);
+
+    // Spawn background external links sync job
+    background::spawn_external_links_sync_job(
+        bee_core::config::get_config().external_links.clone(),
+        config.external_links.sync.clone(),
+    );
 
     // Validate no static/user report name collisions before serving
     api::AppState::validate_report_name_collisions().await;

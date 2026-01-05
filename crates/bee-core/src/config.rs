@@ -25,6 +25,11 @@ pub struct Config {
 
     #[serde(default)]
     pub external_links: ExternalLinksConfig,
+
+    /// Urgency scoring configuration.
+    /// Customize weights for different urgency factors.
+    #[serde(default)]
+    pub urgency: crate::urgency::UrgencyConfig,
 }
 
 fn default_report_map() -> HashMap<String, ReportConfig> {
@@ -42,6 +47,7 @@ impl Default for Config {
             report_map: default_report_map(),
             coefficients: Vec::new(),
             external_links: ExternalLinksConfig::default(),
+            urgency: crate::urgency::UrgencyConfig::default(),
         }
     }
 }

@@ -31,9 +31,65 @@ base_url = "https://gitlab.com"
 token = {env = "GITLAB_API_TOKEN"}
 min_delay_ms = 250
 
+# Urgency scoring configuration (all values shown are defaults)
+# Uncomment and adjust to customize how task urgency is calculated
+# [core.urgency]
+# # Due date weights
+# due_overdue_max = 40          # Max score for overdue tasks
+# due_overdue_decay = 0.1       # Exponential decay rate
+# due_today = 25                # Due today/tomorrow
+# due_three_days = 15           # Due in 2-3 days
+# due_week = 8                  # Due in 4-7 days
+# due_two_weeks = 3             # Due in 8-14 days
+#
+# # Blocking weights (tasks that block others)
+# blocking_first = 12           # First blocked task
+# blocking_max = 30             # Maximum blocking score
+#
+# # Activity momentum
+# activity_active_today = 8     # Base score for recent activity
+# activity_per_update = 2       # Per update in last 7 days
+# activity_max_updates = 5      # Max updates to count
+#
+# # Age (old tasks need attention)
+# age_threshold_2_weeks = 3
+# age_threshold_1_month = 6
+# age_threshold_2_months = 9
+# age_max = 12
+#
+# # Staleness penalty (abandoned tasks)
+# staleness_week_penalty = -3
+# staleness_two_weeks_penalty = -8
+# staleness_max_penalty = -15
+#
+# # Status modifiers
+# status_active = 15            # Active status boost
+# status_blocked = -25          # Blocked status penalty
+#
+# # Tag weights
+# tag_next = 20
+# tag_urgent = 15
+# tag_important = 10
+# tag_low = -10
+# tag_waiting = -15
+# tag_max_positive = 30
+# tag_max_negative = -25
+#
+# # External link weights (GitLab/Jira)
+# external_pipeline_failed = 20
+# external_awaiting_approval = 10
+# external_high_activity = 8
+# external_medium_activity = 4
+# external_jira_review = 8
+# external_jira_blocked = 5
+# external_sync_error = 3
+# external_max = 35
+
 [api.external_links.sync]
 stale_after_hours = 24
 batch_size = 10
+# background_enabled = true     # Enable automatic background sync (default: true)
+# background_interval_minutes = 15  # Sync interval in minutes (default: 15)
 
 
 [cli]

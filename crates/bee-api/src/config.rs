@@ -45,6 +45,12 @@ pub struct SyncConfig {
     pub stale_after_hours: i64,
     #[serde(default = "default_batch_size")]
     pub batch_size: usize,
+    /// Enable automatic background sync of stale external links.
+    #[serde(default = "default_background_enabled")]
+    pub background_enabled: bool,
+    /// Interval between background sync runs in minutes.
+    #[serde(default = "default_background_interval_minutes")]
+    pub background_interval_minutes: u64,
 }
 
 impl Default for SyncConfig {
@@ -52,6 +58,8 @@ impl Default for SyncConfig {
         Self {
             stale_after_hours: default_stale_after_hours(),
             batch_size: default_batch_size(),
+            background_enabled: default_background_enabled(),
+            background_interval_minutes: default_background_interval_minutes(),
         }
     }
 }
@@ -113,6 +121,14 @@ fn default_stale_after_hours() -> i64 {
 
 fn default_batch_size() -> usize {
     10
+}
+
+fn default_background_enabled() -> bool {
+    true
+}
+
+fn default_background_interval_minutes() -> u64 {
+    15
 }
 
 #[cfg(test)]

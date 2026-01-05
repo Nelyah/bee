@@ -434,35 +434,98 @@ impl Task {
     }
 
     pub fn compute_urgency(&mut self) -> CoreResult<i64> {
-        // Urgency only makes sense for actionable tasks (pending, active, blocked)
-        // Deleted and completed tasks have no urgency
+        self.compute_urgency_with_config(&crate::urgency::UrgencyConfig::default(), &[])
+    }
+
+    /// Compute urgency with custom configuration and external links.
+    ///
+    /// This is the full implementation that considers all urgency factors:
+    /// - Due date proximity (overdue = highest urgency)
+    /// - Blocking relationships (unblock others first)
+    /// - Activity momentum (recent work = keep going)
+    /// - Age (old tasks need attention)
+    /// - Staleness (abandoned tasks deprioritized)
+    /// - Status (active boosted, blocked deprioritized)
+    /// - Tags (user priority markers)
+    /// - External links (GitLab/Jira activity)
+    pub fn compute_urgency_with_config(
+        &mut self,
+        config: &crate::urgency::UrgencyConfig,
+        external_links: &[crate::external_links::ExternalLink],
+    ) -> CoreResult<i64> {
+        use crate::urgency;
+        use chrono::Local;
+
+        // Non-actionable tasks have no urgency
         if self.status == TaskStatus::Deleted || self.status == TaskStatus::Completed {
             self.urgency = None;
             return Ok(0);
         }
 
-        let active_status_coef: i64 = 2;
+        let now = Local::now();
 
-        let mut urgency: i64 = 0;
-        for tag in &self.tags {
-            if tag == "next" {
-                urgency += 1;
-            }
-        }
+        // === Calculate derived metrics ===
 
-        if self.status == TaskStatus::Active {
-            urgency += active_status_coef;
-        }
+        // Age in days (time since creation)
+        let age_days = now.signed_duration_since(self.date_created).num_seconds() as f64 / 86400.0;
 
-        // Compute number of days remaining until the due date
-        if let Some(date_due) = self.date_due {
-            let now = Local::now();
-            let days = date_due.signed_duration_since(now).num_days();
-            urgency += days;
-        }
+        // Last activity time (from history, or fall back to creation date)
+        let last_activity = self
+            .history
+            .iter()
+            .map(|h| *h.get_datetime())
+            .max()
+            .unwrap_or(self.date_created);
+        let days_since_last_activity =
+            now.signed_duration_since(last_activity).num_seconds() as f64 / 86400.0;
 
-        self.urgency = Some(urgency);
-        Ok(self.urgency.unwrap_or(0))
+        // Activity count in last 7 days
+        let seven_days_ago = now - chrono::Duration::days(7);
+        let updates_last_7d = self
+            .history
+            .iter()
+            .filter(|h| *h.get_datetime() > seven_days_ago)
+            .count();
+
+        // Count of tasks this task is blocking
+        let blocking_count = self.get_blocking().len();
+
+        // Days until due (negative if overdue)
+        let days_until_due: Option<f64> = self
+            .date_due
+            .map(|due| due.signed_duration_since(now).num_seconds() as f64 / 86400.0);
+
+        // Tags as slice of strings
+        let tags: Vec<String> = self.tags.to_vec();
+
+        // === Compute components ===
+
+        let due = match days_until_due {
+            Some(days) => urgency::due_component(days, config),
+            None => 0,
+        };
+
+        let blocking = urgency::blocking_component(blocking_count, config);
+
+        let activity =
+            urgency::activity_component(days_since_last_activity, updates_last_7d, config);
+
+        let age = urgency::age_component(age_days, config);
+
+        let staleness = urgency::staleness_penalty(days_since_last_activity, age_days, config);
+
+        let status = urgency::status_modifier(self.status.clone(), config);
+
+        let tag_score = urgency::tag_modifier(&tags, config);
+
+        let external = urgency::external_link_component(external_links, config);
+
+        // === Final calculation ===
+        let total_urgency =
+            due + blocking + activity + age + staleness + status + tag_score + external;
+
+        self.urgency = Some(total_urgency);
+        Ok(total_urgency)
     }
 
     pub fn get_history(&self) -> &Vec<TaskHistory> {

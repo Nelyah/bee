@@ -868,3 +868,25 @@ fn test_email_link_getter() {
     assert_eq!(links.len(), 1);
     assert_eq!(links[0].get_message_id(), "<getter@example.com>");
 }
+
+#[test]
+fn test_apply_attachment_add() {
+    let mut task = setup_task();
+    let initial_history_len = task.history.len();
+
+    let input = crate::attachment::AttachmentAddInput::new("document.pdf".to_string());
+
+    let props = TaskProperties {
+        attachment_add: Some(input),
+        ..Default::default()
+    };
+
+    let result = task.apply(&props);
+    assert!(result.is_ok());
+
+    // History should record the addition
+    assert_eq!(task.history.len(), initial_history_len + 1);
+    let history_entry = task.history.last().unwrap();
+    assert!(history_entry.value.contains("Added attachment"));
+    assert!(history_entry.value.contains("document.pdf"));
+}

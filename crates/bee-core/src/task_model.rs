@@ -888,6 +888,15 @@ impl Task {
             }
         }
 
+        // Handle attachment addition (history entry only - file data stored separately)
+        if let Some(input) = &props.attachment_add {
+            self.history.push(TaskHistory {
+                id: None,
+                datetime: Local::now(),
+                value: format!("Added attachment: {}", input.filename),
+            });
+        }
+
         self.compute_urgency()?;
         Ok(())
     }

@@ -5,6 +5,7 @@ use serde_json::Value;
 use super::task_prop_parser::TaskPropertyParser;
 use super::{DependsOnIdentifier, Project, TaskAnnotation, TaskStatus};
 use crate::CoreResult;
+use crate::attachment::AttachmentAddInput;
 use crate::email_link::EmailLinkInput;
 use crate::lexer::Lexer;
 
@@ -45,6 +46,8 @@ pub struct TaskProperties {
     pub(crate) email_link_add: Option<EmailLinkInput>,
     /// Message IDs of email links to remove from the task
     pub(crate) email_link_remove: Option<Vec<String>>,
+    /// Attachment to add (history entry only - file data uploaded separately)
+    pub(crate) attachment_add: Option<AttachmentAddInput>,
 }
 
 fn is_project_absent(project: &Option<Option<Project>>) -> bool {
@@ -141,6 +144,11 @@ impl TaskProperties {
     /// Sets message IDs of email links to remove from the task
     pub fn set_email_link_remove(&mut self, message_ids: Vec<String>) {
         self.email_link_remove = Some(message_ids);
+    }
+
+    /// Sets an attachment to add (creates history entry only)
+    pub fn set_attachment_add(&mut self, input: AttachmentAddInput) {
+        self.attachment_add = Some(input);
     }
 
     pub fn from(values: &[String]) -> CoreResult<TaskProperties> {

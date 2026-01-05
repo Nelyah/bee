@@ -31,6 +31,22 @@ pub struct Attachment {
     pub created_at: DateTime<Local>,
 }
 
+/// Input for adding an attachment via TaskProperties.
+///
+/// The actual file data is uploaded separately; this struct is used
+/// to create a history entry through the action system.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct AttachmentAddInput {
+    /// Original filename of the attachment.
+    pub filename: String,
+}
+
+impl AttachmentAddInput {
+    pub fn new(filename: String) -> Self {
+        Self { filename }
+    }
+}
+
 impl Attachment {
     /// Returns a human-readable file size (e.g., "2.4 MB").
     pub fn formatted_size(&self) -> String {

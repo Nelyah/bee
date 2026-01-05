@@ -25,11 +25,12 @@ use axum::{
 };
 use bee_actions::{ActionRegistry, command_parser::ParsedCommand};
 use bee_core::{
+    attachment::AttachmentAddInput,
     config::ReportConfig,
     filters::Filter,
     storage::AsyncStore,
     storage::db::{DbStore, UserReportParams},
-    task::TaskProperties,
+    task::{TaskData, TaskProperties},
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -1009,7 +1010,24 @@ async fn upload_attachment_handler(
         .map_err(|e| ApiError::bad_request(format!("Failed to read file data: {}", e)))?;
 
     let attachment =
-        DbStore::insert_attachment(task_uuid, filename, content_type, data.to_vec()).await?;
+        DbStore::insert_attachment(task_uuid, filename.clone(), content_type, data.to_vec())
+            .await?;
+
+    // Create history entry via TaskProperties (matches email link pattern)
+    let task = DbStore::get_task_by_uuid(task_uuid)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Task not found"))?;
+
+    let mut task_data = TaskData::default();
+    task_data.add_task_object(task);
+
+    let mut props = TaskProperties::default();
+    props.set_attachment_add(AttachmentAddInput::new(filename));
+    task_data
+        .apply(&task_uuid, &props)
+        .map_err(|e| ApiError::internal(format!("Failed to apply properties: {e}")))?;
+
+    DbStore::write_tasks(&task_data).await?;
 
     Ok((
         StatusCode::CREATED,

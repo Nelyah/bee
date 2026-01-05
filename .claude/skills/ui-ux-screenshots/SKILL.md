@@ -89,6 +89,9 @@ After generating, use the Read tool on the PNG file to view it.
 | `testComponent_criteriaStrip` | Filter/property chips | `testComponent_criteriaStrip.1.png` |
 | `testComponent_completionMenu` | Autocomplete dropdown | `testComponent_completionMenu.1.png` |
 | `testComponent_reportMenuButton` | Report selector button | `testComponent_reportMenuButton.1.png` |
+| `testComponent_attachmentRow_default` | Attachment row default state | `testComponent_attachmentRow_default.1.png` |
+| `testComponent_attachmentRow_focused` | Attachment row focused/hover state | `testComponent_attachmentRow_focused.1.png` |
+| `testComponent_emailLinkRow_default` | Email link row default state | `testComponent_emailLinkRow_default.1.png` |
 
 ---
 

@@ -173,13 +173,13 @@
       "Bash(macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlight/KeyHandlingDecider.swift )",
       "Bash(macos-launcher/Sources/LauncherApp/Views/Components/TokenHighlight/KeyHandlingModels.swift )",
       "Bash(macos-launcher/Sources/LauncherApp/Utilities/Coordinators/CompletionIndexCalculator.swift)",
-      "Bash(git -C /Users/chloe/builds/bee commit -m \"$\\(cat <<''EOF''\nfeat\\(macos\\): improve tag navigation and add \"t\" keybinding\n\nTag navigation improvements:\n- Add h/l navigation between tags when focused on a tag\n- Make \"+\" add button focusable via keyboard \\(j/k navigation\\)\n- Add \"t\" keybinding to start adding a tag from anywhere in detail view\n- Show \"t Add tag\" hint in the bottom hint bar\n- Rebuild focusable items after adding/removing tags to keep\n  navigation in sync\n\nCompletionField improvements:\n- Add freeform entry mode for tags \\(menu stays open with no matches\\)\n- Add hjkl navigation within completion menu\n- Keep menu open when text is empty \\(shows empty state prompt\\)\n- Add selectPreviousIndexAllowingUnselect for freeform mode\nEOF\n\\)\")",
       "Bash(macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel+CommandPalette.swift )",
       "Bash(macos-launcher/Sources/LauncherApp/Utilities/CommandPalette/Contributors/TaskStateSectionContributor.swift )",
       "Bash(macos-launcher/Sources/LauncherApp/ViewModels/LauncherViewModel+TaskState.swift )",
       "Bash(macos-launcher/Tests/LauncherAppTests/TaskStateSectionContributorTests.swift )",
       "Bash(DONE.md )",
-      "Bash(tickets.md)"
+      "Bash(tickets.md)",
+      "Bash(git -C /Users/chloe/builds/bee status:*)"
     ]
   },
   "outputStyle": "Explanatory"

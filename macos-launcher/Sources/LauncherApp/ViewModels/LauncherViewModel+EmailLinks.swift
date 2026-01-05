@@ -6,8 +6,8 @@ extension LauncherViewModel {
 
     /// Handles an email dropped from Apple Mail onto the task detail.
     ///
-    /// This method is called by the `AttachmentAndEmailDropDelegate` when an EML file
-    /// or Mail file promise is dropped onto the attachments section.
+    /// This method is called by `FilePromiseDropNSView` when an EML file
+    /// or Mail pasteboard data is dropped onto the attachments section.
     ///
     /// The email is linked to the current task via the `/v1/action` modify endpoint
     /// with `email_link_add` properties.

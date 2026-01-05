@@ -7,10 +7,9 @@ This document contains detailed tickets for features requested in `feature-list.
 ## Table of Contents
 
 1. [TICKET-016: Important Links Section in Task Detail](#ticket-016)
-2. [TICKET-019: Multi-Select Tasks with Space](#ticket-019)
-3. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
-4. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
-5. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
+2. [TICKET-020: Visual Grouping for Report Filter Chips](#ticket-020)
+3. [TICKET-021: Info Tooltips for Filters/Properties](#ticket-021)
+4. [TICKET-022: Help Mode with Cmd+Shift+H](#ticket-022)
 
 See [DONE.md](DONE.md) for completed tickets.
 
@@ -51,60 +50,6 @@ Low
 
 ### Dependencies
 - TICKET-007 (task linking) - defines what links exist
-
----
-
-<a name="ticket-019"></a>
-## TICKET-019: Multi-Select Tasks with Space
-
-### Summary
-Allow selecting multiple tasks from task list by pressing space on focused task.
-
-### Priority
-Medium
-
-### Complexity
-Medium
-
-### Affected Layers
-- **macOS**: `LauncherViewModel.swift`, `TaskListView.swift`, `TaskRow.swift`
-
-### Current State
-- Single task selection exists via `selectedTaskUUID`
-- Keyboard navigation exists
-
-### Implementation Notes
-
-1. Add multi-selection state:
-   ```swift
-   @Published var selectedTaskUUIDs: Set<String> = []
-   ```
-
-2. Space key behavior:
-   - If task not in set: add to selection
-   - If task in set: remove from selection
-   - Visual indication of selected state (checkbox? highlight?)
-
-3. Actions on multi-selection:
-   - Bulk status change
-   - Bulk delete
-   - Bulk tag add/remove
-
-4. UI considerations:
-   - Show selection count
-   - Clear selection button
-   - Different visual state for multi-selected tasks
-
-### Acceptance Criteria
-- [ ] Space toggles task selection
-- [ ] Multiple tasks can be selected
-- [ ] Selected tasks visually distinct
-- [ ] Selection count shown
-- [ ] Can clear selection
-- [ ] Bulk actions available for selection
-
-### Dependencies
-None
 
 ---
 
@@ -270,7 +215,6 @@ None
 - TICKET-021: Info Tooltips
 
 ### Medium Complexity (3-5 days)
-- TICKET-019: Multi-Select Tasks
 - TICKET-020: Report Filter Visual Grouping
 
 ### High Complexity (1-2 weeks)
@@ -287,10 +231,9 @@ None
 ## Suggested Implementation Order
 
 ### Phase 1: Advanced Features
-1. TICKET-019 (multi-select)
-2. TICKET-016 (important links - builds on TICKET-007)
+1. TICKET-016 (important links - builds on TICKET-007)
 
 ### Phase 2: Polish & Extras
-3. TICKET-020 (filter grouping - needs UX)
-4. TICKET-021 (info tooltips)
-5. TICKET-022 (help mode)
+2. TICKET-020 (filter grouping - needs UX)
+3. TICKET-021 (info tooltips)
+4. TICKET-022 (help mode)

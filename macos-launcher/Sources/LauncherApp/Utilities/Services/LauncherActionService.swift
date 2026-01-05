@@ -89,20 +89,49 @@ final class LauncherActionService {
     func runAction(
         parsed: ParseResponse,
         actionName: String,
-        projectScope: String? = nil
+        projectScope: String? = nil,
+        multiSelectUUIDs: Set<String> = []
     ) async throws -> ActionResponse {
         try await actionQueue.run {
-            let filter = await self.resolveDefaultFilterIfNeeded(
-                parsed: parsed,
-                actionName: actionName,
-                projectScope: projectScope
-            )
+            // Multi-select overrides all other filters - apply action only to selected tasks
+            let filter: JSONValue? = if !multiSelectUUIDs.isEmpty {
+                Self.buildMultiSelectFilter(uuids: multiSelectUUIDs)
+            } else {
+                await self.resolveDefaultFilterIfNeeded(
+                    parsed: parsed,
+                    actionName: actionName,
+                    projectScope: projectScope
+                )
+            }
             return try await self.apiClient.runAction(
                 action: actionName,
                 properties: parsed.properties,
                 filter: filter
             )
         }
+    }
+
+    /// Build an OR filter from a set of UUIDs for multi-select operations.
+    /// Nonisolated to allow calling from within async queue context.
+    private nonisolated static func buildMultiSelectFilter(uuids: Set<String>) -> JSONValue? {
+        guard !uuids.isEmpty else { return nil }
+
+        let uuidFilters: [JSONValue] = uuids.map { uuid in
+            .object([
+                "type": .string("UuidFilter"),
+                "value": .object(["uuid": .string(uuid)]),
+            ])
+        }
+
+        // Single UUID doesn't need OR wrapper
+        if uuidFilters.count == 1 {
+            return uuidFilters[0]
+        }
+
+        return .object([
+            "type": .string("OrFilter"),
+            "value": .object(["children": .array(uuidFilters)]),
+        ])
     }
 
     private func combineFilters(defaults: JSONValue?, user: JSONValue?) -> JSONValue? {

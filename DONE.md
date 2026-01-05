@@ -4,6 +4,53 @@ Tickets moved here after implementation and review.
 
 ---
 
+## TICKET-019: Multi-Select Tasks with Space
+**Completed:** 2026-01-05
+
+### Summary
+Allow selecting multiple tasks from task list by pressing Space, applying actions only to selected tasks.
+
+### Resolution
+
+#### State Management
+- Added `selectedTaskUUIDs: Set<String>` to `LauncherViewModel.swift`
+- Added computed properties: `multiSelectCount`, `hasMultiSelection`
+- Created `LauncherViewModel+MultiSelect.swift` with toggle/clear/check methods
+
+#### Keyboard Handling
+- Added `toggleMultiSelect` case to `NormalModeAction` enum
+- Space key triggers `.toggleMultiSelect` (context-aware: collapse on headers, multi-select on tasks)
+- `InteractionCoordinator` routes based on whether cursor is on header or task
+- Toggle also moves cursor down for rapid selection
+- Escape clears multi-selection (before other escape behaviors)
+
+#### Visual Styling
+- Added mauve-tinted surface colors to `ThemeManager`: `surfaceMultiSelected`, `surfaceMultiSelectedHover`, `surfaceMultiSelectedFocused`
+- `TaskRow` shows mauve accent bar (3px) + mauve background tint for multi-selected tasks
+- Blue focus bar (5px) still shown for cursor position
+
+#### Selection Count Display
+- Updated `BottomHintModelBuilder` to show "N selected" in left hints when multi-selection active
+
+#### Action Filter Override
+- `LauncherActionService.buildMultiSelectFilter()` creates OR filter from UUIDs
+- Multi-select filter only applied when submitting (not when previewing while typing)
+- Multi-selection cleared after successful non-list action
+
+#### Bug Fixes
+- Fixed: Multi-selection was clearing when typing in input box
+- Fixed: Preview mode was filtering task list to selected tasks only
+
+#### Tests Added
+- `testMultiSelectPersistsDuringTyping` - regression test for typing bug
+- `testMultiSelectClearsOnEscape` - escape clears selection
+- `testToggleMultiSelectAtCursor` - toggle behavior
+- `testToggleMultiSelectMovesCursorDown` - cursor advances after toggle
+- `testToggleMultiSelectOnHeaderReturnsFalse` - no-op on group headers
+- Updated `KeyHandlingDeciderTests` for new space key behavior
+
+---
+
 ## TICKET-017: Global Dropdown Menu Trigger (Cmd+P)
 **Completed:** 2026-01-04
 

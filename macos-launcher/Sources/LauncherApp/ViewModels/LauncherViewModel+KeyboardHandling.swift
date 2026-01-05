@@ -5,45 +5,14 @@ import Foundation
 extension LauncherViewModel {
     @discardableResult
     func handleEscape() -> Bool {
-        // Close SaveReportSheet if it's open
-        if showingSaveReportSheet {
-            showingSaveReportSheet = false
+        // Handle editing states first (extracted to reduce complexity)
+        if handleEscapeForEditingStates() {
             return true
         }
 
-        // Cancel annotation input if active
-        if isAddingAnnotation {
-            cancelAddingAnnotation()
-            return true
-        }
-
-        // Cancel task name editing if active
-        if isEditingTaskName {
-            cancelEditingTaskName()
-            return true
-        }
-
-        // Cancel project editing if active
-        if isEditingProject {
-            cancelEditingProject()
-            return true
-        }
-
-        // Cancel adding tag if active
-        if isAddingTag {
-            cancelAddingTag()
-            return true
-        }
-
-        // Cancel annotation editing if active
-        if editingAnnotationId != nil {
-            cancelEditingAnnotation()
-            return true
-        }
-
-        // Cancel due date editing if active
-        if isEditingDueDate {
-            cancelEditingDueDate()
+        // Clear multi-selection if active
+        if hasMultiSelection {
+            clearMultiSelection()
             return true
         }
 
@@ -77,6 +46,40 @@ extension LauncherViewModel {
         }
     }
 
+    /// Handle escape for various editing states in detail view.
+    /// Returns true if an editing state was active and cancelled.
+    private func handleEscapeForEditingStates() -> Bool {
+        if showingSaveReportSheet {
+            showingSaveReportSheet = false
+            return true
+        }
+        if isAddingAnnotation {
+            cancelAddingAnnotation()
+            return true
+        }
+        if isEditingTaskName {
+            cancelEditingTaskName()
+            return true
+        }
+        if isEditingProject {
+            cancelEditingProject()
+            return true
+        }
+        if isAddingTag {
+            cancelAddingTag()
+            return true
+        }
+        if editingAnnotationId != nil {
+            cancelEditingAnnotation()
+            return true
+        }
+        if isEditingDueDate {
+            cancelEditingDueDate()
+            return true
+        }
+        return false
+    }
+
     @discardableResult
     func handleNormalModeAction(_ action: NormalModeAction) -> Bool {
         let effect = InteractionCoordinator.normalModeEffect(
@@ -100,6 +103,8 @@ extension LauncherViewModel {
             return toggleSelectedOrHoveredGroupCollapse()
         case .toggleTaskExpansion:
             return toggleSelectedOrHoveredTaskExpansion()
+        case .toggleMultiSelect:
+            return toggleMultiSelectAtCursor()
         case .openDetail:
             openDetail()
             return true

@@ -81,27 +81,35 @@ enum InteractionContextCoordinator {
 
 enum BottomHintModelBuilder {
     static func model(for context: InteractionContext) -> BottomHintModel {
-        model(for: context, detailCopyLabel: nil, hasTagSelected: false)
+        model(for: context, detailCopyLabel: nil, hasTagSelected: false, multiSelectCount: 0)
     }
 
     /// Builds hint model with optional detail copy label (e.g., "UUID", "Branch", "Link").
     static func model(for context: InteractionContext, detailCopyLabel: String?) -> BottomHintModel {
-        model(for: context, detailCopyLabel: detailCopyLabel, hasTagSelected: false)
+        model(for: context, detailCopyLabel: detailCopyLabel, hasTagSelected: false, multiSelectCount: 0)
     }
 
     /// Builds hint model with optional detail copy label and tag selection state.
     static func model(
         for context: InteractionContext,
         detailCopyLabel: String?,
-        hasTagSelected: Bool
+        hasTagSelected: Bool,
+        multiSelectCount: Int = 0
     ) -> BottomHintModel {
-        let left = leftHints(for: context)
+        let left = leftHints(for: context, multiSelectCount: multiSelectCount)
         let right = rightHints(for: context, detailCopyLabel: detailCopyLabel, hasTagSelected: hasTagSelected)
         return BottomHintModel(left: left, right: right)
     }
 
-    private static func leftHints(for context: InteractionContext) -> [BottomHint] {
-        var hints = [BottomHint(keybinding: KeybindingRegistry.escape, label: escapeLabel(for: context))]
+    private static func leftHints(for context: InteractionContext, multiSelectCount: Int = 0) -> [BottomHint] {
+        var hints: [BottomHint] = []
+
+        // Show multi-selection count first when tasks are selected
+        if multiSelectCount > 0 {
+            hints.append(BottomHint(key: "\(multiSelectCount)", label: "selected", action: .none))
+        }
+
+        hints.append(BottomHint(keybinding: KeybindingRegistry.escape, label: escapeLabel(for: context)))
         switch context {
         case let .detail(isEditing):
             if !isEditing {

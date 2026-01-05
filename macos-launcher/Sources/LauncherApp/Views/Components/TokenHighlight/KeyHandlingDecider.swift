@@ -88,7 +88,7 @@ enum KeyHandlingDecider {
         case KeyCode.returnKey, KeyCode.keypadEnter:
             .activatePrimary
         case KeyCode.space:
-            .toggleGroupCollapse
+            .toggleMultiSelect // Context-aware: collapse on headers, multi-select on tasks
         case KeyCode.tab:
             // Tab works for both: collapse headers or expand tasks (context decides)
             .toggleWithTab

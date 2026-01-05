@@ -42,6 +42,7 @@ enum NormalModeAction: Equatable {
     case activatePrimary
     case toggleGroupCollapse
     case toggleWithTab // Context-aware: collapse header or expand task
+    case toggleMultiSelect // Space on task row toggles multi-selection
     case openCommandPalette
 }
 

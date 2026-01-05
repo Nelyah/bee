@@ -170,6 +170,15 @@ final class LauncherViewModel: ObservableObject {
     @Published var selectedRowIndex: Int?
     var lastSelectedRowIndex: Int?
 
+    // MARK: - Multi-Select State
+
+    /// Set of task UUIDs currently multi-selected (for batch operations).
+    @Published var selectedTaskUUIDs: Set<String> = []
+    /// Number of multi-selected tasks.
+    var multiSelectCount: Int { selectedTaskUUIDs.count }
+    /// Whether any tasks are multi-selected.
+    var hasMultiSelection: Bool { !selectedTaskUUIDs.isEmpty }
+
     let actionService: LauncherActionService
     let apiClient: ApiClientProtocol
     let settingsService: SettingsServiceProtocol
@@ -330,6 +339,14 @@ final class LauncherViewModel: ObservableObject {
             updateHintModel(for: interactionContext)
         }
         .store(in: &cancellables)
+
+        // Observe multi-selection changes to update selection count in hint bar
+        $selectedTaskUUIDs
+            .sink { [weak self] _ in
+                guard let self else { return }
+                updateHintModel(for: interactionContext)
+            }
+            .store(in: &cancellables)
     }
 
     /// Updates the hint model for the given context.
@@ -338,7 +355,8 @@ final class LauncherViewModel: ObservableObject {
         hintModel = BottomHintModelBuilder.model(
             for: context,
             detailCopyLabel: copyLabel,
-            hasTagSelected: selectedTagIndex != nil
+            hasTagSelected: selectedTagIndex != nil,
+            multiSelectCount: multiSelectCount
         )
     }
 
@@ -547,10 +565,14 @@ final class LauncherViewModel: ObservableObject {
             let parsed = parsed ?? actionService.emptyParse()
             let actionName = parsed.action.isEmpty ? "list" : parsed.action
             logger.debug("Action request start. id=\(requestId), action=\(actionName)")
+
+            // Only apply multi-select filter when actually submitting (resetInput=true),
+            // not when previewing while typing (resetInput=false)
             let response = try await actionService.runAction(
                 parsed: parsed,
                 actionName: actionName,
-                projectScope: projectScope
+                projectScope: projectScope,
+                multiSelectUUIDs: resetInput ? selectedTaskUUIDs : []
             )
             guard requestId == requestCounter else { return }
             tasks = response.tasks
@@ -562,6 +584,12 @@ final class LauncherViewModel: ObservableObject {
                 resetInputState()
                 loadInitialListIfNeeded()
             }
+
+            // Clear multi-selection after successful non-list action
+            if !shouldAutoList(actionName: actionName), hasMultiSelection {
+                clearMultiSelection()
+            }
+
             logger.debug("Action request done. id=\(requestId), tasks=\(response.tasks.count)")
         } catch {
             guard requestId == requestCounter else { return }
@@ -594,12 +622,14 @@ final class LauncherViewModel: ObservableObject {
     /// Set the project scope and refresh the task list.
     func setProjectScope(_ project: String) {
         projectScope = project
+        selectedTaskUUIDs.removeAll()
         handleInputChange(input)
     }
 
     /// Clear the project scope and refresh the task list.
     func clearProjectScope() {
         projectScope = nil
+        selectedTaskUUIDs.removeAll()
         handleInputChange(input)
     }
 

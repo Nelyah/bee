@@ -31,6 +31,10 @@ struct CachedThemeColors {
     let surfaceHover: Color
     let surfaceSelected: Color
     let surfaceSelectedHover: Color
+    // Multi-select colors (mauve-based)
+    let surfaceMultiSelected: Color
+    let surfaceMultiSelectedHover: Color
+    let surfaceMultiSelectedFocused: Color
 
     init(theme: Theme) {
         themeName = theme.name
@@ -38,6 +42,10 @@ struct CachedThemeColors {
         surfaceHover = theme.surface0.blended(with: theme.blue, amount: 0.08)
         surfaceSelected = theme.surface1.blended(with: theme.blue, amount: 0.15)
         surfaceSelectedHover = theme.surface2.blended(with: theme.blue, amount: 0.12)
+        // Multi-select uses mauve tint
+        surfaceMultiSelected = theme.surface0.blended(with: theme.mauve, amount: 0.12)
+        surfaceMultiSelectedHover = theme.surface1.blended(with: theme.mauve, amount: 0.15)
+        surfaceMultiSelectedFocused = theme.surface2.blended(with: theme.mauve, amount: 0.18)
     }
 }
 
@@ -55,6 +63,9 @@ struct CachedTheme: Theme {
     var surfaceHover: Color { cached.surfaceHover }
     var surfaceSelected: Color { cached.surfaceSelected }
     var surfaceSelectedHover: Color { cached.surfaceSelectedHover }
+    var surfaceMultiSelected: Color { cached.surfaceMultiSelected }
+    var surfaceMultiSelectedHover: Color { cached.surfaceMultiSelectedHover }
+    var surfaceMultiSelectedFocused: Color { cached.surfaceMultiSelectedFocused }
 
     // Delegated properties
     var name: String { underlying.name }

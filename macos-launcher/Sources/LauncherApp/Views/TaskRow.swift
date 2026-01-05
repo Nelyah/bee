@@ -4,6 +4,7 @@ struct TaskRow: View {
     let task: ApiTask
     let columnConfigs: [ColumnConfig]
     let isSelected: Bool
+    var isMultiSelected: Bool = false
     var isExpanded: Bool = false
     var expandedContent: TaskExpandedContent?
     var onChevronTap: (() -> Void)?
@@ -19,6 +20,7 @@ struct TaskRow: View {
         task: ApiTask,
         columnConfigs: [ColumnConfig],
         isSelected: Bool,
+        isMultiSelected: Bool = false,
         isExpanded: Bool = false,
         expandedContent: TaskExpandedContent? = nil,
         onChevronTap: (() -> Void)? = nil,
@@ -28,6 +30,7 @@ struct TaskRow: View {
         self.task = task
         self.columnConfigs = columnConfigs
         self.isSelected = isSelected
+        self.isMultiSelected = isMultiSelected
         self.isExpanded = isExpanded
         self.expandedContent = expandedContent
         self.onChevronTap = onChevronTap
@@ -62,11 +65,19 @@ struct TaskRow: View {
                 // Background fill
                 backgroundColor
 
-                // Selection accent bar - simple rectangle, clipped by container
+                // Multi-select accent bar (mauve, 3px)
+                if isMultiSelected {
+                    Rectangle()
+                        .fill(ThemeManager.current.mauve)
+                        .frame(width: 3)
+                }
+
+                // Focus/selection accent bar (blue, 5px)
                 if isSelected {
                     Rectangle()
                         .fill(ThemeManager.current.blue)
                         .frame(width: 5)
+                        .padding(.leading, isMultiSelected ? 3 : 0) // Stack after mauve bar
                 }
             }
         }
@@ -244,6 +255,17 @@ struct TaskRow: View {
     }
 
     private var backgroundColor: Color {
+        // Multi-selected tasks get mauve-tinted backgrounds
+        if isMultiSelected {
+            if isSelected {
+                return ThemeManager.current.surfaceMultiSelectedFocused
+            }
+            if isHovered {
+                return ThemeManager.current.surfaceMultiSelectedHover
+            }
+            return ThemeManager.current.surfaceMultiSelected
+        }
+        // Standard focus/hover states
         if isSelected, isHovered {
             return ThemeManager.current.surfaceSelectedHover
         }

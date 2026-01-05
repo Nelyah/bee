@@ -221,6 +221,7 @@ struct TaskListView: View {
                                             task: item.task,
                                             columnConfigs: viewModel.columnConfigs,
                                             isSelected: viewModel.selectedRowIndex == rowIndex,
+                                            isMultiSelected: viewModel.isMultiSelected(uuid: item.task.uuid),
                                             isExpanded: viewModel.isTaskExpanded(item.task.uuid),
                                             expandedContent: viewModel.taskExpandedData[item.task.uuid],
                                             onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) },

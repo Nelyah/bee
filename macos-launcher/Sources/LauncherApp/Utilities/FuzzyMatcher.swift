@@ -10,24 +10,33 @@ struct FuzzyMatch {
     let matchedIndices: [Int]
 }
 
-/// Provides fuzzy string matching using the fzy algorithm.
+/// Provides fuzzy string matching with fzf-style query syntax.
 ///
-/// The fzy algorithm is a battle-tested fuzzy matching algorithm used by
-/// command-line fuzzy finders like fzy and fzf. It uses a two-phase approach:
+/// Supported query forms (fzf extended search):
+/// - Fuzzy match: `abc` (default)
+/// - Exact match: `'abc` (substring)
+/// - Exact word-boundary match: `'abc'`
+/// - Prefix match: `^abc`
+/// - Suffix match: `abc$`
+/// - Inverse match: `!abc`
+/// - OR groups: `foo | bar`
+/// - Multiple terms are ANDed: `^core go$`
 ///
-/// 1. **Matching Phase**: Determines if all query characters exist in the
-///    target string in order (case-insensitive). If any character is missing
-///    or out of order, there's no match.
-///
-/// 2. **Scoring Phase**: Uses dynamic programming to find the optimal positions
-///    for matched characters, maximizing the score based on:
-///    - Consecutive character matches (biggest bonus)
-///    - Matches at word boundaries (/, space, _, -, .)
-///    - CamelCase transitions
-///    - Matches at the start of the string
-///
-/// Reference: https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md
+/// Fuzzy scoring uses a dynamic programming approach similar to fzy.
 enum FuzzyMatcher {
+    private enum MatchMode {
+        case fuzzy
+        case exact
+        case prefix
+        case suffix
+        case boundary
+    }
+
+    private struct QueryToken {
+        let pattern: String
+        let mode: MatchMode
+        let isInverse: Bool
+    }
     // MARK: - Scoring Constants
 
     /// Scoring constants based on the fzy algorithm.
@@ -67,23 +76,23 @@ enum FuzzyMatcher {
     ///   - target: The string to search within (e.g., a project name)
     /// - Returns: A `FuzzyMatch` if all query chars are found in order, otherwise `nil`
     static func match(_ query: String, in target: String) -> FuzzyMatch? {
-        // Empty query matches everything with perfect score
-        guard !query.isEmpty else {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else {
             return FuzzyMatch(score: 1.0, matchedIndices: [])
         }
 
-        // Phase 1: Check if all query characters exist in target (in order)
-        guard hasSubsequence(query, in: target) else {
-            return nil
+        let groups = parseQuery(trimmedQuery)
+        var bestMatch: FuzzyMatch?
+
+        for group in groups {
+            if let match = matchGroup(group, target: target) {
+                if bestMatch == nil || match.score > bestMatch!.score {
+                    bestMatch = match
+                }
+            }
         }
 
-        // Phase 2: Calculate optimal score using dynamic programming
-        let (score, indices) = calculateOptimalMatch(query: query, target: target)
-
-        // Normalize score to 0.0-1.0 range
-        let normalizedScore = normalizeScore(score, queryLength: query.count, targetLength: target.count)
-
-        return FuzzyMatch(score: normalizedScore, matchedIndices: indices)
+        return bestMatch
     }
 
     /// Creates highlighted text with matched characters styled distinctly.
@@ -364,4 +373,197 @@ enum FuzzyMatcher {
         let normalized = (rawScore - minScore) / range
         return max(0.0, min(1.0, normalized))
     }
+
+    // MARK: - fzf Query Parsing
+
+    private static func parseQuery(_ query: String) -> [[QueryToken]] {
+        let rawTokens = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        var groups: [[QueryToken]] = []
+        var currentGroup: [QueryToken] = []
+
+        for raw in rawTokens {
+            if raw == "|" {
+                if !currentGroup.isEmpty {
+                    groups.append(currentGroup)
+                    currentGroup = []
+                }
+                continue
+            }
+            if let token = parseToken(raw) {
+                currentGroup.append(token)
+            }
+        }
+
+        if !currentGroup.isEmpty {
+            groups.append(currentGroup)
+        }
+
+        return groups.isEmpty ? [[]] : groups
+    }
+
+    private static func parseToken(_ raw: String) -> QueryToken? {
+        var token = raw
+        var isInverse = false
+
+        if token.hasPrefix("!") {
+            isInverse = true
+            token.removeFirst()
+        }
+
+        guard !token.isEmpty else { return nil }
+
+        var mode: MatchMode = .fuzzy
+        let isQuoted = token.hasPrefix("'")
+
+        if isQuoted {
+            token.removeFirst()
+            if token.hasSuffix("'") {
+                token.removeLast()
+                mode = .boundary
+            } else {
+                mode = .exact
+            }
+        } else {
+            let hasPrefixCaret = token.hasPrefix("^")
+            let hasSuffixDollar = token.hasSuffix("$")
+
+            if hasPrefixCaret {
+                token.removeFirst()
+            }
+            if hasSuffixDollar, !token.isEmpty {
+                token.removeLast()
+            }
+
+            if hasPrefixCaret && hasSuffixDollar {
+                mode = .exact
+            } else if hasPrefixCaret {
+                mode = .prefix
+            } else if hasSuffixDollar {
+                mode = .suffix
+            }
+        }
+
+        guard !token.isEmpty else { return nil }
+        return QueryToken(pattern: token, mode: mode, isInverse: isInverse)
+    }
+
+    // MARK: - Matching
+
+    private static func matchGroup(_ tokens: [QueryToken], target: String) -> FuzzyMatch? {
+        var matchedIndices = Set<Int>()
+        var positiveScores: [Double] = []
+
+        for token in tokens {
+            let result = matchToken(token, target: target)
+
+            if token.isInverse {
+                if result != nil {
+                    return nil
+                }
+                continue
+            }
+
+            guard let match = result else { return nil }
+            positiveScores.append(match.score)
+            for index in match.matchedIndices {
+                matchedIndices.insert(index)
+            }
+        }
+
+        let score: Double
+        if positiveScores.isEmpty {
+            score = 1.0
+        } else {
+            score = min(1.0, positiveScores.reduce(0.0, +) / Double(positiveScores.count))
+        }
+
+        return FuzzyMatch(score: score, matchedIndices: matchedIndices.sorted())
+    }
+
+    private static func matchToken(_ token: QueryToken, target: String) -> FuzzyMatch? {
+        switch token.mode {
+        case .fuzzy:
+            return fuzzyMatch(token.pattern, in: target)
+        case .exact:
+            return exactMatch(token.pattern, in: target)
+        case .prefix:
+            return prefixMatch(token.pattern, in: target)
+        case .suffix:
+            return suffixMatch(token.pattern, in: target)
+        case .boundary:
+            return boundaryMatch(token.pattern, in: target)
+        }
+    }
+
+    private static func fuzzyMatch(_ query: String, in target: String) -> FuzzyMatch? {
+        guard hasSubsequence(query, in: target) else {
+            return nil
+        }
+
+        let (score, indices) = calculateOptimalMatch(query: query, target: target)
+        let normalizedScore = normalizeScore(score, queryLength: query.count, targetLength: target.count)
+        return FuzzyMatch(score: normalizedScore, matchedIndices: indices)
+    }
+
+    private static func exactMatch(_ pattern: String, in target: String) -> FuzzyMatch? {
+        let targetLower = target.lowercased()
+        let patternLower = pattern.lowercased()
+        guard let range = targetLower.range(of: patternLower) else { return nil }
+        let startIndex = targetLower.distance(from: targetLower.startIndex, to: range.lowerBound)
+        let indices = Array(startIndex ..< startIndex + patternLower.count)
+        return FuzzyMatch(score: exactScore(pattern: pattern, target: target), matchedIndices: indices)
+    }
+
+    private static func prefixMatch(_ pattern: String, in target: String) -> FuzzyMatch? {
+        let targetLower = target.lowercased()
+        let patternLower = pattern.lowercased()
+        guard targetLower.hasPrefix(patternLower) else { return nil }
+        let indices = Array(0 ..< patternLower.count)
+        return FuzzyMatch(score: min(1.0, exactScore(pattern: pattern, target: target) + 0.1), matchedIndices: indices)
+    }
+
+    private static func suffixMatch(_ pattern: String, in target: String) -> FuzzyMatch? {
+        let targetLower = target.lowercased()
+        let patternLower = pattern.lowercased()
+        guard targetLower.hasSuffix(patternLower) else { return nil }
+        let startIndex = max(0, targetLower.count - patternLower.count)
+        let indices = Array(startIndex ..< startIndex + patternLower.count)
+        return FuzzyMatch(score: min(1.0, exactScore(pattern: pattern, target: target) + 0.1), matchedIndices: indices)
+    }
+
+    private static func boundaryMatch(_ pattern: String, in target: String) -> FuzzyMatch? {
+        let targetLower = Array(target.lowercased())
+        let targetChars = Array(target)
+        let patternLower = Array(pattern.lowercased())
+        guard !patternLower.isEmpty else { return nil }
+
+        let targetCount = targetLower.count
+        let patternCount = patternLower.count
+        guard patternCount <= targetCount else { return nil }
+
+        for start in 0 ... (targetCount - patternCount) {
+            let slice = targetLower[start ..< start + patternCount]
+            if slice.elementsEqual(patternLower) {
+                let beforeIndex = start - 1
+                let afterIndex = start + patternCount
+                let beforeBoundary = beforeIndex < 0 || isBoundaryChar(targetChars[beforeIndex])
+                let afterBoundary = afterIndex >= targetCount || isBoundaryChar(targetChars[afterIndex])
+                if beforeBoundary && afterBoundary {
+                    let indices = Array(start ..< start + patternCount)
+                    return FuzzyMatch(
+                        score: min(1.0, exactScore(pattern: pattern, target: target) + 0.05),
+                        matchedIndices: indices
+                    )
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private static func exactScore(pattern: String, target: String) -> Double {
+        let targetLength = max(1, target.count)
+        return min(1.0, Double(pattern.count) / Double(targetLength))
+    }
+
 }

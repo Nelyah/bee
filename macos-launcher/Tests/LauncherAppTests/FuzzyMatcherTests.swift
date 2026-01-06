@@ -4,7 +4,7 @@ import XCTest
 
 /// Comprehensive unit tests for the FuzzyMatcher algorithm.
 ///
-/// These tests verify the fzy-style fuzzy matching algorithm, covering:
+/// These tests verify fzf-style query parsing and matching behavior, covering:
 /// - Basic matching behavior (match vs no-match)
 /// - Scoring accuracy and relative rankings
 /// - Edge cases and boundary conditions
@@ -85,6 +85,55 @@ final class FuzzyMatcherTests: XCTestCase {
     func testQueryLongerThanTargetNoMatch() {
         let result = FuzzyMatcher.match("hobbies", in: "hobby")
         XCTAssertNil(result, "Query longer than target should not match")
+    }
+
+    // MARK: - A. fzf Query Syntax
+
+    func testExactMatchWithQuote() {
+        let result = FuzzyMatcher.match("'wild", in: "wild west")
+        XCTAssertNotNil(result, "Quoted query should match exact substring")
+        let prefixIndices = Array(result?.matchedIndices.prefix(4) ?? [])
+        XCTAssertEqual(prefixIndices, [0, 1, 2, 3], "Should match 'wild' at start")
+    }
+
+    func testBoundaryExactMatch() {
+        let boundaryMatch = FuzzyMatcher.match("'wild'", in: "wild west")
+        XCTAssertNotNil(boundaryMatch, "Boundary match should match full word")
+
+        let noBoundaryMatch = FuzzyMatcher.match("'wild'", in: "wilderness")
+        XCTAssertNil(noBoundaryMatch, "Boundary match should not match inside a word")
+    }
+
+    func testPrefixMatchWithCaret() {
+        let result = FuzzyMatcher.match("^music", in: "music.mp3")
+        XCTAssertNotNil(result, "Prefix match should match at start")
+
+        let noMatch = FuzzyMatcher.match("^music", in: "amusic.mp3")
+        XCTAssertNil(noMatch, "Prefix match should not match mid-string")
+    }
+
+    func testSuffixMatchWithDollar() {
+        let result = FuzzyMatcher.match(".mp3$", in: "song.mp3")
+        XCTAssertNotNil(result, "Suffix match should match at end")
+
+        let noMatch = FuzzyMatcher.match(".mp3$", in: "song.mp3.bak")
+        XCTAssertNil(noMatch, "Suffix match should not match with extra suffix")
+    }
+
+    func testInverseMatch() {
+        let match = FuzzyMatcher.match("!fire", in: "water.txt")
+        XCTAssertNotNil(match, "Inverse term should allow non-matching target")
+
+        let noMatch = FuzzyMatcher.match("!fire", in: "fire.txt")
+        XCTAssertNil(noMatch, "Inverse term should exclude matching target")
+    }
+
+    func testOrGroupMatches() {
+        let result = FuzzyMatcher.match("^core go$ | rb$ | py$", in: "core.go")
+        XCTAssertNotNil(result, "OR group should match one of the alternatives")
+
+        let noMatch = FuzzyMatcher.match("^core go$ | rb$ | py$", in: "core.rs")
+        XCTAssertNil(noMatch, "OR group should reject non-matching alternatives")
     }
 
     // MARK: - B. Scoring Tests (Relative Rankings)

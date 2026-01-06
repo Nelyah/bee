@@ -37,6 +37,7 @@ enum FuzzyMatcher {
         let mode: MatchMode
         let isInverse: Bool
     }
+
     // MARK: - Scoring Constants
 
     /// Scoring constants based on the fzy algorithm.
@@ -434,7 +435,7 @@ enum FuzzyMatcher {
                 token.removeLast()
             }
 
-            if hasPrefixCaret && hasSuffixDollar {
+            if hasPrefixCaret, hasSuffixDollar {
                 mode = .exact
             } else if hasPrefixCaret {
                 mode = .prefix
@@ -470,11 +471,10 @@ enum FuzzyMatcher {
             }
         }
 
-        let score: Double
-        if positiveScores.isEmpty {
-            score = 1.0
+        let score: Double = if positiveScores.isEmpty {
+            1.0
         } else {
-            score = min(1.0, positiveScores.reduce(0.0, +) / Double(positiveScores.count))
+            min(1.0, positiveScores.reduce(0.0, +) / Double(positiveScores.count))
         }
 
         return FuzzyMatch(score: score, matchedIndices: matchedIndices.sorted())
@@ -483,15 +483,15 @@ enum FuzzyMatcher {
     private static func matchToken(_ token: QueryToken, target: String) -> FuzzyMatch? {
         switch token.mode {
         case .fuzzy:
-            return fuzzyMatch(token.pattern, in: target)
+            fuzzyMatch(token.pattern, in: target)
         case .exact:
-            return exactMatch(token.pattern, in: target)
+            exactMatch(token.pattern, in: target)
         case .prefix:
-            return prefixMatch(token.pattern, in: target)
+            prefixMatch(token.pattern, in: target)
         case .suffix:
-            return suffixMatch(token.pattern, in: target)
+            suffixMatch(token.pattern, in: target)
         case .boundary:
-            return boundaryMatch(token.pattern, in: target)
+            boundaryMatch(token.pattern, in: target)
         }
     }
 
@@ -548,7 +548,7 @@ enum FuzzyMatcher {
                 let afterIndex = start + patternCount
                 let beforeBoundary = beforeIndex < 0 || isBoundaryChar(targetChars[beforeIndex])
                 let afterBoundary = afterIndex >= targetCount || isBoundaryChar(targetChars[afterIndex])
-                if beforeBoundary && afterBoundary {
+                if beforeBoundary, afterBoundary {
                     let indices = Array(start ..< start + patternCount)
                     return FuzzyMatch(
                         score: min(1.0, exactScore(pattern: pattern, target: target) + 0.05),
@@ -565,5 +565,4 @@ enum FuzzyMatcher {
         let targetLength = max(1, target.count)
         return min(1.0, Double(pattern.count) / Double(targetLength))
     }
-
 }

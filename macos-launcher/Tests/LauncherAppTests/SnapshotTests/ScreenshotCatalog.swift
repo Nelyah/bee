@@ -460,6 +460,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
     func testCommandPalette_withSearch() {
         viewModel.openCommandPalette()
         viewModel.commandPalette.query = "report"
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
         let view = CommandPaletteView(viewModel: viewModel, commandPalette: viewModel.commandPalette)
         assertViewSnapshot(view, size: TestSizes.commandPalette)
     }

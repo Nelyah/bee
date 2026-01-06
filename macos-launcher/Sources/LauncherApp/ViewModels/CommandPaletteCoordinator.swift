@@ -3,6 +3,14 @@ import Foundation
 
 @MainActor
 final class CommandPaletteCoordinator: ObservableObject {
+    private var queryCancellable: AnyCancellable?
+    @Published private(set) var debouncedQuery: String = ""
+
+    private var cachedSections: [CommandPaletteSection] = []
+    private var cachedQuery: String = ""
+    private var cachedMenuId: String = ""
+    private var cachedMenuDepth: Int = -1
+
     // MARK: - Published State
 
     @Published var isPresented: Bool = false
@@ -26,11 +34,26 @@ final class CommandPaletteCoordinator: ObservableObject {
 
     /// All sections for the current menu, filtered by query.
     var currentSections: [CommandPaletteSection] {
-        if let menu = navigationStack.currentMenu, !navigationStack.isAtRoot {
-            return dataSource.filterSections(menu.sections, query: query)
+        let effectiveQuery = debouncedQuery
+
+        let signature = currentMenuSignature()
+        if cachedQuery == effectiveQuery,
+           cachedMenuId == signature.id,
+           cachedMenuDepth == signature.depth {
+            return cachedSections
         }
 
-        return dataSource.buildSections(context: context, query: query)
+        let sections: [CommandPaletteSection] = if let menu = navigationStack.currentMenu, !navigationStack.isAtRoot {
+            dataSource.filterSections(menu.sections, query: effectiveQuery)
+        } else {
+            dataSource.buildSections(context: context, query: effectiveQuery)
+        }
+
+        cachedQuery = effectiveQuery
+        cachedMenuId = signature.id
+        cachedMenuDepth = signature.depth
+        cachedSections = sections
+        return sections
     }
 
     /// Flat list of all selectable items for keyboard navigation.
@@ -59,6 +82,15 @@ final class CommandPaletteCoordinator: ObservableObject {
 
     init(dataSource: CommandPaletteDataSource) {
         self.dataSource = dataSource
+        debouncedQuery = query
+        queryCancellable = $query
+            .removeDuplicates()
+            .debounce(for: .milliseconds(80), scheduler: RunLoop.main)
+            .sink { [weak self] value in
+                guard let self else { return }
+                debouncedQuery = value
+                invalidateCache()
+            }
     }
 
     convenience init() {
@@ -90,6 +122,8 @@ final class CommandPaletteCoordinator: ObservableObject {
     /// Resets state for opening the palette.
     func resetForOpen() {
         query = ""
+        debouncedQuery = query
+        invalidateCache()
         selectionIndex = 0
         isLoading = false
     }
@@ -107,6 +141,8 @@ final class CommandPaletteCoordinator: ObservableObject {
     func handleEscape() -> Bool {
         if navigationStack.pop() {
             query = ""
+            debouncedQuery = query
+            invalidateCache()
             selectionIndex = 0
             return true
         }
@@ -122,6 +158,8 @@ final class CommandPaletteCoordinator: ObservableObject {
             let menu = submenu.menuBuilder()
             navigationStack.push(menu)
             query = ""
+            debouncedQuery = query
+            invalidateCache()
             selectionIndex = 0
 
         case let .action(action):
@@ -140,6 +178,8 @@ final class CommandPaletteCoordinator: ObservableObject {
     func navigateBack() {
         _ = navigationStack.pop()
         query = ""
+        debouncedQuery = query
+        invalidateCache()
         selectionIndex = 0
     }
 
@@ -147,6 +187,8 @@ final class CommandPaletteCoordinator: ObservableObject {
     func pushMenu(_ menu: CommandPaletteMenu) {
         navigationStack.push(menu)
         query = ""
+        debouncedQuery = query
+        invalidateCache()
         selectionIndex = 0
     }
 
@@ -168,6 +210,7 @@ final class CommandPaletteCoordinator: ObservableObject {
     /// Updates the palette context.
     func updateContext(_ context: CommandPaletteContext) {
         self.context = context
+        invalidateCache()
     }
 
     // MARK: - Private Helpers
@@ -179,5 +222,19 @@ final class CommandPaletteCoordinator: ObservableObject {
             title: "Command Palette",
             sections: sections
         )
+    }
+
+    private func currentMenuSignature() -> (id: String, depth: Int) {
+        if let menu = navigationStack.currentMenu {
+            return (menu.id, navigationStack.breadcrumb.count)
+        }
+        return ("root", 0)
+    }
+
+    private func invalidateCache() {
+        cachedQuery = ""
+        cachedMenuId = ""
+        cachedMenuDepth = -1
+        cachedSections = []
     }
 }

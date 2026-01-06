@@ -37,6 +37,10 @@ final class CommandPaletteSnapshotTests: SnapshotTestCase {
         )
     }
 
+    private func flushDebouncedQuery() {
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+    }
+
     // MARK: - Basic States
 
     func testCommandPaletteLoading() {
@@ -413,6 +417,7 @@ final class CommandPaletteSnapshotTests: SnapshotTestCase {
 
         // Set a search query
         coordinator.query = "task"
+        flushDebouncedQuery()
 
         let section = makeSection(
             id: "results",

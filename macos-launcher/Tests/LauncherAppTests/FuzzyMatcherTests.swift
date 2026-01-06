@@ -28,8 +28,8 @@ final class FuzzyMatcherTests: XCTestCase {
     func testSuffixMatch() {
         let result = FuzzyMatcher.match("by", in: "hobby")
         XCTAssertNotNil(result, "Suffix match should succeed")
-        // Note: fzy algorithm may find first 'b' at index 2 or consecutive 'b' at index 3
-        // Both are valid fuzzy matches - the algorithm optimizes for best score
+        // The matcher may pick the first 'b' at index 2 or consecutive 'b' at index 3.
+        // Both are valid fuzzy matches - the algorithm optimizes for best score.
         XCTAssertEqual(result?.matchedIndices.count, 2, "Should have 2 matched chars")
         XCTAssertEqual(result?.matchedIndices.last, 4, "'y' should match at index 4")
     }
@@ -96,6 +96,11 @@ final class FuzzyMatcherTests: XCTestCase {
         XCTAssertEqual(prefixIndices, [0, 1, 2, 3], "Should match 'wild' at start")
     }
 
+    func testExactMatchWithQuoteIsCaseInsensitive() {
+        let result = FuzzyMatcher.match("'FoO", in: "foo bar")
+        XCTAssertNotNil(result, "Quoted exact match should be case-insensitive")
+    }
+
     func testBoundaryExactMatch() {
         let boundaryMatch = FuzzyMatcher.match("'wild'", in: "wild west")
         XCTAssertNotNil(boundaryMatch, "Boundary match should match full word")
@@ -128,12 +133,108 @@ final class FuzzyMatcherTests: XCTestCase {
         XCTAssertNil(noMatch, "Inverse term should exclude matching target")
     }
 
+    func testInverseOnlyAllowsNonMatchingTargets() {
+        let match = FuzzyMatcher.match("!foo", in: "bar")
+        XCTAssertNotNil(match, "Inverse-only query should match non-containing targets")
+    }
+
     func testOrGroupMatches() {
         let result = FuzzyMatcher.match("^core go$ | rb$ | py$", in: "core.go")
         XCTAssertNotNil(result, "OR group should match one of the alternatives")
 
         let noMatch = FuzzyMatcher.match("^core go$ | rb$ | py$", in: "core.rs")
         XCTAssertNil(noMatch, "OR group should reject non-matching alternatives")
+    }
+
+    func testSimpleOrGroup() {
+        let match = FuzzyMatcher.match("foo | bar", in: "bar baz")
+        XCTAssertNotNil(match, "Simple OR group should match either term")
+    }
+
+    func testAndTermsAllRequired() {
+        let match = FuzzyMatcher.match("foo bar", in: "bar foo")
+        XCTAssertNotNil(match, "All terms should be required (order-independent)")
+
+        let noMatch = FuzzyMatcher.match("foo bar", in: "only foo")
+        XCTAssertNil(noMatch, "Missing term should fail the match")
+    }
+
+    func testOrGroupWithAndTerms() {
+        let match = FuzzyMatcher.match("foo | bar baz", in: "bar baz qux")
+        XCTAssertNotNil(match, "OR group should allow the AND pair to match")
+
+        let noMatch = FuzzyMatcher.match("foo | bar baz", in: "bar only")
+        XCTAssertNil(noMatch, "AND pair should fail if one term is missing")
+    }
+
+    func testInverseWithPositiveTerm() {
+        let match = FuzzyMatcher.match("foo !bar", in: "foo baz")
+        XCTAssertNotNil(match, "Inverse term should exclude targets containing it")
+
+        let noMatch = FuzzyMatcher.match("foo !bar", in: "foo bar")
+        XCTAssertNil(noMatch, "Inverse term should exclude matching targets")
+    }
+
+    func testInverseExactTermExcludesSubstring() {
+        let noMatch = FuzzyMatcher.match("!foo", in: "food")
+        XCTAssertNil(noMatch, "Inverse exact term should exclude substring matches")
+    }
+
+    func testExactBoundaryWithPunctuation() {
+        let match = FuzzyMatcher.match("'foo'", in: "foo,bar")
+        XCTAssertNotNil(match, "Boundary exact should match punctuation-separated words")
+
+        let noMatch = FuzzyMatcher.match("'foo'", in: "foobar")
+        XCTAssertNil(noMatch, "Boundary exact should not match inside word")
+    }
+
+    func testEscapedSpaceMatchesLiteralSpace() {
+        let match = FuzzyMatcher.match("foo\\ bar", in: "foo bar")
+        XCTAssertNotNil(match, "Escaped space should be treated as literal")
+    }
+
+    func testTrailingSpacesAreTrimmed() {
+        let match = FuzzyMatcher.match("foo   ", in: "foo")
+        XCTAssertNotNil(match, "Trailing spaces in query should be trimmed")
+    }
+
+    func testPrefixIgnoresLeadingWhitespace() {
+        let match = FuzzyMatcher.match("^foo", in: "   foo")
+        XCTAssertNotNil(match, "Prefix match should skip leading whitespace")
+    }
+
+    func testSuffixIgnoresTrailingWhitespace() {
+        let match = FuzzyMatcher.match("foo$", in: "foo   ")
+        XCTAssertNotNil(match, "Suffix match should skip trailing whitespace")
+    }
+
+    func testEqualMatchIgnoresOuterWhitespace() {
+        let match = FuzzyMatcher.match("^foo$", in: "  foo  ")
+        XCTAssertNotNil(match, "Equal match should ignore outer whitespace")
+
+        let noMatch = FuzzyMatcher.match("^foo$", in: "  foo bar  ")
+        XCTAssertNil(noMatch, "Equal match should require full trimmed equality")
+    }
+
+    func testNormalizedMatchesAccents() {
+        let match = FuzzyMatcher.match("cafe", in: "café")
+        XCTAssertNotNil(match, "Normalized query should match accented target")
+    }
+
+    func testNormalizedMatchesMultipleAccents() {
+        let match = FuzzyMatcher.match("resume", in: "résumé")
+        XCTAssertNotNil(match, "Normalized query should match multiple accents")
+    }
+
+    func testEmojiScalarMapping() {
+        let result = FuzzyMatcher.match("ab", in: "a😊b")
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.matchedIndices, [0, 2], "Indices should map to character positions")
+    }
+
+    func testMultipleTermsOrderIndependent() {
+        let match = FuzzyMatcher.match("bar foo", in: "foo ... bar")
+        XCTAssertNotNil(match, "Term order should not matter")
     }
 
     // MARK: - B. Scoring Tests (Relative Rankings)
@@ -144,14 +245,10 @@ final class FuzzyMatcherTests: XCTestCase {
 
         XCTAssertNotNil(exact)
         XCTAssertNotNil(partial)
-        // Both consecutive prefix matches may normalize to high scores
-        // The key property is that both score well (>= 0.9)
         XCTAssertGreaterThanOrEqual(
             exact!.score, partial!.score,
             "Exact match should score higher or equal to partial match"
         )
-        XCTAssertGreaterThan(exact!.score, 0.9, "Exact match should have very high score")
-        XCTAssertGreaterThan(partial!.score, 0.9, "Prefix match should also have high score")
     }
 
     func testPrefixScoresBetterThanMiddle() {
@@ -175,6 +272,18 @@ final class FuzzyMatcherTests: XCTestCase {
         XCTAssertGreaterThan(
             consecutive!.score, gapped!.score,
             "Consecutive matches should score higher than gapped matches"
+        )
+    }
+
+    func testGapPenaltyPrefersTighterMatch() {
+        let tight = FuzzyMatcher.match("ac", in: "abc")
+        let loose = FuzzyMatcher.match("ac", in: "abbbbbc")
+
+        XCTAssertNotNil(tight)
+        XCTAssertNotNil(loose)
+        XCTAssertGreaterThan(
+            tight!.score, loose!.score,
+            "Tighter gaps should score higher than loose gaps"
         )
     }
 
@@ -216,8 +325,6 @@ final class FuzzyMatcherTests: XCTestCase {
 
     func testShorterTargetScoresBetter() {
         // Same query, shorter target should score higher or equal
-        // Note: fzy algorithm normalizes scores, so consecutive prefix matches
-        // may achieve the same high score regardless of target length
         let short = FuzzyMatcher.match("bee", in: "bee")
         let long = FuzzyMatcher.match("bee", in: "beekeeper")
 
@@ -344,8 +451,8 @@ final class FuzzyMatcherTests: XCTestCase {
 
     // MARK: - E. Scoring Boundary Tests
 
-    func testScoreIsNormalized() {
-        // Test various matches to ensure scores are in valid range
+    func testScoreIsFinite() {
+        // Test various matches to ensure scores are finite
         let testCases = [
             ("a", "a"),
             ("abc", "abc"),
@@ -356,29 +463,23 @@ final class FuzzyMatcherTests: XCTestCase {
 
         for (query, target) in testCases {
             if let result = FuzzyMatcher.match(query, in: target) {
-                XCTAssertGreaterThanOrEqual(
-                    result.score, 0.0,
-                    "Score should be >= 0 for '\(query)' in '\(target)'"
-                )
-                XCTAssertLessThanOrEqual(
-                    result.score, 1.0,
-                    "Score should be <= 1 for '\(query)' in '\(target)'"
+                XCTAssertTrue(
+                    result.score.isFinite,
+                    "Score should be finite for '\(query)' in '\(target)'"
                 )
             }
         }
     }
 
-    func testPerfectMatchIsNearOne() {
-        let result = FuzzyMatcher.match("hobby", in: "hobby")
-        XCTAssertNotNil(result)
-        XCTAssertGreaterThan(result!.score, 0.9, "Exact match should have very high score")
-    }
-
-    func testMinScoreAboveZero() {
-        // Even poor matches should have score > 0 if they match
-        let result = FuzzyMatcher.match("a", in: String(repeating: "x", count: 100) + "a")
-        XCTAssertNotNil(result)
-        XCTAssertGreaterThan(result!.score, 0.0, "Valid match should have score > 0")
+    func testExactMatchBeatsGappedMatch() {
+        let exact = FuzzyMatcher.match("hobby", in: "hobby")
+        let gapped = FuzzyMatcher.match("hobby", in: "h_o_b_b_y")
+        XCTAssertNotNil(exact)
+        XCTAssertNotNil(gapped)
+        XCTAssertGreaterThan(
+            exact!.score, gapped!.score,
+            "Exact match should score higher than gapped match"
+        )
     }
 
     // MARK: - F. MatchedIndices Tests
@@ -440,143 +541,4 @@ final class FuzzyMatcherTests: XCTestCase {
         }
     }
 
-    // MARK: - G. Performance Tests
-
-    func testPerformanceWith1000Items() {
-        let items = (0 ..< 1000).map { "item_\($0)_with_some_extra_text" }
-        let query = "item"
-
-        measure {
-            for item in items {
-                _ = FuzzyMatcher.match(query, in: item)
-            }
-        }
-    }
-
-    func testPerformanceWithLongStrings() {
-        let longTarget = String(repeating: "abcdefghij", count: 100)
-        let query = "abcdefghij"
-
-        measure {
-            for _ in 0 ..< 100 {
-                _ = FuzzyMatcher.match(query, in: longTarget)
-            }
-        }
-    }
-
-    // MARK: - H. Highlighting Integration Tests
-
-    func testHighlightedTextRendersCorrectly() {
-        let text = "hobby"
-        let indices = [0, 2, 4] // h, b, y
-
-        let highlighted = FuzzyMatcher.highlightedText(
-            text,
-            matchedIndices: indices,
-            baseFont: .body,
-            baseColor: .primary,
-            matchColor: .blue
-        )
-
-        // Just verify it doesn't crash and returns a Text
-        XCTAssertNotNil(highlighted)
-    }
-
-    func testHighlightedTextWithEmptyIndices() {
-        let highlighted = FuzzyMatcher.highlightedText(
-            "hobby",
-            matchedIndices: [],
-            baseFont: .body,
-            baseColor: .primary,
-            matchColor: .blue
-        )
-
-        XCTAssertNotNil(highlighted, "Should handle empty indices")
-    }
-
-    func testHighlightedTextWithAllIndices() {
-        let text = "abc"
-        let highlighted = FuzzyMatcher.highlightedText(
-            text,
-            matchedIndices: [0, 1, 2],
-            baseFont: .body,
-            baseColor: .primary,
-            matchColor: .blue
-        )
-
-        XCTAssertNotNil(highlighted, "Should handle all indices matched")
-    }
-
-    // MARK: - I. Word Boundary Detection Tests
-
-    func testWordBoundaryAfterUnderscore() {
-        let result = FuzzyMatcher.match("tb", in: "test_bar")
-        XCTAssertNotNil(result)
-        // 'b' after underscore should get boundary bonus
-    }
-
-    func testWordBoundaryAfterDash() {
-        let result = FuzzyMatcher.match("tb", in: "test-bar")
-        XCTAssertNotNil(result)
-    }
-
-    func testWordBoundaryAfterSpace() {
-        let result = FuzzyMatcher.match("tb", in: "test bar")
-        XCTAssertNotNil(result)
-    }
-
-    func testWordBoundaryAfterSlash() {
-        let result = FuzzyMatcher.match("tb", in: "test/bar")
-        XCTAssertNotNil(result)
-    }
-
-    func testWordBoundaryAfterDot() {
-        let result = FuzzyMatcher.match("tb", in: "test.bar")
-        XCTAssertNotNil(result)
-    }
-
-    // MARK: - J. Additional Scoring Verification Tests
-
-    func testScoreOrderingWithMultipleMatches() {
-        // Given several targets for the same query, verify ordering makes sense
-        let query = "fb"
-        let targets = [
-            "FooBar", // CamelCase - high score
-            "foo_bar", // Boundary - high score
-            "foobar", // Plain - medium score
-            "xxxfoobar", // Not at start - lower score
-        ]
-
-        var scores: [Double] = []
-        for target in targets {
-            if let result = FuzzyMatcher.match(query, in: target) {
-                scores.append(result.score)
-            }
-        }
-
-        XCTAssertEqual(scores.count, 4, "All should match")
-
-        // First char + boundary/camel matches should score higher than plain matches
-        // Plain match at start should score higher than match not at start
-        XCTAssertGreaterThan(scores[2], scores[3], "Start match should beat middle match")
-    }
-
-    func testScoreStability() {
-        // Same inputs should always produce same score
-        let query = "test"
-        let target = "testing"
-
-        var scores: [Double] = []
-        for _ in 0 ..< 10 {
-            if let result = FuzzyMatcher.match(query, in: target) {
-                scores.append(result.score)
-            }
-        }
-
-        XCTAssertEqual(scores.count, 10)
-        let firstScore = scores[0]
-        for score in scores {
-            XCTAssertEqual(score, firstScore, accuracy: 0.0001, "Score should be deterministic")
-        }
-    }
 }

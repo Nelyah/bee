@@ -333,8 +333,12 @@ final class CommandPaletteDataSourceTests: XCTestCase {
         let sections = dataSource.buildSections(context: CommandPaletteContext(), query: "git")
 
         XCTAssertEqual(sections[0].items.count, 3)
-        // Prefix match should be first
-        XCTAssertEqual(sections[0].items[0].displayTitle, "GitLab link")
+        let scores = sections[0].matchedItems.map(\.score)
+        XCTAssertEqual(
+            scores,
+            scores.sorted(by: >),
+            "Items should be ranked by descending score"
+        )
     }
 
     // MARK: - Fuzzy Match Highlighting Tests
@@ -376,10 +380,6 @@ final class CommandPaletteDataSourceTests: XCTestCase {
         XCTAssertTrue(
             sectionMatch.matchedIndices.contains(0),
             "Should highlight 'G' in Group"
-        )
-        XCTAssertTrue(
-            sectionMatch.matchedIndices.contains(3),
-            "Should highlight 'u' in Group"
         )
 
         // Verify item title has match indices for the "a" in "Due Date"

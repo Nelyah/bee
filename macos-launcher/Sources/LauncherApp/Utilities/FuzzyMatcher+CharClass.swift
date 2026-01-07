@@ -9,11 +9,11 @@ extension FuzzyMatcher {
         for i in 0 ..< asciiCharClasses.count {
             let scalar = UInt32(i)
             guard let char = UnicodeScalar(scalar) else { continue }
-            if char >= "a" && char <= "z" {
+            if char >= "a", char <= "z" {
                 asciiCharClasses[i] = .lower
-            } else if char >= "A" && char <= "Z" {
+            } else if char >= "A", char <= "Z" {
                 asciiCharClasses[i] = .upper
-            } else if char >= "0" && char <= "9" {
+            } else if char >= "0", char <= "9" {
                 asciiCharClasses[i] = .number
             } else if whiteScalarValues.contains(scalar) {
                 asciiCharClasses[i] = .white

@@ -540,5 +540,4 @@ final class FuzzyMatcherTests: XCTestCase {
             }
         }
     }
-
 }

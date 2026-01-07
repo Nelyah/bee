@@ -17,7 +17,7 @@ extension FuzzyMatcher {
         var str = query
         str = str.replacingOccurrences(of: "\\ ", with: "\t")
         str = str.trimmingCharacters(in: .whitespaces)
-        while str.hasSuffix(" ") && !str.hasSuffix("\\ ") {
+        while str.hasSuffix(" "), !str.hasSuffix("\\ ") {
             str.removeLast()
         }
         return str.replacingOccurrences(of: "\t", with: " ")
@@ -36,7 +36,7 @@ extension FuzzyMatcher {
 
         for rawToken in tokens {
             let token = rawToken
-            if !set.isEmpty && !afterBar && token == "|" {
+            if !set.isEmpty, !afterBar, token == "|" {
                 switchSet = false
                 afterBar = true
                 continue
@@ -92,7 +92,7 @@ extension FuzzyMatcher {
                 set = []
             }
 
-            var scalars = Array(normalizedToken.unicodeScalars).map { $0.value }
+            var scalars = Array(normalizedToken.unicodeScalars).map(\.value)
             if normalizeTerm {
                 scalars = normalizeScalars(scalars)
             }
@@ -117,7 +117,7 @@ extension FuzzyMatcher {
     static func shouldNormalize(lowerToken: String) -> Bool {
         let normalized = String(
             String.UnicodeScalarView(
-                normalizeScalars(Array(lowerToken.unicodeScalars).map { $0.value })
+                normalizeScalars(Array(lowerToken.unicodeScalars).map(\.value))
                     .compactMap { UnicodeScalar($0) }
             )
         )

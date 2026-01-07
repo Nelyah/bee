@@ -48,14 +48,14 @@ extension FuzzyMatcher {
     static func matchTerm(_ term: Term, input: ScalarChars) -> MatchResult? {
         switch term.type {
         case .fuzzy:
-            return fuzzyMatchV2(
+            fuzzyMatchV2(
                 caseSensitive: term.caseSensitive,
                 normalize: term.normalize,
                 input: input,
                 pattern: term.text
             )
         case .exact:
-            return exactMatch(
+            exactMatch(
                 caseSensitive: term.caseSensitive,
                 normalize: term.normalize,
                 input: input,
@@ -63,7 +63,7 @@ extension FuzzyMatcher {
                 boundary: false
             )
         case .exactBoundary:
-            return exactMatch(
+            exactMatch(
                 caseSensitive: term.caseSensitive,
                 normalize: term.normalize,
                 input: input,
@@ -71,21 +71,21 @@ extension FuzzyMatcher {
                 boundary: true
             )
         case .prefix:
-            return prefixMatch(
+            prefixMatch(
                 caseSensitive: term.caseSensitive,
                 normalize: term.normalize,
                 input: input,
                 pattern: term.text
             )
         case .suffix:
-            return suffixMatch(
+            suffixMatch(
                 caseSensitive: term.caseSensitive,
                 normalize: term.normalize,
                 input: input,
                 pattern: term.text
             )
         case .equal:
-            return equalMatch(
+            equalMatch(
                 caseSensitive: term.caseSensitive,
                 normalize: term.normalize,
                 input: input,

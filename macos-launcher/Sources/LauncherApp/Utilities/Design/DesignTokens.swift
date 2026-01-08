@@ -47,4 +47,33 @@ enum DesignTokens {
         static let standard: CGFloat = 16
         static let large: CGFloat = 34
     }
+
+    /// Command palette responsive sizing constants
+    enum CommandPalette {
+        static let minWidth: CGFloat = 400
+        static let maxWidth: CGFloat = 640
+        static let maxHeightRatio: CGFloat = 0.6
+        static let maxHeightAbsolute: CGFloat = 500
+
+        /// Calculates responsive width based on window width.
+        /// Scales from 92% on small windows down to a capped 640px on large windows.
+        static func responsiveWidth(for windowWidth: CGFloat) -> CGFloat {
+            let calculated: CGFloat = switch windowWidth {
+            case ..<600:
+                windowWidth * 0.92
+            case 600 ..< 900:
+                windowWidth * 0.75
+            case 900 ..< 1400:
+                windowWidth * 0.58
+            default:
+                maxWidth
+            }
+            return min(max(calculated, minWidth), maxWidth)
+        }
+
+        /// Calculates responsive max height based on window height.
+        static func responsiveMaxHeight(for windowHeight: CGFloat) -> CGFloat {
+            min(windowHeight * maxHeightRatio, maxHeightAbsolute)
+        }
+    }
 }

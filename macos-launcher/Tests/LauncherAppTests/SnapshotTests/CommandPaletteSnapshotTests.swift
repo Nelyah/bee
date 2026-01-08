@@ -6,7 +6,7 @@ import XCTest
 /// Snapshot tests for CommandPaletteView to catch visual regressions.
 ///
 /// These tests capture the rendered appearance of the command palette in various states.
-/// Note: The CommandPaletteView has a fixed width of 520px internally.
+/// Note: The CommandPaletteView uses responsive sizing (min: 400px, max: 640px) based on window width.
 @MainActor
 final class CommandPaletteSnapshotTests: SnapshotTestCase {
     // MARK: - Test Setup

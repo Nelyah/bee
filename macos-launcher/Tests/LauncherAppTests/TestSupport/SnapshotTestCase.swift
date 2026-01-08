@@ -140,8 +140,8 @@ extension SnapshotTestCase {
         /// Task row expanded
         static let taskRowExpanded = CGSize(width: 600, height: 150)
 
-        /// Command palette
-        static let commandPalette = CGSize(width: 520, height: 400)
+        /// Command palette - uses 900x600 to test responsive sizing (results in ~522px palette width)
+        static let commandPalette = CGSize(width: 900, height: 600)
 
         /// Task detail view - compact (single column)
         static let detailViewCompact = CGSize(width: 400, height: 600)

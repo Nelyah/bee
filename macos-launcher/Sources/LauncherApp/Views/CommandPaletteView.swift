@@ -20,54 +20,59 @@ struct CommandPaletteView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    viewModel.closeCommandPalette()
-                }
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        viewModel.closeCommandPalette()
+                    }
 
-            VStack(spacing: 0) {
-                // Breadcrumb bar when not at root
-                if !commandPalette.isAtRoot {
-                    breadcrumbBar
-                }
+                VStack(spacing: 0) {
+                    // Breadcrumb bar when not at root
+                    if !commandPalette.isAtRoot {
+                        breadcrumbBar
+                    }
 
-                // Search header
-                HStack(spacing: DesignTokens.Spacing.medium) {
-                    Image(systemName: "magnifyingglass")
-                        .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
-                        .foregroundColor(ThemeManager.current.subtext0)
-                    TextField("Search", text: $commandPalette.query)
-                        .textFieldStyle(.plain)
-                        .foregroundColor(ThemeManager.current.text)
-                        .focused($isSearchFocused)
-                        .onSubmit {
-                            commandPalette.handleEnter()
-                        }
+                    // Search header
+                    HStack(spacing: DesignTokens.Spacing.medium) {
+                        Image(systemName: "magnifyingglass")
+                            .frame(width: DesignTokens.IconSize.standard, height: DesignTokens.IconSize.standard)
+                            .foregroundColor(ThemeManager.current.subtext0)
+                        TextField("Search", text: $commandPalette.query)
+                            .textFieldStyle(.plain)
+                            .foregroundColor(ThemeManager.current.text)
+                            .focused($isSearchFocused)
+                            .onSubmit {
+                                commandPalette.handleEnter()
+                            }
+                    }
+                    .padding(DesignTokens.Spacing.medium)
+                    .background(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.large, style: .continuous)
+                            .fill(ThemeManager.current.surface0)
+                    )
+                    .padding(DesignTokens.Spacing.large)
+
+                    Divider()
+                        .overlay(ThemeManager.current.surface1.opacity(0.6))
+
+                    contentList(maxHeight: DesignTokens.CommandPalette.responsiveMaxHeight(for: geometry.size.height))
                 }
-                .padding(DesignTokens.Spacing.medium)
+                .frame(width: DesignTokens.CommandPalette.responsiveWidth(for: geometry.size.width))
                 .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.large, style: .continuous)
-                        .fill(ThemeManager.current.surface0)
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
+                        .fill(ThemeManager.current.base)
+                        .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 12)
                 )
-                .padding(DesignTokens.Spacing.large)
-
-                Divider()
-                    .overlay(ThemeManager.current.surface1.opacity(0.6))
-
-                contentList
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
+                        .stroke(
+                            ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity),
+                            lineWidth: 1
+                        )
+                )
             }
-            .frame(width: 520)
-            .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
-                    .fill(ThemeManager.current.base)
-                    .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 12)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.extraLarge, style: .continuous)
-                    .stroke(ThemeManager.current.surface1.opacity(DesignTokens.Border.containerOpacity), lineWidth: 1)
-            )
         }
         .onAppear {
             installCommandPaletteMonitor()
@@ -129,18 +134,18 @@ struct CommandPaletteView: View {
     // MARK: - Content List
 
     @ViewBuilder
-    private var contentList: some View {
+    private func contentList(maxHeight: CGFloat) -> some View {
         if commandPalette.isLoading {
             loadingView
         } else {
-            sectionedContentList
+            sectionedContentList(maxHeight: maxHeight)
         }
     }
 
     // MARK: - Sectioned Content List
 
     @ViewBuilder
-    private var sectionedContentList: some View {
+    private func sectionedContentList(maxHeight: CGFloat) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -156,7 +161,7 @@ struct CommandPaletteView: View {
                 }
                 .padding(DesignTokens.Spacing.large)
             }
-            .frame(maxHeight: 300)
+            .frame(maxHeight: maxHeight)
             .onChange(of: commandPalette.selectionIndex) { _, newIndex in
                 guard newIndex < selectableMatchedItems.count else { return }
                 let itemId = selectableMatchedItems[newIndex].id

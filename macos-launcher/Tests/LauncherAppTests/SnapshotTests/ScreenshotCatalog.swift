@@ -181,6 +181,32 @@ final class ScreenshotCatalog: SnapshotTestCase {
         assertViewSnapshot(view, size: TestSizes.taskListView)
     }
 
+    func testTaskList_sortedBySummaryAscending() {
+        // Tasks in intentionally random order to test sorting
+        viewModel.tasks = [
+            TestHelpers.makeTask(id: "1", summary: "Zebra task"),
+            TestHelpers.makeTask(id: "2", summary: "Apple task"),
+            TestHelpers.makeTask(id: "3", summary: "Banana task"),
+            TestHelpers.makeTask(id: "4", summary: "cherry task"),  // lowercase to test case-insensitivity
+            TestHelpers.makeTask(id: "5", summary: "Draft integration"),
+            TestHelpers.makeTask(id: "6", summary: "foo wafeowaihf"),
+            TestHelpers.makeTask(id: "7", summary: "Create API endpoint"),
+        ]
+        // Apply ascending sort by summary
+        viewModel.sortState = ColumnSortState(column: "summary", direction: .ascending)
+
+        // Wait for Combine to process
+        let expectation = XCTestExpectation(description: "Wait for sort")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
+        let view = TaskListView(viewModel: viewModel, completion: viewModel.completion)
+            .background(ThemeManager.current.base)
+        assertViewSnapshot(view, size: TestSizes.taskListView)
+    }
+
     // MARK: - Task Row
 
     func testTaskRow_pending() {

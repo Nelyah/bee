@@ -44,6 +44,14 @@ struct TaskListView: View {
             || !viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// Unique identifier for the current sort state, used to force ScrollView re-render
+    private var sortIdentifier: String {
+        if let state = viewModel.sortState {
+            return "sort-\(state.column)-\(state.direction)"
+        }
+        return "sort-none"
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topLeading) {
@@ -51,252 +59,257 @@ struct TaskListView: View {
                     // Search input field + report badge
                     // Constrained to geometry width to prevent expansion when columns are wide
                     HStack(spacing: TaskListLayout.searchRowSpacing) {
-                    HStack(spacing: TaskListLayout.searchSpacing) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(
-                                viewModel.isInsertMode
-                                    ? ThemeManager.current.text
-                                    : ThemeManager.current.subtext0
-                            )
-                            .animation(.easeInOut(duration: 0.15), value: viewModel.isInsertMode)
-                        ZStack(alignment: .leading) {
-                            if viewModel.input.isEmpty {
-                                Text("Search tasks…")
-                                    .font(.system(
-                                        size: DesignTokens.TypeScale.input,
-                                        weight: .medium,
-                                        design: .rounded
-                                    ))
-                                    .foregroundColor(ThemeManager.current.subtext0)
-                                    .padding(.leading, 2)
-                            }
-                            TokenHighlightTextView(
-                                text: $viewModel.input,
-                                tokens: viewModel.tokens,
-                                actionName: viewModel.actionName,
-                                isFocused: viewModel.isInsertMode && !viewModel.commandPalette.isPresented,
-                                ghostText: completion.ghostText,
-                                cursorPosition: completion.cursorPosition,
-                                showCompletionMenu: completion.showMenu,
-                                onSubmit: {
-                                    viewModel.handleSubmit()
-                                },
-                                onEscape: {
-                                    if completion.showMenu {
-                                        viewModel.clearCompletions()
-                                    } else {
-                                        viewModel.isInsertMode = false
-                                    }
-                                },
-                                onMoveSelection: { delta in
-                                    viewModel.moveSelection(delta: delta)
-                                },
-                                onCursorChange: { position in
-                                    viewModel.handleCursorChange(position)
-                                },
-                                onToggleMenu: {
-                                    viewModel.toggleCompletionMenu()
-                                },
-                                onAcceptGhost: {
-                                    viewModel.acceptGhostText()
-                                },
-                                onMenuNavigation: { delta in
-                                    viewModel.moveCompletionSelection(delta: delta)
-                                },
-                                onAcceptCompletion: {
-                                    viewModel.acceptCompletion()
-                                },
-                                onRequestFocus: {
-                                    guard !viewModel.commandPalette.isPresented else { return false }
-                                    viewModel.enterInsertMode()
-                                    return true
+                        HStack(spacing: TaskListLayout.searchSpacing) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(
+                                    viewModel.isInsertMode
+                                        ? ThemeManager.current.text
+                                        : ThemeManager.current.subtext0
+                                )
+                                .animation(.easeInOut(duration: 0.15), value: viewModel.isInsertMode)
+                            ZStack(alignment: .leading) {
+                                if viewModel.input.isEmpty {
+                                    Text("Search tasks…")
+                                        .font(.system(
+                                            size: DesignTokens.TypeScale.input,
+                                            weight: .medium,
+                                            design: .rounded
+                                        ))
+                                        .foregroundColor(ThemeManager.current.subtext0)
+                                        .padding(.leading, 2)
                                 }
-                            )
+                                TokenHighlightTextView(
+                                    text: $viewModel.input,
+                                    tokens: viewModel.tokens,
+                                    actionName: viewModel.actionName,
+                                    isFocused: viewModel.isInsertMode && !viewModel.commandPalette.isPresented,
+                                    ghostText: completion.ghostText,
+                                    cursorPosition: completion.cursorPosition,
+                                    showCompletionMenu: completion.showMenu,
+                                    onSubmit: {
+                                        viewModel.handleSubmit()
+                                    },
+                                    onEscape: {
+                                        if completion.showMenu {
+                                            viewModel.clearCompletions()
+                                        } else {
+                                            viewModel.isInsertMode = false
+                                        }
+                                    },
+                                    onMoveSelection: { delta in
+                                        viewModel.moveSelection(delta: delta)
+                                    },
+                                    onCursorChange: { position in
+                                        viewModel.handleCursorChange(position)
+                                    },
+                                    onToggleMenu: {
+                                        viewModel.toggleCompletionMenu()
+                                    },
+                                    onAcceptGhost: {
+                                        viewModel.acceptGhostText()
+                                    },
+                                    onMenuNavigation: { delta in
+                                        viewModel.moveCompletionSelection(delta: delta)
+                                    },
+                                    onAcceptCompletion: {
+                                        viewModel.acceptCompletion()
+                                    },
+                                    onRequestFocus: {
+                                        guard !viewModel.commandPalette.isPresented else { return false }
+                                        viewModel.enterInsertMode()
+                                        return true
+                                    }
+                                )
+                            }
+                            .frame(height: TaskListLayout.inputHeight)
+                            .onChange(of: viewModel.input) { _, newValue in
+                                viewModel.handleInputChange(newValue)
+                            }
                         }
-                        .frame(height: TaskListLayout.inputHeight)
-                        .onChange(of: viewModel.input) { _, newValue in
-                            viewModel.handleInputChange(newValue)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, TaskListLayout.horizontalPadding)
-                    .padding(.vertical, TaskListLayout.verticalPadding)
-                    .background(
-                        RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                            .fill(ThemeManager.current.base)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
-                                    .stroke(
-                                        viewModel.isInsertMode
-                                            ? ThemeManager.current.blue
-                                            : ThemeManager.current.surface1
-                                            .opacity(DesignTokens.Border.separatorOpacity),
-                                        lineWidth: viewModel.isInsertMode ? 2 : 1
-                                    )
-                            )
-                    )
-                    .scaleEffect(viewModel.isInsertMode ? 1.01 : 1.0)
-                    .animation(.easeInOut(duration: 0.15), value: viewModel.isInsertMode)
-                    .contentShape(Rectangle())
-                    .onTapGesture { viewModel.enterInsertMode() }
-
-                    if !viewModel.availableReports.isEmpty {
-                        ReportMenuButton(
-                            name: viewModel.currentReportDisplayName,
-                            reports: viewModel.availableReports,
-                            flash: $reportBadgeFlash,
-                            onSelect: { name in
-                                viewModel.selectReport(name)
-                            },
-                            triggerProvider: reportMenuTrigger
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, TaskListLayout.horizontalPadding)
+                        .padding(.vertical, TaskListLayout.verticalPadding)
+                        .background(
+                            RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
+                                .fill(ThemeManager.current.base)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: TaskListLayout.cornerRadius, style: .continuous)
+                                        .stroke(
+                                            viewModel.isInsertMode
+                                                ? ThemeManager.current.blue
+                                                : ThemeManager.current.surface1
+                                                .opacity(DesignTokens.Border.separatorOpacity),
+                                            lineWidth: viewModel.isInsertMode ? 2 : 1
+                                        )
+                                )
                         )
-                        .onAppear {
-                            // Wire up the Cmd+P trigger
-                            viewModel.reportMenuTrigger = {
-                                reportMenuTrigger.trigger?()
-                            }
-                        }
-                    }
+                        .scaleEffect(viewModel.isInsertMode ? 1.01 : 1.0)
+                        .animation(.easeInOut(duration: 0.15), value: viewModel.isInsertMode)
+                        .contentShape(Rectangle())
+                        .onTapGesture { viewModel.enterInsertMode() }
 
-                    if let project = viewModel.projectScope {
-                        ProjectScopeChipView(project: project) {
-                            viewModel.clearProjectScope()
-                        }
-                    }
-                }
-                .frame(maxWidth: geometry.size.width)
-
-                CriteriaStripView(
-                    activeReportName: viewModel.currentReportDisplayName,
-                    reportFilterChips: viewModel.criteriaReportFilterChips,
-                    manualFilterChips: viewModel.criteriaManualFilterChips,
-                    propertyChips: viewModel.criteriaPropertyChips,
-                    onRemoveReportFilter: { _ in viewModel.switchToAllReport() },
-                    onRemoveManualFilter: nil // Manual filter removal not yet implemented
-                )
-                .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
-                .padding(.top, TaskListLayout.criteriaTopPadding)
-                .padding(.bottom, TaskListLayout.criteriaBottomPadding)
-                .frame(maxWidth: geometry.size.width)
-
-                // Column headers
-                if !viewModel.columnConfigs.isEmpty {
-                    ColumnHeaderRow(
-                        columnConfigs: viewModel.columnConfigs,
-                        sortState: viewModel.sortState,
-                        onSort: { column in
-                            viewModel.toggleSort(for: column)
-                        },
-                        onResize: { column, delta in
-                            viewModel.resizeColumn(column, delta: delta)
-                        },
-                        onResizeEnd: { column in
-                            viewModel.finishResizing(column)
-                        },
-                        onReorder: { column, targetIndex in
-                            viewModel.reorderColumn(column, to: targetIndex)
-                        }
-                    )
-
-                    // Subtle divider below headers
-                    Divider()
-                        .background(ThemeManager.current.surface1.opacity(DesignTokens.Border.separatorOpacity))
-                        .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
-                }
-
-                // Task list (grouped by project) or empty state
-                if viewModel.groupedRows.isEmpty {
-                    EmptyStateView(hasActiveFilters: hasActiveFilters)
-                } else {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: TaskListLayout.listSpacing) {
-                                ForEach(Array(viewModel.groupedRows.enumerated()), id: \.element.id) { rowIndex, row in
-                                    switch row {
-                                    case let .header(header):
-                                        GroupHeaderRow(
-                                            header: header,
-                                            isSelected: viewModel.selectedRowIndex == rowIndex,
-                                            onHoverChange: { hovering in
-                                                viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                            }
-                                        )
-                                        .id(row.id)
-                                        .onTapGesture { viewModel.activatePrimary(at: rowIndex) }
-
-                                    case let .task(item):
-                                        TaskRow(
-                                            task: item.task,
-                                            columnConfigs: viewModel.columnConfigs,
-                                            isSelected: viewModel.selectedRowIndex == rowIndex,
-                                            isMultiSelected: viewModel.isMultiSelected(uuid: item.task.uuid),
-                                            isExpanded: viewModel.isTaskExpanded(item.task.uuid),
-                                            expandedContent: viewModel.taskExpandedData[item.task.uuid],
-                                            onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) },
-                                            onHoverChange: { hovering in
-                                                viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                            }
-                                        )
-                                        .id(row.id)
-                                        .onTapGesture { viewModel.selectRow(rowIndex) }
-                                        .simultaneousGesture(
-                                            TapGesture(count: 2).onEnded {
-                                                viewModel.activatePrimary(at: rowIndex)
-                                            }
-                                        )
-                                    }
+                        if !viewModel.availableReports.isEmpty {
+                            ReportMenuButton(
+                                name: viewModel.currentReportDisplayName,
+                                reports: viewModel.availableReports,
+                                flash: $reportBadgeFlash,
+                                onSelect: { name in
+                                    viewModel.selectReport(name)
+                                },
+                                triggerProvider: reportMenuTrigger
+                            )
+                            .onAppear {
+                                // Wire up the Cmd+P trigger
+                                viewModel.reportMenuTrigger = {
+                                    reportMenuTrigger.trigger?()
                                 }
                             }
+                        }
+
+                        if let project = viewModel.projectScope {
+                            ProjectScopeChipView(project: project) {
+                                viewModel.clearProjectScope()
+                            }
+                        }
+                    }
+                    .frame(maxWidth: geometry.size.width)
+
+                    CriteriaStripView(
+                        activeReportName: viewModel.currentReportDisplayName,
+                        reportFilterChips: viewModel.criteriaReportFilterChips,
+                        manualFilterChips: viewModel.criteriaManualFilterChips,
+                        propertyChips: viewModel.criteriaPropertyChips,
+                        onRemoveReportFilter: { _ in viewModel.switchToAllReport() },
+                        onRemoveManualFilter: nil // Manual filter removal not yet implemented
+                    )
+                    .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
+                    .padding(.top, TaskListLayout.criteriaTopPadding)
+                    .padding(.bottom, TaskListLayout.criteriaBottomPadding)
+                    .frame(maxWidth: geometry.size.width)
+
+                    // Column headers
+                    if !viewModel.columnConfigs.isEmpty {
+                        ColumnHeaderRow(
+                            columnConfigs: viewModel.columnConfigs,
+                            sortState: viewModel.sortState,
+                            onSort: { column in
+                                viewModel.toggleSort(for: column)
+                            },
+                            onResize: { column, delta in
+                                viewModel.resizeColumn(column, delta: delta)
+                            },
+                            onResizeEnd: { column in
+                                viewModel.finishResizing(column)
+                            },
+                            onReorder: { column, targetIndex in
+                                viewModel.reorderColumn(column, to: targetIndex)
+                            }
+                        )
+
+                        // Subtle divider below headers
+                        Divider()
+                            .background(ThemeManager.current.surface1.opacity(DesignTokens.Border.separatorOpacity))
+                            .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
+                    }
+
+                    // Task list (grouped by project) or empty state
+                    if viewModel.groupedRows.isEmpty {
+                        EmptyStateView(hasActiveFilters: hasActiveFilters)
+                    } else {
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                LazyVStack(alignment: .leading, spacing: TaskListLayout.listSpacing) {
+                                    ForEach(
+                                        Array(viewModel.groupedRows.enumerated()),
+                                        id: \.element.id
+                                    ) { rowIndex, row in
+                                        switch row {
+                                        case let .header(header):
+                                            GroupHeaderRow(
+                                                header: header,
+                                                isSelected: viewModel.selectedRowIndex == rowIndex,
+                                                onHoverChange: { hovering in
+                                                    viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                                }
+                                            )
+                                            .id(row.id)
+                                            .onTapGesture { viewModel.activatePrimary(at: rowIndex) }
+
+                                        case let .task(item):
+                                            TaskRow(
+                                                task: item.task,
+                                                columnConfigs: viewModel.columnConfigs,
+                                                isSelected: viewModel.selectedRowIndex == rowIndex,
+                                                isMultiSelected: viewModel.isMultiSelected(uuid: item.task.uuid),
+                                                isExpanded: viewModel.isTaskExpanded(item.task.uuid),
+                                                expandedContent: viewModel.taskExpandedData[item.task.uuid],
+                                                onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) },
+                                                onHoverChange: { hovering in
+                                                    viewModel.hoveredRowIndex = hovering ? rowIndex : nil
+                                                }
+                                            )
+                                            .id(row.id)
+                                            .onTapGesture { viewModel.selectRow(rowIndex) }
+                                            .simultaneousGesture(
+                                                TapGesture(count: 2).onEnded {
+                                                    viewModel.activatePrimary(at: rowIndex)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, TaskListLayout.listVerticalPadding)
+                                // Animation is now scoped to individual TaskRow (see TaskRow.swift)
+                                // This prevents animating all 350 rows when any task expands
+                            }
+                            // Force ScrollView identity to change when sort changes, ensuring re-render
+                            .id(sortIdentifier)
+                            .safeAreaInset(edge: .bottom, spacing: 0) {
+                                // Reserve space for BottomHintBar overlay so scrollTo respects it
+                                Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.large)
+                            }
+                            .onChange(of: viewModel.selectedRowIndex) { _, newValue in
+                                guard let index = newValue,
+                                      index < viewModel.groupedRows.count else { return }
+                                let rowId = viewModel.groupedRows[index].id
+                                // anchor: nil only scrolls if item is out of visible area
+                                proxy.scrollTo(rowId, anchor: nil)
+                            }
+                        }
+                    }
+
+                    // Status message
+                    if let status = viewModel.statusMessage {
+                        Text(status)
+                            .font(.system(size: TaskListLayout.statusFontSize, weight: .medium, design: .rounded))
+                            .foregroundColor(ThemeManager.current.subtext1)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, TaskListLayout.listVerticalPadding)
-                            // Animation is now scoped to individual TaskRow (see TaskRow.swift)
-                            // This prevents animating all 350 rows when any task expands
-                        }
-                        .safeAreaInset(edge: .bottom, spacing: 0) {
-                            // Reserve space for BottomHintBar overlay so scrollTo respects it
-                            Color.clear.frame(height: BottomHintBar.height + DesignTokens.Spacing.large)
-                        }
-                        .onChange(of: viewModel.selectedRowIndex) { _, newValue in
-                            guard let index = newValue,
-                                  index < viewModel.groupedRows.count else { return }
-                            let rowId = viewModel.groupedRows[index].id
-                            // anchor: nil only scrolls if item is out of visible area
-                            proxy.scrollTo(rowId, anchor: nil)
-                        }
                     }
                 }
 
-                // Status message
-                if let status = viewModel.statusMessage {
-                    Text(status)
-                        .font(.system(size: TaskListLayout.statusFontSize, weight: .medium, design: .rounded))
-                        .foregroundColor(ThemeManager.current.subtext1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if completion.showMenu, !completion.items.isEmpty {
+                    CompletionMenuView(
+                        items: completion.items,
+                        selectedIndex: completion.selectedIndex,
+                        currentValue: nil,
+                        onSelect: { item in
+                            viewModel.acceptCompletion(item)
+                        }
+                    )
+                    .frame(width: TaskListLayout.completionMenuWidth)
+                    .offset(x: TaskListLayout.completionMenuOffsetX, y: TaskListLayout.completionMenuOffsetY)
+                    .zIndex(1)
                 }
             }
-
-            if completion.showMenu, !completion.items.isEmpty {
-                CompletionMenuView(
-                    items: completion.items,
-                    selectedIndex: completion.selectedIndex,
-                    currentValue: nil,
-                    onSelect: { item in
-                        viewModel.acceptCompletion(item)
-                    }
-                )
-                .frame(width: TaskListLayout.completionMenuWidth)
-                .offset(x: TaskListLayout.completionMenuOffsetX, y: TaskListLayout.completionMenuOffsetY)
-                .zIndex(1)
+            .onAppear {
+                Task {
+                    viewModel.loadCollapsedState()
+                    await viewModel.loadConfig()
+                    await viewModel.loadCompletionData()
+                    viewModel.loadInitialListIfNeeded()
+                }
             }
-        }
-        .onAppear {
-            Task {
-                viewModel.loadCollapsedState()
-                await viewModel.loadConfig()
-                await viewModel.loadCompletionData()
-                viewModel.loadInitialListIfNeeded()
-            }
-        }
         } // GeometryReader
     }
 }

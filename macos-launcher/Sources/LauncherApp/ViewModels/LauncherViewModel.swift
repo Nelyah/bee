@@ -262,19 +262,23 @@ final class LauncherViewModel: ObservableObject {
         // Combine all dependencies that affect groupedRows
         // Since we're on @MainActor, we're already on main thread - no need for receive(on:)
         // This allows the pipeline to execute synchronously, which is critical for tests
+        //
+        // IMPORTANT: We use the sortState value from the publisher (not self.sortState)
+        // because @Published emits via willSet, meaning self.sortState still has the
+        // old value when the sink fires. See compareTasks() for more details.
         Publishers.CombineLatest4(
             $tasks,
             $groupingStrategy.map { $0 as TaskGroupingStrategy }.eraseToAnyPublisher(),
             $collapsedGroups,
             $sortState
         )
-        .sink { [weak self] tasks, strategy, collapsedGroups, _ in
+        .sink { [weak self] tasks, strategy, collapsedGroups, sortState in
             guard let self else { return }
             groupedRows = TaskListCoordinator.groupTasks(
                 tasks,
                 using: strategy,
                 collapsedKeys: collapsedGroups,
-                comparator: compareTasks
+                comparator: { self.compareTasks($0, $1, sortState: sortState) }
             )
         }
         .store(in: &cancellables)
@@ -284,7 +288,7 @@ final class LauncherViewModel: ObservableObject {
             tasks,
             using: groupingStrategy,
             collapsedKeys: collapsedGroups,
-            comparator: compareTasks
+            comparator: { self.compareTasks($0, $1, sortState: self.sortState) }
         )
     }
 

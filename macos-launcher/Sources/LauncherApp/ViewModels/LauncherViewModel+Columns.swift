@@ -129,9 +129,14 @@ extension LauncherViewModel {
 
     // MARK: - Task Comparison
 
-    /// Compare two tasks based on the current sort state.
+    /// Compare two tasks based on the given sort state.
     /// Returns true if lhs should come before rhs.
-    func compareTasks(_ lhs: ApiTask, _ rhs: ApiTask) -> Bool {
+    ///
+    /// - Note: This method accepts the sort state as a parameter rather than reading
+    ///   from `self.sortState` to avoid Combine's `@Published` willSet timing issue.
+    ///   When the Combine pipeline emits a new sort state, `self.sortState` still
+    ///   contains the old value (willSet fires before the property is updated).
+    func compareTasks(_ lhs: ApiTask, _ rhs: ApiTask, sortState: ColumnSortState?) -> Bool {
         guard let state = sortState else {
             // Default: sort by urgency descending
             return compareByUrgency(lhs, rhs)
@@ -175,7 +180,10 @@ extension LauncherViewModel {
             }
             return lhs.status < rhs.status
         case "summary":
-            let comparison = lhs.summary.localizedCaseInsensitiveCompare(rhs.summary)
+            // Trim whitespace to avoid sorting issues with inconsistent spacing
+            let lhsTrimmed = lhs.summary.trimmingCharacters(in: .whitespaces)
+            let rhsTrimmed = rhs.summary.trimmingCharacters(in: .whitespaces)
+            let comparison = lhsTrimmed.localizedCaseInsensitiveCompare(rhsTrimmed)
             if comparison == .orderedSame {
                 return lhs.uuid < rhs.uuid
             }

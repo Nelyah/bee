@@ -45,10 +45,12 @@ struct TaskListView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            VStack(spacing: 16) {
-                // Search input field + report badge
-                HStack(spacing: TaskListLayout.searchRowSpacing) {
+        GeometryReader { geometry in
+            ZStack(alignment: .topLeading) {
+                VStack(spacing: 16) {
+                    // Search input field + report badge
+                    // Constrained to geometry width to prevent expansion when columns are wide
+                    HStack(spacing: TaskListLayout.searchRowSpacing) {
                     HStack(spacing: TaskListLayout.searchSpacing) {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(
@@ -162,6 +164,7 @@ struct TaskListView: View {
                         }
                     }
                 }
+                .frame(maxWidth: geometry.size.width)
 
                 CriteriaStripView(
                     activeReportName: viewModel.currentReportDisplayName,
@@ -174,6 +177,7 @@ struct TaskListView: View {
                 .padding(.horizontal, TaskListLayout.headerPaddingHorizontal)
                 .padding(.top, TaskListLayout.criteriaTopPadding)
                 .padding(.bottom, TaskListLayout.criteriaBottomPadding)
+                .frame(maxWidth: geometry.size.width)
 
                 // Column headers
                 if !viewModel.columnConfigs.isEmpty {
@@ -293,6 +297,7 @@ struct TaskListView: View {
                 viewModel.loadInitialListIfNeeded()
             }
         }
+        } // GeometryReader
     }
 }
 

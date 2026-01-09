@@ -68,81 +68,37 @@ extension LauncherViewModel {
         }
 
         detailFocusableItems = items
-
-        // Keep focus within bounds
-        if detailFocusedIndex >= items.count {
-            detailFocusedIndex = max(0, items.count - 1)
-        }
     }
 
     /// The currently focused item in detail view.
     /// Returns nil if keyboard navigation is not active (focus ring is lazy).
     var focusedDetailItem: DetailFocusableItem? {
-        // Focus ring only shows after user engages with hjkl navigation
-        guard detailKeyboardNavigationActive else {
-            return nil
-        }
-        guard detailFocusedIndex >= 0, detailFocusedIndex < detailFocusableItems.count else {
-            return nil
-        }
-        return detailFocusableItems[detailFocusedIndex]
+        // Uses the new coordinate-based navigation registry
+        navigationRegistry.focusedItem
     }
 
     /// Clears the current focus in detail view.
     /// Call this when user clicks outside of a focused item.
     func clearDetailFocus() {
-        detailKeyboardNavigationActive = false
-    }
-
-    /// Index of the first external link in the focusable items list.
-    /// Returns the count if no external links are present.
-    private var firstExternalLinkIndex: Int {
-        detailFocusableItems.firstIndex {
-            if case .gitlabMR = $0 { return true }
-            if case .jiraIssue = $0 { return true }
-            return false
-        } ?? detailFocusableItems.count
+        navigationRegistry.deactivateNavigation()
     }
 
     /// Handle a detail mode keyboard action.
     @discardableResult
     func handleDetailModeAction(_ action: DetailModeAction) -> Bool {
-        // Track if navigation was just activated (for navigation actions only)
-        let wasInactive = !detailKeyboardNavigationActive
-        let isNavigationAction: Bool
-
-        // Activate keyboard navigation on any navigation action
         switch action {
-        case .moveFocus, .moveFocusLeft, .moveFocusRight, .selectFirst, .selectLast:
-            detailKeyboardNavigationActive = true
-            isNavigationAction = true
-        default:
-            isNavigationAction = false
-        }
-
-        // On first activation of navigation, just show focus at current index (don't move)
-        // This ensures the first press of j/k shows focus ring without moving
-        if wasInactive, isNavigationAction {
-            return true
-        }
-
-        switch action {
-        case let .moveFocus(delta):
-            moveDetailFocus(delta: delta)
-            return true
-        case .moveFocusLeft:
-            return handleMoveFocusLeft()
-        case .moveFocusRight:
-            return handleMoveFocusRight()
+        case let .navigate(direction):
+            // Use coordinate-based navigation
+            return navigationRegistry.navigate(direction)
         case .openFocused:
             return openFocusedDetailItem()
         case .copyFocused:
             return copyFocusedDetailItem()
         case .selectFirst:
-            detailFocusedIndex = 0
+            navigationRegistry.focusFirst()
             return true
         case .selectLast:
-            detailFocusedIndex = max(0, detailFocusableItems.count - 1)
+            navigationRegistry.focusLast()
             return true
         case .addAnnotation:
             startAddingAnnotation()
@@ -157,59 +113,6 @@ extension LauncherViewModel {
         case .cancelDelete:
             return cancelFocusedAttachmentDelete()
         }
-    }
-
-    private func moveDetailFocus(delta: Int) {
-        guard !detailFocusableItems.isEmpty else { return }
-        let newIndex = detailFocusedIndex + delta
-        detailFocusedIndex = max(0, min(newIndex, detailFocusableItems.count - 1))
-    }
-
-    /// Handle h key: navigate left within tags, or switch from links column to metadata column.
-    private func handleMoveFocusLeft() -> Bool {
-        // When on a tag or add button, h navigates to previous item (like k)
-        if let item = focusedDetailItem {
-            if case .tag = item {
-                moveDetailFocus(delta: -1)
-                return true
-            }
-            if case .addTagButton = item {
-                moveDetailFocus(delta: -1)
-                return true
-            }
-        }
-        // If on right column (links), move to first metadata item
-        if detailFocusedIndex >= firstExternalLinkIndex {
-            detailFocusedIndex = 0
-        }
-        return true
-    }
-
-    /// Handle l key: navigate right within tags, or switch from metadata column to links column.
-    private func handleMoveFocusRight() -> Bool {
-        // When on a tag, l navigates to next item (like j)
-        if let item = focusedDetailItem {
-            if case .tag = item {
-                moveDetailFocus(delta: 1)
-                return true
-            }
-            if case .addTagButton = item {
-                // From add button, l moves to external links (if any)
-                if detailFocusableItems.count > firstExternalLinkIndex {
-                    detailFocusedIndex = firstExternalLinkIndex
-                }
-                return true
-            }
-        }
-        // If on left column (metadata + tags), move to first link if available
-        if detailFocusedIndex < firstExternalLinkIndex {
-            if detailFocusableItems.count > firstExternalLinkIndex {
-                detailFocusedIndex = firstExternalLinkIndex
-            }
-            return true
-        }
-        // Already in right column (links) - open the focused item
-        return openFocusedDetailItem()
     }
 
     func openFocusedDetailItem() -> Bool {
@@ -278,8 +181,8 @@ extension LauncherViewModel {
         selectedIndex = index
         loadTaskDetail(taskUUID: uuid)
         loadExternalLinks(taskUUID: uuid)
-        buildDetailFocusableItems()
-        detailFocusedIndex = 0 // Reset focus to top
+        // Clear registry - new task's components will register themselves
+        navigationRegistry.clearAll()
     }
 
     func copyFocusedDetailItem() -> Bool {

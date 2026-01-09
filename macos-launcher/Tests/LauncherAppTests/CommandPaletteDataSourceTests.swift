@@ -451,6 +451,110 @@ final class CommandPaletteDataSourceTests: XCTestCase {
         let titleMatch = try XCTUnwrap(sections[0].matchedItems[0].titleMatch)
         XCTAssertFalse(titleMatch.matchedIndices.isEmpty)
     }
+
+    // MARK: - filterSections Tests (for pre-built menus like GitLab/Jira)
+
+    /// Regression test: filterSections should include suggestion items with empty query.
+    ///
+    /// This reproduces a bug where GitLab MR suggestions are fetched from the API
+    /// and built into menu items, but don't appear in the UI because filterSections
+    /// filters them out.
+    ///
+    /// The GitLab menu structure has 2 sections:
+    /// 1. Actions: "Enter GitLab URL..."
+    /// 2. Suggestions: Multiple MR items (fetched from API)
+    func testFilterSectionsIncludesSuggestionItemsWithEmptyQuery() {
+        // Simulate the GitLab menu structure built by ActionHandler
+        let sections = [
+            CommandPaletteSection(
+                id: "gitlab-actions",
+                title: nil,
+                items: [
+                    .action(
+                        CommandPaletteActionItem(
+                            id: "gitlab-url",
+                            title: "Enter GitLab URL...",
+                            handler: {}
+                        )
+                    ),
+                ]
+            ),
+            CommandPaletteSection(
+                id: "gitlab-suggestions",
+                title: "Merge Requests",
+                items: [
+                    .suggestion(
+                        CommandPaletteSuggestionItem(
+                            id: "gitlab-42",
+                            title: "Fix authentication bug",
+                            subtitle: "MR !42 • group/project",
+                            icon: .gitlab,
+                            metadata: .rawInput("https://gitlab.com/group/project/-/merge_requests/42"),
+                            handler: {}
+                        )
+                    ),
+                    .suggestion(
+                        CommandPaletteSuggestionItem(
+                            id: "gitlab-43",
+                            title: "Add dark mode support",
+                            subtitle: "MR !43 • group/project",
+                            icon: .gitlab,
+                            metadata: .rawInput("https://gitlab.com/group/project/-/merge_requests/43"),
+                            handler: {}
+                        )
+                    ),
+                ]
+            ),
+        ]
+
+        // Filter with empty query - should return all items
+        let filtered = dataSource.filterSections(sections, query: "")
+
+        XCTAssertEqual(filtered.count, 2, "Both sections should be included")
+        XCTAssertEqual(filtered[0].items.count, 1, "Actions section should have 1 item")
+        XCTAssertEqual(filtered[1].items.count, 2, "Suggestions section should have 2 items")
+        XCTAssertEqual(filtered[1].items[0].displayTitle, "Fix authentication bug")
+        XCTAssertEqual(filtered[1].items[1].displayTitle, "Add dark mode support")
+    }
+
+    /// Regression test: filterSections should filter suggestion items by query.
+    func testFilterSectionsFiltersSuggestionItemsByQuery() {
+        let sections = [
+            CommandPaletteSection(
+                id: "gitlab-suggestions",
+                title: "Merge Requests",
+                items: [
+                    .suggestion(
+                        CommandPaletteSuggestionItem(
+                            id: "gitlab-42",
+                            title: "Fix authentication bug",
+                            subtitle: "MR !42 • group/project",
+                            icon: .gitlab,
+                            metadata: .rawInput("https://gitlab.com/group/project/-/merge_requests/42"),
+                            handler: {}
+                        )
+                    ),
+                    .suggestion(
+                        CommandPaletteSuggestionItem(
+                            id: "gitlab-43",
+                            title: "Add dark mode support",
+                            subtitle: "MR !43 • group/project",
+                            icon: .gitlab,
+                            metadata: .rawInput("https://gitlab.com/group/project/-/merge_requests/43"),
+                            handler: {}
+                        )
+                    ),
+                ]
+            ),
+        ]
+
+        // Filter for "auth" - should only match the first item
+        let filtered = dataSource.filterSections(sections, query: "auth")
+
+        XCTAssertEqual(filtered.count, 1)
+        XCTAssertEqual(filtered[0].items.count, 1)
+        XCTAssertEqual(filtered[0].items[0].displayTitle, "Fix authentication bug")
+    }
 }
 
 // MARK: - Mock Contributor

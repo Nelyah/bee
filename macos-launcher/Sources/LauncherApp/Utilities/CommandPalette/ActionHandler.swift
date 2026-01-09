@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Handles command palette actions and builds submenus.
 ///
@@ -8,6 +9,7 @@ import Foundation
 final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     private weak var viewModel: LauncherViewModel?
     private let apiClient: ApiClientProtocol
+    private let logger = Logger(subsystem: "bee.macos-launcher", category: "command-palette")
 
     init(viewModel: LauncherViewModel, apiClient: ApiClientProtocol) {
         self.viewModel = viewModel
@@ -45,6 +47,8 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     }
 
     func buildGitlabMenu(taskUUID: String) -> CommandPaletteMenu {
+        logger.info("buildGitlabMenu called for task: \(taskUUID, privacy: .public)")
+
         // Start loading suggestions asynchronously
         Task { [weak self] in
             await self?.loadGitlabSuggestions(taskUUID: taskUUID)
@@ -290,14 +294,23 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
     }
 
     private func loadGitlabSuggestions(taskUUID: String) async {
-        guard let viewModel else { return }
+        logger.info("loadGitlabSuggestions: starting for task \(taskUUID, privacy: .public)")
+
+        guard let viewModel else {
+            logger.error("loadGitlabSuggestions: viewModel is nil, aborting")
+            return
+        }
 
         viewModel.commandPalette.isLoading = true
         defer { viewModel.commandPalette.isLoading = false }
 
         do {
+            logger.info("loadGitlabSuggestions: fetching from API...")
             let suggestions = try await apiClient.fetchRecentGitlabMergeRequests(limit: 20)
+            logger.info("loadGitlabSuggestions: received \(suggestions.count) suggestions from API")
+
             let items = buildGitlabItems(suggestions: suggestions, taskUUID: taskUUID)
+            logger.info("loadGitlabSuggestions: built \(items.count) menu items")
 
             // URL entry section (always present at top, pinned so it's not filtered out)
             let urlEntryItem = CommandPaletteActionItem(
@@ -326,9 +339,16 @@ final class CommandPaletteActionHandler: CommandPaletteActionHandling {
             )
 
             // Replace current menu on stack
+            let stackDepthBefore = viewModel.commandPalette.navigationStack.depth
             viewModel.commandPalette.navigationStack.pop()
             viewModel.commandPalette.navigationStack.push(menu)
+            let stackDepthAfter = viewModel.commandPalette.navigationStack.depth
+            let sectionCount = menu.sections.count
+            logger.info(
+                "loadGitlabSuggestions: nav stack (\(stackDepthBefore) -> \(stackDepthAfter)), \(sectionCount) sections"
+            )
         } catch {
+            logger.error("loadGitlabSuggestions: API error - \(error.localizedDescription, privacy: .public)")
             viewModel.showToast(message: "Failed to load GitLab suggestions: \(error.localizedDescription)")
         }
     }

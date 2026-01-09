@@ -10,6 +10,7 @@ final class CommandPaletteCoordinator: ObservableObject {
     private var cachedQuery: String = ""
     private var cachedMenuId: String = ""
     private var cachedMenuDepth: Int = -1
+    private var cachedMenuItemCount: Int = -1
 
     // MARK: - Published State
 
@@ -39,7 +40,8 @@ final class CommandPaletteCoordinator: ObservableObject {
         let signature = currentMenuSignature()
         if cachedQuery == effectiveQuery,
            cachedMenuId == signature.id,
-           cachedMenuDepth == signature.depth {
+           cachedMenuDepth == signature.depth,
+           cachedMenuItemCount == signature.itemCount {
             return cachedSections
         }
 
@@ -52,6 +54,7 @@ final class CommandPaletteCoordinator: ObservableObject {
         cachedQuery = effectiveQuery
         cachedMenuId = signature.id
         cachedMenuDepth = signature.depth
+        cachedMenuItemCount = signature.itemCount
         cachedSections = sections
         return sections
     }
@@ -224,17 +227,19 @@ final class CommandPaletteCoordinator: ObservableObject {
         )
     }
 
-    private func currentMenuSignature() -> (id: String, depth: Int) {
+    private func currentMenuSignature() -> (id: String, depth: Int, itemCount: Int) {
         if let menu = navigationStack.currentMenu {
-            return (menu.id, navigationStack.breadcrumb.count)
+            let totalItems = menu.sections.reduce(0) { $0 + $1.items.count }
+            return (menu.id, navigationStack.breadcrumb.count, totalItems)
         }
-        return ("root", 0)
+        return ("root", 0, 0)
     }
 
     private func invalidateCache() {
         cachedQuery = ""
         cachedMenuId = ""
         cachedMenuDepth = -1
+        cachedMenuItemCount = -1
         cachedSections = []
     }
 }

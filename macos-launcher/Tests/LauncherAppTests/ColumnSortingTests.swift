@@ -385,7 +385,8 @@ final class ColumnSortingTests: XCTestCase {
         }
 
         // Correct alphabetical order (case-insensitive):
-        // "API endpoint" < "code review" < "database schema" < "feature" < "for task" < "integration" < "meeting" < "report" < "unit"
+        // "API endpoint" < "code review" < "database schema" < "feature" < "for task" < "integration" < "meeting" <
+        // "report" < "unit"
         XCTAssertEqual(sortedSummaries, [
             "API endpoint for task #188",
             "code review for task #258",
@@ -539,8 +540,11 @@ final class ColumnSortingTests: XCTestCase {
         // - Within ProjectB: apple, cherry (sorted ascending)
         // So the order is: banana, zebra, apple, cherry
         // NOT: apple, banana, cherry, zebra (which would be global sort)
-        XCTAssertEqual(summaries, ["banana", "zebra", "apple", "cherry"],
-                       "Tasks should be sorted within their project groups, not globally")
+        XCTAssertEqual(
+            summaries,
+            ["banana", "zebra", "apple", "cherry"],
+            "Tasks should be sorted within their project groups, not globally"
+        )
     }
 
     /// Test sorting with NoGroupingStrategy produces global sort order.
@@ -569,8 +573,11 @@ final class ColumnSortingTests: XCTestCase {
         }
 
         // With NoGroupingStrategy, tasks are sorted globally regardless of project
-        XCTAssertEqual(sortedSummaries, ["apple", "banana", "cherry", "zebra"],
-                       "Without grouping, tasks should be sorted globally by summary")
+        XCTAssertEqual(
+            sortedSummaries,
+            ["apple", "banana", "cherry", "zebra"],
+            "Without grouping, tasks should be sorted globally by summary"
+        )
     }
 }
 

@@ -13,7 +13,7 @@ final class DetailModeKeyHandlingTests: XCTestCase {
             charactersIgnoringModifiers: "j",
             modifierFlags: []
         )
-        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocus(1))
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .navigate(.down))
     }
 
     func testKMoveFocusUp() {
@@ -22,7 +22,7 @@ final class DetailModeKeyHandlingTests: XCTestCase {
             charactersIgnoringModifiers: "k",
             modifierFlags: []
         )
-        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocus(-1))
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .navigate(.up))
     }
 
     func testCtrlNMoveFocusDown() {
@@ -31,7 +31,7 @@ final class DetailModeKeyHandlingTests: XCTestCase {
             charactersIgnoringModifiers: "n",
             modifierFlags: [.control]
         )
-        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocus(1))
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .navigate(.down))
     }
 
     func testCtrlPMoveFocusUp() {
@@ -40,7 +40,7 @@ final class DetailModeKeyHandlingTests: XCTestCase {
             charactersIgnoringModifiers: "p",
             modifierFlags: [.control]
         )
-        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocus(-1))
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .navigate(.up))
     }
 
     func testGSelectFirst() {
@@ -69,7 +69,7 @@ final class DetailModeKeyHandlingTests: XCTestCase {
             charactersIgnoringModifiers: "h",
             modifierFlags: []
         )
-        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocusLeft)
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .navigate(.left))
     }
 
     func testLMoveFocusRight() {
@@ -78,7 +78,7 @@ final class DetailModeKeyHandlingTests: XCTestCase {
             charactersIgnoringModifiers: "l",
             modifierFlags: []
         )
-        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .moveFocusRight)
+        XCTAssertEqual(KeyHandlingDecider.detailModeAction(for: input), .navigate(.right))
     }
 
     func testModifiedHIgnored() {
@@ -444,74 +444,134 @@ final class DetailFocusViewModelTests: XCTestCase {
 
     // MARK: - Focus Movement
 
-    func testMoveFocusDownIncrementsIndex() {
+    func testNavigateDownMovesToNextTarget() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 0
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
+        // Clear existing registry and register test targets
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .uuid("test-uuid"),
+            frame: CGRect(x: 0, y: 40, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusFirst()
 
-        viewModel.handleDetailModeAction(.moveFocus(1))
+        let result = viewModel.handleDetailModeAction(.navigate(.down))
 
-        XCTAssertEqual(viewModel.detailFocusedIndex, 1)
+        XCTAssertTrue(result)
+        XCTAssertEqual(viewModel.navigationRegistry.focusedId, "uuid-test-uuid")
     }
 
-    func testMoveFocusUpDecrementsIndex() {
+    func testNavigateUpMovesToPreviousTarget() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 2
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
+        // Clear existing registry and register test targets
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .uuid("test-uuid"),
+            frame: CGRect(x: 0, y: 40, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusLast()
 
-        viewModel.handleDetailModeAction(.moveFocus(-1))
+        let result = viewModel.handleDetailModeAction(.navigate(.up))
 
-        XCTAssertEqual(viewModel.detailFocusedIndex, 1)
+        XCTAssertTrue(result)
+        // taskName ID is just "taskName", not "taskName-Test"
+        XCTAssertEqual(viewModel.navigationRegistry.focusedId, "taskName")
     }
 
-    func testMoveFocusStopsAtBounds() {
+    func testNavigateStaysWhenNoTargetExists() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 0
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
+        // Clear existing registry and register only one target
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusFirst()
 
-        viewModel.handleDetailModeAction(.moveFocus(-1))
+        let result = viewModel.handleDetailModeAction(.navigate(.down))
 
-        XCTAssertEqual(viewModel.detailFocusedIndex, 0, "Should not go below 0")
+        // Should return true (handled) but stay on current target
+        XCTAssertTrue(result)
+        XCTAssertEqual(viewModel.navigationRegistry.focusedId, "taskName")
     }
 
-    func testMoveFocusStopsAtUpperBound() {
+    func testNavigateRightMovesToTargetWithGreaterX() {
         setupDetailModeWithItems()
-        let lastIndex = viewModel.detailFocusableItems.count - 1
-        viewModel.detailFocusedIndex = lastIndex
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
+        // Clear existing registry and register test targets
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 50, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .gitlabMR(MockApiClient.sampleExternalLinks[0]),
+            frame: CGRect(x: 200, y: 50, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusFirst()
 
-        viewModel.handleDetailModeAction(.moveFocus(1))
+        let result = viewModel.handleDetailModeAction(.navigate(.right))
 
-        XCTAssertEqual(viewModel.detailFocusedIndex, lastIndex, "Should not exceed item count")
+        XCTAssertTrue(result)
     }
 
-    func testSelectFirstJumpsToIndex0() {
+    func testSelectFirstJumpsToFirstTarget() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 3
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
+        // Clear and register test targets
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .uuid("test-uuid"),
+            frame: CGRect(x: 0, y: 40, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusLast() // Start at last
 
         viewModel.handleDetailModeAction(.selectFirst)
 
-        XCTAssertEqual(viewModel.detailFocusedIndex, 0)
+        XCTAssertEqual(viewModel.navigationRegistry.focusedId, "taskName")
     }
 
-    func testSelectLastJumpsToLastIndex() {
+    func testSelectLastJumpsToLastTarget() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 0
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
-        let lastIndex = viewModel.detailFocusableItems.count - 1
+        // Clear and register test targets
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .uuid("test-uuid"),
+            frame: CGRect(x: 0, y: 40, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusFirst() // Start at first
 
         viewModel.handleDetailModeAction(.selectLast)
 
-        XCTAssertEqual(viewModel.detailFocusedIndex, lastIndex)
+        XCTAssertEqual(viewModel.navigationRegistry.focusedId, "uuid-test-uuid")
     }
 
     // MARK: - Focused Item Property
 
     func testFocusedDetailItemReturnsNilWhenKeyboardNavigationInactive() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 1
-        viewModel.detailKeyboardNavigationActive = false
+        // Clear and register test targets
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .uuid("test-uuid"),
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        // Set focused ID but don't activate navigation
+        viewModel.navigationRegistry.focusedId = "uuid-test-uuid"
+        viewModel.navigationRegistry.deactivateNavigation()
 
         // Focus ring only shows after user engages with hjkl
         XCTAssertNil(viewModel.focusedDetailItem)
@@ -519,19 +579,27 @@ final class DetailFocusViewModelTests: XCTestCase {
 
     func testFocusedDetailItemReturnsCorrectItem() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 1
-        viewModel.detailKeyboardNavigationActive = true
+        // Clear and register test targets
+        viewModel.navigationRegistry.clearAll()
+        let uuidItem = DetailFocusableItem.uuid("test-uuid")
+        viewModel.navigationRegistry.register(
+            uuidItem,
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusOn(uuidItem)
 
         let focused = viewModel.focusedDetailItem
 
         XCTAssertNotNil(focused)
-        XCTAssertEqual(focused, viewModel.detailFocusableItems[1])
+        XCTAssertEqual(focused, uuidItem)
     }
 
-    func testFocusedDetailItemReturnsNilWhenOutOfBounds() {
+    func testFocusedDetailItemReturnsNilWhenNotRegistered() {
         setupDetailModeWithItems()
-        viewModel.detailFocusedIndex = 999
-        viewModel.detailKeyboardNavigationActive = true
+        // Clear registry - no targets registered
+        viewModel.navigationRegistry.clearAll()
+        // Try to focus on non-existent target
+        viewModel.navigationRegistry.focusedId = "nonexistent"
 
         XCTAssertNil(viewModel.focusedDetailItem)
     }
@@ -588,53 +656,60 @@ final class DetailFocusViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isAddingAnnotation)
     }
 
-    func testHandleDetailModeActionMoveFocusLeft() {
+    func testNavigateLeftMovesToTargetWithLesserX() {
         setupDetailModeWithItems()
-        // Index mapping: 0=taskName, 1=uuid, 2=project, 3...n=tags, n+1+=links
-        // Find first external link index dynamically
-        let firstLinkIndex = viewModel.detailFocusableItems.firstIndex {
-            if case .gitlabMR = $0 { return true }
-            if case .jiraIssue = $0 { return true }
-            return false
-        } ?? viewModel.detailFocusableItems.count
+        // Clear existing registry and set up two targets horizontally
+        viewModel.navigationRegistry.clearAll()
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 50, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .gitlabMR(MockApiClient.sampleExternalLinks[0]),
+            frame: CGRect(x: 200, y: 50, width: 100, height: 30)
+        )
+        // Focus on the right target
+        viewModel.navigationRegistry.focusLast()
 
-        // Start at a link item (in the right column)
-        viewModel.detailFocusedIndex = firstLinkIndex
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
-
-        let result = viewModel.handleDetailModeAction(.moveFocusLeft)
+        let result = viewModel.handleDetailModeAction(.navigate(.left))
 
         XCTAssertTrue(result)
-        // moveFocusLeft from right column (links) should jump to left column (task name)
-        XCTAssertEqual(viewModel.detailFocusedIndex, 0, "moveFocusLeft should move to task name (index 0)")
+        // taskName ID is just "taskName"
+        XCTAssertEqual(viewModel.navigationRegistry.focusedId, "taskName")
     }
 
-    func testHandleDetailModeActionMoveFocusRight() {
+    func testNavigateRightDoesNotOpenLinks() {
         setupDetailModeWithItems()
-        // Index mapping: 0=taskName, 1=uuid, 2=project, 3...n=tags, n+1+=links
-        // Find first external link index dynamically
-        let firstLinkIndex = viewModel.detailFocusableItems.firstIndex {
-            if case .gitlabMR = $0 { return true }
-            if case .jiraIssue = $0 { return true }
-            return false
-        } ?? viewModel.detailFocusableItems.count
+        // Clear existing registry and register a GitLab link on the right
+        viewModel.navigationRegistry.clearAll()
+        let link = MockApiClient.sampleExternalLinks.first { $0.provider.lowercased() == "gitlab" }!
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 50, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .gitlabMR(link),
+            frame: CGRect(x: 200, y: 50, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusFirst()
 
-        // Start at task name (index 0, in the left column)
-        viewModel.detailFocusedIndex = 0
-        viewModel.detailKeyboardNavigationActive = true // Pre-activate to test actual movement
+        // Navigate right - this should ONLY move focus, not open the link
+        let result = viewModel.handleDetailModeAction(.navigate(.right))
 
-        let result = viewModel.handleDetailModeAction(.moveFocusRight)
-
-        XCTAssertTrue(result)
-        // moveFocusRight from left column should jump to right column (first link)
-        XCTAssertEqual(viewModel.detailFocusedIndex, firstLinkIndex, "moveFocusRight should move to first link")
+        XCTAssertTrue(result, "Navigation should succeed")
+        // The `l` key now only navigates - `o` is required to open
     }
 
     func testOpenFocusedStartsEditingWhenTaskNameFocused() {
         setupDetailModeWithItems()
-        // Focus on task name (index 0)
-        viewModel.detailFocusedIndex = 0
-        viewModel.detailKeyboardNavigationActive = true
+        // Clear existing registry and register task name
+        viewModel.navigationRegistry.clearAll()
+        let taskNameItem = DetailFocusableItem.taskName(viewModel.tasks[0].summary)
+        viewModel.navigationRegistry.register(
+            taskNameItem,
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusOn(taskNameItem)
         XCTAssertFalse(viewModel.isEditingTaskName)
 
         let result = viewModel.handleDetailModeAction(.openFocused)

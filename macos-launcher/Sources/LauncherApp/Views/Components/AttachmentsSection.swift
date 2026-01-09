@@ -70,10 +70,12 @@ struct AttachmentsSection: View {
                     onConfirmDelete: { onConfirmDelete(attachment) },
                     onCancelDelete: onCancelDelete
                 )
+                .navigationRegistrable(.attachment(attachment))
             }
 
             // Add button row (focusable via keyboard)
             addButtonRow
+                .navigationRegistrable(.addAttachmentButton)
         }
     }
 

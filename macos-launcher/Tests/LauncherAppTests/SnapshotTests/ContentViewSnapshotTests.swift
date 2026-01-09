@@ -172,9 +172,11 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
             taskUUID: MockApiClient.sampleTasks[0].uuid,
             links: MockApiClient.sampleExternalLinks
         )
-        // Build focusable items and focus on first GitLab link (index 1, after UUID)
+        // Build focusable items and focus on UUID using navigation registry
         viewModel.buildDetailFocusableItems()
-        viewModel.detailFocusedIndex = 1
+        let uuidItem = DetailFocusableItem.uuid(MockApiClient.sampleTasks[0].uuid)
+        viewModel.navigationRegistry.register(uuidItem, frame: CGRect(x: 0, y: 40, width: 200, height: 30))
+        viewModel.navigationRegistry.focusOn(uuidItem)
         let view = makeContentView()
         assertViewSnapshot(view, size: TestSizes.contentView)
     }

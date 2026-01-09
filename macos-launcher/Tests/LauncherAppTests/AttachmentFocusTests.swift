@@ -67,72 +67,74 @@ final class AttachmentFocusTests: XCTestCase {
 
     func testCanNavigateToAttachmentWithJKey() {
         setupDetailModeWithAttachments()
-        viewModel.detailFocusedIndex = 0
-        viewModel.detailKeyboardNavigationActive = true
 
-        // Find attachment index
-        guard let attachmentIndex = viewModel.detailFocusableItems.firstIndex(where: {
-            if case .attachment = $0 { return true }
-            return false
-        }) else {
-            XCTFail("Attachment should be in focusable items")
-            return
-        }
+        // Register targets using the new coordinate-based system
+        let attachment = MockApiClient.sampleAttachment
+        viewModel.navigationRegistry.register(
+            .taskName("Test"),
+            frame: CGRect(x: 0, y: 0, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.register(
+            .attachment(attachment),
+            frame: CGRect(x: 0, y: 40, width: 100, height: 30)
+        )
+        viewModel.navigationRegistry.focusFirst()
 
         // Navigate down to attachment
-        for _ in 0 ..< attachmentIndex {
-            viewModel.handleDetailModeAction(.moveFocus(1))
-        }
+        let result = viewModel.handleDetailModeAction(.navigate(.down))
 
-        XCTAssertEqual(viewModel.detailFocusedIndex, attachmentIndex)
-        if case .attachment = viewModel.focusedDetailItem {
+        XCTAssertTrue(result)
+        if case .attachment = viewModel.navigationRegistry.focusedItem {
             // Success
         } else {
-            XCTFail("Focused item should be attachment, got: \(String(describing: viewModel.focusedDetailItem))")
+            XCTFail(
+                "Focused item should be attachment, got: \(String(describing: viewModel.navigationRegistry.focusedItem))"
+            )
         }
     }
 
     // MARK: - Select Attachment Tests
 
-    func testSelectAttachmentSetsFocusIndex() {
+    func testSelectAttachmentFocusesOnItem() {
         setupDetailModeWithAttachments()
-        viewModel.detailFocusedIndex = 0
-        viewModel.detailKeyboardNavigationActive = false
-
         let attachment = MockApiClient.sampleAttachment
+
+        // Register the attachment in the navigation registry (simulating view registration)
+        viewModel.navigationRegistry.register(
+            .attachment(attachment),
+            frame: CGRect(x: 0, y: 100, width: 200, height: 30)
+        )
 
         viewModel.selectAttachment(attachment)
 
-        // Find expected index
-        guard let expectedIndex = viewModel.detailFocusableItems.firstIndex(where: {
-            if case let .attachment(a) = $0 {
-                return a.id == attachment.id
-            }
-            return false
-        }) else {
-            XCTFail("Attachment should be in focusable items")
-            return
-        }
-
-        XCTAssertEqual(viewModel.detailFocusedIndex, expectedIndex)
+        // Verify the attachment is now focused via the registry
+        XCTAssertEqual(viewModel.navigationRegistry.focusedId, "attachment-\(attachment.id)")
     }
 
     func testSelectAttachmentActivatesKeyboardNavigation() {
         setupDetailModeWithAttachments()
-        viewModel.detailKeyboardNavigationActive = false
-
         let attachment = MockApiClient.sampleAttachment
+
+        // Register the attachment first
+        viewModel.navigationRegistry.register(
+            .attachment(attachment),
+            frame: CGRect(x: 0, y: 100, width: 200, height: 30)
+        )
 
         viewModel.selectAttachment(attachment)
 
-        XCTAssertTrue(viewModel.detailKeyboardNavigationActive, "Should activate keyboard navigation")
+        XCTAssertTrue(viewModel.navigationRegistry.isNavigationActive, "Should activate keyboard navigation")
     }
 
     func testSelectAttachmentShowsFocusRing() {
         setupDetailModeWithAttachments()
-        viewModel.detailKeyboardNavigationActive = false
-
         let attachment = MockApiClient.sampleAttachment
+
+        // Register the attachment first
+        viewModel.navigationRegistry.register(
+            .attachment(attachment),
+            frame: CGRect(x: 0, y: 100, width: 200, height: 30)
+        )
 
         viewModel.selectAttachment(attachment)
 
@@ -175,23 +177,31 @@ final class AttachmentFocusTests: XCTestCase {
 
     func testClearDetailFocusDeactivatesKeyboardNavigation() {
         setupDetailModeWithAttachments()
-
-        // Select an attachment
         let attachment = MockApiClient.sampleAttachment
+
+        // Register and select an attachment
+        viewModel.navigationRegistry.register(
+            .attachment(attachment),
+            frame: CGRect(x: 0, y: 100, width: 200, height: 30)
+        )
         viewModel.selectAttachment(attachment)
-        XCTAssertTrue(viewModel.detailKeyboardNavigationActive, "Should be active after selection")
+        XCTAssertTrue(viewModel.navigationRegistry.isNavigationActive, "Should be active after selection")
 
         // Clear focus (simulates clicking outside)
         viewModel.clearDetailFocus()
 
-        XCTAssertFalse(viewModel.detailKeyboardNavigationActive, "Should deactivate after clearing focus")
+        XCTAssertFalse(viewModel.navigationRegistry.isNavigationActive, "Should deactivate after clearing focus")
     }
 
     func testClearDetailFocusClearsFocusedItem() {
         setupDetailModeWithAttachments()
-
-        // Select an attachment
         let attachment = MockApiClient.sampleAttachment
+
+        // Register and select an attachment
+        viewModel.navigationRegistry.register(
+            .attachment(attachment),
+            frame: CGRect(x: 0, y: 100, width: 200, height: 30)
+        )
         viewModel.selectAttachment(attachment)
         XCTAssertNotNil(viewModel.focusedDetailItem, "Should have focused item after selection")
 

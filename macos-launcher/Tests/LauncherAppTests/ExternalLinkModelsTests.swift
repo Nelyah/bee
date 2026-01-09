@@ -132,6 +132,75 @@ final class ExternalLinkModelsTests: XCTestCase {
         XCTAssertEqual(suggestion.pipelineStatus, .success)
     }
 
+    /// Regression test: Verify decoding works with EXACT format from Rust backend.
+    ///
+    /// The Rust API returns dates with milliseconds and timezone offset like:
+    /// `"2025-09-24T23:56:12.966+02:00"` and nullable fields like `"pipeline_status": null`.
+    ///
+    /// This test uses the exact JSON format observed from a real API response.
+    func testGitlabMergeRequestSuggestionDecodesRealApiFormat() throws {
+        // This is the EXACT format from the Rust backend (bee-api)
+        let json = """
+        {
+            "iid": 4,
+            "title": "Newnewmain",
+            "web_url": "https://gitlab.com/Nelyah/test-project/-/merge_requests/4",
+            "project_path": "Nelyah/test-project",
+            "state": "opened",
+            "user_notes_count": 0,
+            "approved": true,
+            "pipeline_status": null,
+            "updated_at": "2025-09-24T23:56:12.966+02:00"
+        }
+        """
+        let suggestion = try TestHelpers.decode(GitlabMergeRequestSuggestion.self, from: json)
+        XCTAssertEqual(suggestion.id, 4)
+        XCTAssertEqual(suggestion.title, "Newnewmain")
+        XCTAssertEqual(suggestion.projectPath, "Nelyah/test-project")
+        XCTAssertEqual(suggestion.state, .opened)
+        XCTAssertEqual(suggestion.notesCount, 0)
+        XCTAssertEqual(suggestion.approved, true)
+        XCTAssertNil(suggestion.pipelineStatus) // null in JSON
+        XCTAssertEqual(suggestion.updatedAt, "2025-09-24T23:56:12.966+02:00")
+    }
+
+    /// Regression test: Verify decoding of array response (like the real API returns).
+    func testGitlabMergeRequestSuggestionArrayDecodes() throws {
+        // Real API returns an array of merge requests
+        let json = """
+        [
+            {
+                "iid": 4,
+                "title": "Newnewmain",
+                "web_url": "https://gitlab.com/Nelyah/test-project/-/merge_requests/4",
+                "project_path": "Nelyah/test-project",
+                "state": "opened",
+                "user_notes_count": 0,
+                "approved": true,
+                "pipeline_status": null,
+                "updated_at": "2025-09-24T23:56:12.966+02:00"
+            },
+            {
+                "iid": 3,
+                "title": "changes",
+                "web_url": "https://gitlab.com/Nelyah/test-project/-/merge_requests/3",
+                "project_path": "Nelyah/test-project",
+                "state": "closed",
+                "user_notes_count": 0,
+                "approved": true,
+                "pipeline_status": null,
+                "updated_at": "2025-09-24T22:45:14.728+02:00"
+            }
+        ]
+        """
+        let suggestions = try TestHelpers.decode([GitlabMergeRequestSuggestion].self, from: json)
+        XCTAssertEqual(suggestions.count, 2)
+        XCTAssertEqual(suggestions[0].id, 4)
+        XCTAssertEqual(suggestions[0].state, .opened)
+        XCTAssertEqual(suggestions[1].id, 3)
+        XCTAssertEqual(suggestions[1].state, .closed)
+    }
+
     // MARK: - ExternalLinkDto Tests
 
     func testExternalLinkDtoDecodes() throws {

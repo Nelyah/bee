@@ -70,13 +70,13 @@ final class LauncherViewModel: ObservableObject {
 
     // MARK: - Detail Focus State
 
-    /// Index of the currently focused item in detail view (for j/k navigation).
-    @Published var detailFocusedIndex: Int = 0
-    /// List of focusable items in the current detail view.
+    /// Coordinate-based navigation registry for detail view.
+    /// Components register themselves with their coordinates for hjkl navigation.
+    let navigationRegistry = NavigationRegistry()
+
+    /// Reference list of focusable items in detail view (used by tests for validation).
+    /// Actual navigation uses `navigationRegistry` instead.
     var detailFocusableItems: [DetailFocusableItem] = []
-    /// Whether keyboard navigation is active in detail mode (shows focus ring).
-    /// Set to true when user engages with hjkl navigation, reset on mode change.
-    @Published var detailKeyboardNavigationActive: Bool = false
     /// Loaded expanded content per task UUID.
     @Published var taskExpandedData: [String: TaskExpandedContent] = [:]
 
@@ -344,16 +344,17 @@ final class LauncherViewModel: ObservableObject {
         }
         .store(in: &cancellables)
 
-        // Separately observe detail focus changes for dynamic copy label
-        Publishers.CombineLatest(
-            $detailKeyboardNavigationActive,
-            $detailFocusedIndex
-        )
-        .sink { [weak self] _, _ in
-            guard let self, case .detail = self.interactionContext else { return }
-            updateHintModel(for: interactionContext)
-        }
-        .store(in: &cancellables)
+        // Observe navigation registry changes for dynamic copy label in detail view
+        navigationRegistry.objectWillChange
+            .sink { [weak self] in
+                guard let self, case .detail = self.interactionContext else { return }
+                // Use async dispatch to get updated values after objectWillChange fires
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    updateHintModel(for: interactionContext)
+                }
+            }
+            .store(in: &cancellables)
 
         // Observe multi-selection changes to update selection count in hint bar
         $selectedTaskUUIDs
@@ -377,12 +378,8 @@ final class LauncherViewModel: ObservableObject {
 
     /// Computes the copy label for the currently focused detail item.
     private func computeDetailCopyLabel() -> String? {
-        guard detailKeyboardNavigationActive,
-              detailFocusedIndex >= 0,
-              detailFocusedIndex < detailFocusableItems.count else {
-            return nil
-        }
-        return detailFocusableItems[detailFocusedIndex].copyLabel
+        // Use navigation registry for focus state
+        navigationRegistry.focusedItem?.copyLabel
     }
 
     /// Fetch the report configuration from the API.

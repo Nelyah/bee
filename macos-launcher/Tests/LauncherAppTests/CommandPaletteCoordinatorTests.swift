@@ -206,6 +206,87 @@ final class CommandPaletteCoordinatorTests: XCTestCase {
         XCTAssertTrue(coordinator.context.hasSelectedTask)
         XCTAssertEqual(coordinator.context.selectedTaskUUID, "abc-123")
     }
+
+    // MARK: - Cache Invalidation Tests
+
+    /// Regression test: replacing a menu with same ID but different content should update sections.
+    ///
+    /// This reproduces a bug where GitLab/Jira menus are initially pushed with empty suggestions,
+    /// then replaced (pop + push) with the same ID but populated suggestions. The cache returns
+    /// stale sections because the cache key (query, menuId, depth) doesn't change.
+    func testReplacingMenuWithSameIdInvalidatesCache() {
+        let coordinator = CommandPaletteCoordinator()
+        _ = coordinator.open(context: CommandPaletteContext())
+
+        // Push initial menu with 1 action item (simulates GitLab menu before suggestions load)
+        let initialMenu = CommandPaletteMenu(
+            id: "add-gitlab",
+            title: "Add GitLab Link",
+            sections: [
+                CommandPaletteSection(
+                    id: "gitlab-url",
+                    title: nil,
+                    items: [
+                        .action(CommandPaletteActionItem(
+                            id: "gitlab-url-entry",
+                            title: "Enter GitLab URL...",
+                            handler: {}
+                        )),
+                    ]
+                ),
+            ]
+        )
+        coordinator.pushMenu(initialMenu)
+
+        // Read currentSections (fills cache with 1 item)
+        let sectionsBefore = coordinator.currentSections
+        XCTAssertEqual(sectionsBefore.count, 1)
+        XCTAssertEqual(sectionsBefore.flatMap(\.items).count, 1)
+
+        // Simulate loadGitlabSuggestions: pop + push with same ID but more items
+        let updatedMenu = CommandPaletteMenu(
+            id: "add-gitlab", // SAME ID
+            title: "Add GitLab Link",
+            sections: [
+                CommandPaletteSection(
+                    id: "gitlab-url",
+                    title: nil,
+                    items: [
+                        .action(CommandPaletteActionItem(
+                            id: "gitlab-url-entry",
+                            title: "Enter GitLab URL...",
+                            handler: {}
+                        )),
+                    ]
+                ),
+                CommandPaletteSection(
+                    id: "gitlab",
+                    title: "Recent",
+                    items: [
+                        .suggestion(CommandPaletteSuggestionItem(
+                            id: "gitlab-42",
+                            title: "Fix auth bug",
+                            metadata: .rawInput("https://gitlab.com/mr/42"),
+                            handler: {}
+                        )),
+                        .suggestion(CommandPaletteSuggestionItem(
+                            id: "gitlab-43",
+                            title: "Add dark mode",
+                            metadata: .rawInput("https://gitlab.com/mr/43"),
+                            handler: {}
+                        )),
+                    ]
+                ),
+            ]
+        )
+        coordinator.navigationStack.pop()
+        coordinator.navigationStack.push(updatedMenu)
+
+        // Read currentSections again - should reflect updated menu content
+        let sectionsAfter = coordinator.currentSections
+        XCTAssertEqual(sectionsAfter.count, 2, "Should have 2 sections after update")
+        XCTAssertEqual(sectionsAfter.flatMap(\.items).count, 3, "Should have 3 items total after update")
+    }
 }
 
 // MARK: - Test Helpers

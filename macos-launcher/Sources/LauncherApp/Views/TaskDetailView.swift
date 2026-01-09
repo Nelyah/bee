@@ -182,6 +182,9 @@ struct TaskDetailView: View {
     /// Called when the user clicks on the background to clear focus.
     var onClearFocus: () -> Void = {}
 
+    /// Called when navigation coordinates change. Registers all focusable components.
+    var onRegisterNavigation: ([NavigationCoordinateEntry]) -> Void = { _ in }
+
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -210,6 +213,10 @@ struct TaskDetailView: View {
                 }
                 .frame(maxWidth: TaskDetailLayout.maxContentWidth, alignment: .leading)
                 .frame(maxWidth: .infinity) // Centers content when view is wider
+                .coordinateSpace(name: "detailNavigation")
+                .onPreferenceChange(NavigationCoordinatePreferenceKey.self) { entries in
+                    onRegisterNavigation(entries)
+                }
                 .background {
                     // Tap on empty space clears focus, but doesn't steal events from child views
                     Color.clear
@@ -262,6 +269,7 @@ struct TaskDetailView: View {
                         .lineLimit(nil)
                         .padding(.horizontal, DesignTokens.Spacing.small)
                         .padding(.vertical, DesignTokens.Spacing.extraSmall)
+                        .navigationRegistrable(.taskName(task.summary))
                         .modifier(DetailFocusRing(isFocused: isTaskNameFocused))
                         .onTapGesture {
                             onStartEditingTaskName()
@@ -334,6 +342,7 @@ struct TaskDetailView: View {
                     onCopy: onCopyUUID,
                     isKeyboardFocused: isUUIDFocused
                 )
+                .navigationRegistrable(.uuid(task.uuid))
                 projectRow
                 EditableTagsRow(
                     tags: task.tags,
@@ -374,6 +383,7 @@ struct TaskDetailView: View {
                     onClear: onClearDueDate,
                     onQuickAction: onQuickDueDateAction
                 )
+                .navigationRegistrable(.dueDate(task.dateDue))
             }
             .zIndex(0)
         }
@@ -596,6 +606,7 @@ struct TaskDetailView: View {
             onCancel: onCancelProjectEdit,
             onSelectCompletion: onSelectProjectCompletion
         )
+        .navigationRegistrable(.project(task.project ?? ""))
         .zIndex(2) // Ensure project completion dropdown overlays Dates section
     }
 }

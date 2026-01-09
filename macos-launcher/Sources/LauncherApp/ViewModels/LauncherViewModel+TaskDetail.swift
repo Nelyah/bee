@@ -13,8 +13,8 @@ extension LauncherViewModel {
     func openDetail() {
         guard selectedIndex != nil else { return }
         mode = .detail
-        detailFocusedIndex = 0
-        detailKeyboardNavigationActive = false
+        // Clear registry - new task's components will register themselves
+        navigationRegistry.clearAll()
         buildDetailFocusableItems()
         if let task = selectedTask {
             loadTaskDetail(taskUUID: task.uuid)
@@ -25,7 +25,7 @@ extension LauncherViewModel {
     /// Close the detail view and return to the list.
     func closeDetail() {
         mode = .list
-        detailKeyboardNavigationActive = false
+        navigationRegistry.deactivateNavigation()
         taskDetailState = TaskDetailState()
         externalLinksState = ExternalLinksState()
     }

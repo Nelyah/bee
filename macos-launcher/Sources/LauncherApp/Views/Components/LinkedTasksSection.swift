@@ -82,6 +82,7 @@ struct LinkedTasksSection: View {
             }
             .padding(.horizontal, DesignTokens.Spacing.small)
             .padding(.vertical, DesignTokens.Spacing.extraSmall)
+            .navigationRegistrable(.linkedTask(link))
             .modifier(DetailFocusRing(isFocused: isFocused))
         }
         .buttonStyle(.plain)

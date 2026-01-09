@@ -48,9 +48,7 @@ enum NormalModeAction: Equatable {
 
 /// Actions that can be triggered in detail mode (keyboard navigation).
 enum DetailModeAction: Equatable {
-    case moveFocus(Int) // j/k navigation (+1/-1)
-    case moveFocusLeft // h - move to left column (UUID)
-    case moveFocusRight // l - move to right column (links) or open
+    case navigate(NavigationDirection) // hjkl - coordinate-based navigation
     case openFocused // o/Enter - open in browser or edit
     case copyFocused // y - copy to clipboard (or confirm delete if attachment is confirming)
     case deleteFocused // x - delete focused item (tags, attachments)

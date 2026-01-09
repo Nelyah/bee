@@ -137,16 +137,9 @@ extension LauncherViewModel {
     /// Used when user clicks on an attachment row.
     @MainActor
     func selectAttachment(_ attachment: TaskAttachmentDto) {
-        // Find the attachment's index in focusable items
-        guard let index = detailFocusableItems.firstIndex(where: { item in
-            if case let .attachment(a) = item {
-                return a.id == attachment.id
-            }
-            return false
-        }) else { return }
-
-        detailFocusedIndex = index
-        detailKeyboardNavigationActive = true
+        // Use the navigation registry to focus on this attachment
+        let item = DetailFocusableItem.attachment(attachment)
+        navigationRegistry.focusOn(item)
     }
 
     // MARK: - Keyboard Actions

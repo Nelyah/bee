@@ -58,12 +58,16 @@ struct ExternalLinksProviderSection: View {
             } else {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                     ForEach(links, id: \.id) { link in
+                        let focusableItem: DetailFocusableItem = link.provider.lowercased() == "gitlab"
+                            ? .gitlabMR(link)
+                            : .jiraIssue(link)
                         ExternalLinkRow(
                             link: link,
                             onCopyBranch: onCopyBranch,
                             onCopyLink: onCopyLink,
                             isKeyboardFocused: link.id == focusedLinkId
                         )
+                        .navigationRegistrable(focusableItem)
                     }
                 }
             }

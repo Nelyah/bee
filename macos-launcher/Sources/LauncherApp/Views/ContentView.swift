@@ -202,6 +202,11 @@ struct ContentView: View {
                     // Focus management
                     onClearFocus: {
                         viewModel.clearDetailFocus()
+                    },
+                    onRegisterNavigation: { entries in
+                        for entry in entries {
+                            viewModel.navigationRegistry.register(entry.item, frame: entry.frame)
+                        }
                     }
                 )
                 .padding(DesignTokens.Spacing.extraExtraLarge)

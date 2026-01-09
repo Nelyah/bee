@@ -84,6 +84,7 @@ struct EditableTagsRow: View {
                         isSelected: selectedTagIndex == index,
                         onRemove: { onRemoveTag(tag) }
                     )
+                    .navigationRegistrable(.tag(tag, index: index))
                     .modifier(DetailFocusRing(isFocused: keyboardFocusedTagIndex == index))
                     .onTapGesture {
                         onSelectTagIndex(index)
@@ -93,6 +94,7 @@ struct EditableTagsRow: View {
                 // Add tag button (only when not adding)
                 if !isAddingTag {
                     addTagButton
+                        .navigationRegistrable(.addTagButton)
                         .modifier(DetailFocusRing(isFocused: isAddButtonFocused))
                 }
             }

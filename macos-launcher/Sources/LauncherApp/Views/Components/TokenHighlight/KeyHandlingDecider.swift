@@ -138,8 +138,8 @@ enum KeyHandlingDecider {
         // Check for Ctrl+N/P first (vim muscle memory)
         if input.modifierFlags.contains(.control) {
             switch input.charactersIgnoringModifiers {
-            case "n": return .moveFocus(1)
-            case "p": return .moveFocus(-1)
+            case "n": return .navigate(.down)
+            case "p": return .navigate(.up)
             default: break
             }
         }
@@ -157,13 +157,15 @@ enum KeyHandlingDecider {
     private static func detailModeKeyAction(_ input: KeyInput) -> DetailModeAction? {
         switch input.keyCode {
         case KeyCode.keyH:
-            .moveFocusLeft
+            .navigate(.left)
         case KeyCode.keyJ:
-            .moveFocus(1)
+            .navigate(.down)
         case KeyCode.keyK:
-            .moveFocus(-1)
+            .navigate(.up)
         case KeyCode.keyL:
-            .moveFocusRight
+            .navigate(.right) // NOTE: No longer opens links! Use 'o' or Enter to open.
+        case KeyCode.keyO:
+            .openFocused
         case KeyCode.returnKey, KeyCode.keypadEnter:
             .openFocused
         case KeyCode.keyY:

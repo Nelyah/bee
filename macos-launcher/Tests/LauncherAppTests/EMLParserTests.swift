@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 /// Tests for EML (RFC 2822) email file parsing.
 ///

@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 /// Tests for task state change behavior in LauncherViewModel.
 @MainActor

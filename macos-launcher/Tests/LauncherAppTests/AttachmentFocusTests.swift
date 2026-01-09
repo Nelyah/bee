@@ -1,5 +1,5 @@
 import AppKit
-@testable import LauncherApp
+@testable import LauncherAppKit
 import XCTest
 
 // MARK: - Attachment Focus Tests

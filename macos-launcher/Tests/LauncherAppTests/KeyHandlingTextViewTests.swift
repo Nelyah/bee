@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 final class KeyHandlingTextViewTests: XCTestCase {
     func testMouseDownRequestsInsertMode() {

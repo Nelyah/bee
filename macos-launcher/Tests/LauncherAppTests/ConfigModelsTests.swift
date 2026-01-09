@@ -1,4 +1,4 @@
-@testable import LauncherApp
+@testable import LauncherAppKit
 import XCTest
 
 final class ConfigModelsTests: XCTestCase {

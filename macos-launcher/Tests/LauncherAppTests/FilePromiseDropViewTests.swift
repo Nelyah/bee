@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 final class FilePromiseDropViewTests: XCTestCase {
     /// Tests that the drop overlay allows mouse events to pass through.

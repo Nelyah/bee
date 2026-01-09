@@ -1,4 +1,4 @@
-@testable import LauncherApp
+@testable import LauncherAppKit
 import XCTest
 
 /// Tests for CommandPaletteActionHandler's task linking methods.

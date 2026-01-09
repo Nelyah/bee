@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 @MainActor
 final class ProjectOverviewSectionContributorTests: XCTestCase {

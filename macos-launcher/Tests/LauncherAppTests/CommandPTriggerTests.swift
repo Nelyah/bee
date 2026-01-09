@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 /// Tests for Cmd+P contextual menu trigger behavior.
 /// Verifies that Cmd+P dispatches to the correct menu based on current mode.

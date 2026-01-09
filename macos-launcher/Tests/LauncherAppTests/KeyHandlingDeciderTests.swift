@@ -1,5 +1,5 @@
 import AppKit
-@testable import LauncherApp
+@testable import LauncherAppKit
 import XCTest
 
 final class KeyHandlingDeciderTests: XCTestCase {

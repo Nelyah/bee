@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 final class ReportMenuButtonViewTests: XCTestCase {
     func testUpdateBuildsMenuItemsAndMarksSelection() {

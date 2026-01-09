@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-extension LauncherViewModel {
+public extension LauncherViewModel {
     func openCommandPalette() {
         let context = buildCommandPaletteContext()
         if let errorMessage = commandPalette.open(context: context) {
@@ -9,7 +9,7 @@ extension LauncherViewModel {
         }
     }
 
-    func closeCommandPalette() {
+    internal func closeCommandPalette() {
         commandPalette.close()
         schedulePendingParseErrorAfterMenuClose()
     }
@@ -49,7 +49,7 @@ extension LauncherViewModel {
         }
     }
 
-    func setupCommandPaletteContributors() {
+    internal func setupCommandPaletteContributors() {
         // Register the shortcuts section (always visible)
         commandPalette.dataSource.register(ShortcutsSectionContributor())
 

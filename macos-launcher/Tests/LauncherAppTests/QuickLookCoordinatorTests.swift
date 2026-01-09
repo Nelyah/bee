@@ -1,5 +1,5 @@
 import AppKit
-@testable import LauncherApp
+@testable import LauncherAppKit
 import QuickLookUI
 import XCTest
 

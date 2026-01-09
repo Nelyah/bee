@@ -6,7 +6,7 @@ import OSLog
 import SwiftUI
 
 @MainActor
-final class LauncherViewModel: ObservableObject {
+public final class LauncherViewModel: ObservableObject {
     private enum Constants {
         static let defaultUnexpectedTokenToastDelay: TimeInterval = 3
     }
@@ -219,6 +219,11 @@ final class LauncherViewModel: ObservableObject {
         }
     )
     private let inputDebouncer: InputDebouncer
+
+    /// Public convenience initializer for external use (Xcode app).
+    public convenience init() {
+        self.init(apiClient: ApiClient())
+    }
 
     init(
         apiClient: ApiClientProtocol = ApiClient(),

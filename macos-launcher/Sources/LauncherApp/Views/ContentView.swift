@@ -1,15 +1,20 @@
 import AppKit
 import SwiftUI
 
-struct ContentView: View {
-    @ObservedObject var viewModel: LauncherViewModel
+public struct ContentView: View {
+    @ObservedObject public var viewModel: LauncherViewModel
+
+    public init(viewModel: LauncherViewModel) {
+        self.viewModel = viewModel
+    }
+
     @State private var escapeMonitor: Any?
     @State private var normalModeMonitor: Any?
     @State private var detailModeMonitor: Any?
     /// Trigger provider for programmatic task state menu display (Cmd+P).
     @State private var taskStateMenuTrigger = MenuTriggerProvider()
 
-    var body: some View {
+    public var body: some View {
         ZStack(alignment: .bottomTrailing) {
             WindowAccessor { window in
                 WindowConfiguration.applyBorderlessStyle(to: window)

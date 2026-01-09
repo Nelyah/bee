@@ -23,7 +23,7 @@ extension LauncherViewModel {
     }
 
     /// Close the detail view and return to the list.
-    func closeDetail() {
+    public func closeDetail() {
         mode = .list
         navigationRegistry.deactivateNavigation()
         taskDetailState = TaskDetailState()

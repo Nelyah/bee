@@ -1,5 +1,5 @@
 import Foundation
-@testable import LauncherApp
+@testable import LauncherAppKit
 import XCTest
 
 /// Shared test utilities to avoid duplication across test files.

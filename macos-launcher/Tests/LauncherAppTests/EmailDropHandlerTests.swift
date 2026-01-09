@@ -1,7 +1,7 @@
 import UniformTypeIdentifiers
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 /// Tests for the EmailDropHandler utility functions.
 ///

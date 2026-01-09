@@ -34,7 +34,7 @@ final class ContentViewUITests: XCTestCase {
     // MARK: - Mode Switching Tests
 
     func testDisplaysTaskListInListMode() throws {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         let sut = ContentView(viewModel: viewModel)
         let view = try sut.inspect()
 
@@ -45,7 +45,7 @@ final class ContentViewUITests: XCTestCase {
     func testDisplaysTaskDetailInDetailMode() throws {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(
             isLoading: false,
             taskUUID: MockApiClient.sampleTasks[0].uuid,
@@ -61,7 +61,7 @@ final class ContentViewUITests: XCTestCase {
     func testHidesTaskListInDetailMode() throws {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(
             isLoading: false,
             taskUUID: MockApiClient.sampleTasks[0].uuid,

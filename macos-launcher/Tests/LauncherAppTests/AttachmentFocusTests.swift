@@ -216,7 +216,7 @@ final class AttachmentFocusTests: XCTestCase {
     private func setupDetailMode() {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
     }
 
     private func setupDetailModeWithAttachments() {

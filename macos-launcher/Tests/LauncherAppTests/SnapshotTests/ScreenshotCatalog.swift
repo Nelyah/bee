@@ -91,21 +91,21 @@ final class ScreenshotCatalog: SnapshotTestCase {
     // MARK: - Content View (Full App)
 
     func testContentView_empty() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = []
         let view = ContentView(viewModel: viewModel)
         assertViewSnapshot(view, size: TestSizes.contentView)
     }
 
     func testContentView_listWithTasks() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         let view = ContentView(viewModel: viewModel)
         assertViewSnapshot(view, size: TestSizes.contentView)
     }
 
     func testContentView_listWithSearch() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.input = "list +work status:pending"
         viewModel.tokens = TestHelpers.sampleTokens
@@ -117,7 +117,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
     func testContentView_detailMode() {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(
             isLoading: false,
             taskUUID: MockApiClient.sampleTasks[0].uuid,
@@ -133,7 +133,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
     }
 
     func testContentView_commandPalette() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.openCommandPalette()
         let view = ContentView(viewModel: viewModel)
@@ -141,7 +141,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
     }
 
     func testContentView_withToast() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.toasts = [
             ToastMessage(id: UUID(), message: "Task marked as done!", icon: .success),

@@ -31,21 +31,21 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     // MARK: - List Mode
 
     func testListModeDefault() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = []
         let view = makeContentView()
         assertViewSnapshot(view, size: TestSizes.contentView)
     }
 
     func testListModeWithTasks() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         let view = makeContentView()
         assertViewSnapshot(view, size: TestSizes.contentView)
     }
 
     func testListModeWithSearchInput() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.input = "list +work"
         viewModel.tokens = [
@@ -64,7 +64,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     func testDetailModeWithTask() {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(
             isLoading: false,
             taskUUID: MockApiClient.sampleTasks[0].uuid,
@@ -82,7 +82,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     func testDetailModeLoading() {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(isLoading: true)
         let view = makeContentView()
         assertViewSnapshot(view, size: TestSizes.contentView)
@@ -91,7 +91,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     // MARK: - Toasts
 
     func testWithToasts() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.toasts = [
             ToastMessage(id: UUID(), message: "Branch copied to clipboard", icon: .success),
@@ -101,7 +101,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     }
 
     func testWithMultipleToasts() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.toasts = [
             ToastMessage(id: UUID(), message: "Task completed!", icon: .success),
@@ -114,7 +114,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     // MARK: - Command Palette
 
     func testWithCommandPaletteOpen() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         // Open command palette using the proper method
         viewModel.openCommandPalette()
@@ -125,7 +125,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     // MARK: - Hint Bar States
 
     func testWithInsertModeHints() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.isInsertMode = true
         let view = makeContentView()
@@ -133,7 +133,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     }
 
     func testWithNormalModeHints() {
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.isInsertMode = false
         let view = makeContentView()
@@ -143,7 +143,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     func testWithDetailModeHints() {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(
             isLoading: false,
             taskUUID: MockApiClient.sampleTasks[0].uuid,
@@ -161,7 +161,7 @@ final class ContentViewSnapshotTests: SnapshotTestCase {
     func testDetailModeWithKeyboardFocusOnLink() {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(
             isLoading: false,
             taskUUID: MockApiClient.sampleTasks[0].uuid,

@@ -32,9 +32,8 @@ extension LauncherViewModel {
         case .clearCompletions:
             clearCompletions()
             return true
-        case .closeDetail:
-            closeDetail()
-            return true
+        case .navigateBack:
+            return navigateBack()
         case .exitInsertMode:
             exitInsertMode()
             return true

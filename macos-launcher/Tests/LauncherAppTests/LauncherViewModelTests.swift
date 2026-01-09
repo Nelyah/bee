@@ -509,7 +509,7 @@ final class LauncherViewModelTests: XCTestCase {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [makeTask(id: "a")]
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.isAddingAnnotation = true
         viewModel.annotationInput = "Some annotation text"
 
@@ -524,7 +524,7 @@ final class LauncherViewModelTests: XCTestCase {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [makeTask(id: "a")]
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.isAddingAnnotation = true
 
         _ = viewModel.handleEscape()
@@ -544,7 +544,7 @@ final class LauncherViewModelTests: XCTestCase {
         // Set up task and select it
         viewModel.tasks = [makeTask(id: "test-task-uuid")]
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
 
         // Set up annotation input
         viewModel.isAddingAnnotation = true
@@ -598,7 +598,7 @@ final class LauncherViewModelTests: XCTestCase {
         let viewModel = LauncherViewModel()
         viewModel.tasks = [makeTask(id: "task-uuid")]
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
 
         // Create two annotations with different times
         let olderAnnotation = TestHelpers.makeAnnotation(value: "Older note", time: "2024-01-01T10:00:00Z")

@@ -173,16 +173,13 @@ extension LauncherViewModel {
     }
 
     /// Navigate to a linked task by UUID.
+    /// Pushes the task detail onto the navigation stack for back navigation.
     func navigateToTask(uuid: String) {
-        guard let index = tasks.firstIndex(where: { $0.uuid == uuid }) else {
+        guard tasks.contains(where: { $0.uuid == uuid }) else {
             showToast(message: "Task not in current view", icon: .warning)
             return
         }
-        selectedIndex = index
-        loadTaskDetail(taskUUID: uuid)
-        loadExternalLinks(taskUUID: uuid)
-        // Clear registry - new task's components will register themselves
-        navigationRegistry.clearAll()
+        pushTaskDetail(uuid: uuid)
     }
 
     func copyFocusedDetailItem() -> Bool {

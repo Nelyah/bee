@@ -10,24 +10,16 @@ extension LauncherViewModel {
     }
 
     /// Open the detail view for the currently selected task.
+    /// Pushes the task detail onto the navigation stack.
     func openDetail() {
-        guard selectedIndex != nil else { return }
-        mode = .detail
-        // Clear registry - new task's components will register themselves
-        navigationRegistry.clearAll()
-        buildDetailFocusableItems()
-        if let task = selectedTask {
-            loadTaskDetail(taskUUID: task.uuid)
-            loadExternalLinks(taskUUID: task.uuid)
-        }
+        guard let task = selectedTask else { return }
+        pushTaskDetail(uuid: task.uuid)
     }
 
-    /// Close the detail view and return to the list.
+    /// Close the detail view and return to the previous view.
+    /// Delegates to navigateBack() to pop from the navigation stack.
     public func closeDetail() {
-        mode = .list
-        navigationRegistry.deactivateNavigation()
-        taskDetailState = TaskDetailState()
-        externalLinksState = ExternalLinksState()
+        _ = navigateBack()
     }
 
     func loadTaskDetail(taskUUID: String) {

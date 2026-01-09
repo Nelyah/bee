@@ -70,6 +70,8 @@ LauncherViewModel is split by feature area:
 | `+TaskExpansion` | Inline task expansion |
 | `+CommandPalette` | Command palette state |
 | `+Toast` | Toast notifications |
+| `+Navigation` | Navigation stack, back navigation, view history |
+| `+KeyboardHandling` | Escape key, normal mode key handling |
 
 **Pattern**: Add new functionality to existing extension or create new `+Feature.swift`.
 
@@ -106,13 +108,64 @@ let viewModel = LauncherViewModel(
 
 See [ADDING-FEATURES.md](ADDING-FEATURES.md) for detailed walkthrough.
 
+## Navigation Stack
+
+The app uses a **view navigation stack** (`ViewNavigationStack`) to track view history, enabling proper back navigation:
+
+```
+┌─────────────┐   push    ┌─────────────┐   push    ┌─────────────┐
+│  TaskList   │ ───────→  │ TaskDetail  │ ───────→  │ TaskDetail  │
+│   (root)    │           │  (Task A)   │           │  (Task B)   │
+└─────────────┘   ←───────└─────────────┘   ←───────└─────────────┘
+                   pop (escape)              pop (escape)
+```
+
+### Key Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `NavigationEntry` | `Models/NavigationEntry.swift` | Enum: `.taskList`, `.taskDetail(uuid:)`, `.projectOverview` |
+| `ViewNavigationStack` | `Utilities/Navigation/NavigationStack.swift` | Stack manager with push/pop/reset |
+| `+Navigation` | `ViewModels/LauncherViewModel+Navigation.swift` | ViewModel navigation methods |
+
+### Usage Pattern
+
+```swift
+// Forward navigation - pushes onto stack
+viewModel.pushTaskDetail(uuid: linkedTaskUUID)
+viewModel.pushProjectOverview()
+
+// Back navigation - pops stack
+viewModel.navigateBack()  // Returns to previous view
+
+// Reset to root
+viewModel.navigateToRoot()  // Clears to TaskList
+```
+
+### Mode Synchronization
+
+The `mode` property is derived from the navigation stack via Combine:
+
+```swift
+// In LauncherViewModel.init()
+navigationStack.$entries
+    .map { $0.last?.mode ?? .list }
+    .removeDuplicates()
+    .sink { [weak self] newMode in
+        self?.mode = newMode
+    }
+    .store(in: &cancellables)
+```
+
+**Important**: Never set `mode` directly. Use navigation methods (`pushTaskDetail`, `navigateBack`, etc.) which update the stack, and mode syncs automatically.
+
 ## Coordinators
 
 Pure functions for complex state transitions:
 
 | Coordinator | Purpose |
 |-------------|---------|
-| `InteractionCoordinator` | Escape key handling, normal-mode effects |
+| `InteractionCoordinator` | Escape key handling (`navigateBack`), normal-mode effects |
 | `InteractionContextCoordinator` | Context calculation, hint bar building |
 | `KeyHandlingDecider` | Pure key→action mapping for keyboard nav |
 | `TaskListCoordinator` | Task grouping, selection within groups |

@@ -12,7 +12,7 @@ final class TaskStateChangeTests: XCTestCase {
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
         let task = TestHelpers.makeTask(id: "test-uuid", status: "active")
         viewModel.tasks = [task]
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(taskUUID: "test-uuid", detail: nil)
 
         // When: We complete the task
@@ -55,7 +55,7 @@ final class TaskStateChangeTests: XCTestCase {
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
         let task = TestHelpers.makeTask(id: "test-uuid", status: "pending")
         viewModel.tasks = [task]
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(taskUUID: "test-uuid", detail: nil)
 
         // When: We set the task to "deleted" status
@@ -97,7 +97,7 @@ final class TaskStateChangeTests: XCTestCase {
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
         let task = TestHelpers.makeTask(id: "test-uuid", status: "pending")
         viewModel.tasks = [task]
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(taskUUID: "test-uuid", detail: nil)
 
         // When: We start the task
@@ -116,7 +116,7 @@ final class TaskStateChangeTests: XCTestCase {
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
         let task = TestHelpers.makeTask(id: "test-uuid", status: "active")
         viewModel.tasks = [task]
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(taskUUID: "test-uuid", detail: nil)
 
         // When: We stop the task

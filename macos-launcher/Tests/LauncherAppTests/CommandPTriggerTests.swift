@@ -11,7 +11,7 @@ final class CommandPTriggerTests: XCTestCase {
     func testCmdPInListModeTriggersReportMenu() {
         // Given: A view model in list mode with report menu trigger set
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
 
         var reportMenuTriggered = false
         viewModel.reportMenuTrigger = { reportMenuTriggered = true }
@@ -27,7 +27,7 @@ final class CommandPTriggerTests: XCTestCase {
     func testCmdPInDetailModeTriggersTaskStateMenu() {
         // Given: A view model in detail mode with task state menu trigger set
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
 
         var taskStateMenuTriggered = false
         viewModel.reportMenuTrigger = { XCTFail("Report menu should not be triggered in detail mode") }
@@ -45,7 +45,7 @@ final class CommandPTriggerTests: XCTestCase {
     func testCmdPCanBeTriggeredMultipleTimesInListMode() {
         // Given: A view model in list mode
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
 
         var triggerCount = 0
         viewModel.reportMenuTrigger = { triggerCount += 1 }
@@ -62,7 +62,7 @@ final class CommandPTriggerTests: XCTestCase {
     func testCmdPCanBeTriggeredMultipleTimesInDetailMode() {
         // Given: A view model in detail mode
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
 
         var triggerCount = 0
         viewModel.taskStateMenuTrigger = { triggerCount += 1 }
@@ -88,15 +88,15 @@ final class CommandPTriggerTests: XCTestCase {
         viewModel.taskStateMenuTrigger = { taskStateCount += 1 }
 
         // When: We trigger in list mode
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.handleContextualMenu()
 
         // Then switch to detail mode and trigger again
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.handleContextualMenu()
 
         // And switch back to list mode
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.handleContextualMenu()
 
         // Then: Each trigger should be called the correct number of times
@@ -109,7 +109,7 @@ final class CommandPTriggerTests: XCTestCase {
     func testCmdPHandlesNilReportMenuTriggerGracefully() {
         // Given: A view model in list mode with no trigger set
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
-        viewModel.mode = .list
+        viewModel.setModeForTesting(.list)
         viewModel.reportMenuTrigger = nil
 
         // When: We handle Cmd+P - should not crash
@@ -121,7 +121,7 @@ final class CommandPTriggerTests: XCTestCase {
     func testCmdPHandlesNilTaskStateMenuTriggerGracefully() {
         // Given: A view model in detail mode with no trigger set
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskStateMenuTrigger = nil
 
         // When: We handle Cmd+P - should not crash
@@ -137,7 +137,7 @@ final class CommandPTriggerTests: XCTestCase {
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
         let task = TestHelpers.makeTask(id: "test-uuid", status: "pending")
         viewModel.tasks = [task]
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(taskUUID: "test-uuid", detail: nil)
 
         // When: We change state multiple times (pending -> active -> pending -> active)
@@ -165,7 +165,7 @@ final class CommandPTriggerTests: XCTestCase {
         let viewModel = LauncherViewModel(apiClient: MockApiClient())
         let task = TestHelpers.makeTask(id: "test-uuid", status: "pending")
         viewModel.tasks = [task]
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
         viewModel.taskDetailState = TaskDetailState(taskUUID: "test-uuid", detail: nil)
 
         // Start and stop multiple times

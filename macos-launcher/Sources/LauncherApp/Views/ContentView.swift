@@ -403,7 +403,7 @@ public struct ContentView: View {
     let viewModel = LauncherViewModel(apiClient: MockApiClient())
     viewModel.tasks = MockApiClient.sampleTasks
     viewModel.selectedIndex = 0
-    viewModel.mode = .detail
+    viewModel.openDetail()
 
     return ContentView(viewModel: viewModel)
         .frame(width: 680, height: 440)

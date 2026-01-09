@@ -16,7 +16,7 @@ final class InteractionCoordinatorTests: XCTestCase {
 
     func testEscapeActionForDetail() {
         let action = InteractionCoordinator.escapeAction(for: .detail)
-        XCTAssertEqual(action, .closeDetail)
+        XCTAssertEqual(action, .navigateBack)
     }
 
     func testEscapeActionForInsertModeList() {

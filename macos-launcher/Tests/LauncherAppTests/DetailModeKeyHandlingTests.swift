@@ -616,10 +616,10 @@ final class DetailFocusViewModelTests: XCTestCase {
     }
 
     func testStartAddingAnnotationRequiresSelectedTask() {
-        // No task selected
-        viewModel.tasks = MockApiClient.sampleTasks
-        viewModel.selectedIndex = nil
-        viewModel.mode = .detail
+        // With the navigation stack model, entering detail mode without tasks
+        // doesn't select any task, so startAddingAnnotation should not work.
+        viewModel.tasks = [] // No tasks available
+        viewModel.setModeForTesting(.detail)
 
         viewModel.startAddingAnnotation()
 
@@ -723,7 +723,7 @@ final class DetailFocusViewModelTests: XCTestCase {
     private func setupDetailMode() {
         viewModel.tasks = MockApiClient.sampleTasks
         viewModel.selectedIndex = 0
-        viewModel.mode = .detail
+        viewModel.setModeForTesting(.detail)
     }
 
     private func setupDetailModeWithItems() {

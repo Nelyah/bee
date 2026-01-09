@@ -63,6 +63,13 @@ static func escapeAction(for context: InteractionContext) -> EscapeAction
 static func normalModeEffect(action:, canToggleGroupCollapse:) -> NormalModeEffect
 ```
 
+**Escape Actions:**
+- `.closeCommandPalette` - Close command palette
+- `.clearCompletions` - Clear autocomplete menu
+- `.navigateBack` - **Pop the navigation stack** (returns to previous view)
+- `.exitInsertMode` - Switch to normal mode
+- `.closeWindow` - Close the launcher window
+
 ### 3. InteractionContextCoordinator (`InteractionContextCoordinator.swift`)
 
 **Location:** `Utilities/Coordinators/InteractionContextCoordinator.swift`
@@ -229,7 +236,47 @@ If a full keyboard navigation framework is ever needed, the migration cost is **
 **Current recommendation:** Don't build framework until we have 4+ navigation contexts. We currently have 3:
 - List mode (normal/insert)
 - Command palette
-- Detail mode (planned in UXUI-027)
+- Detail mode (with navigation stack for back-navigation)
+
+## Navigation Stack Integration
+
+Escape handling integrates with the navigation stack for contextual back-navigation:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Escape Key Pressed                          │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+       ┌───────────────────┴───────────────────┐
+       ▼                                       ▼
+┌──────────────────┐                   ┌──────────────────┐
+│ Command Palette? │ → Yes → Close it  │ Completion Menu? │ → Yes → Clear it
+│   or Modal UI    │                   │                  │
+└────────┬─────────┘                   └────────┬─────────┘
+         │ No                                   │ No
+         └───────────────┬──────────────────────┘
+                         ▼
+                ┌──────────────────┐
+                │  In Detail View  │ → Yes → navigateBack() → pop stack
+                │  or ProjectView? │
+                └────────┬─────────┘
+                         │ No (at list root)
+                         ▼
+                ┌──────────────────┐
+                │  Insert Mode?    │ → Yes → exitInsertMode()
+                └────────┬─────────┘
+                         │ No
+                         ▼
+                ┌──────────────────┐
+                │  Close Window    │
+                └──────────────────┘
+```
+
+**Key insight**: The `.navigateBack` action calls `viewModel.navigateBack()` which pops the navigation stack. This means:
+- Escape from TaskDetail → returns to previous TaskDetail OR TaskList (depending on history)
+- Escape from ProjectOverview → returns to wherever you came from (could be TaskDetail)
+
+See main skill document section "Navigation Stack" for stack implementation details.
 
 ## File Quick Reference
 
@@ -241,6 +288,9 @@ If a full keyboard navigation framework is ever needed, the migration cost is **
 | `InteractionContextCoordinator.swift` | Context calculation, hint building |
 | `ContentView.swift` | NSEvent monitor installation |
 | `LauncherViewModel.swift` | Effect handlers (handleEscape, handleNormalModeAction) |
+| `LauncherViewModel+Navigation.swift` | Navigation stack methods (`navigateBack`, `pushTaskDetail`) |
+| `NavigationStack.swift` | `ViewNavigationStack` class (push/pop/reset) |
+| `NavigationEntry.swift` | Navigation entry enum |
 
 ## Guardrails
 

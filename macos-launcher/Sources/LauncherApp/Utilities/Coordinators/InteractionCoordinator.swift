@@ -2,7 +2,7 @@ enum InteractionCoordinator {
     enum EscapeAction: Equatable {
         case closeCommandPalette
         case clearCompletions
-        case closeDetail
+        case navigateBack // Pops the navigation stack (was: closeDetail)
         case exitInsertMode
         case closeWindow
         case none
@@ -28,7 +28,8 @@ enum InteractionCoordinator {
         case .completionMenu:
             .clearCompletions
         case .detail:
-            .closeDetail
+            // Handles both task detail and project overview (both are .detail context)
+            .navigateBack
         case let .list(_, isInsertMode):
             isInsertMode ? .exitInsertMode : .closeWindow
         }

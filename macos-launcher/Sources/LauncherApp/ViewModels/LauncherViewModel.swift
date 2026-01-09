@@ -16,7 +16,14 @@ public final class LauncherViewModel: ObservableObject {
     @Published var selectedIndex: Int?
     @Published var tokens: [TokenSpan] = []
     @Published var actionName: String = ""
-    @Published var mode: LauncherMode = .list
+
+    /// Navigation stack for tracking view history (back navigation on Escape).
+    /// The `mode` property is derived from this stack's current entry.
+    let navigationStack = ViewNavigationStack()
+
+    /// Current view mode - derived from the navigation stack for backward compatibility.
+    /// Views should observe this property; it updates when navigation changes.
+    @Published private(set) var mode: LauncherMode = .list
     /// Callback to trigger report menu display (set by TaskListView, used by Cmd+P).
     var reportMenuTrigger: (() -> Void)?
     /// Callback to trigger task state menu display (set by ContentView, used by Cmd+P).
@@ -252,6 +259,15 @@ public final class LauncherViewModel: ObservableObject {
         completion.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        // Sync mode with navigation stack changes
+        navigationStack.$entries
+            .map { $0.last?.mode ?? .list }
+            .removeDuplicates()
+            .sink { [weak self] newMode in
+                self?.mode = newMode
             }
             .store(in: &cancellables)
 
@@ -508,7 +524,8 @@ public final class LauncherViewModel: ObservableObject {
 
         logger.debug("Input change -> debounced parse. id=\(requestId), text=\(newValue, privacy: .private)")
         selectedIndex = nil
-        mode = .list
+        // Reset navigation to list mode when input changes
+        navigateToRoot()
         statusMessage = nil
 
         inputDebouncer.debounce(requestId: requestId) { [weak self] in

@@ -33,22 +33,20 @@ extension LauncherViewModel {
     // MARK: - Navigation
 
     /// Navigate to the project overview view.
+    /// Pushes project overview onto the navigation stack for back navigation.
     func navigateToProjectOverview() {
         logger.info("Navigating to project overview")
-        mode = .projectOverview
-        // Auto-load projects when entering the view
-        Task {
-            await loadProjectOverview()
-        }
+        pushProjectOverview()
     }
 
-    /// Exit the project overview and return to the task list.
+    /// Exit the project overview and return to the previous view.
+    /// Delegates to navigateBack() to pop from the navigation stack.
     func exitProjectOverview() {
         logger.info("Exiting project overview")
-        mode = .list
         // Reset burndown state but keep projects cached
         projectOverviewState.burndownState = .idle
         projectOverviewState.selectedProject = nil
+        _ = navigateBack()
     }
 
     // MARK: - Data Loading
@@ -109,7 +107,10 @@ extension LauncherViewModel {
         logger.info("Filtering by project: '\(projectPath)'")
         // Set the project scope and return to list view
         projectScope = projectPath
-        mode = .list
+        // Reset navigation and go to list
+        projectOverviewState.burndownState = .idle
+        projectOverviewState.selectedProject = nil
+        navigateToRoot()
         // Reload tasks with the new filter (same pattern as setProjectScope)
         handleInputChange(input)
     }

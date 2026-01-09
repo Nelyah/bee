@@ -8,16 +8,17 @@ The ViewModel is the central state coordinator, split across multiple files:
 
 ```
 ViewModels/
-├── LauncherViewModel.swift          # Core state, initialization
-├── LauncherViewModel+Reports.swift  # Report selection
-├── LauncherViewModel+Grouping.swift # Task grouping
+├── LauncherViewModel.swift              # Core state, initialization
+├── LauncherViewModel+Reports.swift      # Report selection
+├── LauncherViewModel+Grouping.swift     # Task grouping
 ├── LauncherViewModel+Selection.swift
 ├── LauncherViewModel+Completion.swift
 ├── LauncherViewModel+TaskDetail.swift
 ├── LauncherViewModel+TaskExpansion.swift
 ├── LauncherViewModel+CommandPalette.swift
 ├── LauncherViewModel+Toast.swift
-└── LauncherViewModel+Keyboard.swift
+├── LauncherViewModel+Navigation.swift   # Navigation stack, back navigation
+└── LauncherViewModel+KeyboardHandling.swift
 ```
 
 ## State Declaration Patterns
@@ -256,32 +257,52 @@ var selectedTask: ApiTask? {
 }
 ```
 
-### Mode/State Machines
+### Mode/State Machines (Navigation Stack Pattern)
+
+The app uses a **navigation stack** to track view history. Mode is derived from the stack:
 
 ```swift
-enum AppMode {
-    case list
-    case detail
-    case commandPalette
-    case completion
+// NavigationEntry represents a view in the stack
+enum NavigationEntry: Equatable {
+    case taskList
+    case taskDetail(uuid: String, previousSelectedIndex: Int?)
+    case projectOverview
 }
 
-@Published var mode: AppMode = .list
+// ViewNavigationStack manages the history
+class ViewNavigationStack: ObservableObject {
+    @Published private(set) var entries: [NavigationEntry] = [.taskList]
 
-func handleEscape() {
-    switch mode {
-    case .detail:
-        mode = .list
-    case .commandPalette:
-        mode = .list
-    case .completion:
-        mode = .list
-    case .list:
-        // Already at root
-        break
+    var current: NavigationEntry { entries.last ?? .taskList }
+    var canGoBack: Bool { entries.count > 1 }
+
+    func push(_ entry: NavigationEntry) { ... }
+    func pop() -> NavigationEntry? { ... }
+}
+
+// Mode is synced from the stack via Combine
+class LauncherViewModel {
+    let navigationStack = ViewNavigationStack()
+    @Published private(set) var mode: LauncherMode = .list
+
+    init(...) {
+        navigationStack.$entries
+            .map { $0.last?.mode ?? .list }
+            .removeDuplicates()
+            .sink { [weak self] in self?.mode = $0 }
+            .store(in: &cancellables)
+    }
+
+    // Navigation via stack (NOT direct mode assignment)
+    func navigateBack() -> Bool {
+        guard let popped = navigationStack.pop() else { return false }
+        // Restore state based on destination...
+        return true
     }
 }
 ```
+
+**Important**: Never set `mode` directly. Use `pushTaskDetail()`, `pushProjectOverview()`, `navigateBack()`, or `navigateToRoot()`.
 
 ## Testing ViewModels
 

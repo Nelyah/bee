@@ -11,6 +11,10 @@ const DEFAULT_BIND_ADDR: &str = "127.0.0.1:3000";
 pub struct ApiConfig {
     #[serde(default = "default_bind_addr")]
     pub bind_addr: String,
+    /// Unix socket path. If set, takes precedence over `bind_addr`.
+    /// Use `BEE_API_SOCKET` env var to override at runtime.
+    #[serde(default)]
+    pub socket_path: Option<PathBuf>,
     #[serde(default = "default_undo_count")]
     pub undo_count: usize,
     #[serde(default = "default_allowed_actions")]
@@ -25,6 +29,7 @@ impl Default for ApiConfig {
     fn default() -> Self {
         Self {
             bind_addr: default_bind_addr(),
+            socket_path: None,
             undo_count: default_undo_count(),
             allowed_actions: default_allowed_actions(),
             report: ReportConfig::default(),

@@ -1,12 +1,48 @@
 import Foundation
 import OSLog
 
-final class ApiClient: ApiClientProtocol, Sendable {
-    private let baseURL: URL
-    private let session: URLSession
+public final class ApiClient: ApiClientProtocol, Sendable {
+    private let transport: ApiTransport
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "api")
 
-    /// Initialize the API client, optionally using BEE_API_BASE_URL.
+    // MARK: - Factory Methods
+
+    /// Create an ApiClient for HTTP connections (remote servers).
+    public static func http(baseURL: URL, session: URLSession = .shared) -> ApiClient {
+        ApiClient(transport: HTTPTransport(baseURL: baseURL, session: session))
+    }
+
+    /// Create an ApiClient for Unix socket connections (local backend).
+    public static func unixSocket(path: String) -> ApiClient {
+        ApiClient(transport: UnixSocketTransport(socketPath: path))
+    }
+
+    // MARK: - Initializers
+
+    /// Initialize the API client with a specific transport.
+    public init(transport: ApiTransport) {
+        self.transport = transport
+    }
+
+    /// Legacy initializer for backwards compatibility - creates HTTP transport.
+    ///
+    /// Checks `BEE_API_BASE_URL` environment variable, falls back to `http://127.0.0.1:3000`.
+    convenience init(
+        baseURL: URL? = nil,
+        session: URLSession = .shared,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
+        let url: URL = if let baseURL {
+            baseURL
+        } else if let env = environment["BEE_API_BASE_URL"],
+                  let envURL = URL(string: env) {
+            envURL
+        } else {
+            Self.defaultBaseURL
+        }
+        self.init(transport: HTTPTransport(baseURL: url, session: session))
+    }
+
     private static var defaultBaseURL: URL {
         var components = URLComponents()
         components.scheme = "http"
@@ -18,21 +54,7 @@ final class ApiClient: ApiClientProtocol, Sendable {
         return url
     }
 
-    init(
-        baseURL: URL? = nil,
-        session: URLSession = .shared,
-        environment: [String: String] = ProcessInfo.processInfo.environment
-    ) {
-        if let baseURL {
-            self.baseURL = baseURL
-        } else if let env = environment["BEE_API_BASE_URL"],
-                  let url = URL(string: env) {
-            self.baseURL = url
-        } else {
-            self.baseURL = Self.defaultBaseURL
-        }
-        self.session = session
-    }
+    // MARK: - API Methods
 
     /// Send input to the parse endpoint and decode the response.
     func parse(input: String) async throws -> ParseResponse {
@@ -144,14 +166,10 @@ final class ApiClient: ApiClientProtocol, Sendable {
     // MARK: - Attachments
 
     func uploadAttachment(taskUUID: String, fileURL: URL) async throws -> TaskAttachmentDto {
-        let url = baseURL.appendingPathComponent("/v1/tasks/\(taskUUID)/attachments")
-        logger
-            .info("HTTP POST (multipart) /v1/tasks/\(taskUUID)/attachments -> \(url.absoluteString, privacy: .public)")
+        let path = "/v1/tasks/\(taskUUID)/attachments"
+        logger.info("HTTP POST (multipart) \(path, privacy: .public)")
 
         let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         // Read file data
         let fileData = try Data(contentsOf: fileURL)
@@ -164,23 +182,30 @@ final class ApiClient: ApiClientProtocol, Sendable {
         body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
         body.append(fileData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = body
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data, path: "/v1/tasks/\(taskUUID)/attachments")
+        let (data, statusCode) = try await transport.send(
+            method: "POST",
+            path: path,
+            queryItems: [],
+            body: body,
+            headers: ["Content-Type": "multipart/form-data; boundary=\(boundary)"]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
         return try JSONDecoder().decode(TaskAttachmentDto.self, from: data)
     }
 
     func downloadAttachment(attachmentId: Int) async throws -> Data {
         let path = "/v1/attachments/\(attachmentId)/download"
-        let url = baseURL.appendingPathComponent(path)
-        logger.info("HTTP GET \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
+        logger.info("HTTP GET \(path, privacy: .public)")
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data, path: path)
+        let (data, statusCode) = try await transport.send(
+            method: "GET",
+            path: path,
+            queryItems: [],
+            body: nil,
+            headers: [:]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
         return data
     }
 
@@ -202,20 +227,24 @@ final class ApiClient: ApiClientProtocol, Sendable {
         )
     }
 
+    // MARK: - Private Transport Helpers
+
     /// Send a JSON POST request to the API and decode the response type.
     private func send<Response: Decodable>(
         _ body: some Encodable,
         path: String
     ) async throws -> Response {
-        let url = baseURL.appendingPathComponent(path)
-        logger.info("HTTP POST \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(body)
+        logger.info("HTTP POST \(path, privacy: .public)")
+        let bodyData = try JSONEncoder().encode(body)
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data, path: path)
+        let (data, statusCode) = try await transport.send(
+            method: "POST",
+            path: path,
+            queryItems: [],
+            body: bodyData,
+            headers: [:]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
@@ -224,24 +253,16 @@ final class ApiClient: ApiClientProtocol, Sendable {
         path: String,
         queryItems: [URLQueryItem] = []
     ) async throws -> Response {
-        guard var urlComponents = URLComponents(
-            url: baseURL.appendingPathComponent(path),
-            resolvingAgainstBaseURL: false
-        ) else {
-            throw ApiClientError.invalidResponse
-        }
-        if !queryItems.isEmpty {
-            urlComponents.queryItems = queryItems
-        }
-        guard let url = urlComponents.url else {
-            throw ApiClientError.invalidResponse
-        }
-        logger.info("HTTP GET \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        logger.info("HTTP GET \(path, privacy: .public)")
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data, path: path)
+        let (data, statusCode) = try await transport.send(
+            method: "GET",
+            path: path,
+            queryItems: queryItems,
+            body: nil,
+            headers: [:]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
@@ -250,24 +271,16 @@ final class ApiClient: ApiClientProtocol, Sendable {
         path: String,
         queryItems: [URLQueryItem] = []
     ) async throws -> Response {
-        guard var urlComponents = URLComponents(
-            url: baseURL.appendingPathComponent(path),
-            resolvingAgainstBaseURL: false
-        ) else {
-            throw ApiClientError.invalidResponse
-        }
-        if !queryItems.isEmpty {
-            urlComponents.queryItems = queryItems
-        }
-        guard let url = urlComponents.url else {
-            throw ApiClientError.invalidResponse
-        }
-        logger.info("HTTP POST \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        logger.info("HTTP POST \(path, privacy: .public)")
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data, path: path)
+        let (data, statusCode) = try await transport.send(
+            method: "POST",
+            path: path,
+            queryItems: queryItems,
+            body: nil,
+            headers: [:]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
@@ -276,39 +289,40 @@ final class ApiClient: ApiClientProtocol, Sendable {
         _ body: some Encodable,
         path: String
     ) async throws -> Response {
-        let url = baseURL.appendingPathComponent(path)
-        logger.info("HTTP PUT \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(body)
+        logger.info("HTTP PUT \(path, privacy: .public)")
+        let bodyData = try JSONEncoder().encode(body)
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data, path: path)
+        let (data, statusCode) = try await transport.send(
+            method: "PUT",
+            path: path,
+            queryItems: [],
+            body: bodyData,
+            headers: [:]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
     /// Send a DELETE request to the API.
     private func delete(path: String) async throws {
-        let url = baseURL.appendingPathComponent(path)
-        logger.info("HTTP DELETE \(path, privacy: .public) -> \(url.absoluteString, privacy: .public)")
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
+        logger.info("HTTP DELETE \(path, privacy: .public)")
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data, path: path)
+        let (data, statusCode) = try await transport.send(
+            method: "DELETE",
+            path: path,
+            queryItems: [],
+            body: nil,
+            headers: [:]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
     }
 
-    /// Validate HTTP response and throw on non-2xx status codes.
-    private func validateResponse(_ response: URLResponse, data: Data, path: String) throws {
-        guard let http = response as? HTTPURLResponse else {
-            logger.error("HTTP error \(path, privacy: .public) (no response)")
-            throw ApiClientError.invalidResponse
-        }
-        guard (200 ..< 300).contains(http.statusCode) else {
+    /// Validate HTTP status code and throw on non-2xx status codes.
+    private func validateResponse(statusCode: Int, data: Data, path: String) throws {
+        guard (200 ..< 300).contains(statusCode) else {
             let payload = decodeErrorPayload(from: data)
-            let message = payload?.userMessage ?? "HTTP \(http.statusCode)"
-            logger.error("HTTP error \(path, privacy: .public) status=\(http.statusCode)")
+            let message = payload?.userMessage ?? "HTTP \(statusCode)"
+            logger.error("HTTP error \(path, privacy: .public) status=\(statusCode)")
             if let payload {
                 let code = payload.code
                 let detail = payload.developerMessage
@@ -320,7 +334,7 @@ final class ApiClient: ApiClientProtocol, Sendable {
                 developerMessage: payload?.developerMessage
             )
         }
-        logger.debug("HTTP response \(path, privacy: .public) status=\(http.statusCode)")
+        logger.debug("HTTP response \(path, privacy: .public) status=\(statusCode)")
     }
 
     /// Decode an API error payload from non-2xx responses.

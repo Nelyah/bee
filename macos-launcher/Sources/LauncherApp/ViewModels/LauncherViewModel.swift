@@ -232,6 +232,11 @@ public final class LauncherViewModel: ObservableObject {
         self.init(apiClient: ApiClient())
     }
 
+    /// Public initializer that accepts a custom API client (e.g., Unix socket transport).
+    public convenience init(apiClient: ApiClient) {
+        self.init(apiClient: apiClient, actionService: nil)
+    }
+
     init(
         apiClient: ApiClientProtocol = ApiClient(),
         actionService: LauncherActionService? = nil,

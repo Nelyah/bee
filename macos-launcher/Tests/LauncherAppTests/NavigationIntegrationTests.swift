@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import LauncherApp
+@testable import LauncherAppKit
 
 /// Integration tests for navigation stack behavior in LauncherViewModel.
 @MainActor

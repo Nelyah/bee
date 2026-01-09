@@ -8,10 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		898615D92F10FF6C0080ECF9 /* LauncherAppKit in Frameworks */ = {isa = PBXBuildFile; productRef = 898615D82F10FF6C0080ECF9 /* LauncherAppKit */; };
+		898615EC2F113EDA0080ECF9 /* beed in Resources */ = {isa = PBXBuildFile; fileRef = 898615EB2F113EDA0080ECF9 /* beed */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		898615B22F10F6D80080ECF9 /* Bee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		898615E62F113E5A0080ECF9 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources; sourceTree = "<group>"; };
+		898615E82F113E9C0080ECF9 /* beed */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = beed; path = Resources/beed; sourceTree = "<group>"; };
+		898615EB2F113EDA0080ECF9 /* beed */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = beed; path = Resources/beed; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -37,6 +41,9 @@
 		898615A92F10F6D80080ECF9 = {
 			isa = PBXGroup;
 			children = (
+				898615E82F113E9C0080ECF9 /* beed */,
+				898615EB2F113EDA0080ECF9 /* beed */,
+				898615E62F113E5A0080ECF9 /* Resources */,
 				898615B42F10F6D80080ECF9 /* Bee */,
 				898615B32F10F6D80080ECF9 /* Products */,
 			);
@@ -57,6 +64,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 898615BD2F10F6D90080ECF9 /* Build configuration list for PBXNativeTarget "Bee" */;
 			buildPhases = (
+				898615E42F1138240080ECF9 /* Build Backend */,
 				898615AE2F10F6D80080ECF9 /* Sources */,
 				898615AF2F10F6D80080ECF9 /* Frameworks */,
 				898615B02F10F6D80080ECF9 /* Resources */,
@@ -118,10 +126,33 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				898615EC2F113EDA0080ECF9 /* beed in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		898615E42F1138240080ECF9 /* Build Backend */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Backend";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n${SRCROOT}/Scripts/build-backend.sh\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		898615AE2F10F6D80080ECF9 /* Sources */ = {
@@ -171,7 +202,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -234,7 +265,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -260,7 +291,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
@@ -300,7 +331,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;

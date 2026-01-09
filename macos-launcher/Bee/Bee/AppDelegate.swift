@@ -22,6 +22,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        // Stop the backend process when the app quits
+        BackendManager.shared.stop()
+    }
+
     /// Shows the main window and brings the app to the foreground.
     func showMainWindow() {
         NSApp.activate(ignoringOtherApps: true)

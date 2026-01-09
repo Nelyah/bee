@@ -181,7 +181,18 @@
       "Bash(tickets.md)",
       "Bash(git -C /Users/chloe/builds/bee status:*)",
       "Bash(git -C /Users/chloe/builds/bee diff:*)",
-      "Bash(pgrep:*)"
+      "Bash(pgrep:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(cargo check:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(# Start the server with Unix socket in background BEE_API_SOCKET=/tmp/bee-test.sock cargo run -p bee-api & SERVER_PID=$! # Wait for server to start sleep 2 # Test with curl via Unix socket echo \"\"Testing Unix socket connection...\"\" curl --unix-socket /tmp/bee-test.sock http://localhost/v1/config)",
+      "Bash(git -C /Users/chloe/builds/bee stash)",
+      "Bash(chmod:*)",
+      "Bash(# Test Unix socket end-to-end rm -f /tmp/bee-test.sock BEE_API_SOCKET=/tmp/bee-test.sock cargo run -p bee-api & sleep 2 curl --unix-socket /tmp/bee-test.sock http://localhost/v1/config)",
+      "Bash(BEE_API_SOCKET=/tmp/bee-test.sock timeout 3 ./macos-launcher/Bee/Resources/beed:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(open:*)"
     ]
   },
   "outputStyle": "Explanatory"

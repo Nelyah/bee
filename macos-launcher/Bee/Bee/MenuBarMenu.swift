@@ -10,7 +10,7 @@ import ServiceManagement
 import SwiftUI
 
 struct MenuBarMenu: View {
-    @ObservedObject var viewModel: LauncherViewModel
+    var viewModel: LauncherViewModel?
     @Environment(\.openWindow) private var openWindow
     @AppStorage("launchAtLogin") private var launchAtLogin = false
 

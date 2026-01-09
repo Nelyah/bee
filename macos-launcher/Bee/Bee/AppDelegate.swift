@@ -20,9 +20,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 window.close()
             }
         }
+
+        // Register global Cmd+Shift+B hotkey (works even when app is not focused)
+        GlobalHotKey.shared.registerShowAppHotKey { [weak self] in
+            self?.showMainWindow()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Unregister global hotkey
+        GlobalHotKey.shared.unregister()
         // Stop the backend process when the app quits
         BackendManager.shared.stop()
     }

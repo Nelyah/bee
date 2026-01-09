@@ -51,7 +51,8 @@ final class BackendManager: ObservableObject {
     /// Starts the backend process if not already running.
     func start() async throws {
         guard process == nil else {
-            logger.info("Backend already running at \(socketPath ?? "unknown")")
+            // swiftformat:disable:next redundantSelf
+            logger.info("Backend already running at \(self.socketPath ?? "unknown")")
             return
         }
 

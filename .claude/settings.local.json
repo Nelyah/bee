@@ -192,7 +192,8 @@
       "Bash(BEE_API_SOCKET=/tmp/bee-test.sock timeout 3 ./macos-launcher/Bee/Resources/beed:*)",
       "Bash(curl:*)",
       "Bash(pkill:*)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "mcp__plugin_context7_context7__resolve-library-id"
     ]
   },
   "outputStyle": "Explanatory"

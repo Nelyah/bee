@@ -364,6 +364,36 @@ final class NavigationRegistryTests: XCTestCase {
         XCTAssertEqual(registry.focusedId, "uuid-1-1")
     }
 
+    func testNavigateUpPrefersCloserItemOverFarAlignedItem() {
+        // Bug reproduction: pressing k from linked task skips annotations and jumps to task title
+        // because annotations have different X position (due to timestamp column)
+
+        // Task title at top, X=200
+        registry.register(.taskName("Test Task"), frame: CGRect(x: 200, y: 50, width: 200, height: 30))
+
+        // Annotation closer but with different X (timestamp column shifts it left)
+        let annotation = TaskAnnotationDto(value: "Test annotation", time: "2024-01-18T09:00:00Z")
+        registry.register(.annotation(annotation), frame: CGRect(x: 50, y: 350, width: 300, height: 30))
+
+        // Linked task at bottom, same X as task title
+        let link = TaskLinkDto(linkType: "depends_on", targetUuid: "deadbeef")
+        registry.register(.linkedTask(link), frame: CGRect(x: 200, y: 400, width: 200, height: 30))
+
+        // Start at linked task
+        registry.focusOn(.linkedTask(link))
+        XCTAssertEqual(registry.focusedId, "linkedTask-depends_on-deadbeef")
+
+        // Navigate up - should go to annotation (y=350, only 50pt away)
+        // NOT to task title (y=50, 350pt away) even though it's better aligned
+        registry.navigate(.up)
+
+        XCTAssertEqual(
+            registry.focusedId,
+            "annotation-\(annotation.id)",
+            "Should navigate to closest item above (annotation at y:350), not aligned item far away (title at y:50)"
+        )
+    }
+
     func testNavigationWithTwoColumnLayout() {
         // Simulates detail view: left column (properties) and right column (links)
         registry.register(.taskName("Task"), frame: CGRect(x: 0, y: 0, width: 200, height: 30))

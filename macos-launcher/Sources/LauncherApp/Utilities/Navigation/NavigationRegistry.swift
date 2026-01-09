@@ -14,9 +14,16 @@ enum NavigationDirection: Equatable {
 /// Components register themselves with their coordinates via `register(_:frame:)`.
 /// Navigation uses strictly greater/lesser coordinate comparisons to find targets.
 final class NavigationRegistry: ObservableObject {
-    /// Tolerance in points for considering targets "aligned" on perpendicular axis.
-    /// Targets within this tolerance are preferred over distant but valid targets.
-    private static let alignmentTolerance: CGFloat = 20
+    /// Weight applied to alignment (perpendicular distance) when scoring navigation targets.
+    ///
+    /// The navigation score is: `alignment * alignmentWeight + distance`
+    /// - Higher weight = prefer aligned items even if farther away
+    /// - Lower weight = prefer closer items even if misaligned
+    ///
+    /// Value of 1.5 chosen to:
+    /// - Prefer annotation 50pt away (150pt misaligned) over task title 350pt away (aligned)
+    /// - Still respect column/grid structure in multi-column layouts
+    private static let alignmentWeight: CGFloat = 1.5
 
     // MARK: - Published State
 
@@ -194,30 +201,38 @@ final class NavigationRegistry: ObservableObject {
 
     /// Select the best candidate from valid targets.
     ///
-    /// Uses axis-aligned priority with distance as tiebreaker:
-    /// 1. Prefer targets aligned on perpendicular axis (within tolerance)
-    /// 2. Among aligned targets, prefer the closest one on movement axis
+    /// Uses weighted scoring: `score = alignment × weight + distance`
+    /// This approach is transitive (unlike tolerance-based comparison) and balances
+    /// alignment preference with distance, allowing navigation to nearby misaligned
+    /// items while still respecting column/grid structure.
     private func selectBest(
         from candidates: [NavigationTarget],
         current: NavigationTarget,
         direction: NavigationDirection
     ) -> NavigationTarget {
         let sorted = candidates.sorted { a, b in
-            let alignmentA = perpendicularDistance(from: current, to: a, direction: direction)
-            let alignmentB = perpendicularDistance(from: current, to: b, direction: direction)
-
-            // If similarly aligned (within tolerance), prefer closer on movement axis
-            if abs(alignmentA - alignmentB) < Self.alignmentTolerance {
-                return movementDistance(from: current, to: a, direction: direction)
-                    < movementDistance(from: current, to: b, direction: direction)
-            }
-
-            // Otherwise prefer better aligned (smaller perpendicular distance)
-            return alignmentA < alignmentB
+            let scoreA = navigationScore(from: current, to: a, direction: direction)
+            let scoreB = navigationScore(from: current, to: b, direction: direction)
+            return scoreA < scoreB
         }
 
         // Safe to force unwrap - we know candidates is non-empty
         return sorted.first!
+    }
+
+    /// Calculate navigation score for a target. Lower score = better target.
+    ///
+    /// Score combines alignment (perpendicular distance) and movement distance,
+    /// with alignment weighted to prefer aligned items while still allowing
+    /// navigation to nearby misaligned items.
+    private func navigationScore(
+        from current: NavigationTarget,
+        to target: NavigationTarget,
+        direction: NavigationDirection
+    ) -> CGFloat {
+        let alignment = perpendicularDistance(from: current, to: target, direction: direction)
+        let distance = movementDistance(from: current, to: target, direction: direction)
+        return alignment * Self.alignmentWeight + distance
     }
 
     /// Distance on perpendicular axis (for alignment scoring).

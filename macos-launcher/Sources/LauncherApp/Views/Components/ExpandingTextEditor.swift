@@ -45,6 +45,7 @@ struct ExpandingTextEditor: View {
                     .scrollContentBackground(.hidden)
                     .focused($isFocused)
                     .disabled(isSubmitting)
+                    .padding(.vertical, 8)
                     .frame(minHeight: minHeight)
                     .fixedSize(horizontal: false, vertical: true)
             }

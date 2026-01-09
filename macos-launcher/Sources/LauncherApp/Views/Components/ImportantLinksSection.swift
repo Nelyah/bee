@@ -19,6 +19,8 @@ struct ImportantLinksSection: View {
     var onSubmit: () -> Void
     var onCancelAdding: () -> Void
 
+    @FocusState private var isUrlFieldFocused: Bool
+
     var body: some View {
         DetailSection(title: "Important Links") {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
@@ -56,6 +58,11 @@ struct ImportantLinksSection: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: DesignTokens.TypeScale.bodySm))
                     .foregroundColor(ThemeManager.current.text)
+                    .focused($isUrlFieldFocused)
+                    .onAppear {
+                        // Auto-focus URL field when form appears
+                        isUrlFieldFocused = true
+                    }
                     .onSubmit {
                         if !urlInput.isEmpty {
                             onSubmit()

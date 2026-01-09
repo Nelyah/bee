@@ -207,6 +207,12 @@ public struct ContentView: View {
                     // Focus management
                     onClearFocus: {
                         viewModel.clearDetailFocus()
+                        // Cancel adding important link if URL is empty (click-away-to-cancel behavior)
+                        if viewModel.isAddingImportantLink,
+                           viewModel.importantLinkUrlInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                           .isEmpty {
+                            viewModel.cancelAddingImportantLink()
+                        }
                     },
                     onRegisterNavigation: { entries in
                         for entry in entries {

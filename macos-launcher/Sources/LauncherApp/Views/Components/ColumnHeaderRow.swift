@@ -27,7 +27,8 @@ struct ColumnHeaderRow: View {
     let columnConfigs: [ColumnConfig]
     let sortState: ColumnSortState?
     let onSort: (String) -> Void
-    var onResize: ((String, CGFloat) -> Void)?
+    /// Callback for column boundary resize. Parameters: (leftColumn, rightColumn, delta)
+    var onResize: ((String, String?, CGFloat) -> Void)?
     var onResizeEnd: ((String) -> Void)?
     var onReorder: ((String, Int) -> Void)?
 
@@ -47,12 +48,16 @@ struct ColumnHeaderRow: View {
                     totalCount: columnConfigs.count,
                     sortDirection: sortDirection(for: config.key),
                     showSeparator: index < columnConfigs.count - 1,
-                    allowResize: !config.isFlex && index < columnConfigs.count - 1,
+                    // Always allow resize handles except on last column.
+                    // The resize callback handles which column(s) to adjust.
+                    allowResize: index < columnConfigs.count - 1,
                     isDragging: draggedColumn == config.key,
                     isDropTarget: dropTargetIndex == index,
                     onTap: { onSort(config.key) },
                     onResize: { delta in
-                        onResize?(config.key, delta)
+                        // Pass both current column and next column (for boundary resize)
+                        let nextKey = index + 1 < columnConfigs.count ? columnConfigs[index + 1].key : nil
+                        onResize?(config.key, nextKey, delta)
                     },
                     onResizeEnd: {
                         onResizeEnd?(config.key)
@@ -386,11 +391,11 @@ private class NonDraggableNSView: NSView {
         ColumnConfig(key: "urgency", displayName: "Urgency", width: nil),
     ]
 
-    return ColumnHeaderRow(
+    ColumnHeaderRow(
         columnConfigs: configs,
         sortState: nil,
         onSort: { _ in },
-        onResize: { _, _ in }
+        onResize: { _, _, _ in }
     )
     .padding()
     .background(ThemeManager.current.base)
@@ -404,11 +409,11 @@ private class NonDraggableNSView: NSView {
         ColumnConfig(key: "urgency", displayName: "Urgency", width: nil),
     ]
 
-    return ColumnHeaderRow(
+    ColumnHeaderRow(
         columnConfigs: configs,
         sortState: .ascending("status"),
         onSort: { _ in },
-        onResize: { _, _ in }
+        onResize: { _, _, _ in }
     )
     .padding()
     .background(ThemeManager.current.base)
@@ -422,11 +427,11 @@ private class NonDraggableNSView: NSView {
         ColumnConfig(key: "urgency", displayName: "Urgency", width: nil),
     ]
 
-    return ColumnHeaderRow(
+    ColumnHeaderRow(
         columnConfigs: configs,
         sortState: .descending("urgency"),
         onSort: { _ in },
-        onResize: { _, _ in }
+        onResize: { _, _, _ in }
     )
     .padding()
     .background(ThemeManager.current.base)

@@ -195,8 +195,12 @@ struct TaskListView: View {
                             onSort: { column in
                                 viewModel.toggleSort(for: column)
                             },
-                            onResize: { column, delta in
-                                viewModel.resizeColumn(column, delta: delta)
+                            onResize: { leftColumn, rightColumn, delta in
+                                viewModel.resizeColumnBoundary(
+                                    leftColumn: leftColumn,
+                                    rightColumn: rightColumn,
+                                    delta: delta
+                                )
                             },
                             onResizeEnd: { column in
                                 viewModel.finishResizing(column)

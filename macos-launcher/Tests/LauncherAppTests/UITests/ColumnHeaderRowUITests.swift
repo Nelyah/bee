@@ -82,7 +82,8 @@ final class ColumnHeaderRowUITests: XCTestCase {
     /// This test verifies the resize handle exists and callbacks are invoked,
     /// but cannot fully test drag behavior due to ViewInspector limitations.
     func testResizeCallbacksAreWired() throws {
-        var resizeColumn: String?
+        var resizeLeftColumn: String?
+        var resizeRightColumn: String?
         var resizeDelta: CGFloat?
         var resizeEnded = false
 
@@ -90,8 +91,9 @@ final class ColumnHeaderRowUITests: XCTestCase {
             columnConfigs: testColumnConfigs,
             sortState: nil,
             onSort: { _ in },
-            onResize: { column, delta in
-                resizeColumn = column
+            onResize: { leftColumn, rightColumn, delta in
+                resizeLeftColumn = leftColumn
+                resizeRightColumn = rightColumn
                 resizeDelta = delta
             },
             onResizeEnd: { _ in
@@ -103,7 +105,8 @@ final class ColumnHeaderRowUITests: XCTestCase {
         let view = try sut.inspect()
         XCTAssertNoThrow(try view.find(ViewType.HStack.self))
 
-        XCTAssertNil(resizeColumn)
+        XCTAssertNil(resizeLeftColumn)
+        XCTAssertNil(resizeRightColumn)
         XCTAssertNil(resizeDelta)
         XCTAssertFalse(resizeEnded)
 
@@ -114,8 +117,8 @@ final class ColumnHeaderRowUITests: XCTestCase {
 
     // MARK: - Column Config Tests
 
-    func testFlexColumnDoesNotShowResizeHandle() throws {
-        // Summary is the flex column - it should not have a resize handle
+    func testFlexColumnHasResizeHandle() throws {
+        // Flex columns (summary) now have resize handles for boundary adjustment
         let configs = [
             ColumnConfig(key: "id", displayName: "ID", width: nil),
             ColumnConfig(key: "summary", displayName: "Summary", width: nil), // Flex column
@@ -125,14 +128,14 @@ final class ColumnHeaderRowUITests: XCTestCase {
             columnConfigs: configs,
             sortState: nil,
             onSort: { _ in },
-            onResize: { _, _ in },
+            onResize: { _, _, _ in },
             onResizeEnd: nil
         )
 
         let view = try sut.inspect()
 
-        // The view should render - the resize handle logic is internal
-        // but we can verify the structure is correct
+        // The view should render - flex columns now have resize handles
+        // for adjusting the boundary with adjacent columns
         XCTAssertNoThrow(try view.find(text: "ID"))
         XCTAssertNoThrow(try view.find(text: "SUMMARY"))
     }
@@ -148,7 +151,7 @@ final class ColumnHeaderRowUITests: XCTestCase {
             columnConfigs: configs,
             sortState: nil,
             onSort: { _ in },
-            onResize: { _, _ in },
+            onResize: { _, _, _ in },
             onResizeEnd: nil
         )
 

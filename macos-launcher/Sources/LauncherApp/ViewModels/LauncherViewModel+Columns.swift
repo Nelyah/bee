@@ -79,6 +79,24 @@ extension LauncherViewModel {
         LauncherViewModel.resizeStartWidths.removeValue(forKey: column)
     }
 
+    /// Resize the boundary between two columns.
+    /// This adjusts both adjacent columns - left column grows/shrinks by delta,
+    /// right column shrinks/grows by the same amount.
+    ///
+    /// - Parameters:
+    ///   - leftColumn: The column to the left of the separator being dragged
+    ///   - rightColumn: The column to the right (can be nil for last column boundary)
+    ///   - delta: The drag translation delta from start position
+    func resizeColumnBoundary(leftColumn: String, rightColumn: String?, delta: CGFloat) {
+        // Resize left column
+        resizeColumn(leftColumn, delta: delta)
+
+        // Resize right column (inverse delta) if it exists
+        if let rightKey = rightColumn {
+            resizeColumn(rightKey, delta: -delta)
+        }
+    }
+
     // MARK: - Column Add/Remove
 
     /// Add a column to the end of the column list.

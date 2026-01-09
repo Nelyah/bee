@@ -46,7 +46,9 @@ struct ColumnConfig: Codable, Identifiable, Equatable {
     var id: String { key }
 
     /// Whether this column should flex (take remaining space).
-    var isFlex: Bool { key == "summary" }
+    /// A column is flex only if it's the summary column AND has no explicit width set.
+    /// Once a user manually resizes the summary column, it converts to fixed-width.
+    var isFlex: Bool { key == "summary" && width == nil }
 
     /// Default widths per column type.
     static func defaultWidth(for key: String) -> CGFloat {

@@ -12,13 +12,15 @@ This skill documents the architecture, patterns, and conventions for the macOS l
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
-| **Views** | `Views/` | SwiftUI views (ContentView, TaskListView, TaskRow, etc.) |
-| **ViewModels** | `ViewModels/` | State management (LauncherViewModel + extensions) |
-| **Models** | `Models/` | Data structures (ApiTask, ConfigModels, etc.) |
-| **Services** | `Utilities/Services/` | Dependency-injected services (ApiClient, Settings) |
-| **Networking** | `Networking/` | API client protocol and implementations |
-| **Components** | `Views/Components/` | Reusable UI components (25+ components) |
-| **Design** | `Utilities/Design/` | Theme, DesignTokens, StatusColor |
+| **Xcode App** | `Bee/Bee/` | App entry, BackendManager, startup flow |
+| **Views** | `Sources/.../Views/` | SwiftUI views (ContentView, TaskListView, TaskRow, etc.) |
+| **ViewModels** | `Sources/.../ViewModels/` | State management (LauncherViewModel + extensions) |
+| **Models** | `Sources/.../Models/` | Data structures (ApiTask, ConfigModels, etc.) |
+| **Services** | `Sources/.../Utilities/Services/` | Dependency-injected services (Settings) |
+| **Networking** | `Sources/.../Networking/` | ApiClient, transports (Unix socket, HTTP) |
+| **Components** | `Sources/.../Views/Components/` | Reusable UI components (25+ components) |
+| **Design** | `Sources/.../Utilities/Design/` | Theme, DesignTokens, StatusColor |
+| **Build Scripts** | `Bee/Scripts/` | Backend compilation, resource bundling |
 
 ## Architecture Pattern: MVVM
 
@@ -49,12 +51,14 @@ This skill documents the architecture, patterns, and conventions for the macOS l
 
 | File | Purpose | When to Read |
 |------|---------|--------------|
-| `LauncherApp.swift` | App entry, WindowGroup, global shortcuts | App lifecycle |
-| `ContentView.swift` | Root layout, mode switching | Layout changes |
-| `LauncherViewModel.swift` | Central state (~600 lines) | Any state logic |
-| `LauncherViewModel+*.swift` | Feature extensions | Specific features |
-| `ApiClientProtocol.swift` | Network interface | API changes |
-| `SettingsServiceProtocol.swift` | Settings interface | Preferences |
+| `Bee/BeeApp.swift` | Xcode app entry, startup flow | App lifecycle, backend startup |
+| `Bee/BackendManager.swift` | Backend process lifecycle | Backend issues, health checks |
+| `Sources/.../ContentView.swift` | Root layout, mode switching | Layout changes |
+| `Sources/.../LauncherViewModel.swift` | Central state (~600 lines) | Any state logic |
+| `Sources/.../LauncherViewModel+*.swift` | Feature extensions | Specific features |
+| `Sources/.../ApiClient.swift` | Network client, transport factory | API changes |
+| `Sources/.../UnixSocketTransport.swift` | POSIX socket impl | Socket issues |
+| `Sources/.../ApiTransport.swift` | Transport protocol | Adding transports |
 
 ## ViewModel Extensions
 
@@ -173,6 +177,78 @@ Pure functions for complex state transitions:
 | `CommandPaletteCoordinator` | Palette visibility, positioning |
 
 See [KEYBOARD-NAVIGATION.md](KEYBOARD-NAVIGATION.md) for keyboard navigation architecture.
+
+## Backend Integration
+
+The macOS app bundles and manages its own Rust backend (`beed`) for true network isolation.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Bee.app (Xcode)                          │
+│  BeeApp.swift → BackendManager → beed (bundled binary)      │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ Unix Socket
+┌──────────────────────────▼──────────────────────────────────┐
+│                   Transport Layer (SPM)                      │
+│  ApiTransport ← UnixSocketTransport / HTTPTransport         │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────┐
+│                      ApiClient                               │
+│  Uses transport abstraction, same interface regardless       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Files
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `BackendManager.swift` | `Bee/Bee/` | Backend process lifecycle (start/stop/health) |
+| `BeeApp.swift` | `Bee/Bee/` | App entry, startup flow, error handling |
+| `ApiTransport.swift` | `Sources/.../Networking/` | Transport protocol |
+| `UnixSocketTransport.swift` | `Sources/.../Networking/` | POSIX socket transport |
+| `HTTPTransport.swift` | `Sources/.../Networking/` | URLSession transport |
+| `build-backend.sh` | `Bee/Scripts/` | Xcode build phase script |
+
+### Transport Layer
+
+```swift
+// Protocol for transport abstraction
+protocol ApiTransport: Sendable {
+    func send(method:path:queryItems:body:headers:) async throws -> (Data, Int)
+}
+
+// Two implementations:
+// 1. UnixSocketTransport - Local backend (POSIX sockets)
+// 2. HTTPTransport - Remote servers (URLSession)
+
+// Factory methods on ApiClient:
+ApiClient.unixSocket(path: "/tmp/bee-123.sock")  // Local
+ApiClient.http(baseURL: URL(string: "http://...")!)  // Remote
+```
+
+### Startup Flow
+
+1. `BeeApp.body` shows `StartupView` initially
+2. `.task` calls `startBackend()`
+3. `BackendManager.start()`:
+   - Locates `beed` in app bundle Resources
+   - Creates unique socket path `/var/folders/.../T/bee-{PID}.sock`
+   - Spawns backend process with `BEE_API_SOCKET` env var
+   - Polls `/v1/config` until 2 consecutive successes
+4. Creates `ApiClient.unixSocket(path:)`
+5. Sets `viewModel`, which triggers `ContentView` to show
+
+### Build System
+
+The Xcode project has a "Build Backend" run script phase that:
+1. Runs `cargo build -p bee-api` (debug or release based on config)
+2. Copies `beed` binary to `Bee/Resources/`
+3. Binary is bundled in `Bee.app/Contents/Resources/beed`
+
+**Important**: App Sandbox is disabled (`ENABLE_APP_SANDBOX = NO`) for file system access.
 
 ## Design System
 

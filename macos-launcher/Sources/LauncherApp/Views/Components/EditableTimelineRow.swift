@@ -3,12 +3,23 @@ import SwiftUI
 /// A timeline row that can be tapped to enter edit mode.
 ///
 /// Used in TaskDetailView to display annotations that can be edited.
+/// Supports keyboard navigation via hjkl keys with focus ring highlighting.
 struct EditableTimelineRow: View {
     let timestamp: String
     let value: String
+    let annotation: TaskAnnotationDto
+    let focusedItem: DetailFocusableItem?
     let onTap: () -> Void
 
     @State private var isHovering: Bool = false
+
+    /// Whether this annotation is currently keyboard-focused
+    private var isFocused: Bool {
+        if case let .annotation(focusedAnnotation) = focusedItem {
+            return focusedAnnotation.id == annotation.id
+        }
+        return false
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.medium) {
@@ -38,6 +49,8 @@ struct EditableTimelineRow: View {
         .onTapGesture {
             onTap()
         }
-        .help("Click to edit")
+        .navigationRegistrable(.annotation(annotation))
+        .modifier(DetailFocusRing(isFocused: isFocused))
+        .help(isFocused ? "Press Enter to edit" : "Click to edit")
     }
 }

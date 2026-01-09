@@ -7,8 +7,9 @@ import UniformTypeIdentifiers
 /// - Compact list layout for keyboard-first navigation
 /// - MIME-type icons, filename, size display
 /// - Inline delete confirmation ("Delete? y/n")
-/// - Drag-and-drop support for adding files and emails from Apple Mail
 /// - Add button + "a" keyboard shortcut
+///
+/// Note: Drag-and-drop is handled at the TaskDetailView level for the entire view.
 struct AttachmentsSection: View {
     let attachments: [TaskAttachmentDto]
     let focusedItem: DetailFocusableItem?
@@ -19,8 +20,6 @@ struct AttachmentsSection: View {
     let onDelete: (TaskAttachmentDto) -> Void
     let onConfirmDelete: (TaskAttachmentDto) -> Void
     let onCancelDelete: () -> Void
-    let onDrop: ([URL]) -> Void
-    let onEmailDrop: (ParsedEmail) -> Void
 
     var body: some View {
         DetailSectionWithAction(
@@ -35,11 +34,6 @@ struct AttachmentsSection: View {
                 attachmentsList
             }
         }
-        // Use AppKit-based drop handler for proper file promise support (Apple Mail)
-        .onFilePromiseDrop(
-            onFileDropped: onDrop,
-            onEmailDropped: onEmailDrop
-        )
     }
 
     @ViewBuilder
@@ -48,7 +42,7 @@ struct AttachmentsSection: View {
             Text("No attachments")
                 .font(.system(size: DesignTokens.TypeScale.bodySm))
                 .foregroundColor(ThemeManager.current.subtext0)
-            Text("Press 'a' to add a file or drag and drop")
+            Text("Press 'a' to add or drag files anywhere")
                 .font(.system(size: DesignTokens.TypeScale.caption))
                 .foregroundColor(ThemeManager.current.subtext1)
         }
@@ -245,9 +239,7 @@ struct AttachmentRow: View {
         onOpen: { _ in },
         onDelete: { _ in },
         onConfirmDelete: { _ in },
-        onCancelDelete: {},
-        onDrop: { _ in },
-        onEmailDrop: { _ in }
+        onCancelDelete: {}
     )
     .padding()
     .frame(width: 400)
@@ -264,9 +256,7 @@ struct AttachmentRow: View {
         onOpen: { _ in },
         onDelete: { _ in },
         onConfirmDelete: { _ in },
-        onCancelDelete: {},
-        onDrop: { _ in },
-        onEmailDrop: { _ in }
+        onCancelDelete: {}
     )
     .padding()
     .frame(width: 400)
@@ -292,9 +282,7 @@ struct AttachmentRow: View {
         onOpen: { _ in },
         onDelete: { _ in },
         onConfirmDelete: { _ in },
-        onCancelDelete: {},
-        onDrop: { _ in },
-        onEmailDrop: { _ in }
+        onCancelDelete: {}
     )
     .padding()
     .frame(width: 400)

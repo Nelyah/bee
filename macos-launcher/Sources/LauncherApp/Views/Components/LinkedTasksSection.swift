@@ -13,6 +13,9 @@ struct LinkedTasksSection: View {
     let focusedItem: DetailFocusableItem?
     let onNavigateToTask: (String) -> Void
 
+    /// Tracks which link is currently being hovered (for mouse highlight)
+    @State private var hoveringLinkId: String?
+
     /// Ordered list of link types for consistent display
     private static let linkTypeOrder: [LinkType] = [
         .blocking,
@@ -59,6 +62,7 @@ struct LinkedTasksSection: View {
     @ViewBuilder
     private func linkRow(link: TaskLinkDto) -> some View {
         let isFocused = isLinkFocused(link)
+        let isHovering = hoveringLinkId == link.id
         let target = targetTask(for: link)
         let status = target?.status ?? "pending"
         let title = target?.summary ?? shortUUID(link.targetUuid)
@@ -82,11 +86,18 @@ struct LinkedTasksSection: View {
             }
             .padding(.horizontal, DesignTokens.Spacing.small)
             .padding(.vertical, DesignTokens.Spacing.extraSmall)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                    .fill(isHovering ? ThemeManager.current.surfaceHover : Color.clear)
+            )
             .navigationRegistrable(.linkedTask(link))
             .modifier(DetailFocusRing(isFocused: isFocused))
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
+        .onHover { hovering in
+            hoveringLinkId = hovering ? link.id : nil
+        }
         .help(isFocused ? "Press Enter to view task" : "Click to view task")
     }
 

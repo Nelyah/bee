@@ -18,6 +18,10 @@ struct ExpandingTextEditor: View {
 
     /// Minimum height for the editor
     var minHeight: CGFloat = 32
+    /// Font size for the text editor (defaults to body size)
+    var fontSize: CGFloat = DesignTokens.TypeScale.body
+    /// Font weight for the text editor (defaults to regular)
+    var fontWeight: Font.Weight = .regular
 
     @FocusState private var isFocused: Bool
     @State private var textHeight: CGFloat = 32
@@ -28,7 +32,7 @@ struct ExpandingTextEditor: View {
                 // Placeholder text
                 if text.isEmpty {
                     Text(placeholder)
-                        .font(.system(size: DesignTokens.TypeScale.body))
+                        .font(.system(size: fontSize, weight: fontWeight))
                         .foregroundColor(ThemeManager.current.overlay0)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 8)
@@ -36,7 +40,7 @@ struct ExpandingTextEditor: View {
 
                 // The actual text editor
                 TextEditor(text: $text)
-                    .font(.system(size: DesignTokens.TypeScale.body))
+                    .font(.system(size: fontSize, weight: fontWeight))
                     .foregroundColor(ThemeManager.current.annotationText)
                     .scrollContentBackground(.hidden)
                     .focused($isFocused)

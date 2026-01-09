@@ -28,7 +28,7 @@ struct ApiTask: Decodable, Identifiable {
     }
 }
 
-struct TaskAnnotationDto: Decodable, Identifiable {
+struct TaskAnnotationDto: Decodable, Identifiable, Equatable {
     let value: String
     let time: String
 

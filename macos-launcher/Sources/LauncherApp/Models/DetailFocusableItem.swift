@@ -28,6 +28,9 @@ enum DetailFocusableItem: Equatable, Identifiable {
     case attachment(TaskAttachmentDto)
     /// The "+" button to add a new attachment.
     case addAttachmentButton
+    /// An annotation in the Annotations section.
+    /// Associated value is the annotation DTO.
+    case annotation(TaskAnnotationDto)
 
     var id: String {
         switch self {
@@ -53,6 +56,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             "attachment-\(attachment.id)"
         case .addAttachmentButton:
             "addAttachmentButton"
+        case let .annotation(annotation):
+            "annotation-\(annotation.id)"
         }
     }
 
@@ -83,6 +88,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             nil // Attachments use Enter to download and open, handled separately
         case .addAttachmentButton:
             nil // Add button uses Enter to start adding, not open URL
+        case .annotation:
+            nil // Annotations use Enter to edit, not open URL
         }
     }
 
@@ -117,6 +124,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return attachment.filename
         case .addAttachmentButton:
             return "" // Nothing to copy from add button
+        case let .annotation(annotation):
+            return annotation.value
         }
     }
 
@@ -150,6 +159,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "Filename"
         case .addAttachmentButton:
             return "" // Nothing to copy from add button
+        case .annotation:
+            return "Annotation"
         }
     }
 }

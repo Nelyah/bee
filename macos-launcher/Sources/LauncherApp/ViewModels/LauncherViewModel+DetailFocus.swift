@@ -5,8 +5,8 @@ import Foundation
 
 extension LauncherViewModel {
     /// Builds the list of focusable items for the current detail view.
-    /// Order: Task Name → UUID → Project → Tags → Add Tag → Due Date → Attachments → Add Attachment → Linked Tasks →
-    /// GitLab MRs → Jira Issues
+    /// Order: Task Name → UUID → Project → Tags → Add Tag → Due Date → Attachments → Add Attachment → Annotations →
+    /// Linked Tasks → GitLab MRs → Jira Issues
     func buildDetailFocusableItems() {
         var items: [DetailFocusableItem] = []
 
@@ -42,16 +42,21 @@ extension LauncherViewModel {
             }
             // Add attachment button is always available after attachments
             items.append(.addAttachmentButton)
+
+            // 8. Annotations (from task detail)
+            for annotation in detail.annotations {
+                items.append(.annotation(annotation))
+            }
         }
 
-        // 8. Linked tasks (from task detail)
+        // 9. Linked tasks (from task detail)
         if let detail = taskDetailState.detail {
             for link in detail.links {
                 items.append(.linkedTask(link))
             }
         }
 
-        // 9. GitLab MRs
+        // 10. GitLab MRs
         let gitlabLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
         }
@@ -59,7 +64,7 @@ extension LauncherViewModel {
             items.append(.gitlabMR(link))
         }
 
-        // 10. Jira issues
+        // 11. Jira issues
         let jiraLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
         }
@@ -163,6 +168,12 @@ extension LauncherViewModel {
         // Add attachment button: open file picker
         if case .addAttachmentButton = item {
             addAttachment()
+            return true
+        }
+
+        // Annotation: Enter triggers editing
+        if case let .annotation(annotation) = item {
+            startEditingAnnotation(withId: annotation.id)
             return true
         }
 

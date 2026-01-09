@@ -196,6 +196,7 @@ struct TaskDetailView: View {
 
                     if isSingleColumn(for: effectiveWidth) {
                         metadataColumn
+                        importantLinksSection
                         externalLinksSection
                     } else {
                         twoColumnLayout(totalWidth: effectiveWidth)
@@ -203,7 +204,6 @@ struct TaskDetailView: View {
 
                     annotationsSection
                     attachmentsSection
-                    importantLinksSection
                     emailLinksSection
                     linkedTasksSection
                     historySection
@@ -226,6 +226,10 @@ struct TaskDetailView: View {
                         }
                 }
             }
+            .onFilePromiseDrop(
+                onFileDropped: onDropAttachments,
+                onEmailDropped: onEmailDrop
+            )
             .onExitCommand {
                 onClose()
             }
@@ -260,7 +264,9 @@ struct TaskDetailView: View {
                         isSubmitting: isSubmittingTaskName,
                         onSubmit: onSubmitTaskNameEdit,
                         onCancel: onCancelTaskNameEdit,
-                        minHeight: 40
+                        minHeight: 40,
+                        fontSize: DesignTokens.TypeScale.title,
+                        fontWeight: .bold
                     )
                 } else {
                     Text(task.summary)
@@ -399,8 +405,12 @@ struct TaskDetailView: View {
                 .frame(width: leftWidth, alignment: .leading)
                 .zIndex(1) // Ensure left column overlays (e.g., project dropdown) draw above right column
 
-            externalLinksSection
-                .frame(width: rightWidth, alignment: .leading)
+            // Right column: Important Links above External Links
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
+                importantLinksSection
+                externalLinksSection
+            }
+            .frame(width: rightWidth, alignment: .leading)
         }
     }
 
@@ -445,10 +455,12 @@ struct TaskDetailView: View {
                                 onCancel: onCancelAnnotationEdit
                             )
                         } else {
-                            // Display mode - clickable to edit
+                            // Display mode - clickable to edit, keyboard navigable
                             EditableTimelineRow(
                                 timestamp: annotation.time,
                                 value: annotation.value,
+                                annotation: annotation,
+                                focusedItem: focusedItem,
                                 onTap: { onStartEditingAnnotation(annotation.id) }
                             )
                         }
@@ -472,9 +484,7 @@ struct TaskDetailView: View {
                 onOpen: onOpenAttachment,
                 onDelete: onDeleteAttachment,
                 onConfirmDelete: onConfirmDeleteAttachment,
-                onCancelDelete: onCancelDeleteAttachment,
-                onDrop: onDropAttachments,
-                onEmailDrop: onEmailDrop
+                onCancelDelete: onCancelDeleteAttachment
             )
         }
     }

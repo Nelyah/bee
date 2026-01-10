@@ -87,6 +87,18 @@ impl DbStore {
         get_project_task_totals(&db, project_name).await
     }
 
+    /// Update project metadata (emoji and color) by project name.
+    ///
+    /// Returns the updated project or None if project not found.
+    pub async fn update_project_metadata(
+        project_name: &str,
+        emoji: Option<Option<String>>,
+        color: Option<Option<String>>,
+    ) -> CoreResult<Option<crate::task::Project>> {
+        let db = get_database(None).await?;
+        task_write::update_project_metadata(&db, project_name, emoji, color).await
+    }
+
     /// Load a single task by UUID, including annotations and history.
     pub async fn get_task_by_uuid(task_uuid: uuid::Uuid) -> CoreResult<Option<Task>> {
         let db = get_database(None).await?;

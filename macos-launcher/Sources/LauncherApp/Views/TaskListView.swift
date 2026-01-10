@@ -250,7 +250,8 @@ struct TaskListView: View {
                                                 onChevronTap: { viewModel.toggleTaskExpansion(item.task.uuid) },
                                                 onHoverChange: { hovering in
                                                     viewModel.hoveredRowIndex = hovering ? rowIndex : nil
-                                                }
+                                                },
+                                                projectLookup: viewModel.projectDisplayLookup
                                             )
                                             .id(row.id)
                                             .onTapGesture { viewModel.selectRow(rowIndex) }
@@ -311,6 +312,7 @@ struct TaskListView: View {
                     viewModel.loadCollapsedState()
                     await viewModel.loadConfig()
                     await viewModel.loadCompletionData()
+                    await viewModel.loadProjectOverview() // Load project data for TaskRow emoji/color
                     viewModel.loadInitialListIfNeeded()
                 }
             }

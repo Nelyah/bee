@@ -426,4 +426,8 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
     }
 
     func deleteProfile(key: String) async throws {}
+
+    func updateProject(project: String, emoji: String??, color: String??) async throws -> UpdateProjectResponse {
+        UpdateProjectResponse(name: project, emoji: emoji ?? nil, color: color ?? nil)
+    }
 }

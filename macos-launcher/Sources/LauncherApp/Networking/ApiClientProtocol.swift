@@ -31,6 +31,7 @@ protocol ApiClientProtocol: Sendable {
     // Project Overview
     func fetchProjects() async throws -> ProjectsResponse
     func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse
+    func updateProject(project: String, emoji: String??, color: String??) async throws -> UpdateProjectResponse
 
     // Profile Management (global, not profile-scoped)
     func listProfiles() async throws -> ProfilesListResponse

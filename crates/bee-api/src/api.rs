@@ -8,7 +8,7 @@ use crate::{
         ExternalLinkResolveResponse, ExternalLinkSyncRequest, ExternalLinkSyncResponse,
         GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse, ProfileCreateRequest,
         ProfileDto, ProfilesListResponse, ProjectBurndownResponse, ProjectNodeDto, ProjectStatsDto,
-        ProjectsResponse, ReportConfigDto, ReportSummary, TaskAnnotationDto, TaskHistoryDto,
+        ProjectsResponse, ReportConfigDto, ReportSummary,UpdateProjectRequest,UpdateProjectResponse,  TaskAnnotationDto, TaskHistoryDto,
         TokenSpan, UserReportDto, UserReportRequest, UserReportsListResponse,
     },
     error_type::{ApiError, ApiErrorResponse, ApiResult},
@@ -21,7 +21,7 @@ use axum::{
     extract::{Multipart, Path, Query, State},
     http::{StatusCode, header},
     response::IntoResponse,
-    routing::{delete, get, post, put},
+    routing::{delete, get, patch, post, put},
 };
 use bee_actions::{ActionRegistry, command_parser::ParsedCommand};
 use bee_core::{
@@ -143,6 +143,7 @@ pub fn router(state: AppState) -> Router {
         )
         // Project overview
         .route("/v1/projects", get(projects_handler))
+        .route("/v1/projects/:name", patch(update_project_handler))
         .route("/v1/projects/:name/burndown", get(project_burndown_handler))
         // User reports CRUD
         .route(
@@ -449,6 +450,34 @@ async fn projects_handler() -> ApiResult<Json<ProjectsResponse>> {
 }
 
 #[utoipa::path(
+    patch,
+    path = "/v1/projects/{name}",
+    params(
+        ("name" = String, Path, description = "Project name (URL-encoded)")
+    ),
+    request_body = UpdateProjectRequest,
+    responses(
+        (status = 200, description = "Project updated", body = UpdateProjectResponse),
+        (status = 404, description = "Project not found", body = ApiErrorResponse)
+    )
+)]
+async fn update_project_handler(
+    Path(name): Path<String>,
+    Json(payload): Json<UpdateProjectRequest>,
+) -> ApiResult<Json<UpdateProjectResponse>> {
+    let updated = DbStore::update_project_metadata(&name, payload.emoji, payload.color).await?;
+
+    match updated {
+        Some(project) => Ok(Json(UpdateProjectResponse {
+            name: project.get_name().clone(),
+            emoji: project.get_emoji().clone(),
+            color: project.get_color().clone(),
+        })),
+        None => Err(ApiError::not_found(format!("Project '{}' not found", name))),
+    }
+}
+
+#[utoipa::path(
     get,
     path = "/v1/projects/{name}/burndown",
     params(
@@ -511,9 +540,13 @@ fn build_project_hierarchy(
         return Vec::new();
     }
 
-    // First, collect all projects with their stats
+    // First, collect all projects with their stats and emoji/color
     let mut project_stats: HashMap<String, ProjectStatsDto> = HashMap::new();
+    let mut project_emoji: HashMap<String, Option<String>> = HashMap::new();
+    let mut project_color: HashMap<String, Option<String>> = HashMap::new();
     for row in &stats {
+        project_emoji.insert(row.project_name.clone(), row.emoji.clone());
+        project_color.insert(row.project_name.clone(), row.color.clone());
         project_stats.insert(
             row.project_name.clone(),
             ProjectStatsDto {
@@ -528,6 +561,8 @@ fn build_project_hierarchy(
                 completed_count: row.completed_count,
                 overdue_count: row.overdue_count,
                 total_count: row.total_count,
+                emoji: row.emoji.clone(),
+                color: row.color.clone(),
             },
         );
     }
@@ -594,11 +629,17 @@ fn build_project_hierarchy(
             stats.total_count += child.stats.total_count;
         }
 
+        // Get emoji and color for this project (from stored maps, not stats which may be default)
+        let emoji = project_emoji.get(&full_path).cloned().flatten();
+        let color = project_color.get(&full_path).cloned().flatten();
+
         nodes.insert(
             full_path.clone(),
             ProjectNodeDto {
                 name,
                 full_path,
+                emoji,
+                color,
                 stats,
                 children,
             },
@@ -1812,6 +1853,8 @@ mod tests {
                 completed_count: 5,
                 overdue_count: 0,
                 total_count: 8,
+                emoji: Some("🔧".to_string()),
+                color: Some("#FF5733".to_string()),
             },
             ProjectStatusRow {
                 project_name: "backend.api".to_string(),
@@ -1820,6 +1863,8 @@ mod tests {
                 completed_count: 3,
                 overdue_count: 0,
                 total_count: 4,
+                emoji: None,
+                color: None,
             },
             ProjectStatusRow {
                 project_name: "frontend".to_string(),
@@ -1828,6 +1873,8 @@ mod tests {
                 completed_count: 10,
                 overdue_count: 1,
                 total_count: 16,
+                emoji: Some("🎨".to_string()),
+                color: None,
             },
         ];
 

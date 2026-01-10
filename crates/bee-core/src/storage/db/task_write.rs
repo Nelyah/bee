@@ -89,11 +89,13 @@ where
         project_active.id = Set(id);
     }
 
-    // 4. Diff the `name` field if updating, or set it on insert
+    // 4. Diff the fields if updating, or set them on insert
     if let Some(old) = &project_model {
-        diff_active_model!(project_active, old, project_obj, { name });
+        diff_active_model!(project_active, old, project_obj, { name, emoji, color });
     } else {
         project_active.name = Set(project_obj.name.clone());
+        project_active.emoji = Set(project_obj.emoji.clone());
+        project_active.color = Set(project_obj.color.clone());
     }
 
     debug!("End of project_to_active_model {:?}", project_active);
@@ -111,6 +113,46 @@ async fn persist_project(
     } else {
         Ok(None)
     }
+}
+
+/// Update project metadata (emoji and color) by project name.
+///
+/// Returns the updated project or None if project not found.
+pub async fn update_project_metadata(
+    db: &DatabaseConnection,
+    project_name: &str,
+    emoji: Option<Option<String>>,
+    color: Option<Option<String>>,
+) -> CoreResult<Option<Project>> {
+    // Find the project by name
+    let project_model = projects::Entity::find()
+        .filter(projects::Column::Name.eq(project_name))
+        .one(db)
+        .await?;
+
+    let Some(model) = project_model else {
+        return Ok(None);
+    };
+
+    // Update the fields
+    let mut active_model = model.clone().into_active_model();
+
+    if let Some(new_emoji) = emoji {
+        active_model.emoji = Set(new_emoji);
+    }
+
+    if let Some(new_color) = color {
+        active_model.color = Set(new_color);
+    }
+
+    let updated = active_model.update(db).await?;
+
+    Ok(Some(Project {
+        id: Some(updated.id),
+        name: updated.name,
+        emoji: updated.emoji,
+        color: updated.color,
+    }))
 }
 
 async fn task_to_active_model<C>(
@@ -391,10 +433,7 @@ mod tests {
 
         let project_name = "sync-project".to_string();
         let mut task = Task {
-            project: Some(Project {
-                id: None,
-                name: project_name.clone(),
-            }),
+            project: Some(Project::from(project_name.clone())),
             ..Default::default()
         };
         let task_uuid = task.uuid;

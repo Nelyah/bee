@@ -182,6 +182,16 @@ struct ProjectNodeView: View {
                     Task {
                         await viewModel.loadBurndown(for: node.fullPath)
                     }
+                },
+                onUpdateEmoji: { emoji in
+                    Task {
+                        await viewModel.updateProjectEmoji(node.fullPath, emoji: emoji)
+                    }
+                },
+                onUpdateColor: { color in
+                    Task {
+                        await viewModel.updateProjectColor(node.fullPath, color: color)
+                    }
                 }
             )
 

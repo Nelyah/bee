@@ -14,23 +14,31 @@ final class ProjectOverviewSnapshotTests: SnapshotTestCase {
             activeCount: 2,
             completedCount: 10,
             overdueCount: 1,
-            totalCount: 18
+            totalCount: 18,
+            emoji: "🔧",
+            color: "#4A90D9"
         )
         let node = ProjectNode(
             name: "backend",
             fullPath: "backend",
+            emoji: "🔧",
+            color: "#4A90D9",
             stats: stats,
             children: [
                 ProjectNode(
                     name: "api",
                     fullPath: "backend.api",
+                    emoji: nil,
+                    color: nil,
                     stats: ProjectStats(
                         name: "backend.api",
                         pendingCount: 2,
                         activeCount: 1,
                         completedCount: 5,
                         overdueCount: 0,
-                        totalCount: 8
+                        totalCount: 8,
+                        emoji: nil,
+                        color: nil
                     ),
                     children: []
                 ),
@@ -56,16 +64,22 @@ final class ProjectOverviewSnapshotTests: SnapshotTestCase {
             activeCount: 1,
             completedCount: 8,
             overdueCount: 0,
-            totalCount: 12
+            totalCount: 12,
+            emoji: "🎨",
+            color: "#FF5733"
         )
         let node = ProjectNode(
             name: "frontend",
             fullPath: "frontend",
+            emoji: "🎨",
+            color: "#FF5733",
             stats: stats,
             children: [
                 ProjectNode(
                     name: "ui",
                     fullPath: "frontend.ui",
+                    emoji: nil,
+                    color: nil,
                     stats: stats,
                     children: []
                 ),
@@ -91,11 +105,15 @@ final class ProjectOverviewSnapshotTests: SnapshotTestCase {
             activeCount: 1,
             completedCount: 5,
             overdueCount: 0,
-            totalCount: 8
+            totalCount: 8,
+            emoji: nil,
+            color: nil
         )
         let node = ProjectNode(
             name: "api",
             fullPath: "backend.api",
+            emoji: nil,
+            color: nil,
             stats: stats,
             children: []
         )
@@ -119,11 +137,15 @@ final class ProjectOverviewSnapshotTests: SnapshotTestCase {
             activeCount: 0,
             completedCount: 3,
             overdueCount: 0,
-            totalCount: 4
+            totalCount: 4,
+            emoji: nil,
+            color: nil
         )
         let node = ProjectNode(
             name: "helpers",
             fullPath: "backend.api.helpers",
+            emoji: nil,
+            color: nil,
             stats: stats,
             children: []
         )
@@ -147,11 +169,15 @@ final class ProjectOverviewSnapshotTests: SnapshotTestCase {
             activeCount: 3,
             completedCount: 5,
             overdueCount: 4,
-            totalCount: 14
+            totalCount: 14,
+            emoji: "🚨",
+            color: "#FF0000"
         )
         let node = ProjectNode(
             name: "urgent",
             fullPath: "urgent",
+            emoji: "🚨",
+            color: "#FF0000",
             stats: stats,
             children: []
         )

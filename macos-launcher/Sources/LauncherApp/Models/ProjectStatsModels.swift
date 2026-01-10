@@ -10,6 +10,10 @@ struct ProjectStats: Codable, Equatable {
     let completedCount: Int
     let overdueCount: Int
     let totalCount: Int
+    /// Optional emoji for visual identification (single emoji character).
+    let emoji: String?
+    /// Optional hex color for project theming (e.g., "#FF5733").
+    let color: String?
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -18,6 +22,8 @@ struct ProjectStats: Codable, Equatable {
         case completedCount = "completed_count"
         case overdueCount = "overdue_count"
         case totalCount = "total_count"
+        case emoji
+        case color
     }
 }
 
@@ -27,6 +33,10 @@ struct ProjectNode: Codable, Identifiable, Equatable {
     let name: String
     /// Full path with dot notation (e.g., "backend.api").
     let fullPath: String
+    /// Optional emoji for visual identification (single emoji character).
+    let emoji: String?
+    /// Optional hex color for project theming (e.g., "#FF5733").
+    let color: String?
     /// Statistics for this project (including children aggregated).
     let stats: ProjectStats
     /// Child projects.
@@ -40,6 +50,8 @@ struct ProjectNode: Codable, Identifiable, Equatable {
     enum CodingKeys: String, CodingKey {
         case name
         case fullPath = "full_path"
+        case emoji
+        case color
         case stats
         case children
     }
@@ -94,4 +106,29 @@ struct ProjectBurndownResponse: Codable, Equatable {
         case totalTasks = "total_tasks"
         case totalCompleted = "total_completed"
     }
+}
+
+// MARK: - Project Update Models
+
+/// Request payload for PATCH /v1/projects/{name}.
+struct UpdateProjectRequest: Encodable {
+    /// Optional emoji for visual identification. Set to explicit nil to clear.
+    let emoji: String??
+    /// Optional hex color for project theming. Set to explicit nil to clear.
+    let color: String??
+
+    init(emoji: String?? = .none, color: String?? = .none) {
+        self.emoji = emoji
+        self.color = color
+    }
+}
+
+/// Response payload for PATCH /v1/projects/{name}.
+struct UpdateProjectResponse: Codable {
+    /// Project name (full path).
+    let name: String
+    /// Updated emoji (if set).
+    let emoji: String?
+    /// Updated color (if set).
+    let color: String?
 }

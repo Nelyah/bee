@@ -1047,6 +1047,10 @@ pub struct Project {
     /// Dots (.) separate a project into sub projects
     /// a.project --> 'a' is a project with subproject 'a.project'
     pub(crate) name: String,
+    /// Optional emoji for visual identification (single emoji character)
+    pub(crate) emoji: Option<String>,
+    /// Optional hex color for project theming (e.g., "#FF5733")
+    pub(crate) color: Option<String>,
 }
 
 impl Project {
@@ -1054,10 +1058,30 @@ impl Project {
         &self.name
     }
 
+    pub fn get_emoji(&self) -> &Option<String> {
+        &self.emoji
+    }
+
+    pub fn get_color(&self) -> &Option<String> {
+        &self.color
+    }
+
     pub fn from(value: String) -> Project {
         Project {
             name: value,
             id: None,
+            emoji: None,
+            color: None,
+        }
+    }
+
+    /// Create a project with all fields
+    pub fn new(name: String, emoji: Option<String>, color: Option<String>) -> Project {
+        Project {
+            name,
+            id: None,
+            emoji,
+            color,
         }
     }
 }

@@ -587,6 +587,10 @@ pub struct ProjectStatsDto {
     pub overdue_count: i64,
     /// Total task count.
     pub total_count: i64,
+    /// Optional emoji for visual identification (single emoji character).
+    pub emoji: Option<String>,
+    /// Optional hex color for project theming (e.g., "#FF5733").
+    pub color: Option<String>,
 }
 
 /// Hierarchical project node with nested children.
@@ -596,6 +600,10 @@ pub struct ProjectNodeDto {
     pub name: String,
     /// Full path with dot notation (e.g., "backend.api").
     pub full_path: String,
+    /// Optional emoji for visual identification (single emoji character).
+    pub emoji: Option<String>,
+    /// Optional hex color for project theming (e.g., "#FF5733").
+    pub color: Option<String>,
     /// Statistics for this project (including children aggregated).
     pub stats: ProjectStatsDto,
     /// Child projects.
@@ -666,6 +674,34 @@ pub struct ProfileCreateRequest {
     pub name: Option<String>,
     /// Optional description.
     pub description: Option<String>,
+}
+
+// ============================================================================
+// Project Update DTOs
+// ============================================================================
+
+/// Request payload for PATCH /v1/projects/{name}.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateProjectRequest {
+    /// Optional emoji for visual identification (single emoji character).
+    /// Set to null to clear the emoji.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emoji: Option<Option<String>>,
+    /// Optional hex color for project theming (e.g., "#FF5733").
+    /// Set to null to clear the color.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<Option<String>>,
+}
+
+/// Response payload for PATCH /v1/projects/{name}.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateProjectResponse {
+    /// Project name (full path).
+    pub name: String,
+    /// Updated emoji (if set).
+    pub emoji: Option<String>,
+    /// Updated color (if set).
+    pub color: Option<String>,
 }
 
 #[cfg(test)]

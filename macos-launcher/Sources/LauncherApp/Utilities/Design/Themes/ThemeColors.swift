@@ -11,6 +11,22 @@ extension Color {
         let blue = Double(int & 0xFF) / 255.0
         self.init(red: red, green: green, blue: blue)
     }
+
+    /// Convert the color to a hex string in `#RRGGBB` format.
+    ///
+    /// Returns `nil` if the color cannot be resolved to RGB components
+    /// (e.g., for pattern-based colors).
+    var hexString: String? {
+        guard let components = NSColor(self).usingColorSpace(.sRGB) else {
+            return nil
+        }
+
+        let red = Int(round(components.redComponent * 255))
+        let green = Int(round(components.greenComponent * 255))
+        let blue = Int(round(components.blueComponent * 255))
+
+        return String(format: "#%02X%02X%02X", red, green, blue)
+    }
 }
 
 extension NSColor {

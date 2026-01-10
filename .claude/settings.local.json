@@ -193,7 +193,14 @@
       "Bash(curl:*)",
       "Bash(pkill:*)",
       "Bash(open:*)",
-      "mcp__plugin_context7_context7__resolve-library-id"
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)",
+      "Bash(git merge-base:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(cargo run:*)",
+      "Bash(cargo fix:*)"
     ]
   },
   "outputStyle": "Explanatory"

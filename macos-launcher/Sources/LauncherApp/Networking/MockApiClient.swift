@@ -55,6 +55,9 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
     var deleteAttachmentResult: Result<Void, Error> = .success(())
     var projectsResult: Result<ProjectsResponse, Error> = .success(MockApiClient.sampleProjects)
     var projectBurndownResult: Result<ProjectBurndownResponse, Error> = .success(MockApiClient.sampleBurndown)
+    var updateProjectResult: Result<UpdateProjectResponse, Error> = .success(
+        UpdateProjectResponse(name: "backend", emoji: "🔧", color: "#FF5733")
+    )
     var lastParseInput: String?
     var lastRunActionFilter: JSONValue?
 
@@ -147,6 +150,10 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse {
         try projectBurndownResult.get()
+    }
+
+    func updateProject(project: String, emoji: String??, color: String??) async throws -> UpdateProjectResponse {
+        try updateProjectResult.get()
     }
 
     // MARK: - Profile Management
@@ -368,38 +375,50 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         ProjectNode(
             name: "backend",
             fullPath: "backend",
+            emoji: "🔧",
+            color: "#4A90D9",
             stats: ProjectStats(
                 name: "backend",
                 pendingCount: 5,
                 activeCount: 3,
                 completedCount: 12,
                 overdueCount: 1,
-                totalCount: 20
+                totalCount: 20,
+                emoji: "🔧",
+                color: "#4A90D9"
             ),
             children: [
                 ProjectNode(
                     name: "api",
                     fullPath: "backend.api",
+                    emoji: nil,
+                    color: nil,
                     stats: ProjectStats(
                         name: "api",
                         pendingCount: 2,
                         activeCount: 1,
                         completedCount: 5,
                         overdueCount: 0,
-                        totalCount: 8
+                        totalCount: 8,
+                        emoji: nil,
+                        color: nil
                     ),
                     children: []
                 ),
                 ProjectNode(
                     name: "db",
                     fullPath: "backend.db",
+                    emoji: "💾",
+                    color: nil,
                     stats: ProjectStats(
                         name: "db",
                         pendingCount: 3,
                         activeCount: 2,
                         completedCount: 7,
                         overdueCount: 1,
-                        totalCount: 12
+                        totalCount: 12,
+                        emoji: "💾",
+                        color: nil
                     ),
                     children: []
                 ),
@@ -408,13 +427,17 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         ProjectNode(
             name: "frontend",
             fullPath: "frontend",
+            emoji: "🎨",
+            color: "#FF5733",
             stats: ProjectStats(
                 name: "frontend",
                 pendingCount: 8,
                 activeCount: 2,
                 completedCount: 15,
                 overdueCount: 2,
-                totalCount: 25
+                totalCount: 25,
+                emoji: "🎨",
+                color: "#FF5733"
             ),
             children: []
         ),

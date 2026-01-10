@@ -12,6 +12,8 @@ struct TaskRow: View {
     var onHoverChange: ((Bool) -> Void)?
     /// Testing hook: initial hover state. Only use in tests/previews.
     var initialHovered: Bool = false
+    /// Optional project display info lookup for showing emoji/color.
+    var projectLookup: [String: ProjectDisplayInfo]?
 
     /// Local hover state - prevents full list re-render on hover
     @State private var isHovered = false
@@ -25,7 +27,8 @@ struct TaskRow: View {
         expandedContent: TaskExpandedContent? = nil,
         onChevronTap: (() -> Void)? = nil,
         onHoverChange: ((Bool) -> Void)? = nil,
-        initialHovered: Bool = false
+        initialHovered: Bool = false,
+        projectLookup: [String: ProjectDisplayInfo]? = nil
     ) {
         self.task = task
         self.columnConfigs = columnConfigs
@@ -36,6 +39,7 @@ struct TaskRow: View {
         self.onChevronTap = onChevronTap
         self.onHoverChange = onHoverChange
         self.initialHovered = initialHovered
+        self.projectLookup = projectLookup
         // Initialize @State with the testing hook value
         _isHovered = State(initialValue: initialHovered)
     }
@@ -129,6 +133,9 @@ struct TaskRow: View {
             // Tags column with overflow indicator
             TagsOverflowText(tags: task.tags, maxVisible: maxTagsVisible(for: config.effectiveWidth))
                 .frame(width: config.effectiveWidth, alignment: .leading)
+        } else if column == "project" {
+            // Project column with optional emoji and color
+            projectColumnView(displayValue: displayValue, width: config.effectiveWidth)
         } else {
             // Other columns
             Text(displayValue)
@@ -144,6 +151,26 @@ struct TaskRow: View {
     private func maxTagsVisible(for width: CGFloat) -> Int {
         // Roughly 40px per tag, minimum 1
         max(1, Int(width / 40))
+    }
+
+    /// Project column view with optional emoji and color from project lookup.
+    @ViewBuilder
+    private func projectColumnView(displayValue: String, width: CGFloat) -> some View {
+        let projectInfo = task.project.flatMap { projectLookup?[$0] }
+        let textColor: Color = projectInfo?.color.map { Color(hex: $0) } ?? ThemeManager.current.subtext1
+
+        HStack(spacing: 4) {
+            if let emoji = projectInfo?.emoji {
+                Text(emoji)
+                    .font(.system(size: DesignTokens.TypeScale.bodySm))
+            }
+            Text(displayValue)
+                .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium, design: .rounded))
+                .foregroundColor(textColor)
+                .lineLimit(1)
+        }
+        .frame(width: width, alignment: .leading)
+        .help(displayValue)
     }
 
     private var chevronIndicator: some View {

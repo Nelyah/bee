@@ -33,7 +33,7 @@ final class GlobalHotKey {
         // Key code for 'B' is 11
         // Modifiers: cmdKey (256) + shiftKey (512) = 768
         let keyCode: UInt32 = 11 // 'B'
-        let modifiers: UInt32 = UInt32(cmdKey | shiftKey)
+        let modifiers = UInt32(cmdKey | shiftKey)
 
         var hotKeyID = EventHotKeyID()
         hotKeyID.signature = OSType(0x4245_4545) // "BEES" in hex

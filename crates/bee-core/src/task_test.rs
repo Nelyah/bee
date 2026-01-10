@@ -158,10 +158,7 @@ fn test_apply_stop() {
 fn test_apply_project() {
     let mut task = setup_task();
     let mut props = setup_task_property();
-    let new_proj = Project {
-        name: "a.b.c".to_string(),
-        id: None,
-    };
+    let new_proj = Project::from("a.b.c".to_string());
     props.project = Some(Some(new_proj.clone()));
 
     assert_true!(task.get_history().is_empty());

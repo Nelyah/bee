@@ -278,6 +278,23 @@ public final class ApiClient: ApiClientProtocol, Sendable {
         try await delete(path: "/v1/profiles/\(key)")
     }
 
+    /// Update a project's emoji and/or color.
+    ///
+    /// - Parameters:
+    ///   - project: The project name (full path, e.g., "backend.api").
+    ///   - emoji: New emoji (outer nil = don't change, inner nil = clear emoji).
+    ///   - color: New color hex string (outer nil = don't change, inner nil = clear color).
+    /// - Returns: The updated project response.
+    func updateProject(
+        project: String,
+        emoji: String??,
+        color: String??
+    ) async throws -> UpdateProjectResponse {
+        let encodedProject = project.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? project
+        let request = UpdateProjectRequest(emoji: emoji, color: color)
+        return try await patch(request, path: "/v1/projects/\(encodedProject)")
+    }
+
     // MARK: - Private Transport Helpers
 
     /// Send a JSON POST request to the API and decode the response type.
@@ -345,6 +362,25 @@ public final class ApiClient: ApiClientProtocol, Sendable {
 
         let (data, statusCode) = try await transport.send(
             method: "PUT",
+            path: path,
+            queryItems: [],
+            body: bodyData,
+            headers: [:]
+        )
+        try validateResponse(statusCode: statusCode, data: data, path: path)
+        return try JSONDecoder().decode(Response.self, from: data)
+    }
+
+    /// Send a JSON PATCH request to the API and decode the response type.
+    private func patch<Response: Decodable>(
+        _ body: some Encodable,
+        path: String
+    ) async throws -> Response {
+        logger.info("HTTP PATCH \(path, privacy: .public)")
+        let bodyData = try JSONEncoder().encode(body)
+
+        let (data, statusCode) = try await transport.send(
+            method: "PATCH",
             path: path,
             queryItems: [],
             body: bodyData,

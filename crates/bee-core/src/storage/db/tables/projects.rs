@@ -9,6 +9,10 @@ pub struct Model {
     pub id: i32,
     #[sea_orm(unique)]
     pub name: String,
+    /// Optional emoji for visual identification (single emoji character)
+    pub emoji: Option<String>,
+    /// Optional hex color for project theming (e.g., "#FF5733")
+    pub color: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -13,7 +13,9 @@ final class ProjectStatsModelsTests: XCTestCase {
             "active_count": 2,
             "completed_count": 10,
             "overdue_count": 1,
-            "total_count": 18
+            "total_count": 18,
+            "emoji": "🔧",
+            "color": "#4A90D9"
         }
         """
 
@@ -26,6 +28,28 @@ final class ProjectStatsModelsTests: XCTestCase {
         XCTAssertEqual(stats.completedCount, 10)
         XCTAssertEqual(stats.overdueCount, 1)
         XCTAssertEqual(stats.totalCount, 18)
+        XCTAssertEqual(stats.emoji, "🔧")
+        XCTAssertEqual(stats.color, "#4A90D9")
+    }
+
+    func testProjectStatsDecodingNullableFields() throws {
+        let json = """
+        {
+            "name": "backend",
+            "pending_count": 5,
+            "active_count": 2,
+            "completed_count": 10,
+            "overdue_count": 1,
+            "total_count": 18
+        }
+        """
+
+        let data = Data(json.utf8)
+        let stats = try JSONDecoder().decode(ProjectStats.self, from: data)
+
+        XCTAssertEqual(stats.name, "backend")
+        XCTAssertNil(stats.emoji)
+        XCTAssertNil(stats.color)
     }
 
     // MARK: - ProjectNode Tests
@@ -35,13 +59,17 @@ final class ProjectStatsModelsTests: XCTestCase {
         {
             "name": "api",
             "full_path": "backend.api",
+            "emoji": "🚀",
+            "color": "#FF5733",
             "stats": {
                 "name": "backend.api",
                 "pending_count": 3,
                 "active_count": 1,
                 "completed_count": 5,
                 "overdue_count": 0,
-                "total_count": 9
+                "total_count": 9,
+                "emoji": "🚀",
+                "color": "#FF5733"
             },
             "children": []
         }
@@ -52,6 +80,8 @@ final class ProjectStatsModelsTests: XCTestCase {
 
         XCTAssertEqual(node.name, "api")
         XCTAssertEqual(node.fullPath, "backend.api")
+        XCTAssertEqual(node.emoji, "🚀")
+        XCTAssertEqual(node.color, "#FF5733")
         XCTAssertEqual(node.stats.pendingCount, 3)
         XCTAssertTrue(node.children.isEmpty)
     }
@@ -114,25 +144,33 @@ final class ProjectStatsModelsTests: XCTestCase {
         let nodeWithChildren = ProjectNode(
             name: "parent",
             fullPath: "parent",
+            emoji: nil,
+            color: nil,
             stats: ProjectStats(
                 name: "parent",
                 pendingCount: 1,
                 activeCount: 0,
                 completedCount: 0,
                 overdueCount: 0,
-                totalCount: 1
+                totalCount: 1,
+                emoji: nil,
+                color: nil
             ),
             children: [
                 ProjectNode(
                     name: "child",
                     fullPath: "parent.child",
+                    emoji: nil,
+                    color: nil,
                     stats: ProjectStats(
                         name: "parent.child",
                         pendingCount: 0,
                         activeCount: 0,
                         completedCount: 0,
                         overdueCount: 0,
-                        totalCount: 0
+                        totalCount: 0,
+                        emoji: nil,
+                        color: nil
                     ),
                     children: []
                 ),
@@ -142,13 +180,17 @@ final class ProjectStatsModelsTests: XCTestCase {
         let nodeWithoutChildren = ProjectNode(
             name: "leaf",
             fullPath: "leaf",
+            emoji: nil,
+            color: nil,
             stats: ProjectStats(
                 name: "leaf",
                 pendingCount: 0,
                 activeCount: 0,
                 completedCount: 0,
                 overdueCount: 0,
-                totalCount: 0
+                totalCount: 0,
+                emoji: nil,
+                color: nil
             ),
             children: []
         )
@@ -161,13 +203,17 @@ final class ProjectStatsModelsTests: XCTestCase {
         let node = ProjectNode(
             name: "test",
             fullPath: "project.test",
+            emoji: "🎯",
+            color: "#00FF00",
             stats: ProjectStats(
                 name: "project.test",
                 pendingCount: 0,
                 activeCount: 0,
                 completedCount: 0,
                 overdueCount: 0,
-                totalCount: 0
+                totalCount: 0,
+                emoji: "🎯",
+                color: "#00FF00"
             ),
             children: []
         )
@@ -303,7 +349,9 @@ final class ProjectStatsModelsTests: XCTestCase {
             activeCount: 2,
             completedCount: 3,
             overdueCount: 4,
-            totalCount: 10
+            totalCount: 10,
+            emoji: "🎯",
+            color: "#FF0000"
         )
         let stats2 = ProjectStats(
             name: "test",
@@ -311,7 +359,9 @@ final class ProjectStatsModelsTests: XCTestCase {
             activeCount: 2,
             completedCount: 3,
             overdueCount: 4,
-            totalCount: 10
+            totalCount: 10,
+            emoji: "🎯",
+            color: "#FF0000"
         )
         let stats3 = ProjectStats(
             name: "different",
@@ -319,7 +369,9 @@ final class ProjectStatsModelsTests: XCTestCase {
             activeCount: 2,
             completedCount: 3,
             overdueCount: 4,
-            totalCount: 10
+            totalCount: 10,
+            emoji: nil,
+            color: nil
         )
 
         XCTAssertEqual(stats1, stats2)
@@ -330,30 +382,66 @@ final class ProjectStatsModelsTests: XCTestCase {
         let node1 = ProjectNode(
             name: "test",
             fullPath: "test",
+            emoji: "🔧",
+            color: "#4A90D9",
             stats: ProjectStats(
                 name: "test",
                 pendingCount: 1,
                 activeCount: 0,
                 completedCount: 0,
                 overdueCount: 0,
-                totalCount: 1
+                totalCount: 1,
+                emoji: "🔧",
+                color: "#4A90D9"
             ),
             children: []
         )
         let node2 = ProjectNode(
             name: "test",
             fullPath: "test",
+            emoji: "🔧",
+            color: "#4A90D9",
             stats: ProjectStats(
                 name: "test",
                 pendingCount: 1,
                 activeCount: 0,
                 completedCount: 0,
                 overdueCount: 0,
-                totalCount: 1
+                totalCount: 1,
+                emoji: "🔧",
+                color: "#4A90D9"
             ),
             children: []
         )
 
         XCTAssertEqual(node1, node2)
+    }
+
+    // MARK: - UpdateProjectRequest/Response Tests
+
+    func testUpdateProjectRequestEncoding() throws {
+        let request = UpdateProjectRequest(emoji: .some("🎨"), color: .some("#FF5733"))
+        let data = try JSONEncoder().encode(request)
+        let json = String(data: data, encoding: .utf8)!
+
+        XCTAssertTrue(json.contains("\"emoji\":\"🎨\""))
+        XCTAssertTrue(json.contains("\"color\":\"#FF5733\""))
+    }
+
+    func testUpdateProjectResponseDecoding() throws {
+        let json = """
+        {
+            "name": "backend",
+            "emoji": "🔧",
+            "color": "#4A90D9"
+        }
+        """
+
+        let data = Data(json.utf8)
+        let response = try JSONDecoder().decode(UpdateProjectResponse.self, from: data)
+
+        XCTAssertEqual(response.name, "backend")
+        XCTAssertEqual(response.emoji, "🔧")
+        XCTAssertEqual(response.color, "#4A90D9")
     }
 }

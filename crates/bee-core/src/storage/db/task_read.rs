@@ -107,6 +107,10 @@ pub struct ProjectStatusRow {
     pub overdue_count: i64,
     /// Total task count.
     pub total_count: i64,
+    /// Optional emoji for visual identification.
+    pub emoji: Option<String>,
+    /// Optional hex color for project theming.
+    pub color: Option<String>,
 }
 
 /// Get all projects with status breakdown counts.
@@ -130,7 +134,9 @@ pub async fn get_projects_with_status_breakdown(
                          AND datetime(t.date_due) < datetime('now')
                     THEN 1 ELSE 0
                 END) as overdue_count,
-                COUNT(t.db_id) as total_count
+                COUNT(t.db_id) as total_count,
+                p.emoji as emoji,
+                p.color as color
             FROM projects p
             LEFT JOIN tasks t ON t.project_id = p.id
             GROUP BY p.id, p.name
@@ -330,6 +336,8 @@ where
                     Project {
                         id: Some(model.id),
                         name: model.name,
+                        emoji: model.emoji,
+                        color: model.color,
                     },
                 )
             })
@@ -860,10 +868,7 @@ mod tests {
 
         let alpha_task = Task {
             summary: "Alpha Task".to_string(),
-            project: Some(Project {
-                id: None,
-                name: "alpha.core".to_string(),
-            }),
+            project: Some(Project::from("alpha.core".to_string())),
             uuid: Uuid::new_v4(),
             ..Default::default()
         };
@@ -871,10 +876,7 @@ mod tests {
 
         let beta_task = Task {
             summary: "Beta Task".to_string(),
-            project: Some(Project {
-                id: None,
-                name: "beta.core".to_string(),
-            }),
+            project: Some(Project::from("beta.core".to_string())),
             uuid: Uuid::new_v4(),
             ..Default::default()
         };
@@ -883,10 +885,7 @@ mod tests {
         assert_single_match(
             &db,
             Box::new(ProjectFilter {
-                name: Project {
-                    id: None,
-                    name: "alpha".to_string(),
-                },
+                name: Project::from("alpha".to_string()),
             }),
             &alpha_task,
         )

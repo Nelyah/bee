@@ -5,23 +5,34 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     private let transport: ApiTransport
     private let logger = Logger(subsystem: "bee.macos-launcher", category: "api")
 
+    /// The profile this client is bound to, or nil for legacy/non-profile mode.
+    public let profile: String?
+
     // MARK: - Factory Methods
 
     /// Create an ApiClient for HTTP connections (remote servers).
-    public static func http(baseURL: URL, session: URLSession = .shared) -> ApiClient {
-        ApiClient(transport: HTTPTransport(baseURL: baseURL, session: session))
+    public static func http(baseURL: URL, session: URLSession = .shared, profile: String? = nil) -> ApiClient {
+        ApiClient(transport: HTTPTransport(baseURL: baseURL, session: session), profile: profile)
     }
 
     /// Create an ApiClient for Unix socket connections (local backend).
-    public static func unixSocket(path: String) -> ApiClient {
-        ApiClient(transport: UnixSocketTransport(socketPath: path))
+    public static func unixSocket(path: String, profile: String? = nil) -> ApiClient {
+        ApiClient(transport: UnixSocketTransport(socketPath: path), profile: profile)
+    }
+
+    /// Create an ApiClient bound to a specific profile.
+    ///
+    /// All API calls will be routed to `/v1/profiles/{profile}/...` paths.
+    public static func forProfile(_ profile: String, transport: ApiTransport) -> ApiClient {
+        ApiClient(transport: transport, profile: profile)
     }
 
     // MARK: - Initializers
 
-    /// Initialize the API client with a specific transport.
-    public init(transport: ApiTransport) {
+    /// Initialize the API client with a specific transport and optional profile.
+    public init(transport: ApiTransport, profile: String? = nil) {
         self.transport = transport
+        self.profile = profile
     }
 
     /// Legacy initializer for backwards compatibility - creates HTTP transport.
@@ -30,7 +41,8 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     convenience init(
         baseURL: URL? = nil,
         session: URLSession = .shared,
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        profile: String? = nil
     ) {
         let url: URL = if let baseURL {
             baseURL
@@ -40,7 +52,7 @@ public final class ApiClient: ApiClientProtocol, Sendable {
         } else {
             Self.defaultBaseURL
         }
-        self.init(transport: HTTPTransport(baseURL: url, session: session))
+        self.init(transport: HTTPTransport(baseURL: url, session: session), profile: profile)
     }
 
     private static var defaultBaseURL: URL {
@@ -54,12 +66,30 @@ public final class ApiClient: ApiClientProtocol, Sendable {
         return url
     }
 
+    // MARK: - Profile Path Helpers
+
+    /// Build an API path, prefixing with profile if bound to one.
+    ///
+    /// - For non-profile clients: `/v1/tasks` remains `/v1/tasks`
+    /// - For profile clients: `/v1/tasks` becomes `/v1/profiles/{profile}/tasks`
+    private func profilePath(_ basePath: String) -> String {
+        guard let profile else {
+            return basePath
+        }
+        // Remove /v1 prefix and add profile prefix
+        if basePath.hasPrefix("/v1/") {
+            let suffix = String(basePath.dropFirst(4)) // Remove "/v1/"
+            return "/v1/profiles/\(profile)/\(suffix)"
+        }
+        return basePath
+    }
+
     // MARK: - API Methods
 
     /// Send input to the parse endpoint and decode the response.
     func parse(input: String) async throws -> ParseResponse {
         let request = ParseRequest(input: input)
-        return try await send(request, path: "/v1/parse")
+        return try await send(request, path: profilePath("/v1/parse"))
     }
 
     /// Return an empty parse response when no parse has completed yet.
@@ -73,7 +103,7 @@ public final class ApiClient: ApiClientProtocol, Sendable {
         var attempt = 0
         while true {
             do {
-                return try await send(request, path: "/v1/action")
+                return try await send(request, path: profilePath("/v1/action"))
             } catch let error as ApiClientError {
                 switch error {
                 case let .api(message, code, developerMessage):
@@ -98,37 +128,37 @@ public final class ApiClient: ApiClientProtocol, Sendable {
 
     /// Fetch the current configuration from the API.
     func fetchConfig() async throws -> ConfigResponse {
-        try await get(path: "/v1/config")
+        try await get(path: profilePath("/v1/config"))
     }
 
     /// Fetch completions of a given type from the API.
     func fetchCompletions(type: String) async throws -> CompletionsResponse {
-        try await get(path: "/v1/completions", queryItems: [URLQueryItem(name: "type", value: type)])
+        try await get(path: profilePath("/v1/completions"), queryItems: [URLQueryItem(name: "type", value: type)])
     }
 
     func fetchTaskDetail(taskUUID: String) async throws -> ApiTaskDetail {
-        try await get(path: "/v1/tasks/\(taskUUID)")
+        try await get(path: profilePath("/v1/tasks/\(taskUUID)"))
     }
 
     func fetchExternalLinks(taskUUID: String) async throws -> [ExternalLinkDto] {
-        try await get(path: "/v1/tasks/\(taskUUID)/external-links")
+        try await get(path: profilePath("/v1/tasks/\(taskUUID)/external-links"))
     }
 
     func syncExternalLink(linkId: Int, force: Bool) async throws -> ExternalLinkSyncResponse {
         let query = force ? [URLQueryItem(name: "force", value: "true")] : []
-        return try await post(path: "/v1/external-links/\(linkId)/sync", queryItems: query)
+        return try await post(path: profilePath("/v1/external-links/\(linkId)/sync"), queryItems: query)
     }
 
     func fetchRecentGitlabMergeRequests(limit: Int) async throws -> [GitlabMergeRequestSuggestion] {
         try await get(
-            path: "/v1/external-links/gitlab/merge-requests/recent",
+            path: profilePath("/v1/external-links/gitlab/merge-requests/recent"),
             queryItems: [URLQueryItem(name: "limit", value: String(limit))]
         )
     }
 
     func fetchRecentJiraIssues(limit: Int, scope: JiraIssueScope) async throws -> [JiraIssueSuggestion] {
         try await get(
-            path: "/v1/external-links/jira/issues/recent",
+            path: profilePath("/v1/external-links/jira/issues/recent"),
             queryItems: [
                 URLQueryItem(name: "limit", value: String(limit)),
                 URLQueryItem(name: "scope", value: scope.rawValue),
@@ -141,32 +171,32 @@ public final class ApiClient: ApiClientProtocol, Sendable {
         input: String
     ) async throws -> ExternalLinkResolveResponse {
         let request = ExternalLinkResolveRequest(provider: provider.rawValue, input: input)
-        return try await send(request, path: "/v1/external-links/resolve")
+        return try await send(request, path: profilePath("/v1/external-links/resolve"))
     }
 
     func addExternalLink(taskUUID: String, url: String) async throws -> ExternalLinkDto {
         let request = ExternalLinkCreateRequest(url: url)
-        return try await send(request, path: "/v1/tasks/\(taskUUID)/external-links")
+        return try await send(request, path: profilePath("/v1/tasks/\(taskUUID)/external-links"))
     }
 
     // MARK: - User Reports
 
     func createUserReport(_ request: UserReportRequest) async throws -> UserReportDto {
-        try await send(request, path: "/v1/reports")
+        try await send(request, path: profilePath("/v1/reports"))
     }
 
     func updateUserReport(name: String, _ request: UserReportRequest) async throws -> UserReportDto {
-        try await put(request, path: "/v1/reports/\(name)")
+        try await put(request, path: profilePath("/v1/reports/\(name)"))
     }
 
     func deleteUserReport(name: String) async throws {
-        try await delete(path: "/v1/reports/\(name)")
+        try await delete(path: profilePath("/v1/reports/\(name)"))
     }
 
     // MARK: - Attachments
 
     func uploadAttachment(taskUUID: String, fileURL: URL) async throws -> TaskAttachmentDto {
-        let path = "/v1/tasks/\(taskUUID)/attachments"
+        let path = profilePath("/v1/tasks/\(taskUUID)/attachments")
         logger.info("HTTP POST (multipart) \(path, privacy: .public)")
 
         let boundary = UUID().uuidString
@@ -195,7 +225,7 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     }
 
     func downloadAttachment(attachmentId: Int) async throws -> Data {
-        let path = "/v1/attachments/\(attachmentId)/download"
+        let path = profilePath("/v1/attachments/\(attachmentId)/download")
         logger.info("HTTP GET \(path, privacy: .public)")
 
         let (data, statusCode) = try await transport.send(
@@ -210,21 +240,42 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     }
 
     func deleteAttachment(attachmentId: Int) async throws {
-        try await delete(path: "/v1/attachments/\(attachmentId)")
+        try await delete(path: profilePath("/v1/attachments/\(attachmentId)"))
     }
 
     // MARK: - Project Overview
 
     func fetchProjects() async throws -> ProjectsResponse {
-        try await get(path: "/v1/projects")
+        try await get(path: profilePath("/v1/projects"))
     }
 
     func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse {
         let encodedProject = project.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? project
         return try await get(
-            path: "/v1/projects/\(encodedProject)/burndown",
+            path: profilePath("/v1/projects/\(encodedProject)/burndown"),
             queryItems: [URLQueryItem(name: "days", value: String(days))]
         )
+    }
+
+    // MARK: - Profile Management (global, not profile-scoped)
+
+    /// List all available profiles.
+    public func listProfiles() async throws -> ProfilesListResponse {
+        // Profile list is always at the global path, not profile-scoped
+        try await get(path: "/v1/profiles")
+    }
+
+    /// Create a new profile.
+    public func createProfile(key: String, name: String?, description: String?) async throws -> ProfileCreateResponse {
+        let request = ProfileCreateRequest(key: key, name: name, description: description)
+        // Profile creation is always at the global path
+        return try await send(request, path: "/v1/profiles")
+    }
+
+    /// Delete a profile.
+    public func deleteProfile(key: String) async throws {
+        // Profile deletion is always at the global path
+        try await delete(path: "/v1/profiles/\(key)")
     }
 
     // MARK: - Private Transport Helpers

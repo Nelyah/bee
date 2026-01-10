@@ -2,6 +2,9 @@ import Foundation
 
 /// Protocol for API client dependency injection.
 protocol ApiClientProtocol: Sendable {
+    /// The profile this client is bound to, or nil for legacy/non-profile mode.
+    var profile: String? { get }
+
     func parse(input: String) async throws -> ParseResponse
     func runAction(action: String, properties: JSONValue?, filter: JSONValue?) async throws -> ActionResponse
     func fetchConfig() async throws -> ConfigResponse
@@ -28,4 +31,9 @@ protocol ApiClientProtocol: Sendable {
     // Project Overview
     func fetchProjects() async throws -> ProjectsResponse
     func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse
+
+    // Profile Management (global, not profile-scoped)
+    func listProfiles() async throws -> ProfilesListResponse
+    func createProfile(key: String, name: String?, description: String?) async throws -> ProfileCreateResponse
+    func deleteProfile(key: String) async throws
 }

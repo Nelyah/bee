@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::{CoreError, CoreResult};
+use crate::{CoreError, CoreResult, profile};
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct Config {
@@ -214,6 +214,53 @@ pub fn find_config_file() -> Option<PathBuf> {
         paths
     );
     None
+}
+
+/// Finds the config file for a specific profile.
+///
+/// Checks:
+/// 1. Profile's config directory: `~/.config/bee/{profile}/config.toml`
+/// 2. Falls back to `find_config_file()` if profile config doesn't exist
+pub fn find_config_file_for_profile(profile_name: &str) -> Option<PathBuf> {
+    let profile_config_path = profile::get_profile_config_path(profile_name);
+
+    if profile_config_path.exists() {
+        debug!("Found profile config file at {:?}", profile_config_path);
+        return Some(profile_config_path);
+    }
+
+    // Fall back to legacy config file search
+    debug!(
+        "Profile config not found at {:?}, falling back to legacy search",
+        profile_config_path
+    );
+    find_config_file()
+}
+
+/// Loads the configuration for a specific profile.
+///
+/// This is the profile-aware version of `load_config()`. It should be used
+/// by the API server where the profile is determined by the URL path.
+pub fn load_config_for_profile(profile_name: &str) -> CoreResult<Config> {
+    match find_config_file_for_profile(profile_name) {
+        Some(file) => {
+            let content = fs::read_to_string(&file)
+                .map_err(|e| CoreError::config(format!("Could not read config file: {e}")))?;
+
+            debug!(
+                "Loading config for profile '{}' from {:?}",
+                profile_name, file
+            );
+            load_config_from_string(&content)
+        }
+        None => {
+            debug!(
+                "No config file found for profile '{}', using defaults",
+                profile_name
+            );
+            Ok(Config::default())
+        }
+    }
 }
 
 #[cfg(test)]

@@ -18,6 +18,7 @@ pub mod email_link;
 pub mod external_links;
 pub mod filters;
 pub mod important_link;
+pub mod profile;
 pub mod storage;
 pub mod task;
 pub mod urgency;

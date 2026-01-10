@@ -3,6 +3,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
 use std::path::PathBuf;
 
 use crate::CoreResult;
+use crate::profile;
 
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5_000;
 
@@ -70,6 +71,35 @@ pub(super) async fn get_database(db_address: Option<&str>) -> CoreResult<Databas
         Some(addr) => addr.to_string(),
         None => get_database_url(),
     };
+
+    // Ensure parent directories exist
+    ensure_parent_directories(&url)?;
+
+    let db = Database::connect(&url).await?;
+
+    if url.starts_with("sqlite:") {
+        apply_sqlite_pragmas(&db).await?;
+    }
+
+    Migrator::up(&db, None).await?;
+
+    Ok(db)
+}
+
+/// Returns the database URL for a specific profile.
+///
+/// Uses the profile's data directory to locate the database file.
+pub fn get_database_url_for_profile(profile_name: &str) -> String {
+    let path = profile::get_profile_database_path(profile_name);
+    format!("sqlite://{}?mode=rwc", path.display())
+}
+
+/// Connects to the database for a specific profile.
+///
+/// This is the profile-aware version of `get_database()`. It should be used
+/// by the API server where the profile is determined by the URL path.
+pub async fn get_database_for_profile(profile_name: &str) -> CoreResult<DatabaseConnection> {
+    let url = get_database_url_for_profile(profile_name);
 
     // Ensure parent directories exist
     ensure_parent_directories(&url)?;

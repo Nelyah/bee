@@ -7,8 +7,8 @@ use crate::{
     action_cmd::CmdTaskAction, action_delete::DeleteTaskAction, action_done::DoneTaskAction,
     action_edit::EditTaskAction, action_export::ExportTaskAction, action_help::HelpTaskAction,
     action_import::ImportTaskAction, action_info::InfoTaskAction, action_list::ListTaskAction,
-    action_modify::ModifyTaskAction, action_start::StartTaskAction, action_stop::StopTaskAction,
-    action_undo::UndoTaskAction,
+    action_modify::ModifyTaskAction, action_profile::ProfileTaskAction,
+    action_start::StartTaskAction, action_stop::StopTaskAction, action_undo::UndoTaskAction,
 };
 
 pub struct ActionTypeData {
@@ -31,6 +31,7 @@ pub enum ActionType {
     Info,
     List,
     Modify,
+    Profile,
     Start,
     Stop,
     Undo,
@@ -54,6 +55,7 @@ impl ActionType {
             ActionType::Info => (),
             ActionType::List => (),
             ActionType::Modify => (),
+            ActionType::Profile => (),
             ActionType::Start => (),
             ActionType::Stop => (),
             ActionType::Undo => (),
@@ -212,6 +214,16 @@ impl ActionType {
                         },
                     );
                 }
+                ActionType::Profile => {
+                    map.insert(
+                        action_type,
+                        ActionTypeData {
+                            parsed_string: vec!["profile".to_string()],
+                            use_arguments_as_filter: false,
+                            documentation_string: ProfileTaskAction::get_command_description(),
+                        },
+                    );
+                }
             }
         }
 
@@ -263,6 +275,7 @@ impl ActionType {
             ActionType::Start => Box::new(StartTaskAction::default()),
             ActionType::Stop => Box::new(StopTaskAction::default()),
             ActionType::Undo => Box::new(UndoTaskAction::default()),
+            ActionType::Profile => Box::new(ProfileTaskAction::default()),
         }
     }
 }

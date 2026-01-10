@@ -37,6 +37,9 @@ use crate::{
 };
 use sea_orm::TransactionTrait;
 
+// Re-export profile-aware database functions for use by bee-api
+pub use connection::{get_database_for_profile, get_database_url_for_profile};
+
 pub use user_reports::{UserReport, UserReportParams};
 
 pub use task_read::{BurndownRow, CompletionRow, ProjectStatusRow};
@@ -244,6 +247,102 @@ impl DbStore {
         let db = get_database(None).await?;
         attachments_db::delete_by_id(&db, attachment_id).await?;
         Ok(())
+    }
+
+    // =========================================================================
+    // Profile-aware methods
+    // =========================================================================
+
+    /// Load tasks from a specific profile's database.
+    pub async fn load_tasks_for_profile(
+        profile: &str,
+        filter: Option<Box<dyn Filter>>,
+        props: Option<TaskProperties>,
+    ) -> CoreResult<TaskData> {
+        let db = connection::get_database_for_profile(profile).await?;
+        load_tasks_impl(&db, filter, props).await
+    }
+
+    /// Write tasks to a specific profile's database.
+    pub async fn write_tasks_for_profile(
+        profile: &str,
+        data: &TaskData,
+        changes: &[ActionUndo],
+    ) -> CoreResult<()> {
+        let db = connection::get_database_for_profile(profile).await?;
+
+        let mut changed_uuids: HashSet<uuid::Uuid> = HashSet::new();
+        for undo in changes {
+            for task in &undo.tasks {
+                changed_uuids.insert(*task.get_uuid());
+                for linked_uuid in task.get_extra_uuid() {
+                    changed_uuids.insert(linked_uuid);
+                }
+            }
+        }
+
+        if changed_uuids.is_empty() {
+            return Ok(());
+        }
+
+        for uuid in &changed_uuids {
+            if let Some(task) = data.get_task_map().get(uuid) {
+                write_tasks_impl(&db, task).await?;
+                continue;
+            }
+            if let Some(task) = data.get_extra_tasks().get(uuid) {
+                write_tasks_impl(&db, task).await?;
+            }
+        }
+
+        let txn = db.begin().await?;
+        resequence_task_ids_txn(&txn).await?;
+        update_blocking_status(&txn).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    /// Load undo history from a specific profile's database.
+    pub async fn load_undos_for_profile(
+        profile: &str,
+        limit: usize,
+    ) -> CoreResult<Vec<ActionUndo>> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        let db = connection::get_database_for_profile(profile).await?;
+        load_undos_impl(&db, limit).await
+    }
+
+    /// Log undo actions to a specific profile's database.
+    pub async fn log_undo_for_profile(
+        profile: &str,
+        count: usize,
+        undos: Vec<ActionUndo>,
+    ) -> CoreResult<()> {
+        let db = connection::get_database_for_profile(profile).await?;
+        append_undo_action_impl(&db, count, undos).await
+    }
+
+    /// Get a task by UUID from a specific profile's database.
+    pub async fn get_task_by_uuid_for_profile(
+        profile: &str,
+        uuid: uuid::Uuid,
+    ) -> CoreResult<Option<Task>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let filter = UuidFilter { uuid };
+        let tasks = load_tasks_impl(&db, Some(Box::new(filter)), None).await?;
+        Ok(tasks.get_task_map().get(&uuid).cloned())
+    }
+
+    /// List attachments for a task in a specific profile's database.
+    pub async fn list_attachments_for_profile(
+        profile: &str,
+        task_uuid: uuid::Uuid,
+    ) -> CoreResult<Vec<Attachment>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let attachments = attachments_db::list_by_task_uuid(&db, task_uuid).await?;
+        Ok(attachments)
     }
 }
 

@@ -263,6 +263,7 @@ private actor ActionCounter {
 
 private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
     let counter = ActionCounter()
+    let profile: String? = nil
 
     func parse(input: String) async throws -> ParseResponse {
         ParseResponse(action: "", properties: nil, filter: nil, tokens: [])
@@ -407,4 +408,22 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
             totalCompleted: 0
         )
     }
+
+    func listProfiles() async throws -> ProfilesListResponse {
+        ProfilesListResponse(profiles: [])
+    }
+
+    func createProfile(key: String, name: String?, description: String?) async throws -> ProfileCreateResponse {
+        ProfileCreateResponse(
+            profile: ProfileDto(
+                key: key,
+                name: name ?? key,
+                description: description ?? "",
+                dataDir: "",
+                configDir: ""
+            )
+        )
+    }
+
+    func deleteProfile(key: String) async throws {}
 }

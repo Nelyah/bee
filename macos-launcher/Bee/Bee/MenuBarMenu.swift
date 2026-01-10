@@ -11,6 +11,8 @@ import SwiftUI
 
 struct MenuBarMenu: View {
     var viewModel: LauncherViewModel?
+    @ObservedObject var profileManager: ProfileManager
+    let transport: ApiTransport?
     @Environment(\.openWindow) private var openWindow
     @AppStorage("launchAtLogin") private var launchAtLogin = false
 
@@ -22,6 +24,36 @@ struct MenuBarMenu: View {
         .keyboardShortcut("b", modifiers: [.command, .shift])
 
         Divider()
+
+        // Profile selection submenu
+        if !profileManager.profiles.isEmpty {
+            Menu("Profile") {
+                ForEach(profileManager.profiles) { profile in
+                    Button {
+                        profileManager.selectedProfileKey = profile.key
+                    } label: {
+                        HStack {
+                            Text(profile.name)
+                            if profile.key == profileManager.selectedProfileKey {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button("Refresh Profiles") {
+                    Task {
+                        if let transport {
+                            await profileManager.loadProfiles(transport: transport)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+        }
 
         Toggle("Launch at Login", isOn: $launchAtLogin)
             .onChange(of: launchAtLogin) { _, newValue in
@@ -48,5 +80,16 @@ struct MenuBarMenu: View {
             // Revert the toggle on failure
             launchAtLogin = !enabled
         }
+    }
+}
+
+// MARK: - Legacy Initializer
+
+extension MenuBarMenu {
+    /// Legacy initializer for backwards compatibility.
+    init(viewModel: LauncherViewModel?) {
+        self.viewModel = viewModel
+        profileManager = ProfileManager.shared
+        transport = nil
     }
 }

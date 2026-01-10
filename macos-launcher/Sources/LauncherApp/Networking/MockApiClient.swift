@@ -2,6 +2,14 @@ import Foundation
 
 /// Mock API client for SwiftUI previews and tests.
 final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
+    /// The profile this mock client is bound to (nil for legacy mode).
+    let profile: String?
+
+    /// Initialize with an optional profile for profile-aware testing.
+    init(profile: String? = nil) {
+        self.profile = profile
+    }
+
     var parseResult: Result<ParseResponse, Error> = .success(ParseResponse(
         action: "list",
         properties: nil,
@@ -139,6 +147,24 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
 
     func fetchProjectBurndown(project: String, days: Int) async throws -> ProjectBurndownResponse {
         try projectBurndownResult.get()
+    }
+
+    // MARK: - Profile Management
+
+    var listProfilesResult: Result<ProfilesListResponse, Error> = .success(MockApiClient.sampleProfilesList)
+    var createProfileResult: Result<ProfileCreateResponse, Error> = .success(MockApiClient.sampleProfileCreate)
+    var deleteProfileResult: Result<Void, Error> = .success(())
+
+    func listProfiles() async throws -> ProfilesListResponse {
+        try listProfilesResult.get()
+    }
+
+    func createProfile(key: String, name: String?, description: String?) async throws -> ProfileCreateResponse {
+        try createProfileResult.get()
+    }
+
+    func deleteProfile(key: String) async throws {
+        _ = try deleteProfileResult.get()
     }
 
     // MARK: - Sample Data
@@ -405,5 +431,32 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         ],
         totalTasks: 20,
         totalCompleted: 12
+    )
+
+    static let sampleProfilesList = ProfilesListResponse(profiles: [
+        ProfileDto(
+            key: "personal",
+            name: "Personal",
+            description: "Personal tasks and projects",
+            dataDir: "~/.local/share/bee/personal",
+            configDir: "~/.config/bee/personal"
+        ),
+        ProfileDto(
+            key: "work",
+            name: "Work",
+            description: "Work-related tasks",
+            dataDir: "~/.local/share/bee/work",
+            configDir: "~/.config/bee/work"
+        ),
+    ])
+
+    static let sampleProfileCreate = ProfileCreateResponse(
+        profile: ProfileDto(
+            key: "new-profile",
+            name: "New Profile",
+            description: "A newly created profile",
+            dataDir: "~/.local/share/bee/new-profile",
+            configDir: "~/.config/bee/new-profile"
+        )
     )
 }

@@ -43,6 +43,7 @@ mod action_import;
 mod action_info;
 mod action_list;
 mod action_modify;
+mod action_profile;
 mod action_start;
 mod action_stop;
 mod action_undo;

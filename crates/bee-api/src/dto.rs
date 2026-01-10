@@ -633,6 +633,41 @@ pub struct ProjectBurndownResponse {
     pub total_completed: i64,
 }
 
+// ==================== Profile DTOs ====================
+
+/// Profile information.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProfileDto {
+    /// Profile key (lowercase identifier).
+    pub key: String,
+    /// Display name for the profile.
+    pub name: String,
+    /// Optional description.
+    pub description: String,
+    /// Path to the data directory.
+    pub data_dir: String,
+    /// Path to the config directory.
+    pub config_dir: String,
+}
+
+/// Response payload for GET /v1/profiles.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProfilesListResponse {
+    /// List of configured profiles.
+    pub profiles: Vec<ProfileDto>,
+}
+
+/// Request payload for POST /v1/profiles.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProfileCreateRequest {
+    /// Profile key (lowercase, alphanumeric with hyphens).
+    pub key: String,
+    /// Optional display name. Defaults to key if not provided.
+    pub name: Option<String>,
+    /// Optional description.
+    pub description: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::ApiTask;

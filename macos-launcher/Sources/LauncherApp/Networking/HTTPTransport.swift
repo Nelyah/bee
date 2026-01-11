@@ -26,10 +26,14 @@ public final class HTTPTransport: ApiTransport, @unchecked Sendable {
         headers: [String: String]
     ) async throws -> (data: Data, statusCode: Int) {
         // Build URL with query items
-        guard var urlComponents = URLComponents(
-            url: baseURL.appendingPathComponent(path),
-            resolvingAgainstBaseURL: false
-        ) else {
+        // Note: We use string concatenation instead of appendingPathComponent
+        // because appendingPathComponent can add trailing slashes (it's designed
+        // for file paths, not HTTP paths).
+        let baseString = baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let pathString = path.hasPrefix("/") ? path : "/\(path)"
+        guard let fullURL = URL(string: baseString + pathString),
+              var urlComponents = URLComponents(url: fullURL, resolvingAgainstBaseURL: false)
+        else {
             throw TransportError.invalidResponse
         }
 

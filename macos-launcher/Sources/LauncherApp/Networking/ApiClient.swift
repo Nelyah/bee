@@ -294,7 +294,7 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     ) async throws -> UpdateProjectResponse {
         let encodedProject = project.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? project
         let request = UpdateProjectRequest(emoji: emoji, color: color)
-        return try await patch(request, path: "/v1/projects/\(encodedProject)")
+        return try await patch(request, path: profilePath("/v1/projects/\(encodedProject)"))
     }
 
     // MARK: - Private Transport Helpers

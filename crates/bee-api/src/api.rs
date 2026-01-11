@@ -203,6 +203,10 @@ pub fn router(state: AppState) -> Router {
             get(profile_projects_handler),
         )
         .route(
+            "/v1/profiles/:profile_key/projects/:name",
+            patch(profile_update_project_handler),
+        )
+        .route(
             "/v1/profiles/:profile_key/projects/:name/burndown",
             get(profile_project_burndown_handler),
         )
@@ -503,6 +507,30 @@ async fn update_project_handler(
     Json(payload): Json<UpdateProjectRequest>,
 ) -> ApiResult<Json<UpdateProjectResponse>> {
     let updated = DbStore::update_project_metadata(&name, payload.emoji, payload.color).await?;
+
+    match updated {
+        Some(project) => Ok(Json(UpdateProjectResponse {
+            name: project.get_name().clone(),
+            emoji: project.get_emoji().clone(),
+            color: project.get_color().clone(),
+        })),
+        None => Err(ApiError::not_found(format!("Project '{}' not found", name))),
+    }
+}
+
+/// Update project metadata (emoji and color) for a specific profile.
+async fn profile_update_project_handler(
+    Path((profile_key, name)): Path<(String, String)>,
+    Json(payload): Json<UpdateProjectRequest>,
+) -> ApiResult<Json<UpdateProjectResponse>> {
+    validate_profile(&profile_key)?;
+    let updated = DbStore::update_project_metadata_for_profile(
+        &profile_key,
+        &name,
+        payload.emoji,
+        payload.color,
+    )
+    .await?;
 
     match updated {
         Some(project) => Ok(Json(UpdateProjectResponse {

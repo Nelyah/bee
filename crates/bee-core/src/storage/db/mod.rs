@@ -396,6 +396,17 @@ impl DbStore {
         get_project_task_totals(&db, project_name).await
     }
 
+    /// Update project metadata (emoji and color) for a specific profile.
+    pub async fn update_project_metadata_for_profile(
+        profile: &str,
+        project_name: &str,
+        emoji: Option<Option<String>>,
+        color: Option<Option<String>>,
+    ) -> CoreResult<Option<crate::task::Project>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        task_write::update_project_metadata(&db, project_name, emoji, color).await
+    }
+
     /// List user reports from a specific profile's database.
     pub async fn list_user_reports_for_profile(profile: &str) -> CoreResult<Vec<UserReport>> {
         let db = connection::get_database_for_profile(profile).await?;

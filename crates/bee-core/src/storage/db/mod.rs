@@ -356,6 +356,135 @@ impl DbStore {
         let attachments = attachments_db::list_by_task_uuid(&db, task_uuid).await?;
         Ok(attachments)
     }
+
+    /// Get all unique projects with task counts for a specific profile.
+    pub async fn get_projects_for_profile(profile: &str) -> CoreResult<Vec<CompletionRow>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        get_projects_with_counts(&db).await
+    }
+
+    /// Get all unique tags with task counts for a specific profile.
+    pub async fn get_tags_for_profile(profile: &str) -> CoreResult<Vec<CompletionRow>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        get_tags_with_counts(&db).await
+    }
+
+    /// Get all projects with status breakdown for a specific profile.
+    pub async fn get_projects_with_stats_for_profile(
+        profile: &str,
+    ) -> CoreResult<Vec<ProjectStatusRow>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        get_projects_with_status_breakdown(&db).await
+    }
+
+    /// Get burndown data for a project in a specific profile.
+    pub async fn get_burndown_for_profile(
+        profile: &str,
+        project_name: &str,
+        days: u32,
+    ) -> CoreResult<Vec<BurndownRow>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        get_project_burndown(&db, project_name, days).await
+    }
+
+    /// Get total task counts for a project in a specific profile.
+    pub async fn get_project_totals_for_profile(
+        profile: &str,
+        project_name: &str,
+    ) -> CoreResult<(i64, i64)> {
+        let db = connection::get_database_for_profile(profile).await?;
+        get_project_task_totals(&db, project_name).await
+    }
+
+    /// List user reports from a specific profile's database.
+    pub async fn list_user_reports_for_profile(profile: &str) -> CoreResult<Vec<UserReport>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let reports = user_reports_db::list_all(&db).await?;
+        Ok(reports)
+    }
+
+    /// Get a user report by name from a specific profile's database.
+    pub async fn get_user_report_by_name_for_profile(
+        profile: &str,
+        name: &str,
+    ) -> CoreResult<Option<UserReport>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let report = user_reports_db::get_by_name(&db, name).await?;
+        Ok(report)
+    }
+
+    /// Insert a user report into a specific profile's database.
+    pub async fn insert_user_report_for_profile(
+        profile: &str,
+        name: String,
+        params: UserReportParams,
+    ) -> CoreResult<UserReport> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let report = user_reports_db::insert(&db, name, params).await?;
+        Ok(report)
+    }
+
+    /// Update a user report in a specific profile's database.
+    pub async fn update_user_report_for_profile(
+        profile: &str,
+        name: &str,
+        params: UserReportParams,
+    ) -> CoreResult<UserReport> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let report = user_reports_db::update(&db, name, params).await?;
+        Ok(report)
+    }
+
+    /// Delete a user report from a specific profile's database.
+    pub async fn delete_user_report_for_profile(profile: &str, name: &str) -> CoreResult<()> {
+        let db = connection::get_database_for_profile(profile).await?;
+        user_reports_db::delete_by_name(&db, name).await?;
+        Ok(())
+    }
+
+    /// Get attachment by ID from a specific profile's database.
+    pub async fn get_attachment_by_id_for_profile(
+        profile: &str,
+        attachment_id: i32,
+    ) -> CoreResult<Option<Attachment>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let attachment = attachments_db::get_by_id(&db, attachment_id).await?;
+        Ok(attachment)
+    }
+
+    /// Get attachment data from a specific profile's database.
+    pub async fn get_attachment_data_for_profile(
+        profile: &str,
+        attachment_id: i32,
+    ) -> CoreResult<Option<Vec<u8>>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let data = attachments_db::get_data_by_id(&db, attachment_id).await?;
+        Ok(data)
+    }
+
+    /// Insert an attachment into a specific profile's database.
+    pub async fn insert_attachment_for_profile(
+        profile: &str,
+        task_uuid: uuid::Uuid,
+        filename: String,
+        mime_type: String,
+        data: Vec<u8>,
+    ) -> CoreResult<Attachment> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let attachment =
+            attachments_db::insert_attachment(&db, task_uuid, filename, mime_type, data).await?;
+        Ok(attachment)
+    }
+
+    /// Delete an attachment from a specific profile's database.
+    pub async fn delete_attachment_by_id_for_profile(
+        profile: &str,
+        attachment_id: i32,
+    ) -> CoreResult<()> {
+        let db = connection::get_database_for_profile(profile).await?;
+        attachments_db::delete_by_id(&db, attachment_id).await?;
+        Ok(())
+    }
 }
 
 impl AsyncStore for DbStore {

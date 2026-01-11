@@ -8,8 +8,9 @@ use crate::{
         ExternalLinkResolveResponse, ExternalLinkSyncRequest, ExternalLinkSyncResponse,
         GitlabMergeRequestDto, JiraIssueDto, ParseRequest, ParseResponse, ProfileCreateRequest,
         ProfileDto, ProfilesListResponse, ProjectBurndownResponse, ProjectNodeDto, ProjectStatsDto,
-        ProjectsResponse, ReportConfigDto, ReportSummary,UpdateProjectRequest,UpdateProjectResponse,  TaskAnnotationDto, TaskHistoryDto,
-        TokenSpan, UserReportDto, UserReportRequest, UserReportsListResponse,
+        ProjectsResponse, ReportConfigDto, ReportSummary, TaskAnnotationDto, TaskHistoryDto,
+        TokenSpan, UpdateProjectRequest, UpdateProjectResponse, UserReportDto, UserReportRequest,
+        UserReportsListResponse,
     },
     error_type::{ApiError, ApiErrorResponse, ApiResult},
     parse::{parse_input, tokenize_with_spans},
@@ -181,6 +182,42 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/profiles/:profile_key/tasks/:task_uuid",
             get(profile_task_detail_handler),
+        )
+        // Profile-scoped completions
+        .route(
+            "/v1/profiles/:profile_key/completions",
+            get(profile_completions_handler),
+        )
+        // Profile-scoped reports
+        .route(
+            "/v1/profiles/:profile_key/reports",
+            get(profile_list_user_reports_handler).post(profile_create_user_report_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/reports/:name",
+            put(profile_update_user_report_handler).delete(profile_delete_user_report_handler),
+        )
+        // Profile-scoped projects
+        .route(
+            "/v1/profiles/:profile_key/projects",
+            get(profile_projects_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/projects/:name/burndown",
+            get(profile_project_burndown_handler),
+        )
+        // Profile-scoped attachments
+        .route(
+            "/v1/profiles/:profile_key/tasks/:task_uuid/attachments",
+            post(profile_upload_attachment_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/attachments/:attachment_id",
+            delete(profile_delete_attachment_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/attachments/:attachment_id/download",
+            get(profile_download_attachment_handler),
         )
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
         .layer(
@@ -1590,6 +1627,433 @@ async fn profile_action_handler(
         tasks,
         events: printer.take_events(),
     }))
+}
+
+// =============================================================================
+// Profile-scoped completions handler
+// =============================================================================
+
+/// Get completions for a specific profile.
+async fn profile_completions_handler(
+    Path(profile_key): Path<String>,
+    Query(query): Query<CompletionsQuery>,
+) -> ApiResult<Json<CompletionsResponse>> {
+    validate_profile(&profile_key)?;
+
+    let items = match query.completion_type.as_str() {
+        "projects" => {
+            let rows = DbStore::get_projects_for_profile(&profile_key).await?;
+            rows.into_iter()
+                .map(|r| CompletionItem {
+                    value: r.value,
+                    count: Some(r.count),
+                })
+                .collect()
+        }
+        "tags" => {
+            let rows = DbStore::get_tags_for_profile(&profile_key).await?;
+            rows.into_iter()
+                .map(|r| CompletionItem {
+                    value: r.value,
+                    count: Some(r.count),
+                })
+                .collect()
+        }
+        "actions" => {
+            // Actions are static, no profile needed
+            let commands = ActionRegistry::get_parsed_commands();
+            commands
+                .into_iter()
+                .map(|cmd| CompletionItem {
+                    value: cmd.command,
+                    count: None,
+                })
+                .collect()
+        }
+        "status" => vec![
+            CompletionItem {
+                value: "pending".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "active".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "done".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "deleted".to_string(),
+                count: None,
+            },
+        ],
+        "dates" => vec![
+            CompletionItem {
+                value: "today".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "tomorrow".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "yesterday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "monday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "tuesday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "wednesday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "thursday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "friday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "saturday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "sunday".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "eow".to_string(),
+                count: None,
+            },
+            CompletionItem {
+                value: "eom".to_string(),
+                count: None,
+            },
+        ],
+        other => {
+            return Err(ApiError::bad_request(format!(
+                "Invalid completion type '{}'. Valid types: projects, tags, actions, status, dates",
+                other
+            )));
+        }
+    };
+
+    Ok(Json(CompletionsResponse { items }))
+}
+
+// =============================================================================
+// Profile-scoped reports handlers
+// =============================================================================
+
+/// List user reports for a specific profile.
+async fn profile_list_user_reports_handler(
+    Path(profile_key): Path<String>,
+) -> ApiResult<Json<UserReportsListResponse>> {
+    validate_profile(&profile_key)?;
+
+    let reports = DbStore::list_user_reports_for_profile(&profile_key).await?;
+    let dtos: Vec<UserReportDto> = reports
+        .into_iter()
+        .map(UserReportDto::from_user_report)
+        .collect();
+
+    Ok(Json(UserReportsListResponse { reports: dtos }))
+}
+
+/// Create a user report for a specific profile.
+async fn profile_create_user_report_handler(
+    Path(profile_key): Path<String>,
+    Json(payload): Json<UserReportRequest>,
+) -> ApiResult<(StatusCode, Json<UserReportDto>)> {
+    validate_profile(&profile_key)?;
+
+    // Validate name
+    validate_report_name(&payload.name)?;
+
+    // Check collision with static reports
+    let core_config = bee_core::config::get_config();
+    if core_config.get_report(&payload.name).is_some() {
+        return Err(ApiError::conflict(format!(
+            "Report name '{}' conflicts with a built-in report",
+            payload.name
+        )));
+    }
+
+    // Check if user report already exists in this profile
+    if DbStore::get_user_report_by_name_for_profile(&profile_key, &payload.name)
+        .await?
+        .is_some()
+    {
+        return Err(ApiError::conflict(format!(
+            "User report '{}' already exists. Use PUT to update.",
+            payload.name
+        )));
+    }
+
+    let params = UserReportParams {
+        filter: payload.filter,
+        columns: payload.columns,
+        column_names: payload.column_names,
+        column_widths: payload.column_widths,
+        sort_column: payload.sort_column,
+        sort_direction: payload.sort_direction,
+    };
+    let report =
+        DbStore::insert_user_report_for_profile(&profile_key, payload.name, params).await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(UserReportDto::from_user_report(report)),
+    ))
+}
+
+/// Update a user report for a specific profile.
+async fn profile_update_user_report_handler(
+    Path((profile_key, name)): Path<(String, String)>,
+    Json(payload): Json<UserReportRequest>,
+) -> ApiResult<Json<UserReportDto>> {
+    validate_profile(&profile_key)?;
+
+    // Ensure the report exists in this profile
+    if DbStore::get_user_report_by_name_for_profile(&profile_key, &name)
+        .await?
+        .is_none()
+    {
+        return Err(ApiError::not_found(format!(
+            "User report '{}' not found",
+            name
+        )));
+    }
+
+    let params = UserReportParams {
+        filter: payload.filter,
+        columns: payload.columns,
+        column_names: payload.column_names,
+        column_widths: payload.column_widths,
+        sort_column: payload.sort_column,
+        sort_direction: payload.sort_direction,
+    };
+    let report = DbStore::update_user_report_for_profile(&profile_key, &name, params).await?;
+
+    Ok(Json(UserReportDto::from_user_report(report)))
+}
+
+/// Delete a user report for a specific profile.
+async fn profile_delete_user_report_handler(
+    Path((profile_key, name)): Path<(String, String)>,
+) -> ApiResult<StatusCode> {
+    validate_profile(&profile_key)?;
+
+    // Ensure the report exists in this profile
+    if DbStore::get_user_report_by_name_for_profile(&profile_key, &name)
+        .await?
+        .is_none()
+    {
+        return Err(ApiError::not_found(format!(
+            "User report '{}' not found",
+            name
+        )));
+    }
+
+    DbStore::delete_user_report_for_profile(&profile_key, &name).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// =============================================================================
+// Profile-scoped projects handlers
+// =============================================================================
+
+/// Get project hierarchy for a specific profile.
+async fn profile_projects_handler(
+    Path(profile_key): Path<String>,
+) -> ApiResult<Json<ProjectsResponse>> {
+    validate_profile(&profile_key)?;
+
+    let stats = DbStore::get_projects_with_stats_for_profile(&profile_key).await?;
+
+    // Build hierarchical tree from flat list
+    let projects = build_project_hierarchy(stats);
+
+    Ok(Json(ProjectsResponse { projects }))
+}
+
+#[derive(Deserialize)]
+struct ProfileProjectBurndownParams {
+    profile_key: String,
+    name: String,
+}
+
+/// Get project burndown data for a specific profile.
+async fn profile_project_burndown_handler(
+    Path(params): Path<ProfileProjectBurndownParams>,
+    Query(query): Query<BurndownQuery>,
+) -> ApiResult<Json<ProjectBurndownResponse>> {
+    validate_profile(&params.profile_key)?;
+
+    let project_name = urlencoding::decode(&params.name)
+        .map_err(|_| ApiError::bad_request("Invalid project name encoding"))?
+        .to_string();
+
+    let (total_tasks, total_completed) =
+        DbStore::get_project_totals_for_profile(&params.profile_key, &project_name).await?;
+
+    if total_tasks == 0 {
+        return Err(ApiError::not_found(format!(
+            "Project '{}' not found or has no tasks",
+            project_name
+        )));
+    }
+
+    let burndown_rows =
+        DbStore::get_burndown_for_profile(&params.profile_key, &project_name, query.days).await?;
+
+    // Convert to cumulative data points
+    let mut data_points = Vec::new();
+    let mut cumulative = 0i64;
+
+    for row in burndown_rows {
+        cumulative += row.completed_on_day;
+        data_points.push(BurndownDataPoint {
+            date: row.date,
+            completed_cumulative: cumulative,
+            remaining: total_tasks - cumulative,
+        });
+    }
+
+    Ok(Json(ProjectBurndownResponse {
+        project: project_name,
+        data_points,
+        total_tasks,
+        total_completed,
+    }))
+}
+
+// =============================================================================
+// Profile-scoped attachments handlers
+// =============================================================================
+
+#[derive(Deserialize)]
+struct ProfileAttachmentUploadParams {
+    profile_key: String,
+    task_uuid: Uuid,
+}
+
+/// Upload an attachment for a task in a specific profile.
+async fn profile_upload_attachment_handler(
+    Path(params): Path<ProfileAttachmentUploadParams>,
+    mut multipart: Multipart,
+) -> ApiResult<(StatusCode, Json<AttachmentDto>)> {
+    validate_profile(&params.profile_key)?;
+
+    // Verify task exists in profile
+    let Some(_task) =
+        DbStore::get_task_by_uuid_for_profile(&params.profile_key, params.task_uuid).await?
+    else {
+        return Err(ApiError::not_found(format!(
+            "Task {} not found",
+            params.task_uuid
+        )));
+    };
+
+    // Extract file from multipart
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| ApiError::bad_request(format!("Failed to read multipart: {}", e)))?
+        .ok_or_else(|| ApiError::bad_request("No file provided"))?;
+
+    let filename = field
+        .file_name()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "unnamed".to_string());
+
+    let mime_type = field
+        .content_type()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "application/octet-stream".to_string());
+
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| ApiError::bad_request(format!("Failed to read file data: {}", e)))?;
+
+    let attachment = DbStore::insert_attachment_for_profile(
+        &params.profile_key,
+        params.task_uuid,
+        filename,
+        mime_type,
+        data.to_vec(),
+    )
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(AttachmentDto::from_attachment(attachment)),
+    ))
+}
+
+#[derive(Deserialize)]
+struct ProfileAttachmentParams {
+    profile_key: String,
+    attachment_id: i32,
+}
+
+/// Download an attachment from a specific profile.
+async fn profile_download_attachment_handler(
+    Path(params): Path<ProfileAttachmentParams>,
+) -> ApiResult<impl IntoResponse> {
+    validate_profile(&params.profile_key)?;
+
+    let Some(attachment) =
+        DbStore::get_attachment_by_id_for_profile(&params.profile_key, params.attachment_id)
+            .await?
+    else {
+        return Err(ApiError::not_found("Attachment not found"));
+    };
+
+    let Some(data) =
+        DbStore::get_attachment_data_for_profile(&params.profile_key, params.attachment_id).await?
+    else {
+        return Err(ApiError::not_found("Attachment data not found"));
+    };
+
+    let headers = [
+        (header::CONTENT_TYPE, attachment.mime_type),
+        (
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", attachment.filename),
+        ),
+    ];
+
+    Ok((headers, Bytes::from(data)))
+}
+
+/// Delete an attachment from a specific profile.
+async fn profile_delete_attachment_handler(
+    Path(params): Path<ProfileAttachmentParams>,
+) -> ApiResult<StatusCode> {
+    validate_profile(&params.profile_key)?;
+
+    // Verify attachment exists
+    let Some(_attachment) =
+        DbStore::get_attachment_by_id_for_profile(&params.profile_key, params.attachment_id)
+            .await?
+    else {
+        return Err(ApiError::not_found("Attachment not found"));
+    };
+
+    DbStore::delete_attachment_by_id_for_profile(&params.profile_key, params.attachment_id).await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// OpenAPI document for the bee-api service.

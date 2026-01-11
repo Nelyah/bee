@@ -16,6 +16,7 @@ struct BeeApp: App {
     @State private var viewModel: LauncherViewModel?
     @State private var startupError: String?
     @State private var transport: ApiTransport?
+    @State private var didStartBackend = false
 
     /// Window title including the selected profile name.
     private var windowTitle: String {
@@ -40,6 +41,8 @@ struct BeeApp: App {
                         startupError = nil
                         Task { await startBackend() }
                     }
+                } else if transport == nil || profileManager.isLoading {
+                    StartupView()
                 } else if profileManager.profiles.isEmpty, !profileManager.isLoading {
                     // No profiles available yet - show profile setup
                     NoProfilesView(profileManager: profileManager, transport: transport) {
@@ -47,12 +50,14 @@ struct BeeApp: App {
                     }
                 } else {
                     StartupView()
-                        .task { await startBackend() }
                 }
             }
             .onChange(of: profileManager.selectedProfileKey) { _, _ in
                 // Recreate view model when profile changes
                 Task { await createViewModelForProfile() }
+            }
+            .task {
+                await startBackendIfNeeded()
             }
         }
         .windowStyle(.hiddenTitleBar)
@@ -113,6 +118,18 @@ struct BeeApp: App {
                 startupError = error.localizedDescription
             }
         }
+    }
+
+    private func startBackendIfNeeded() async {
+        let shouldStart = await MainActor.run { () -> Bool in
+            if didStartBackend {
+                return false
+            }
+            didStartBackend = true
+            return true
+        }
+        guard shouldStart else { return }
+        await startBackend()
     }
 
     /// Create a view model for the currently selected profile.

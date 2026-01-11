@@ -117,7 +117,7 @@ impl Default for ReportConfig {
     fn default() -> Self {
         ReportConfig {
             default: true,
-            filters: vec!["status:pending or status:active".to_string()],
+            filters: Vec::new(),
             columns: ["id", "date_created", "summary", "tags", "urgency"]
                 .iter()
                 .map(|&s| s.to_string())
@@ -141,7 +141,7 @@ static CONFIG: Lazy<CoreResult<Config>> = Lazy::new(|| match load_config() {
     Err(e) => Err(e),
 });
 
-const DEFAULT_REPORT_NAME: &str = "__default";
+const DEFAULT_REPORT_NAME: &str = "all";
 
 pub fn load_config() -> CoreResult<Config> {
     match find_config_file() {

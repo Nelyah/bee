@@ -89,7 +89,8 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     /// Send input to the parse endpoint and decode the response.
     func parse(input: String) async throws -> ParseResponse {
         let request = ParseRequest(input: input)
-        return try await send(request, path: profilePath("/v1/parse"))
+        // Parse is global (not profile-scoped).
+        return try await send(request, path: "/v1/parse")
     }
 
     /// Return an empty parse response when no parse has completed yet.
@@ -141,24 +142,24 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     }
 
     func fetchExternalLinks(taskUUID: String) async throws -> [ExternalLinkDto] {
-        try await get(path: profilePath("/v1/tasks/\(taskUUID)/external-links"))
+        try await get(path: "/v1/tasks/\(taskUUID)/external-links")
     }
 
     func syncExternalLink(linkId: Int, force: Bool) async throws -> ExternalLinkSyncResponse {
         let query = force ? [URLQueryItem(name: "force", value: "true")] : []
-        return try await post(path: profilePath("/v1/external-links/\(linkId)/sync"), queryItems: query)
+        return try await post(path: "/v1/external-links/\(linkId)/sync", queryItems: query)
     }
 
     func fetchRecentGitlabMergeRequests(limit: Int) async throws -> [GitlabMergeRequestSuggestion] {
         try await get(
-            path: profilePath("/v1/external-links/gitlab/merge-requests/recent"),
+            path: "/v1/external-links/gitlab/merge-requests/recent",
             queryItems: [URLQueryItem(name: "limit", value: String(limit))]
         )
     }
 
     func fetchRecentJiraIssues(limit: Int, scope: JiraIssueScope) async throws -> [JiraIssueSuggestion] {
         try await get(
-            path: profilePath("/v1/external-links/jira/issues/recent"),
+            path: "/v1/external-links/jira/issues/recent",
             queryItems: [
                 URLQueryItem(name: "limit", value: String(limit)),
                 URLQueryItem(name: "scope", value: scope.rawValue),
@@ -171,12 +172,12 @@ public final class ApiClient: ApiClientProtocol, Sendable {
         input: String
     ) async throws -> ExternalLinkResolveResponse {
         let request = ExternalLinkResolveRequest(provider: provider.rawValue, input: input)
-        return try await send(request, path: profilePath("/v1/external-links/resolve"))
+        return try await send(request, path: "/v1/external-links/resolve")
     }
 
     func addExternalLink(taskUUID: String, url: String) async throws -> ExternalLinkDto {
         let request = ExternalLinkCreateRequest(url: url)
-        return try await send(request, path: profilePath("/v1/tasks/\(taskUUID)/external-links"))
+        return try await send(request, path: "/v1/tasks/\(taskUUID)/external-links")
     }
 
     // MARK: - User Reports
@@ -269,7 +270,8 @@ public final class ApiClient: ApiClientProtocol, Sendable {
     public func createProfile(key: String, name: String?, description: String?) async throws -> ProfileCreateResponse {
         let request = ProfileCreateRequest(key: key, name: name, description: description)
         // Profile creation is always at the global path
-        return try await send(request, path: "/v1/profiles")
+        let profile: ProfileDto = try await send(request, path: "/v1/profiles")
+        return ProfileCreateResponse(profile: profile)
     }
 
     /// Delete a profile.

@@ -1613,8 +1613,7 @@ async fn profile_action_handler(
     let properties: Option<TaskProperties> = deserialize_properties(request.properties)?;
 
     // Use profile-specific database operations
-    let mut tasks =
-        DbStore::load_tasks_for_profile(&profile_key, filter, properties.clone()).await?;
+    let tasks = DbStore::load_tasks_for_profile(&profile_key, filter, properties.clone()).await?;
     let undos = DbStore::load_undos_for_profile(&profile_key, state.undo_count).await?;
 
     let cp = ParsedCommand {
@@ -1642,13 +1641,9 @@ async fn profile_action_handler(
     DbStore::write_tasks_for_profile(&profile_key, new_tasks, new_undos).await?;
     DbStore::log_undo_for_profile(&profile_key, state.undo_count, new_undos.to_owned()).await?;
 
-    // Reload tasks from profile database to return updated state
-    tasks = DbStore::load_tasks_for_profile(&profile_key, None, None).await?;
-    let tasks: Vec<ApiTask> = tasks
-        .to_vec()
-        .iter()
-        .map(|t| ApiTask::from_task(t))
-        .collect();
+    // Return the filtered tasks from the action (not all tasks from the database)
+    let tasks = action.get_tasks().to_vec();
+    let tasks: Vec<ApiTask> = tasks.into_iter().map(ApiTask::from_task).collect();
 
     Ok(Json(ActionResponse {
         action: request.action,

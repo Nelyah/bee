@@ -278,6 +278,8 @@ pub struct TaskHistory {
     /// ID to serve as primary key in the DB
     pub(crate) id: Option<i32>,
     pub(crate) value: String,
+    /// Accepts both "datetime" (current) and "time" (pre-database migration exports)
+    #[serde(alias = "time")]
     pub(crate) datetime: DateTime<chrono::Local>,
 }
 

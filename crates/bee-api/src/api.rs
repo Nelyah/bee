@@ -1516,7 +1516,7 @@ async fn profile_config_handler(
     let default_report_name = &core_config.default_report;
 
     // Build static reports from config
-    let reports: Vec<ReportSummary> = core_config
+    let mut reports: Vec<ReportSummary> = core_config
         .get_all_reports()
         .map(|(name, report)| ReportSummary {
             name: name.to_string(),
@@ -1532,9 +1532,23 @@ async fn profile_config_handler(
         })
         .collect();
 
-    // TODO: Load user reports from profile-specific database
-    // For now, we use the global DbStore which doesn't support profiles yet
-    // This will be updated when DbStore is made profile-aware
+    // Load user reports from profile-specific database and merge
+    if let Ok(user_reports) = DbStore::list_user_reports_for_profile(&profile_key).await {
+        for report in user_reports {
+            reports.push(ReportSummary {
+                name: report.name,
+                filters: vec![], // User reports use `filter` field instead
+                filter: report.filter,
+                columns: report.columns,
+                column_names: report.column_names,
+                column_widths: report.column_widths,
+                sort_column: report.sort_column,
+                sort_direction: report.sort_direction,
+                is_default: false,
+                is_user_report: true,
+            });
+        }
+    }
 
     Ok(Json(ConfigResponse {
         report: ReportConfigDto {

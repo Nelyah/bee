@@ -194,6 +194,113 @@ pub async fn sync_links_batch(
     })
 }
 
+/// Sync a single external link for a specific profile.
+pub async fn sync_single_link_for_profile(
+    client: &Client,
+    config: &ExternalLinksConfig,
+    sync: &SyncConfig,
+    link: ExternalLink,
+    force: bool,
+    profile: &str,
+) -> ApiResult<ExternalLinkSyncResponse> {
+    let provider = ProviderKind::from_str(&link.provider)
+        .ok_or_else(|| ApiError::external_link(format!("Unknown provider {}", link.provider)))?;
+
+    if !force && !is_due(&link, sync.stale_after_hours) {
+        return Ok(ExternalLinkSyncResponse {
+            attempted: 0,
+            succeeded: 0,
+            failed: 0,
+            errors: Vec::new(),
+        });
+    }
+
+    let result = fetch_and_cache_link_for_profile(client, config, &link, provider, profile).await;
+    match result {
+        Ok(()) => Ok(ExternalLinkSyncResponse {
+            attempted: 1,
+            succeeded: 1,
+            failed: 0,
+            errors: Vec::new(),
+        }),
+        Err(err) => Ok(ExternalLinkSyncResponse {
+            attempted: 1,
+            succeeded: 0,
+            failed: 1,
+            errors: vec![err.developer_message()],
+        }),
+    }
+}
+
+/// Sync all external links for a specific profile.
+pub async fn sync_links_batch_for_profile(
+    client: &Client,
+    config: &ExternalLinksConfig,
+    sync: &SyncConfig,
+    provider_filter: Option<&str>,
+    task_uuid: Option<Uuid>,
+    force: bool,
+    profile: &str,
+) -> ApiResult<ExternalLinkSyncResponse> {
+    let links =
+        DbStore::list_external_links_for_profile(profile, provider_filter, task_uuid).await?;
+
+    let mut due_links: Vec<ExternalLink> = links
+        .into_iter()
+        .filter(|link| force || is_due(link, sync.stale_after_hours))
+        .collect();
+
+    due_links.sort_by(|a, b| a.provider.cmp(&b.provider));
+
+    let mut attempted = 0;
+    let mut succeeded = 0;
+    let mut failed = 0;
+    let mut errors = Vec::new();
+
+    let batch_size = sync.batch_size.max(1);
+
+    let mut idx = 0;
+    while idx < due_links.len() {
+        let end = (idx + batch_size).min(due_links.len());
+        let chunk = &due_links[idx..end];
+
+        for link in chunk {
+            let provider = match ProviderKind::from_str(&link.provider) {
+                Some(p) => p,
+                None => {
+                    failed += 1;
+                    errors.push(format!("Unknown provider {}", link.provider));
+                    continue;
+                }
+            };
+
+            attempted += 1;
+            match fetch_and_cache_link_for_profile(client, config, link, provider, profile).await {
+                Ok(()) => succeeded += 1,
+                Err(err) => {
+                    failed += 1;
+                    errors.push(err.developer_message());
+                }
+            }
+
+            if let Some(delay) = provider_delay_ms(config, provider)
+                && delay > 0
+            {
+                sleep(TokioDuration::from_millis(delay)).await;
+            }
+        }
+
+        idx = end;
+    }
+
+    Ok(ExternalLinkSyncResponse {
+        attempted,
+        succeeded,
+        failed,
+        errors,
+    })
+}
+
 pub async fn fetch_recent_gitlab_merge_requests(
     client: &Client,
     config: &ExternalLinksConfig,
@@ -662,6 +769,47 @@ async fn fetch_and_cache_link(
         Ok(json) => DbStore::update_external_link_cache_success(link.id, json, now).await?,
         Err(err) => {
             DbStore::update_external_link_sync_error(link.id, err.to_string()).await?;
+            return Err(err);
+        }
+    }
+
+    Ok(())
+}
+
+/// Fetch and cache an external link for a specific profile.
+async fn fetch_and_cache_link_for_profile(
+    client: &Client,
+    config: &ExternalLinksConfig,
+    link: &ExternalLink,
+    provider: ProviderKind,
+    profile: &str,
+) -> ApiResult<()> {
+    let now = Utc::now();
+    let result = match provider {
+        ProviderKind::Jira => {
+            let cfg = config
+                .jira
+                .as_ref()
+                .ok_or_else(|| ApiError::config("Jira is not configured"))?;
+            fetch_jira_issue(client, cfg, &link.external_key).await
+        }
+        ProviderKind::Gitlab => {
+            let cfg = config
+                .gitlab
+                .as_ref()
+                .ok_or_else(|| ApiError::config("GitLab is not configured"))?;
+            fetch_gitlab_item(client, cfg, &link.external_key).await
+        }
+    };
+
+    match result {
+        Ok(json) => {
+            DbStore::update_external_link_cache_success_for_profile(profile, link.id, json, now)
+                .await?
+        }
+        Err(err) => {
+            DbStore::update_external_link_sync_error_for_profile(profile, link.id, err.to_string())
+                .await?;
             return Err(err);
         }
     }

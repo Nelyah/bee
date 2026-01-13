@@ -168,6 +168,87 @@ impl DbStore {
         Ok(())
     }
 
+    // Profile-scoped external links methods
+
+    /// List external links by task UUID for a specific profile.
+    pub async fn list_external_links_by_task_for_profile(
+        profile: &str,
+        task_uuid: uuid::Uuid,
+    ) -> CoreResult<Vec<ExternalLink>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let links = external_links_db::list_by_task_uuid(&db, task_uuid).await?;
+        Ok(links)
+    }
+
+    /// List external links with optional filters for a specific profile.
+    pub async fn list_external_links_for_profile(
+        profile: &str,
+        provider: Option<&str>,
+        task_uuid: Option<uuid::Uuid>,
+    ) -> CoreResult<Vec<ExternalLink>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let links = external_links_db::list_all(&db, provider, task_uuid).await?;
+        Ok(links)
+    }
+
+    /// Insert an external link for a specific profile.
+    pub async fn insert_external_link_for_profile(
+        profile: &str,
+        task_uuid: uuid::Uuid,
+        provider: String,
+        url: String,
+        external_key: String,
+    ) -> CoreResult<ExternalLink> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let link =
+            external_links_db::insert_link(&db, task_uuid, provider, url, external_key).await?;
+        Ok(link)
+    }
+
+    /// Get an external link by ID for a specific profile.
+    pub async fn get_external_link_by_id_for_profile(
+        profile: &str,
+        link_id: i32,
+    ) -> CoreResult<Option<ExternalLink>> {
+        let db = connection::get_database_for_profile(profile).await?;
+        let link = external_links_db::get_by_id(&db, link_id).await?;
+        Ok(link)
+    }
+
+    /// Delete an external link by ID for a specific profile.
+    pub async fn delete_external_link_by_id_for_profile(
+        profile: &str,
+        link_id: i32,
+    ) -> CoreResult<()> {
+        let db = connection::get_database_for_profile(profile).await?;
+        external_links_db::delete_by_id(&db, link_id).await?;
+        Ok(())
+    }
+
+    /// Update external link cache on successful sync for a specific profile.
+    pub async fn update_external_link_cache_success_for_profile(
+        profile: &str,
+        link_id: i32,
+        cached_response: String,
+        last_synced_at: chrono::DateTime<chrono::Utc>,
+    ) -> CoreResult<()> {
+        let db = connection::get_database_for_profile(profile).await?;
+        external_links_db::update_cache_success(&db, link_id, cached_response, last_synced_at)
+            .await?;
+        Ok(())
+    }
+
+    /// Update external link sync error for a specific profile.
+    pub async fn update_external_link_sync_error_for_profile(
+        profile: &str,
+        link_id: i32,
+        sync_error: String,
+    ) -> CoreResult<()> {
+        let db = connection::get_database_for_profile(profile).await?;
+        external_links_db::update_sync_error(&db, link_id, sync_error).await?;
+        Ok(())
+    }
+
     // User Reports CRUD methods
 
     /// List all user-created reports.

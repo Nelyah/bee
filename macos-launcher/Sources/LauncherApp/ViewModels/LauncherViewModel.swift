@@ -586,8 +586,12 @@ public final class LauncherViewModel: ObservableObject {
 
             logger.info("Submit -> run action. id=\(requestId)")
 
+            // Don't reset input for list commands - keep the filter visible
+            let actionName = snapshot?.action ?? ""
+            let isListAction = shouldAutoList(actionName: actionName)
+
             Task {
-                await runAction(from: snapshot, requestId: requestId, resetInput: true, updateStatus: true)
+                await runAction(from: snapshot, requestId: requestId, resetInput: !isListAction, updateStatus: true)
             }
         }
     }

@@ -122,11 +122,11 @@ final class ApiClientTests: XCTestCase {
         await fulfillment(of: [expectation], timeout: 1.0)
     }
 
-    func testFetchExternalLinksUsesGlobalEndpointWithProfileClient() async throws {
+    func testFetchExternalLinksUsesProfileEndpointWithProfileClient() async throws {
         let expectation = expectation(description: "request handled")
         TestURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
-            XCTAssertEqual(request.url?.path, "/v1/tasks/test-task/external-links")
+            XCTAssertEqual(request.url?.path, "/v1/profiles/test-profile/tasks/test-task/external-links")
             expectation.fulfill()
 
             guard let url = request.url,

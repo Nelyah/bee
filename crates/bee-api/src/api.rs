@@ -223,6 +223,35 @@ pub fn router(state: AppState) -> Router {
             "/v1/profiles/:profile_key/attachments/:attachment_id/download",
             get(profile_download_attachment_handler),
         )
+        // Profile-scoped external links
+        .route(
+            "/v1/profiles/:profile_key/tasks/:task_uuid/external-links",
+            get(profile_list_external_links_handler).post(profile_create_external_link_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/external-links/:link_id",
+            delete(profile_delete_external_link_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/external-links/:link_id/sync",
+            post(profile_sync_external_link_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/external-links/sync",
+            post(profile_sync_external_links_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/external-links/gitlab/merge-requests/recent",
+            get(profile_recent_gitlab_merge_requests_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/external-links/jira/issues/recent",
+            get(profile_recent_jira_issues_handler),
+        )
+        .route(
+            "/v1/profiles/:profile_key/external-links/resolve",
+            post(profile_resolve_external_link_handler),
+        )
         .merge(SwaggerUi::new("/v1/docs").url("/v1/openapi.json", openapi))
         .layer(
             TraceLayer::new_for_http()
@@ -2091,6 +2120,204 @@ async fn profile_delete_attachment_handler(
     DbStore::delete_attachment_by_id_for_profile(&params.profile_key, params.attachment_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+// Profile-scoped external links handlers
+
+#[derive(Deserialize)]
+struct ProfileExternalLinkTaskParams {
+    profile_key: String,
+    task_uuid: Uuid,
+}
+
+#[derive(Deserialize)]
+struct ProfileExternalLinkParams {
+    profile_key: String,
+    link_id: i32,
+}
+
+#[derive(Deserialize)]
+struct ProfileExternalLinkBaseParams {
+    profile_key: String,
+}
+
+/// List external links for a task in a specific profile.
+async fn profile_list_external_links_handler(
+    Path(params): Path<ProfileExternalLinkTaskParams>,
+) -> ApiResult<Json<Vec<ExternalLinkDto>>> {
+    validate_profile(&params.profile_key)?;
+
+    let links =
+        DbStore::list_external_links_by_task_for_profile(&params.profile_key, params.task_uuid)
+            .await?;
+
+    Ok(Json(
+        links.into_iter().map(ExternalLinkDto::from_link).collect(),
+    ))
+}
+
+/// Create an external link for a task in a specific profile.
+async fn profile_create_external_link_handler(
+    State(state): State<AppState>,
+    Path(params): Path<ProfileExternalLinkTaskParams>,
+    Json(payload): Json<ExternalLinkCreateRequest>,
+) -> ApiResult<Json<ExternalLinkDto>> {
+    validate_profile(&params.profile_key)?;
+
+    let parsed = external_links::parse_external_link(&payload.url, &state.external_links)?;
+
+    let existing =
+        DbStore::list_external_links_by_task_for_profile(&params.profile_key, params.task_uuid)
+            .await?;
+    let provider = parsed.provider.to_string();
+    if existing
+        .iter()
+        .any(|link| link.provider == provider && link.external_key == parsed.external_key)
+    {
+        let message = if parsed.provider == external_links::ProviderKind::Gitlab {
+            "Merge Request is already linked to this task"
+        } else {
+            "Link is already linked to this task"
+        };
+        return Err(ApiError::bad_request(message));
+    }
+
+    let link = DbStore::insert_external_link_for_profile(
+        &params.profile_key,
+        params.task_uuid,
+        provider,
+        payload.url,
+        parsed.external_key,
+    )
+    .await?;
+
+    Ok(Json(ExternalLinkDto::from_link(link)))
+}
+
+/// Delete an external link from a specific profile.
+async fn profile_delete_external_link_handler(
+    Path(params): Path<ProfileExternalLinkParams>,
+) -> ApiResult<StatusCode> {
+    validate_profile(&params.profile_key)?;
+
+    DbStore::delete_external_link_by_id_for_profile(&params.profile_key, params.link_id).await?;
+    Ok(StatusCode::OK)
+}
+
+/// Sync a single external link in a specific profile.
+async fn profile_sync_external_link_handler(
+    State(state): State<AppState>,
+    Path(params): Path<ProfileExternalLinkParams>,
+    Query(query): Query<external_links::SyncQuery>,
+) -> ApiResult<Json<ExternalLinkSyncResponse>> {
+    validate_profile(&params.profile_key)?;
+
+    let Some(link) =
+        DbStore::get_external_link_by_id_for_profile(&params.profile_key, params.link_id).await?
+    else {
+        return Err(ApiError::not_found("External link not found"));
+    };
+
+    let result = external_links::sync_single_link_for_profile(
+        &state.http_client,
+        &state.external_links,
+        &state.external_links_sync,
+        link,
+        query.force.unwrap_or(false),
+        &params.profile_key,
+    )
+    .await?;
+
+    Ok(Json(result))
+}
+
+/// Sync all external links in a specific profile.
+async fn profile_sync_external_links_handler(
+    State(state): State<AppState>,
+    Path(params): Path<ProfileExternalLinkBaseParams>,
+    Json(payload): Json<ExternalLinkSyncRequest>,
+) -> ApiResult<Json<ExternalLinkSyncResponse>> {
+    validate_profile(&params.profile_key)?;
+
+    let result = external_links::sync_links_batch_for_profile(
+        &state.http_client,
+        &state.external_links,
+        &state.external_links_sync,
+        payload.provider.as_deref(),
+        payload.task_uuid,
+        payload.force.unwrap_or(false),
+        &params.profile_key,
+    )
+    .await?;
+
+    Ok(Json(result))
+}
+
+/// Fetch recent GitLab merge requests (profile-scoped route for consistency).
+async fn profile_recent_gitlab_merge_requests_handler(
+    State(state): State<AppState>,
+    Path(params): Path<ProfileExternalLinkBaseParams>,
+    Query(query): Query<RecentGitlabQuery>,
+) -> ApiResult<Json<Vec<GitlabMergeRequestDto>>> {
+    validate_profile(&params.profile_key)?;
+
+    let limit = query.limit.unwrap_or(20);
+    let items = external_links::fetch_recent_gitlab_merge_requests(
+        &state.http_client,
+        &state.external_links,
+        limit,
+    )
+    .await?;
+    Ok(Json(items))
+}
+
+/// Fetch recent Jira issues (profile-scoped route for consistency).
+async fn profile_recent_jira_issues_handler(
+    State(state): State<AppState>,
+    Path(params): Path<ProfileExternalLinkBaseParams>,
+    Query(query): Query<RecentJiraQuery>,
+) -> ApiResult<Json<Vec<JiraIssueDto>>> {
+    validate_profile(&params.profile_key)?;
+
+    let limit = query.limit.unwrap_or(20);
+    let scope = match query.scope.as_deref() {
+        Some("assigned") => external_links::JiraIssueScope::Assigned,
+        Some("created") => external_links::JiraIssueScope::Created,
+        _ => external_links::JiraIssueScope::Both,
+    };
+    let items = external_links::fetch_recent_jira_issues(
+        &state.http_client,
+        &state.external_links,
+        limit,
+        scope,
+    )
+    .await?;
+    Ok(Json(items))
+}
+
+/// Resolve an external link (profile-scoped route for consistency).
+async fn profile_resolve_external_link_handler(
+    State(state): State<AppState>,
+    Path(params): Path<ProfileExternalLinkBaseParams>,
+    Json(payload): Json<ExternalLinkResolveRequest>,
+) -> ApiResult<Json<ExternalLinkResolveResponse>> {
+    validate_profile(&params.profile_key)?;
+
+    let provider = match payload.provider.as_str() {
+        "jira" => external_links::ProviderKind::Jira,
+        "gitlab" => external_links::ProviderKind::Gitlab,
+        _ => return Err(ApiError::bad_request("Unknown provider")),
+    };
+
+    let resolved = external_links::resolve_external_link(
+        &state.http_client,
+        &state.external_links,
+        provider,
+        &payload.input,
+    )
+    .await?;
+
+    Ok(Json(resolved))
 }
 
 /// OpenAPI document for the bee-api service.

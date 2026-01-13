@@ -586,6 +586,11 @@ where
             .as_ref()
             .map(|value| parse_datetime(value))
             .transpose()?;
+        let date_planned = task_model
+            .date_planned
+            .as_ref()
+            .map(|value| parse_datetime(value))
+            .transpose()?;
         let urgency = task_model.urgency.map(|value| value as i64);
 
         let project = task_model
@@ -620,6 +625,7 @@ where
             links,
             project,
             date_due,
+            date_planned,
             urgency,
             history,
             email_links,

@@ -300,6 +300,7 @@ private final class BlockingApiClient: ApiClientProtocol, @unchecked Sendable {
             dateCreated: "2024-01-01T00:00:00Z",
             dateCompleted: nil,
             dateDue: nil,
+            datePlanned: nil,
             urgency: nil,
             annotations: [],
             history: [],

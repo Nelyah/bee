@@ -124,6 +124,11 @@ public final class LauncherViewModel: ObservableObject {
     /// Whether a due date submission is in progress.
     @Published var isSubmittingDueDate: Bool = false
 
+    // Planned date editing (mirrors due date pattern)
+    @Published var isEditingPlannedDate: Bool = false
+    @Published var plannedDateEditSelection: Date = .init()
+    @Published var isSubmittingPlannedDate: Bool = false
+
     // MARK: - Tag Editing State
 
     /// Index of the currently selected tag for keyboard navigation (nil = no selection).
@@ -169,17 +174,6 @@ public final class LauncherViewModel: ObservableObject {
 
     /// State for the project overview view.
     @Published var projectOverviewState = ProjectOverviewState()
-
-    /// The current grouping option for UI display.
-    var currentGroupByOption: GroupByOption {
-        switch groupingStrategy {
-        case is ProjectGroupingStrategy: .project
-        case is DueDateGroupingStrategy: .dueDate
-        case is TagGroupingStrategy: .tag
-        case is NoGroupingStrategy: .none
-        default: .project
-        }
-    }
 
     /// Currently hovered row index (for collapse toggle).
     /// NOT @Published - hover state is local to rows, this is only for action fallback.

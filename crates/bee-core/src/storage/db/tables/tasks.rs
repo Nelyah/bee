@@ -15,6 +15,7 @@ pub struct Model {
     pub date_created: String,
     pub date_completed: Option<String>,
     pub date_due: Option<String>,
+    pub date_planned: Option<String>,
     #[sea_orm(column_type = "Double", nullable)]
     pub urgency: Option<f64>,
     pub project_id: Option<i32>,

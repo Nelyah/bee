@@ -79,6 +79,8 @@ pub struct ApiTask {
     pub date_completed: Option<DateTime<Local>>,
     #[schema(value_type = String, format = DateTime)]
     pub date_due: Option<DateTime<Local>>,
+    #[schema(value_type = String, format = DateTime)]
+    pub date_planned: Option<DateTime<Local>>,
     pub urgency: Option<i64>,
 }
 
@@ -99,6 +101,7 @@ impl ApiTask {
             date_created: task.get_date_created().to_owned(),
             date_completed: task.get_date_completed().to_owned(),
             date_due: task.get_date_due().to_owned(),
+            date_planned: task.get_date_planned().to_owned(),
             urgency,
         }
     }
@@ -182,6 +185,8 @@ pub struct ApiTaskDetail {
     pub date_completed: Option<DateTime<Local>>,
     #[schema(value_type = String, format = DateTime)]
     pub date_due: Option<DateTime<Local>>,
+    #[schema(value_type = String, format = DateTime)]
+    pub date_planned: Option<DateTime<Local>>,
     pub urgency: Option<i64>,
     pub annotations: Vec<TaskAnnotationDto>,
     pub history: Vec<TaskHistoryDto>,
@@ -208,6 +213,7 @@ impl ApiTaskDetail {
             date_created: task.get_date_created().to_owned(),
             date_completed: task.get_date_completed().to_owned(),
             date_due: task.get_date_due().to_owned(),
+            date_planned: task.get_date_planned().to_owned(),
             urgency,
             annotations: task
                 .get_annotations()
@@ -706,7 +712,7 @@ pub struct UpdateProjectResponse {
 
 #[cfg(test)]
 mod tests {
-    use super::ApiTask;
+    use super::{ApiTask, ApiTaskDetail};
     use bee_core::task::{TaskData, TaskProperties, TaskStatus};
 
     #[test]
@@ -722,5 +728,63 @@ mod tests {
         assert_eq!(api_task.status, TaskStatus::Pending);
         assert_eq!(api_task.project.as_deref(), Some("demo"));
         assert_eq!(api_task.tags, vec!["tag".to_string()]);
+    }
+
+    #[test]
+    fn test_api_task_date_planned_none_by_default() {
+        let mut data = TaskData::default();
+        let props = TaskProperties::from(&["task without planned date".to_string()]).unwrap();
+        let task = data
+            .add_task(&props, TaskStatus::Pending)
+            .expect("task should be created");
+
+        let api_task = ApiTask::from_task(task);
+        assert!(api_task.date_planned.is_none());
+    }
+
+    #[test]
+    fn test_api_task_detail_date_planned_none_by_default() {
+        let mut data = TaskData::default();
+        let props = TaskProperties::from(&["task without planned date".to_string()]).unwrap();
+        let task = data
+            .add_task(&props, TaskStatus::Pending)
+            .expect("task should be created");
+
+        let detail = ApiTaskDetail::from_task_with_attachments(task, vec![]);
+        assert!(detail.date_planned.is_none());
+    }
+
+    #[test]
+    fn test_api_task_date_fields_structure() {
+        // Verify that ApiTask has both date_due and date_planned fields
+        // without requiring mutation of private fields
+        let mut data = TaskData::default();
+        let props = TaskProperties::from(&["test task".to_string()]).unwrap();
+        let task = data
+            .add_task(&props, TaskStatus::Pending)
+            .expect("task should be created");
+
+        let api_task = ApiTask::from_task(task);
+
+        // Both fields should exist (as Option types)
+        // New tasks have no dates by default
+        assert!(api_task.date_due.is_none());
+        assert!(api_task.date_planned.is_none());
+    }
+
+    #[test]
+    fn test_api_task_detail_date_fields_structure() {
+        // Verify that ApiTaskDetail has both date_due and date_planned fields
+        let mut data = TaskData::default();
+        let props = TaskProperties::from(&["test task".to_string()]).unwrap();
+        let task = data
+            .add_task(&props, TaskStatus::Pending)
+            .expect("task should be created");
+
+        let detail = ApiTaskDetail::from_task_with_attachments(task, vec![]);
+
+        // Both fields should exist (as Option types)
+        assert!(detail.date_due.is_none());
+        assert!(detail.date_planned.is_none());
     }
 }

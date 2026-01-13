@@ -20,6 +20,9 @@ enum DetailFocusableItem: Equatable, Identifiable {
     /// Due date field in the Dates section.
     /// Associated value is the current due date ISO8601 string (or nil if not set).
     case dueDate(String?)
+    /// Planned date field in the Dates section.
+    /// Associated value is the current planned date ISO8601 string (or nil if not set).
+    case plannedDate(String?)
     /// A linked task in the Linked Tasks section.
     /// Associated value is the link DTO containing type and target UUID.
     case linkedTask(TaskLinkDto)
@@ -50,6 +53,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             "addTagButton"
         case .dueDate:
             "dueDate"
+        case .plannedDate:
+            "plannedDate"
         case let .linkedTask(link):
             "linkedTask-\(link.id)"
         case let .attachment(attachment):
@@ -82,6 +87,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             nil // Add button uses Enter to start adding, not open URL
         case .dueDate:
             nil // Due date uses Enter to edit, not open URL
+        case .plannedDate:
+            nil // Planned date uses Enter to edit, not open URL
         case .linkedTask:
             nil // Linked task uses Enter to navigate, not open URL
         case .attachment:
@@ -118,6 +125,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "" // Nothing to copy from add button
         case let .dueDate(dateString):
             return dateString ?? ""
+        case let .plannedDate(dateString):
+            return dateString ?? ""
         case let .linkedTask(link):
             return link.targetUuid
         case let .attachment(attachment):
@@ -153,6 +162,8 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "" // Nothing to copy from add button
         case .dueDate:
             return "Due date"
+        case .plannedDate:
+            return "Planned date"
         case .linkedTask:
             return "Task UUID"
         case .attachment:

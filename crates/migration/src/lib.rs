@@ -41,6 +41,7 @@
 //! - `m20260106_000001_create_email_links`: Email links for Apple Mail integration
 //! - `m20260107_000001_create_important_links`: Important URL links on tasks
 //! - `m20260110_000001_add_project_emoji_color`: Emoji and color for projects
+//! - `m20260111_000001_add_date_planned`: Planned date for tasks
 
 pub use sea_orm_migration::prelude::sea_orm;
 pub use sea_orm_migration::{async_trait, MigrationTrait, MigratorTrait};
@@ -55,6 +56,7 @@ mod m20260105_000001_create_attachments;
 mod m20260106_000001_create_email_links;
 mod m20260107_000001_create_important_links;
 mod m20260110_000001_add_project_emoji_color;
+mod m20260111_000001_add_date_planned;
 
 /// The migration runner that applies all schema migrations.
 ///
@@ -76,6 +78,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260106_000001_create_email_links::Migration),
             Box::new(m20260107_000001_create_important_links::Migration),
             Box::new(m20260110_000001_add_project_emoji_color::Migration),
+            Box::new(m20260111_000001_add_date_planned::Migration),
         ]
     }
 }

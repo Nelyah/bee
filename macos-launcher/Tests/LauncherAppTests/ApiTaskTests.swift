@@ -16,6 +16,7 @@ final class ApiTaskTests: XCTestCase {
             "date_created": "2024-01-15T10:30:00Z",
             "date_completed": null,
             "date_due": "2024-01-20T00:00:00Z",
+            "date_planned": "2024-01-18T09:00:00Z",
             "urgency": 5
         }
         """
@@ -29,7 +30,71 @@ final class ApiTaskTests: XCTestCase {
         XCTAssertEqual(task.dateCreated, "2024-01-15T10:30:00Z")
         XCTAssertNil(task.dateCompleted)
         XCTAssertEqual(task.dateDue, "2024-01-20T00:00:00Z")
+        XCTAssertEqual(task.datePlanned, "2024-01-18T09:00:00Z")
         XCTAssertEqual(task.urgency, 5)
+    }
+
+    func testApiTaskDecodesWithDatePlannedNull() throws {
+        let json = """
+        {
+            "id": 42,
+            "uuid": "test-uuid",
+            "status": "active",
+            "summary": "Test",
+            "project": null,
+            "tags": [],
+            "date_created": "2024-01-15T10:30:00Z",
+            "date_completed": null,
+            "date_due": "2024-01-20T00:00:00Z",
+            "date_planned": null,
+            "urgency": 5
+        }
+        """
+        let task = try TestHelpers.decode(ApiTask.self, from: json)
+        XCTAssertEqual(task.dateDue, "2024-01-20T00:00:00Z")
+        XCTAssertNil(task.datePlanned)
+    }
+
+    func testApiTaskDecodesWithBothDatesSet() throws {
+        let json = """
+        {
+            "id": 42,
+            "uuid": "test-uuid",
+            "status": "active",
+            "summary": "Test with both dates",
+            "project": "project",
+            "tags": [],
+            "date_created": "2024-01-15T10:30:00Z",
+            "date_completed": null,
+            "date_due": "2024-01-25T17:00:00Z",
+            "date_planned": "2024-01-20T09:00:00Z",
+            "urgency": 5
+        }
+        """
+        let task = try TestHelpers.decode(ApiTask.self, from: json)
+        XCTAssertEqual(task.dateDue, "2024-01-25T17:00:00Z")
+        XCTAssertEqual(task.datePlanned, "2024-01-20T09:00:00Z")
+    }
+
+    func testApiTaskDecodesWithOnlyDatePlannedSet() throws {
+        let json = """
+        {
+            "id": 42,
+            "uuid": "test-uuid",
+            "status": "active",
+            "summary": "Planned task without due date",
+            "project": null,
+            "tags": [],
+            "date_created": "2024-01-15T10:30:00Z",
+            "date_completed": null,
+            "date_due": null,
+            "date_planned": "2024-01-18T14:00:00Z",
+            "urgency": null
+        }
+        """
+        let task = try TestHelpers.decode(ApiTask.self, from: json)
+        XCTAssertNil(task.dateDue)
+        XCTAssertEqual(task.datePlanned, "2024-01-18T14:00:00Z")
     }
 
     func testApiTaskId() throws {
@@ -134,6 +199,7 @@ final class ApiTaskTests: XCTestCase {
             "date_created": "2024-01-15T10:30:00Z",
             "date_completed": null,
             "date_due": "2024-01-20T00:00:00Z",
+            "date_planned": "2024-01-18T09:00:00Z",
             "urgency": 5,
             "annotations": [
                 {"value": "Started work", "time": "2024-01-15T11:00:00Z"}
@@ -150,12 +216,61 @@ final class ApiTaskTests: XCTestCase {
         XCTAssertEqual(detail.dbId, 42)
         XCTAssertEqual(detail.uuid, "550e8400-e29b-41d4-a716-446655440000")
         XCTAssertEqual(detail.status, "active")
+        XCTAssertEqual(detail.dateDue, "2024-01-20T00:00:00Z")
+        XCTAssertEqual(detail.datePlanned, "2024-01-18T09:00:00Z")
         XCTAssertEqual(detail.annotations.count, 1)
         XCTAssertEqual(detail.annotations.first?.value, "Started work")
         XCTAssertEqual(detail.history.count, 1)
         XCTAssertEqual(detail.history.first?.value, "created")
         XCTAssertEqual(detail.links.count, 1)
         XCTAssertEqual(detail.links.first?.linkType, "depends_on")
+    }
+
+    func testApiTaskDetailDecodesWithDatePlanned() throws {
+        let json = """
+        {
+            "id": 1,
+            "uuid": "test-uuid",
+            "status": "active",
+            "summary": "Task with planned date",
+            "project": "work",
+            "tags": [],
+            "date_created": "2024-01-15T10:30:00Z",
+            "date_completed": null,
+            "date_due": "2024-01-25T17:00:00Z",
+            "date_planned": "2024-01-20T09:00:00Z",
+            "urgency": 5,
+            "annotations": [],
+            "history": [],
+            "links": []
+        }
+        """
+        let detail = try TestHelpers.decode(ApiTaskDetail.self, from: json)
+        XCTAssertEqual(detail.dateDue, "2024-01-25T17:00:00Z")
+        XCTAssertEqual(detail.datePlanned, "2024-01-20T09:00:00Z")
+    }
+
+    func testApiTaskDetailDecodesWithoutDatePlanned() throws {
+        // Test backwards compatibility - JSON without date_planned field
+        let json = """
+        {
+            "id": 1,
+            "uuid": "old-format-uuid",
+            "status": "active",
+            "summary": "Old format task",
+            "project": null,
+            "tags": [],
+            "date_created": "2024-01-15T10:30:00Z",
+            "date_completed": null,
+            "date_due": null,
+            "urgency": null,
+            "annotations": [],
+            "history": [],
+            "links": []
+        }
+        """
+        let detail = try TestHelpers.decode(ApiTaskDetail.self, from: json)
+        XCTAssertNil(detail.datePlanned)
     }
 
     func testApiTaskDetailId() throws {

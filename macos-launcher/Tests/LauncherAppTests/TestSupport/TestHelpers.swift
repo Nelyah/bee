@@ -26,6 +26,7 @@ enum TestHelpers {
         project: String? = nil,
         tags: [String] = [],
         dateDue: String? = nil,
+        datePlanned: String? = nil,
         status: String = "pending",
         summary: String? = nil,
         dateCreated: String = "2024-01-01T00:00:00Z",
@@ -41,6 +42,7 @@ enum TestHelpers {
             dateCreated: dateCreated,
             dateCompleted: dateCompleted,
             dateDue: dateDue,
+            datePlanned: datePlanned,
             urgency: urgency
         )
     }
@@ -197,6 +199,8 @@ enum TestHelpers {
         project: String? = "TestProject",
         tags: [String] = [],
         status: String = "pending",
+        dateDue: String? = nil,
+        datePlanned: String? = nil,
         annotations: [TaskAnnotationDto] = [],
         history: [TaskHistoryDto] = [],
         links: [TaskLinkDto] = [],
@@ -211,7 +215,8 @@ enum TestHelpers {
             tags: tags,
             dateCreated: "2024-01-01T00:00:00Z",
             dateCompleted: nil,
-            dateDue: nil,
+            dateDue: dateDue,
+            datePlanned: datePlanned,
             urgency: nil,
             annotations: annotations,
             history: history,

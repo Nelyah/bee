@@ -307,6 +307,7 @@ pub struct Task {
     pub(crate) date_created: DateTime<chrono::Local>,
     pub(crate) date_completed: Option<DateTime<chrono::Local>>,
     pub(crate) date_due: Option<DateTime<chrono::Local>>,
+    pub(crate) date_planned: Option<DateTime<chrono::Local>>,
     pub(crate) urgency: Option<i64>,
     pub(crate) project: Option<Project>,
     #[serde(default)]
@@ -332,6 +333,7 @@ impl Default for Task {
             date_created: Local::now(),
             date_completed: None,
             date_due: None,
+            date_planned: None,
             urgency: None,
             project: None,
             links: Vec::default(),
@@ -577,6 +579,10 @@ impl Task {
         &self.date_due
     }
 
+    pub fn get_date_planned(&self) -> &Option<DateTime<Local>> {
+        &self.date_planned
+    }
+
     pub fn get_urgency(&self) -> &Option<i64> {
         &self.urgency
     }
@@ -610,6 +616,15 @@ impl Task {
                 value: format!("Due date set to {}", date_due),
             });
             self.date_due = Some(date_due.to_owned());
+        }
+
+        if let Some(date_planned) = &props.date_planned {
+            self.history.push(TaskHistory {
+                id: None,
+                datetime: Local::now(),
+                value: format!("Planned date set to {}", date_planned),
+            });
+            self.date_planned = Some(date_planned.to_owned());
         }
 
         if let Some(active) = &props.active_status {

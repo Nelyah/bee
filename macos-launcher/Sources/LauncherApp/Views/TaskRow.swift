@@ -319,6 +319,7 @@ struct TaskRow: View {
         case "date_created": formatDate(task.dateCreated)
         case "date_completed": task.dateCompleted.map(formatDate) ?? "-"
         case "date_due": task.dateDue.map(formatDate) ?? "-"
+        case "date_planned": task.datePlanned.map(formatDate) ?? "-"
         default: "-"
         }
     }

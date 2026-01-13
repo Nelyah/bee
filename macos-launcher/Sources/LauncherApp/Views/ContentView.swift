@@ -144,6 +144,25 @@ public struct ContentView: View {
                     onQuickDueDateAction: { action in
                         viewModel.applyQuickDueDateAction(action)
                     },
+                    // Planned date editing
+                    isEditingPlannedDate: viewModel.isEditingPlannedDate,
+                    plannedDateEditSelection: $viewModel.plannedDateEditSelection,
+                    isSubmittingPlannedDate: viewModel.isSubmittingPlannedDate,
+                    onStartEditingPlannedDate: {
+                        viewModel.startEditingPlannedDate()
+                    },
+                    onSubmitPlannedDateEdit: {
+                        viewModel.submitPlannedDateEdit()
+                    },
+                    onCancelPlannedDateEdit: {
+                        viewModel.cancelEditingPlannedDate()
+                    },
+                    onClearPlannedDate: {
+                        viewModel.clearPlannedDate()
+                    },
+                    onQuickPlannedDateAction: { action in
+                        viewModel.applyQuickPlannedDateAction(action)
+                    },
                     // Attachments
                     confirmingDeleteAttachmentId: viewModel.confirmingDeleteAttachmentId,
                     onAddAttachment: {

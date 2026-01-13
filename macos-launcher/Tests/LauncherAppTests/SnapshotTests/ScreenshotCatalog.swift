@@ -328,6 +328,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -368,6 +369,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -397,6 +399,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -428,6 +431,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -468,6 +472,7 @@ final class ScreenshotCatalog: SnapshotTestCase {
             filteredProjects: sampleProjects,
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )

@@ -10,6 +10,7 @@ struct ApiTask: Decodable, Identifiable {
     let dateCreated: String
     let dateCompleted: String?
     let dateDue: String?
+    let datePlanned: String?
     let urgency: Int?
 
     var id: String { uuid }
@@ -24,6 +25,7 @@ struct ApiTask: Decodable, Identifiable {
         case dateCreated = "date_created"
         case dateCompleted = "date_completed"
         case dateDue = "date_due"
+        case datePlanned = "date_planned"
         case urgency
     }
 }
@@ -191,6 +193,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
     let dateCreated: String
     let dateCompleted: String?
     let dateDue: String?
+    let datePlanned: String?
     let urgency: Int?
     let annotations: [TaskAnnotationDto]
     let history: [TaskHistoryDto]
@@ -211,6 +214,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         case dateCreated = "date_created"
         case dateCompleted = "date_completed"
         case dateDue = "date_due"
+        case datePlanned = "date_planned"
         case urgency
         case annotations
         case history
@@ -231,6 +235,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         dateCreated = try container.decode(String.self, forKey: .dateCreated)
         dateCompleted = try container.decodeIfPresent(String.self, forKey: .dateCompleted)
         dateDue = try container.decodeIfPresent(String.self, forKey: .dateDue)
+        datePlanned = try container.decodeIfPresent(String.self, forKey: .datePlanned)
         urgency = try container.decodeIfPresent(Int.self, forKey: .urgency)
         annotations = try container.decode([TaskAnnotationDto].self, forKey: .annotations)
         history = try container.decode([TaskHistoryDto].self, forKey: .history)
@@ -254,6 +259,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         dateCreated: String,
         dateCompleted: String?,
         dateDue: String?,
+        datePlanned: String?,
         urgency: Int?,
         annotations: [TaskAnnotationDto],
         history: [TaskHistoryDto],
@@ -271,6 +277,7 @@ struct ApiTaskDetail: Decodable, Identifiable {
         self.dateCreated = dateCreated
         self.dateCompleted = dateCompleted
         self.dateDue = dateDue
+        self.datePlanned = datePlanned
         self.urgency = urgency
         self.annotations = annotations
         self.history = history

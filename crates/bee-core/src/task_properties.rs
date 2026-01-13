@@ -37,6 +37,8 @@ pub struct TaskProperties {
     pub(crate) project: Option<Option<Project>>,
     #[serde(default)]
     pub(crate) date_due: Option<DateTime<chrono::Local>>,
+    #[serde(default)]
+    pub(crate) date_planned: Option<DateTime<chrono::Local>>,
     pub(crate) depends_on: Option<Vec<DependsOnIdentifier>>,
     pub(crate) blocks: Option<Vec<DependsOnIdentifier>>,
     pub(crate) parent_of: Option<Vec<DependsOnIdentifier>>,

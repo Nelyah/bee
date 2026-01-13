@@ -58,7 +58,7 @@ struct ColumnConfig: Codable, Identifiable, Equatable {
         case "status": 80
         case "tags": 80
         case "project": 100
-        case "date_created", "date_completed", "date_due": 80
+        case "date_created", "date_completed", "date_due", "date_planned": 80
         case "urgency": 50
         case "summary": 0 // Flex column - uses remaining space
         default: 60
@@ -93,6 +93,7 @@ enum ColumnDefinition: String, CaseIterable, Identifiable {
     case dateCreated = "date_created"
     case dateCompleted = "date_completed"
     case dateDue = "date_due"
+    case datePlanned = "date_planned"
     case urgency
 
     var id: String { rawValue }
@@ -109,6 +110,7 @@ enum ColumnDefinition: String, CaseIterable, Identifiable {
         case .dateCreated: "Created"
         case .dateCompleted: "Completed"
         case .dateDue: "Due"
+        case .datePlanned: "Planned"
         case .urgency: "Urgency"
         }
     }
@@ -125,6 +127,7 @@ enum ColumnDefinition: String, CaseIterable, Identifiable {
         case .dateCreated: "calendar.badge.plus"
         case .dateCompleted: "checkmark.circle"
         case .dateDue: "calendar.badge.clock"
+        case .datePlanned: "calendar"
         case .urgency: "flame"
         }
     }

@@ -122,6 +122,25 @@ struct TaskDetailView: View {
     /// Called when the user selects a quick date action.
     var onQuickDueDateAction: (QuickDueDateAction) -> Void = { _ in }
 
+    // MARK: - Planned Date Editing
+
+    /// Whether the planned date field is being edited.
+    var isEditingPlannedDate: Bool = false
+    /// Binding to the planned date picker selection.
+    @Binding var plannedDateEditSelection: Date
+    /// Whether planned date submission is in progress.
+    var isSubmittingPlannedDate: Bool = false
+    /// Called when the user clicks on the planned date to edit it.
+    var onStartEditingPlannedDate: () -> Void = {}
+    /// Called when the user submits the planned date edit.
+    var onSubmitPlannedDateEdit: () -> Void = {}
+    /// Called when the user cancels the planned date edit.
+    var onCancelPlannedDateEdit: () -> Void = {}
+    /// Called when the user clears the planned date.
+    var onClearPlannedDate: () -> Void = {}
+    /// Called when the user selects a quick date action for planned date.
+    var onQuickPlannedDateAction: (QuickDueDateAction) -> Void = { _ in }
+
     // MARK: - Attachments
 
     /// ID of attachment currently showing delete confirmation.
@@ -378,6 +397,7 @@ struct TaskDetailView: View {
                 DetailRow(label: "Completed", value: completed.display, helpText: completed.help)
 
                 EditableDueDateRow(
+                    label: "DUE",
                     currentDueDate: task.dateDue,
                     isEditing: isEditingDueDate,
                     selectedDate: $dueDateEditSelection,
@@ -390,6 +410,21 @@ struct TaskDetailView: View {
                     onQuickAction: onQuickDueDateAction
                 )
                 .navigationRegistrable(.dueDate(task.dateDue))
+
+                EditableDueDateRow(
+                    label: "PLANNED",
+                    currentDueDate: task.datePlanned,
+                    isEditing: isEditingPlannedDate,
+                    selectedDate: $plannedDateEditSelection,
+                    isSubmitting: isSubmittingPlannedDate,
+                    isFocused: isPlannedDateFocused,
+                    onStartEditing: onStartEditingPlannedDate,
+                    onSubmit: onSubmitPlannedDateEdit,
+                    onCancel: onCancelPlannedDateEdit,
+                    onClear: onClearPlannedDate,
+                    onQuickAction: onQuickPlannedDateAction
+                )
+                .navigationRegistrable(.plannedDate(task.datePlanned))
             }
             .zIndex(0)
         }
@@ -683,6 +718,14 @@ private extension TaskDetailView {
         }
         return false
     }
+
+    /// Whether the planned date row is keyboard-focused.
+    var isPlannedDateFocused: Bool {
+        if case .plannedDate = focusedItem {
+            return true
+        }
+        return false
+    }
 }
 
 private enum TaskDetailLayout {
@@ -694,57 +737,6 @@ private enum TaskDetailLayout {
     static let maxContentWidth: CGFloat = 900
 }
 
-/// An inline text field for entering annotation text.
-private struct AnnotationInputField: View {
-    @Binding var text: String
-    let isSubmitting: Bool
-    let onSubmit: () -> Void
-    let onCancel: () -> Void
-
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: DesignTokens.Spacing.small) {
-            TextField("Enter annotation...", text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: DesignTokens.TypeScale.bodySm))
-                .foregroundColor(ThemeManager.current.text)
-                .focused($isFocused)
-                .onSubmit(onSubmit)
-                .disabled(isSubmitting)
-
-            if isSubmitting {
-                ProgressView()
-                    .scaleEffect(0.7)
-            } else {
-                Button(action: onCancel) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: DesignTokens.TypeScale.caption, weight: .medium))
-                        .foregroundColor(ThemeManager.current.subtext0)
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.escape, modifiers: [])
-            }
-        }
-        .padding(.horizontal, DesignTokens.Spacing.small)
-        .padding(.vertical, DesignTokens.Spacing.extraSmall)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                .fill(ThemeManager.current.surface1)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                .stroke(
-                    isFocused ? ThemeManager.current.blue : ThemeManager.current.surface2,
-                    lineWidth: isFocused ? 2 : 1
-                )
-        )
-        .onAppear {
-            isFocused = true
-        }
-    }
-}
-
 #Preview {
     struct PreviewWrapper: View {
         @State private var annotationInput = ""
@@ -753,6 +745,7 @@ private struct AnnotationInputField: View {
         @State private var projectEditInput = ""
         @State private var tagAddQuery = ""
         @State private var dueDateEditSelection = Date()
+        @State private var plannedDateEditSelection = Date()
         @State private var importantLinkUrlInput = ""
         @State private var importantLinkTitleInput = ""
 
@@ -779,6 +772,7 @@ private struct AnnotationInputField: View {
                 projectEditInput: $projectEditInput,
                 tagAddQuery: $tagAddQuery,
                 dueDateEditSelection: $dueDateEditSelection,
+                plannedDateEditSelection: $plannedDateEditSelection,
                 importantLinkUrlInput: $importantLinkUrlInput,
                 importantLinkTitleInput: $importantLinkTitleInput
             )

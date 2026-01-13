@@ -31,6 +31,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
             dateCreated: "2024-01-15T10:30:00Z",
             dateCompleted: nil,
             dateDue: "2024-02-01T00:00:00Z",
+            datePlanned: nil,
             urgency: 5
         )
     }
@@ -158,6 +159,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
             dateCreated: "2024-01-01T00:00:00Z",
             dateCompleted: "2024-01-10T15:30:00Z",
             dateDue: nil,
+            datePlanned: nil,
             urgency: nil
         )
 
@@ -183,6 +185,7 @@ final class TaskRowSnapshotTests: SnapshotTestCase {
             dateCreated: "2024-01-01T00:00:00Z",
             dateCompleted: nil,
             dateDue: nil,
+            datePlanned: nil,
             urgency: 10
         )
 

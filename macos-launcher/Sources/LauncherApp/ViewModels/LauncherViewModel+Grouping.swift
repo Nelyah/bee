@@ -6,6 +6,17 @@ extension LauncherViewModel {
     // Note: groupedRows is now a @Published property in the main ViewModel,
     // updated via Combine pipeline to prevent expensive recalculation on hover.
 
+    /// The current grouping option for UI display.
+    var currentGroupByOption: GroupByOption {
+        switch groupingStrategy {
+        case is ProjectGroupingStrategy: .project
+        case is DueDateGroupingStrategy: .dueDate
+        case is TagGroupingStrategy: .tag
+        case is NoGroupingStrategy: .none
+        default: .project
+        }
+    }
+
     /// Toggle collapse for a group.
     func toggleGroupCollapse(_ key: String?) {
         if collapsedGroups.contains(key) {

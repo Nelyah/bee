@@ -188,6 +188,10 @@ where
             Some(dt) => ActiveValue::Set(Some(dt.to_rfc3339())),
             None => ActiveValue::Set(None),
         },
+        date_planned: match task_obj.date_planned {
+            Some(dt) => ActiveValue::Set(Some(dt.to_rfc3339())),
+            None => ActiveValue::Set(None),
+        },
         urgency: match task_obj.urgency {
             Some(u) => ActiveValue::Set(Some(u as f64)),
             None => ActiveValue::Set(None),
@@ -221,6 +225,9 @@ where
         }
         if existing.date_due == task_obj.date_due.map(|dt| dt.to_rfc3339()) {
             task_active.date_due = ActiveValue::Unchanged(existing.date_due);
+        }
+        if existing.date_planned == task_obj.date_planned.map(|dt| dt.to_rfc3339()) {
+            task_active.date_planned = ActiveValue::Unchanged(existing.date_planned);
         }
         if existing.urgency == task_obj.urgency.map(|u| u as f64) {
             task_active.urgency = ActiveValue::Unchanged(existing.urgency);

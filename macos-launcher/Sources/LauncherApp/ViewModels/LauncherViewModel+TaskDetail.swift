@@ -255,6 +255,7 @@ extension LauncherViewModel {
                         dateCreated: task.dateCreated,
                         dateCompleted: task.dateCompleted,
                         dateDue: task.dateDue,
+                        datePlanned: task.datePlanned,
                         urgency: task.urgency
                     )
                 }
@@ -351,6 +352,7 @@ extension LauncherViewModel {
                         dateCreated: task.dateCreated,
                         dateCompleted: task.dateCompleted,
                         dateDue: task.dateDue,
+                        datePlanned: task.datePlanned,
                         urgency: task.urgency
                     )
                 }

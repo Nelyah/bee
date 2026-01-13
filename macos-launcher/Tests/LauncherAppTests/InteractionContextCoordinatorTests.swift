@@ -338,6 +338,7 @@ final class InteractionContextCoordinatorTests: XCTestCase {
             dateCreated: "2025-01-01T00:00:00Z",
             dateCompleted: nil,
             dateDue: nil,
+            datePlanned: nil,
             urgency: nil
         )
         return [

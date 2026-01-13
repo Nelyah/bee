@@ -217,6 +217,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             dateCreated: "2024-01-15T10:00:00Z",
             dateCompleted: nil,
             dateDue: "2024-01-20T17:00:00Z",
+            datePlanned: "2024-01-18T09:00:00Z",
             urgency: 8
         ),
         ApiTask(
@@ -229,6 +230,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             dateCreated: "2024-01-14T09:00:00Z",
             dateCompleted: nil,
             dateDue: nil,
+            datePlanned: nil,
             urgency: 5
         ),
         ApiTask(
@@ -241,6 +243,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
             dateCreated: "2024-01-10T08:00:00Z",
             dateCompleted: "2024-01-12T16:00:00Z",
             dateDue: nil,
+            datePlanned: nil,
             urgency: nil
         ),
     ]
@@ -272,6 +275,7 @@ final class MockApiClient: ApiClientProtocol, @unchecked Sendable {
         dateCreated: "2024-01-15T10:00:00Z",
         dateCompleted: nil,
         dateDue: "2024-01-20T17:00:00Z",
+        datePlanned: "2024-01-18T09:00:00Z",
         urgency: 8,
         annotations: [
             TaskAnnotationDto(value: "Follow up with QA", time: "2024-01-18T09:00:00Z"),

@@ -1,13 +1,18 @@
 import SwiftUI
 
-/// An editable due date row that displays the current due date and allows editing
+/// An editable date row that displays a date and allows editing
 /// via a popover with a DatePicker and quick action buttons.
 ///
 /// Follows the same two-state pattern as `EditableProjectRow`:
 /// - Display mode: Shows the formatted date with a focus ring when keyboard-focused
 /// - Edit mode: Shows a popover with DatePicker and quick actions
+///
+/// Can be used for both due dates and planned dates by setting the `label` parameter.
 struct EditableDueDateRow: View {
-    /// The current due date as an ISO8601 string, or nil if not set.
+    /// The label to display (e.g., "DUE" or "PLANNED").
+    let label: String
+
+    /// The current date as an ISO8601 string, or nil if not set.
     let currentDueDate: String?
 
     /// Whether the date picker popover is being shown.
@@ -58,7 +63,7 @@ struct EditableDueDateRow: View {
     private var displayView: some View {
         let formatted = formattedDueDate
         return HStack(alignment: .top, spacing: DesignTokens.Spacing.large) {
-            Text("DUE")
+            Text(label)
                 .font(.system(size: DesignTokens.TypeScale.label, weight: .bold, design: .rounded))
                 .foregroundColor(ThemeManager.current.subtext0)
                 .frame(width: 90, alignment: .leading)
@@ -148,7 +153,7 @@ struct EditableDueDateRow: View {
 
     private var editingView: some View {
         HStack(spacing: DesignTokens.Spacing.medium) {
-            Text("Due")
+            Text(label.capitalized)
                 .font(.system(size: DesignTokens.TypeScale.bodySm, weight: .medium))
                 .foregroundColor(ThemeManager.current.subtext0)
                 .frame(width: 80, alignment: .leading)
@@ -338,6 +343,7 @@ struct EditableDueDateRow: View {
             VStack(spacing: 20) {
                 // Display mode - no due date
                 EditableDueDateRow(
+                    label: "DUE",
                     currentDueDate: nil,
                     isEditing: false,
                     selectedDate: .constant(Date()),
@@ -352,6 +358,7 @@ struct EditableDueDateRow: View {
 
                 // Display mode - with due date, focused
                 EditableDueDateRow(
+                    label: "DUE",
                     currentDueDate: "2025-01-15T09:00:00Z",
                     isEditing: false,
                     selectedDate: .constant(Date()),
@@ -366,6 +373,7 @@ struct EditableDueDateRow: View {
 
                 // Editing mode
                 EditableDueDateRow(
+                    label: "DUE",
                     currentDueDate: "2025-01-15T09:00:00Z",
                     isEditing: true,
                     selectedDate: .constant(Date()),

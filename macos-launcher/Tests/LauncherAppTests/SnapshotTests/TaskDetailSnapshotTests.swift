@@ -19,6 +19,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
         urgency: Int? = 5,
         dateCreated: String = "2024-01-01T10:00:00Z",
         dateDue: String? = nil,
+        datePlanned: String? = nil,
         dateCompleted: String? = nil
     ) -> ApiTask {
         ApiTask(
@@ -31,6 +32,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             dateCreated: dateCreated,
             dateCompleted: dateCompleted,
             dateDue: dateDue,
+            datePlanned: datePlanned,
             urgency: urgency
         )
     }
@@ -84,6 +86,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -158,6 +161,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             dateCreated: "2024-01-14T08:00:00Z",
             dateCompleted: nil,
             dateDue: nil,
+            datePlanned: nil,
             urgency: nil,
             annotations: annotations,
             history: [],
@@ -203,6 +207,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             dateCreated: "2024-01-14T08:00:00Z",
             dateCompleted: nil,
             dateDue: nil,
+            datePlanned: nil,
             urgency: nil,
             annotations: [],
             history: history,
@@ -376,6 +381,7 @@ final class TaskDetailSnapshotTests: SnapshotTestCase {
             dateCreated: "2024-01-14T08:00:00Z",
             dateCompleted: nil,
             dateDue: "2024-02-15T17:00:00Z",
+            datePlanned: nil,
             urgency: 8,
             annotations: annotations,
             history: history,

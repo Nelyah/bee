@@ -77,6 +77,7 @@ final class TaskDetailUITests: XCTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -132,6 +133,7 @@ final class TaskDetailUITests: XCTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -254,6 +256,7 @@ final class TaskDetailUITests: XCTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -290,6 +293,7 @@ final class TaskDetailUITests: XCTestCase {
             projectEditInput: .constant(""),
             tagAddQuery: .constant(""),
             dueDateEditSelection: .constant(Date()),
+            plannedDateEditSelection: .constant(Date()),
             importantLinkUrlInput: .constant(""),
             importantLinkTitleInput: .constant("")
         )
@@ -329,6 +333,7 @@ final class TaskDetailUITests: XCTestCase {
             dateCreated: "2024-01-01T00:00:00Z",
             dateCompleted: nil,
             dateDue: nil,
+            datePlanned: nil,
             urgency: nil,
             annotations: [],
             history: history,

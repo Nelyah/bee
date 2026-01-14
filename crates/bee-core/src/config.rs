@@ -99,6 +99,9 @@ pub struct ExternalLinksConfig {
 pub struct ProviderConfig {
     pub base_url: String,
     pub token: TokenConfig,
+    /// Username (email) for Basic Auth - required for Jira Cloud, unused for GitLab.
+    #[serde(default)]
+    pub username: Option<String>,
     #[serde(default = "default_min_delay_ms")]
     pub min_delay_ms: u64,
 }

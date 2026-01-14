@@ -519,9 +519,14 @@ pub async fn fetch_recent_jira_issues(
         limit.max(1)
     );
 
+    let username = cfg
+        .username
+        .as_ref()
+        .ok_or_else(|| ApiError::config("Jira username (email) is not configured"))?;
+
     let response = client
         .get(query)
-        .bearer_auth(token)
+        .basic_auth(username, Some(token))
         .header("Accept", "application/json")
         .send()
         .await
@@ -824,11 +829,15 @@ async fn fetch_jira_issue(
 ) -> ApiResult<String> {
     let base = normalize_base_url(&cfg.base_url)?;
     let token = resolve_token(cfg)?;
+    let username = cfg
+        .username
+        .as_ref()
+        .ok_or_else(|| ApiError::config("Jira username (email) is not configured"))?;
     let url = format!("{base}/rest/api/3/issue/{issue_key}?fields=summary,status,assignee,updated");
 
     let response = client
         .get(url)
-        .bearer_auth(token)
+        .basic_auth(username, Some(token))
         .header("Accept", "application/json")
         .send()
         .await
@@ -1023,6 +1032,7 @@ mod tests {
                     value: Some("jira-token".to_string()),
                     env: None,
                 },
+                username: Some("test@example.com".to_string()),
                 min_delay_ms: 0,
             }),
             gitlab: Some(ProviderConfig {
@@ -1031,6 +1041,7 @@ mod tests {
                     value: Some("gitlab-token".to_string()),
                     env: None,
                 },
+                username: None, // GitLab uses Bearer auth (PAT), not Basic auth
                 min_delay_ms: 0,
             }),
         }

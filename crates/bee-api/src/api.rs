@@ -2158,13 +2158,14 @@ async fn profile_list_external_links_handler(
 
 /// Create an external link for a task in a specific profile.
 async fn profile_create_external_link_handler(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(params): Path<ProfileExternalLinkTaskParams>,
     Json(payload): Json<ExternalLinkCreateRequest>,
 ) -> ApiResult<Json<ExternalLinkDto>> {
     validate_profile(&params.profile_key)?;
 
-    let parsed = external_links::parse_external_link(&payload.url, &state.external_links)?;
+    let profile_config = bee_core::config::load_config_for_profile(&params.profile_key)?;
+    let parsed = external_links::parse_external_link(&payload.url, &profile_config.external_links)?;
 
     let existing =
         DbStore::list_external_links_by_task_for_profile(&params.profile_key, params.task_uuid)
@@ -2218,9 +2219,10 @@ async fn profile_sync_external_link_handler(
         return Err(ApiError::not_found("External link not found"));
     };
 
+    let profile_config = bee_core::config::load_config_for_profile(&params.profile_key)?;
     let result = external_links::sync_single_link_for_profile(
         &state.http_client,
-        &state.external_links,
+        &profile_config.external_links,
         &state.external_links_sync,
         link,
         query.force.unwrap_or(false),
@@ -2239,9 +2241,10 @@ async fn profile_sync_external_links_handler(
 ) -> ApiResult<Json<ExternalLinkSyncResponse>> {
     validate_profile(&params.profile_key)?;
 
+    let profile_config = bee_core::config::load_config_for_profile(&params.profile_key)?;
     let result = external_links::sync_links_batch_for_profile(
         &state.http_client,
-        &state.external_links,
+        &profile_config.external_links,
         &state.external_links_sync,
         payload.provider.as_deref(),
         payload.task_uuid,
@@ -2261,10 +2264,11 @@ async fn profile_recent_gitlab_merge_requests_handler(
 ) -> ApiResult<Json<Vec<GitlabMergeRequestDto>>> {
     validate_profile(&params.profile_key)?;
 
+    let profile_config = bee_core::config::load_config_for_profile(&params.profile_key)?;
     let limit = query.limit.unwrap_or(20);
     let items = external_links::fetch_recent_gitlab_merge_requests(
         &state.http_client,
-        &state.external_links,
+        &profile_config.external_links,
         limit,
     )
     .await?;
@@ -2279,6 +2283,7 @@ async fn profile_recent_jira_issues_handler(
 ) -> ApiResult<Json<Vec<JiraIssueDto>>> {
     validate_profile(&params.profile_key)?;
 
+    let profile_config = bee_core::config::load_config_for_profile(&params.profile_key)?;
     let limit = query.limit.unwrap_or(20);
     let scope = match query.scope.as_deref() {
         Some("assigned") => external_links::JiraIssueScope::Assigned,
@@ -2287,7 +2292,7 @@ async fn profile_recent_jira_issues_handler(
     };
     let items = external_links::fetch_recent_jira_issues(
         &state.http_client,
-        &state.external_links,
+        &profile_config.external_links,
         limit,
         scope,
     )
@@ -2303,6 +2308,7 @@ async fn profile_resolve_external_link_handler(
 ) -> ApiResult<Json<ExternalLinkResolveResponse>> {
     validate_profile(&params.profile_key)?;
 
+    let profile_config = bee_core::config::load_config_for_profile(&params.profile_key)?;
     let provider = match payload.provider.as_str() {
         "jira" => external_links::ProviderKind::Jira,
         "gitlab" => external_links::ProviderKind::Gitlab,
@@ -2311,7 +2317,7 @@ async fn profile_resolve_external_link_handler(
 
     let resolved = external_links::resolve_external_link(
         &state.http_client,
-        &state.external_links,
+        &profile_config.external_links,
         provider,
         &payload.input,
     )

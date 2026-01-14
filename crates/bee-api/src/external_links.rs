@@ -514,7 +514,7 @@ pub async fn fetch_recent_jira_issues(
         JiraIssueScope::Both => "(assignee = currentUser() OR reporter = currentUser())",
     };
     let query = format!(
-        "{base}/rest/api/3/search?jql={}&maxResults={}&fields=summary,status,assignee,updated",
+        "{base}/rest/api/3/search/jql?jql={}&maxResults={}&fields=summary,status,assignee,updated",
         urlencoding::encode(&format!("{jql} ORDER BY updated DESC")),
         limit.max(1)
     );

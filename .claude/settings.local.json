@@ -201,7 +201,8 @@
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(cargo run:*)",
       "Bash(cargo fix:*)",
-      "mcp__serena__think_about_task_adherence"
+      "mcp__serena__think_about_task_adherence",
+      "WebFetch(domain:developer.atlassian.com)"
     ]
   },
   "outputStyle": "Explanatory"

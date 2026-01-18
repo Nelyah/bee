@@ -67,7 +67,7 @@ pub struct UrgencyConfig {
     pub staleness_max_penalty: i64,
 
     // Status weights
-    /// Score for Active status (default: 15)
+    /// Score for Active status (default: 50)
     pub status_active: i64,
     /// Score for Blocked status (default: -25)
     pub status_blocked: i64,
@@ -139,7 +139,7 @@ impl Default for UrgencyConfig {
             staleness_max_penalty: -15,
 
             // Status
-            status_active: 15,
+            status_active: 50,
             status_blocked: -25,
 
             // Tags
@@ -787,7 +787,7 @@ mod tests {
     #[test]
     fn status_modifier_active() {
         let config = default_config();
-        assert_eq!(status_modifier(TaskStatus::Active, &config), 15);
+        assert_eq!(status_modifier(TaskStatus::Active, &config), 50);
     }
 
     #[test]

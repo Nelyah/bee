@@ -70,7 +70,7 @@ final class ProfileManager: ObservableObject {
                 selectedProfileKey = profiles.first?.key
             }
 
-            logger.info("Loaded \(profiles.count) profiles")
+            logger.info("Loaded \(self.profiles.count) profiles")
         } catch {
             loadError = error.localizedDescription
             logger.error("Failed to load profiles: \(error.localizedDescription, privacy: .public)")

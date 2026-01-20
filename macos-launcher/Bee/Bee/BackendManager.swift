@@ -108,8 +108,9 @@ final class BackendManager: ObservableObject {
         }
 
         process.terminationHandler = { [weak self] proc in
-            Task { @MainActor in
-                self?.logger.info("Backend terminated with code \(proc.terminationStatus)")
+            let status = proc.terminationStatus
+            Task { @MainActor [weak self] in
+                self?.logger.info("Backend terminated with code \(status)")
                 self?.cleanup()
             }
         }
@@ -140,8 +141,10 @@ final class BackendManager: ObservableObject {
         process.terminate()
 
         // Give it a moment to terminate gracefully
+        // Capture the local `process` variable directly (not self.process) to avoid
+        // accessing @MainActor-isolated property from background queue
         DispatchQueue.global().async {
-            self.process?.waitUntilExit()
+            process.waitUntilExit()
         }
 
         cleanup()

@@ -10,5 +10,5 @@
 --wrapparameters before-first
 --wrapcollections before-first
 --allman false
---disable wrapMultilineStatementBraces
+--disable wrapMultilineStatementBraces,redundantSelf
 --exclude .build,DerivedData

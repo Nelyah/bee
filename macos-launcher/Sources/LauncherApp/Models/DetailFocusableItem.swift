@@ -34,6 +34,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
     /// An annotation in the Annotations section.
     /// Associated value is the annotation DTO.
     case annotation(TaskAnnotationDto)
+    /// An important link in the Important Links section.
+    case importantLink(ImportantLinkDto)
+    /// The "+" button to add a new important link.
+    case addImportantLinkButton
 
     var id: String {
         switch self {
@@ -63,6 +67,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             "addAttachmentButton"
         case let .annotation(annotation):
             "annotation-\(annotation.id)"
+        case let .importantLink(link):
+            "importantLink-\(link.id)"
+        case .addImportantLinkButton:
+            "addImportantLinkButton"
         }
     }
 
@@ -97,6 +105,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             nil // Add button uses Enter to start adding, not open URL
         case .annotation:
             nil // Annotations use Enter to edit, not open URL
+        case let .importantLink(link):
+            URL(string: link.url) // Opens link in browser
+        case .addImportantLinkButton:
+            nil // Add button uses Enter to start adding, not open URL
         }
     }
 
@@ -135,6 +147,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "" // Nothing to copy from add button
         case let .annotation(annotation):
             return annotation.value
+        case let .importantLink(link):
+            return link.url
+        case .addImportantLinkButton:
+            return "" // Nothing to copy from add button
         }
     }
 
@@ -172,6 +188,10 @@ enum DetailFocusableItem: Equatable, Identifiable {
             return "" // Nothing to copy from add button
         case .annotation:
             return "Annotation"
+        case .importantLink:
+            return "Link URL"
+        case .addImportantLinkButton:
+            return "" // Nothing to copy from add button
         }
     }
 }

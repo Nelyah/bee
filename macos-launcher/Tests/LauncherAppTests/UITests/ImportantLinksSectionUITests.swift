@@ -11,6 +11,7 @@ final class ImportantLinksSectionUITests: XCTestCase {
 
     private func makeLinksSection(
         importantLinks: [ImportantLinkDto] = [],
+        focusedItem: DetailFocusableItem? = nil,
         isAdding: Bool = false,
         urlInput: String = "",
         titleInput: String = "",
@@ -23,6 +24,7 @@ final class ImportantLinksSectionUITests: XCTestCase {
     ) -> ImportantLinksSection {
         ImportantLinksSection(
             importantLinks: importantLinks,
+            focusedItem: focusedItem,
             onOpen: onOpen,
             onRemove: onRemove,
             onStartAdding: onStartAdding,

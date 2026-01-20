@@ -9,6 +9,7 @@ import SwiftUI
 /// - Add link form with URL and optional title
 struct ImportantLinksSection: View {
     let importantLinks: [ImportantLinkDto]
+    let focusedItem: DetailFocusableItem?
     let onOpen: (ImportantLinkDto) -> Void
     let onRemove: (ImportantLinkDto) -> Void
     let onStartAdding: () -> Void
@@ -21,6 +22,22 @@ struct ImportantLinksSection: View {
 
     @FocusState private var isUrlFieldFocused: Bool
 
+    // MARK: - Focus Helpers
+
+    private func isLinkFocused(_ link: ImportantLinkDto) -> Bool {
+        if case let .importantLink(focusedLink) = focusedItem {
+            return focusedLink.id == link.id
+        }
+        return false
+    }
+
+    private var isAddButtonFocused: Bool {
+        if case .addImportantLinkButton = focusedItem {
+            return true
+        }
+        return false
+    }
+
     var body: some View {
         DetailSection(title: "Important Links") {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
@@ -28,10 +45,12 @@ struct ImportantLinksSection: View {
                 ForEach(importantLinks) { link in
                     ImportantLinkRow(
                         link: link,
+                        isFocused: isLinkFocused(link),
                         onOpen: { onOpen(link) },
                         onRemove: { onRemove(link) },
                         isSubmitting: isSubmitting
                     )
+                    .navigationRegistrable(.importantLink(link))
                 }
 
                 // Add link form or button
@@ -147,15 +166,18 @@ struct ImportantLinksSection: View {
             }
             .padding(.horizontal, DesignTokens.Spacing.small)
             .padding(.vertical, DesignTokens.Spacing.extraSmall)
+            .modifier(DetailFocusRing(isFocused: isAddButtonFocused))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .navigationRegistrable(.addImportantLinkButton)
     }
 }
 
 /// Displays a single important link with icon, title, URL, and remove button.
 struct ImportantLinkRow: View {
     let link: ImportantLinkDto
+    var isFocused: Bool = false
     let onOpen: () -> Void
     let onRemove: () -> Void
     var isSubmitting: Bool = false
@@ -215,6 +237,7 @@ struct ImportantLinkRow: View {
             RoundedRectangle(cornerRadius: 4)
                 .fill(isHovering ? ThemeManager.current.surface1.opacity(0.5) : Color.clear)
         )
+        .modifier(DetailFocusRing(isFocused: isFocused))
         .contentShape(Rectangle())
         .onReliableHover { isHovering = $0 }
         .help("Click to open in browser")
@@ -248,6 +271,7 @@ struct ImportantLinkRow: View {
 
             ImportantLinksSection(
                 importantLinks: links,
+                focusedItem: nil,
                 onOpen: { _ in },
                 onRemove: { _ in },
                 onStartAdding: {},
@@ -274,6 +298,7 @@ struct ImportantLinkRow: View {
         var body: some View {
             ImportantLinksSection(
                 importantLinks: [],
+                focusedItem: nil,
                 onOpen: { _ in },
                 onRemove: { _ in },
                 onStartAdding: {},
@@ -300,6 +325,7 @@ struct ImportantLinkRow: View {
         var body: some View {
             ImportantLinksSection(
                 importantLinks: [],
+                focusedItem: nil,
                 onOpen: { _ in },
                 onRemove: { _ in },
                 onStartAdding: {},

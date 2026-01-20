@@ -278,6 +278,200 @@ Escape handling integrates with the navigation stack for contextual back-navigat
 
 See main skill document section "Navigation Stack" for stack implementation details.
 
+## Detail Focus Navigation (Coordinate-Based)
+
+The task detail view uses a **coordinate-based navigation system** that enables vim-style h/j/k/l movement between focusable elements. This is distinct from the pure-function pipeline above—it manages spatial positions of UI elements.
+
+### Architecture Overview
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                      DetailFocusableItem                           │
+│  Enum defining all navigable elements (taskName, tag, attachment) │
+└──────────────────────────┬─────────────────────────────────────────┘
+                           │
+┌──────────────────────────▼─────────────────────────────────────────┐
+│                      NavigationRegistry                            │
+│  Tracks on-screen coordinates via .navigationRegistrable()        │
+│  Enables spatial h/j/k/l navigation between registered items      │
+└──────────────────────────┬─────────────────────────────────────────┘
+                           │
+┌──────────────────────────▼─────────────────────────────────────────┐
+│                    LauncherViewModel+DetailFocus                   │
+│  - buildDetailFocusableItems(): logical ordering                  │
+│  - focusedDetailItem: current selection                           │
+│  - openFocusedDetailItem(), deleteFocusedDetailItem(): handlers   │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `DetailFocusableItem` | `Models/DetailFocusableItem.swift` | Enum with cases for each navigable element |
+| `NavigationRegistry` | `Utilities/Navigation/NavigationRegistry.swift` | Spatial coordinate tracking, h/j/k/l logic |
+| `.navigationRegistrable()` | View modifier | Registers item position with registry |
+| `DetailFocusRing` | `Views/Components/DetailFocusRing.swift` | Blue outline visual indicator |
+| `LauncherViewModel+DetailFocus` | `ViewModels/` | Focus state, action handlers |
+
+### DetailFocusableItem Enum
+
+Each navigable element has a case with associated data for actions:
+
+```swift
+enum DetailFocusableItem: Equatable, Identifiable {
+    case taskName(String)           // Task name at top
+    case tag(String, index: Int)    // Individual tag
+    case addTagButton               // "+" button
+    case attachment(AttachmentDto)  // File attachment
+    case importantLink(LinkDto)     // Important link
+    case addImportantLinkButton     // "+" add link button
+    // ... more cases
+
+    var id: String { /* unique identifier */ }
+    var openURL: URL? { /* for 'o' key */ }
+    var copyValue: String { /* for 'y' key */ }
+    var copyLabel: String { /* toast message */ }
+}
+```
+
+### Adding a New Navigable Element
+
+Follow this checklist when adding keyboard navigation to a new detail section:
+
+#### 1. Add enum cases to `DetailFocusableItem`
+
+```swift
+// In Models/DetailFocusableItem.swift
+case newItem(NewItemDto)
+case addNewItemButton
+
+var id: String {
+    // ...existing cases...
+    case let .newItem(item): "newItem-\(item.id)"
+    case .addNewItemButton: "addNewItemButton"
+}
+
+var openURL: URL? { /* if applicable */ }
+var copyValue: String { /* what 'y' copies */ }
+var copyLabel: String { /* toast label */ }
+```
+
+#### 2. Update `buildDetailFocusableItems()`
+
+```swift
+// In ViewModels/LauncherViewModel+DetailFocus.swift
+func buildDetailFocusableItems() {
+    // ...existing items...
+
+    // Add new items (order determines tab sequence)
+    for item in detail.newItems {
+        items.append(.newItem(item))
+    }
+    if !isAddingNewItem {
+        items.append(.addNewItemButton)
+    }
+}
+```
+
+#### 3. Add action handlers
+
+```swift
+// In openFocusedDetailItem()
+if case let .newItem(item) = focusedDetailItem,
+   let url = URL(string: item.url) {
+    NSWorkspace.shared.open(url)
+    return true
+}
+if case .addNewItemButton = focusedDetailItem {
+    startAddingNewItem()
+    return true
+}
+
+// In deleteFocusedDetailItem()
+if case let .newItem(item) = focusedDetailItem {
+    Task { await removeNewItem(item) }
+    return true
+}
+```
+
+#### 4. Update the Section view
+
+```swift
+// In Views/Components/NewItemSection.swift
+struct NewItemSection: View {
+    let items: [NewItemDto]
+    let focusedItem: DetailFocusableItem?  // Add this
+
+    // Focus helpers
+    private func isItemFocused(_ item: NewItemDto) -> Bool {
+        if case let .newItem(focused) = focusedItem {
+            return focused.id == item.id
+        }
+        return false
+    }
+
+    private var isAddButtonFocused: Bool {
+        if case .addNewItemButton = focusedItem { return true }
+        return false
+    }
+
+    var body: some View {
+        ForEach(items) { item in
+            NewItemRow(item: item, isFocused: isItemFocused(item))
+                .navigationRegistrable(.newItem(item))  // Register for nav
+        }
+        addButton
+            .navigationRegistrable(.addNewItemButton)
+    }
+}
+```
+
+#### 5. Add focus ring to Row view
+
+```swift
+struct NewItemRow: View {
+    let item: NewItemDto
+    var isFocused: Bool = false
+
+    var body: some View {
+        HStack { /* content */ }
+            .modifier(DetailFocusRing(isFocused: isFocused))
+    }
+}
+```
+
+#### 6. Wire through TaskDetailView
+
+```swift
+// In Views/TaskDetailView.swift
+NewItemSection(
+    items: detail.newItems,
+    focusedItem: focusedItem,  // Pass focus state
+    // ... other params
+)
+```
+
+### Key Bindings in Detail Mode
+
+| Key | Action | Handler |
+|-----|--------|---------|
+| `h/j/k/l` | Navigate between items | `navigationRegistry.navigate()` |
+| `o` or `Return` | Open/edit focused item | `openFocusedDetailItem()` |
+| `y` | Copy focused item value | `copyFocusedDetailItem()` |
+| `x` | Delete focused item | `deleteFocusedDetailItem()` |
+
+### How Spatial Navigation Works
+
+The `NavigationRegistry` maintains a mapping of `DetailFocusableItem` → screen coordinates. When you press `j`:
+
+1. Registry finds current item's position
+2. Looks for items below (higher Y coordinate)
+3. Picks closest one in the same column (similar X)
+4. Updates `focusedItem` state
+
+This means physical layout matters—items visually below appear "below" in j/k navigation.
+
 ## File Quick Reference
 
 | File | Purpose |
@@ -289,8 +483,12 @@ See main skill document section "Navigation Stack" for stack implementation deta
 | `ContentView.swift` | NSEvent monitor installation |
 | `LauncherViewModel.swift` | Effect handlers (handleEscape, handleNormalModeAction) |
 | `LauncherViewModel+Navigation.swift` | Navigation stack methods (`navigateBack`, `pushTaskDetail`) |
+| `LauncherViewModel+DetailFocus.swift` | Detail focus state, action handlers |
 | `NavigationStack.swift` | `ViewNavigationStack` class (push/pop/reset) |
+| `NavigationRegistry.swift` | Coordinate-based h/j/k/l navigation |
 | `NavigationEntry.swift` | Navigation entry enum |
+| `DetailFocusableItem.swift` | Enum for navigable detail elements |
+| `DetailFocusRing.swift` | Visual focus indicator modifier |
 
 ## Guardrails
 

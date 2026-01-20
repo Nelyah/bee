@@ -6,7 +6,7 @@ import Foundation
 extension LauncherViewModel {
     /// Builds the list of focusable items for the current detail view.
     /// Order: Task Name → UUID → Project → Tags → Add Tag → Due Date → Attachments → Add Attachment → Annotations →
-    /// Linked Tasks → GitLab MRs → Jira Issues
+    /// Important Links → Add Important Link → Linked Tasks → GitLab MRs → Jira Issues
     func buildDetailFocusableItems() {
         var items: [DetailFocusableItem] = []
 
@@ -47,16 +47,25 @@ extension LauncherViewModel {
             for annotation in detail.annotations {
                 items.append(.annotation(annotation))
             }
+
+            // 9. Important Links (from task detail)
+            for link in detail.importantLinks {
+                items.append(.importantLink(link))
+            }
+            // Add important link button (after links, only when not currently adding)
+            if !isAddingImportantLink {
+                items.append(.addImportantLinkButton)
+            }
         }
 
-        // 9. Linked tasks (from task detail)
+        // 10. Linked tasks (from task detail)
         if let detail = taskDetailState.detail {
             for link in detail.links {
                 items.append(.linkedTask(link))
             }
         }
 
-        // 10. GitLab MRs
+        // 11. GitLab MRs
         let gitlabLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.gitlab.rawValue
         }
@@ -64,7 +73,7 @@ extension LauncherViewModel {
             items.append(.gitlabMR(link))
         }
 
-        // 11. Jira issues
+        // 12. Jira issues
         let jiraLinks = externalLinksState.links.filter {
             $0.provider.lowercased() == ExternalLinkProvider.jira.rawValue
         }
@@ -177,6 +186,19 @@ extension LauncherViewModel {
             return true
         }
 
+        // Important link: open URL in browser
+        if case let .importantLink(link) = item,
+           let url = URL(string: link.url) {
+            NSWorkspace.shared.open(url)
+            return true
+        }
+
+        // Add important link button: start adding form
+        if case .addImportantLinkButton = item {
+            startAddingImportantLink()
+            return true
+        }
+
         // Links: open URL in browser
         guard let url = item.openURL else { return false }
         NSWorkspace.shared.open(url)
@@ -224,6 +246,12 @@ extension LauncherViewModel {
         // Attachments can be deleted with x (triggers confirmation flow)
         if case .attachment = item {
             handleAttachmentKeyAction(.delete)
+            return true
+        }
+
+        // Important links can be deleted with x
+        if case let .importantLink(link) = item {
+            Task { await removeImportantLink(link) }
             return true
         }
 

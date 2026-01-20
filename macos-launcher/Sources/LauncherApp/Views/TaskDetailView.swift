@@ -531,6 +531,7 @@ struct TaskDetailView: View {
         if let detail = detailForTask {
             ImportantLinksSection(
                 importantLinks: detail.importantLinks,
+                focusedItem: focusedItem,
                 onOpen: onOpenImportantLink,
                 onRemove: onRemoveImportantLink,
                 onStartAdding: onStartAddingImportantLink,

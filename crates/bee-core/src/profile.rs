@@ -294,7 +294,13 @@ pub fn get_profile_config_path(profile: &str) -> PathBuf {
 /// - The environment variable is not set
 /// - The environment variable is empty
 pub fn get_active_profile_from_env() -> Option<String> {
-    env::var("BEE_PROFILE").ok().filter(|s| !s.is_empty())
+    parse_profile_env_value(env::var("BEE_PROFILE").ok())
+}
+
+/// Parses a profile value from an environment variable.
+/// Returns `None` if the value is `None` or empty.
+fn parse_profile_env_value(value: Option<String>) -> Option<String> {
+    value.filter(|s| !s.is_empty())
 }
 
 /// Initializes the profile system with an initial profile, migrating existing data.
@@ -487,39 +493,21 @@ config_dir = "/custom/config"
     }
 
     #[test]
-    fn test_get_active_profile_from_env_not_set() {
-        // SAFETY: Single-threaded test environment
-        unsafe {
-            std::env::remove_var("BEE_PROFILE");
-        }
-        assert!(get_active_profile_from_env().is_none());
+    fn test_parse_profile_env_value_not_set() {
+        assert!(parse_profile_env_value(None).is_none());
     }
 
     #[test]
-    fn test_get_active_profile_from_env_empty() {
-        // SAFETY: Single-threaded test environment
-        unsafe {
-            std::env::set_var("BEE_PROFILE", "");
-        }
-        assert!(get_active_profile_from_env().is_none());
-        unsafe {
-            std::env::remove_var("BEE_PROFILE");
-        }
+    fn test_parse_profile_env_value_empty() {
+        assert!(parse_profile_env_value(Some(String::new())).is_none());
     }
 
     #[test]
-    fn test_get_active_profile_from_env_set() {
-        // SAFETY: Single-threaded test environment
-        unsafe {
-            std::env::set_var("BEE_PROFILE", "test-profile");
-        }
+    fn test_parse_profile_env_value_set() {
         assert_eq!(
-            get_active_profile_from_env(),
+            parse_profile_env_value(Some("test-profile".to_string())),
             Some("test-profile".to_string())
         );
-        unsafe {
-            std::env::remove_var("BEE_PROFILE");
-        }
     }
 
     #[test]

@@ -381,11 +381,7 @@ public struct ContentView: View {
             // Only handle keys in detail mode when not in any editing state
             guard viewModel.mode == .detail,
                   !viewModel.commandPalette.isPresented,
-                  !viewModel.isAddingAnnotation,
-                  !viewModel.isEditingTaskName,
-                  !viewModel.isEditingProject,
-                  !viewModel.isAddingTag,
-                  viewModel.editingAnnotationId == nil else { return event }
+                  !isTextInputFirstResponder() else { return event }
             guard let action = KeyHandlingDecider.detailModeAction(for: KeyInput(event: event)) else {
                 return event
             }
@@ -400,6 +396,18 @@ public struct ContentView: View {
             NSEvent.removeMonitor(monitor)
             detailModeMonitor = nil
         }
+    }
+
+    /// Returns true if the current first responder is a text input field.
+    /// Allows keyboard shortcuts to automatically pass through to text fields
+    /// without requiring explicit state tracking for each field.
+    private func isTextInputFirstResponder() -> Bool {
+        guard let window = NSApp.keyWindow,
+              let responder = window.firstResponder else {
+            return false
+        }
+        // NSTextView is used by both TextField and TextEditor in SwiftUI
+        return responder is NSTextView || responder is NSTextField
     }
 
     private func closeWindow() {

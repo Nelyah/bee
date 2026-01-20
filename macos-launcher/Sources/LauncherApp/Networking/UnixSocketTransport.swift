@@ -60,6 +60,10 @@ public final class UnixSocketTransport: ApiTransport, @unchecked Sendable {
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
         setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
 
+        // Prevent SIGPIPE when writing to closed socket (returns EPIPE error instead)
+        var noSigPipe: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+
         // Build address structure
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
@@ -137,7 +141,10 @@ public final class UnixSocketTransport: ApiTransport, @unchecked Sendable {
         request += "Connection: close\r\n"
 
         if let body, !body.isEmpty {
-            request += "Content-Type: application/json\r\n"
+            // Only add default Content-Type if not provided in headers
+            if headers["Content-Type"] == nil {
+                request += "Content-Type: application/json\r\n"
+            }
             request += "Content-Length: \(body.count)\r\n"
         }
 
@@ -182,5 +189,17 @@ public final class UnixSocketTransport: ApiTransport, @unchecked Sendable {
         }
 
         return (data: Data(bodyData), statusCode: statusCode)
+    }
+
+    // MARK: - Testing Support
+
+    /// Exposed for testing. Builds an HTTP request without sending it.
+    func buildHTTPRequestForTesting(
+        method: String,
+        path: String,
+        body: Data?,
+        headers: [String: String]
+    ) -> Data {
+        buildHTTPRequest(method: method, path: path, body: body, headers: headers)
     }
 }

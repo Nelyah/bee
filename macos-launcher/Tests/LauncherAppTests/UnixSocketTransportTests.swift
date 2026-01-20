@@ -246,6 +246,55 @@ final class UnixSocketTransportTests: XCTestCase {
         XCTAssertTrue(String(data: data, encoding: .utf8)!.contains("Internal error"))
     }
 
+    // MARK: - HTTP Request Building Tests
+
+    func testBuildHTTPRequestRespectsCustomContentType() {
+        // Given: A transport and custom Content-Type header
+        let transport = UnixSocketTransport(socketPath: "/tmp/test.sock")
+        let body = Data("test body".utf8)
+        let customContentType = "multipart/form-data; boundary=abc123"
+
+        // When: Building an HTTP request with custom Content-Type
+        let request = transport.buildHTTPRequestForTesting(
+            method: "POST",
+            path: "/test",
+            body: body,
+            headers: ["Content-Type": customContentType]
+        )
+
+        // Then: The request should NOT contain "application/json"
+        let requestString = String(data: request, encoding: .utf8)!
+        XCTAssertFalse(
+            requestString.contains("Content-Type: application/json"),
+            "Request should not contain default Content-Type when custom one is provided"
+        )
+        XCTAssertTrue(
+            requestString.contains("Content-Type: \(customContentType)"),
+            "Request should contain the custom Content-Type"
+        )
+    }
+
+    func testBuildHTTPRequestAddsDefaultContentTypeWhenNotProvided() {
+        // Given: A transport with no custom Content-Type
+        let transport = UnixSocketTransport(socketPath: "/tmp/test.sock")
+        let body = Data("test body".utf8)
+
+        // When: Building an HTTP request without Content-Type header
+        let request = transport.buildHTTPRequestForTesting(
+            method: "POST",
+            path: "/test",
+            body: body,
+            headers: [:]
+        )
+
+        // Then: The request should contain default application/json
+        let requestString = String(data: request, encoding: .utf8)!
+        XCTAssertTrue(
+            requestString.contains("Content-Type: application/json"),
+            "Request should contain default Content-Type when none provided"
+        )
+    }
+
     // MARK: - Response Parsing Tests
 
     func testSlowServerResponse() async throws {

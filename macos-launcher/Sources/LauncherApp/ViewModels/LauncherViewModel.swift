@@ -5,22 +5,6 @@ import OSLog
 
 import SwiftUI
 
-/// Represents the single active editing state in the detail view.
-/// Only one editing state can be active at a time, enforcing mutual exclusivity.
-enum DetailEditingState: Equatable {
-    case none
-    case addingAnnotation
-    case editingAnnotation(id: String)
-    case editingTaskName
-    case editingProject
-    case addingTag
-    case editingDueDate
-    case editingPlannedDate
-    case addingImportantLink
-
-    var isEditing: Bool { self != .none }
-}
-
 @MainActor
 public final class LauncherViewModel: ObservableObject {
     private enum Constants {

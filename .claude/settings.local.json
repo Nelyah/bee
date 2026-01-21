@@ -202,7 +202,14 @@
       "Bash(cargo run:*)",
       "Bash(cargo fix:*)",
       "mcp__serena__think_about_task_adherence",
-      "WebFetch(domain:developer.atlassian.com)"
+      "WebFetch(domain:developer.atlassian.com)",
+      "Skill(superpowers:systematic-debugging)",
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Bash(git worktree:*)",
+      "Skill(superpowers:dispatching-parallel-agents)",
+      "Bash(swiftformat:*)",
+      "Skill(brainstorming)",
+      "Skill(superpowers:writing-skills)"
     ]
   },
   "outputStyle": "Explanatory"

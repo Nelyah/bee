@@ -162,6 +162,12 @@ extension LauncherViewModel {
             return true
         }
 
+        // Planned date: Enter triggers editing
+        if case .plannedDate = item {
+            startEditingPlannedDate()
+            return true
+        }
+
         // Linked task: navigate to the target task
         if case let .linkedTask(link) = item {
             navigateToTask(uuid: link.targetUuid)

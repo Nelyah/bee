@@ -510,13 +510,13 @@ final class LauncherViewModelTests: XCTestCase {
         viewModel.tasks = [makeTask(id: "a")]
         viewModel.selectedIndex = 0
         viewModel.setModeForTesting(.detail)
-        viewModel.isAddingAnnotation = true
+        viewModel.detailEditingState = .addingAnnotation
         viewModel.annotationInput = "Some annotation text"
 
         let result = viewModel.handleEscape()
 
         XCTAssertTrue(result, "handleEscape should return true when canceling annotation")
-        XCTAssertFalse(viewModel.isAddingAnnotation, "isAddingAnnotation should be false after escape")
+        XCTAssertEqual(viewModel.detailEditingState, .none, "detailEditingState should be .none after escape")
         XCTAssertEqual(viewModel.annotationInput, "", "annotationInput should be cleared")
     }
 
@@ -525,12 +525,12 @@ final class LauncherViewModelTests: XCTestCase {
         viewModel.tasks = [makeTask(id: "a")]
         viewModel.selectedIndex = 0
         viewModel.setModeForTesting(.detail)
-        viewModel.isAddingAnnotation = true
+        viewModel.detailEditingState = .addingAnnotation
 
         _ = viewModel.handleEscape()
 
         // Should cancel annotation but NOT close detail view
-        XCTAssertFalse(viewModel.isAddingAnnotation)
+        XCTAssertEqual(viewModel.detailEditingState, .none)
         XCTAssertEqual(viewModel.mode, .detail, "Should remain in detail mode")
     }
 
@@ -547,7 +547,7 @@ final class LauncherViewModelTests: XCTestCase {
         viewModel.setModeForTesting(.detail)
 
         // Set up annotation input
-        viewModel.isAddingAnnotation = true
+        viewModel.detailEditingState = .addingAnnotation
         viewModel.annotationInput = "Test annotation text"
 
         // Act: Submit the annotation
@@ -621,7 +621,7 @@ final class LauncherViewModelTests: XCTestCase {
             "Older note",
             "startEditingAnnotation(withId:) should load the annotation with matching ID"
         )
-        XCTAssertEqual(viewModel.editingAnnotationId, olderAnnotationId)
+        XCTAssertEqual(viewModel.detailEditingState, .editingAnnotation(id: olderAnnotationId))
 
         // Reset and test with the other annotation
         viewModel.cancelEditingAnnotation()
@@ -634,7 +634,7 @@ final class LauncherViewModelTests: XCTestCase {
             "Newer note",
             "startEditingAnnotation(withId:) should load the correct annotation"
         )
-        XCTAssertEqual(viewModel.editingAnnotationId, newerAnnotationId)
+        XCTAssertEqual(viewModel.detailEditingState, .editingAnnotation(id: newerAnnotationId))
     }
 
     // MARK: - Column Reorder Tests

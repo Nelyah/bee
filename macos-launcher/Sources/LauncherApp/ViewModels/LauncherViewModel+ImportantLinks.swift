@@ -7,12 +7,12 @@ extension LauncherViewModel {
     func startAddingImportantLink() {
         importantLinkUrlInput = ""
         importantLinkTitleInput = ""
-        isAddingImportantLink = true
+        detailEditingState = .addingImportantLink
     }
 
     /// Cancel adding an important link (hides the form).
     func cancelAddingImportantLink() {
-        isAddingImportantLink = false
+        detailEditingState = .none
         importantLinkUrlInput = ""
         importantLinkTitleInput = ""
     }
@@ -56,7 +56,7 @@ extension LauncherViewModel {
             )
 
             // Success - clear state and reload detail
-            isAddingImportantLink = false
+            detailEditingState = .none
             importantLinkUrlInput = ""
             importantLinkTitleInput = ""
             showToast(message: "Link added", icon: .success)

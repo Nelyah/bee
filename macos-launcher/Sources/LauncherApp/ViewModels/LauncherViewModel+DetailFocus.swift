@@ -27,7 +27,7 @@ extension LauncherViewModel {
 
             // 5. Add tag button (after tags, before due date)
             // Only include when not currently adding a tag
-            if !isAddingTag {
+            if detailEditingState != .addingTag {
                 items.append(.addTagButton)
             }
 
@@ -53,7 +53,7 @@ extension LauncherViewModel {
                 items.append(.importantLink(link))
             }
             // Add important link button (after links, only when not currently adding)
-            if !isAddingImportantLink {
+            if detailEditingState != .addingImportantLink {
                 items.append(.addImportantLinkButton)
             }
         }
@@ -282,5 +282,17 @@ extension LauncherViewModel {
 
         // n does nothing if not confirming
         return false
+    }
+
+    /// Resigns first responder to re-enable vim-style keyboard navigation.
+    /// Called after cancelling input fields in detail view.
+    ///
+    /// Uses `DispatchQueue.main.async` to avoid calling `makeFirstResponder`
+    /// during a SwiftUI view update cycle, following the pattern in
+    /// `TokenHighlightTextView`.
+    func resignTextFieldFocus() {
+        DispatchQueue.main.async {
+            NSApp.keyWindow?.makeFirstResponder(nil)
+        }
     }
 }

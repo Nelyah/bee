@@ -611,7 +611,7 @@ final class DetailFocusViewModelTests: XCTestCase {
 
         viewModel.startAddingAnnotation()
 
-        XCTAssertTrue(viewModel.isAddingAnnotation)
+        XCTAssertEqual(viewModel.detailEditingState, .addingAnnotation)
         XCTAssertEqual(viewModel.annotationInput, "")
     }
 
@@ -623,28 +623,28 @@ final class DetailFocusViewModelTests: XCTestCase {
 
         viewModel.startAddingAnnotation()
 
-        XCTAssertFalse(viewModel.isAddingAnnotation, "Should not start adding if no task selected")
+        XCTAssertEqual(viewModel.detailEditingState, .none, "Should not start adding if no task selected")
     }
 
     func testCancelAddingAnnotationClearsState() {
         setupDetailMode()
-        viewModel.isAddingAnnotation = true
+        viewModel.detailEditingState = .addingAnnotation
         viewModel.annotationInput = "Some text"
 
         viewModel.cancelAddingAnnotation()
 
-        XCTAssertFalse(viewModel.isAddingAnnotation)
+        XCTAssertEqual(viewModel.detailEditingState, .none)
         XCTAssertEqual(viewModel.annotationInput, "")
     }
 
     func testSubmitAnnotationWithEmptyTextCancels() {
         setupDetailMode()
-        viewModel.isAddingAnnotation = true
+        viewModel.detailEditingState = .addingAnnotation
         viewModel.annotationInput = "   " // whitespace only
 
         viewModel.submitAnnotation()
 
-        XCTAssertFalse(viewModel.isAddingAnnotation, "Empty text should cancel")
+        XCTAssertEqual(viewModel.detailEditingState, .none, "Empty text should cancel")
     }
 
     func testHandleDetailModeActionAddAnnotation() {
@@ -653,7 +653,7 @@ final class DetailFocusViewModelTests: XCTestCase {
         let result = viewModel.handleDetailModeAction(.addAnnotation)
 
         XCTAssertTrue(result)
-        XCTAssertTrue(viewModel.isAddingAnnotation)
+        XCTAssertEqual(viewModel.detailEditingState, .addingAnnotation)
     }
 
     func testNavigateLeftMovesToTargetWithLesserX() {
@@ -710,12 +710,12 @@ final class DetailFocusViewModelTests: XCTestCase {
             frame: CGRect(x: 0, y: 0, width: 100, height: 30)
         )
         viewModel.navigationRegistry.focusOn(taskNameItem)
-        XCTAssertFalse(viewModel.isEditingTaskName)
+        XCTAssertEqual(viewModel.detailEditingState, .none)
 
         let result = viewModel.handleDetailModeAction(.openFocused)
 
         XCTAssertTrue(result)
-        XCTAssertTrue(viewModel.isEditingTaskName, "Enter on task name should start editing")
+        XCTAssertEqual(viewModel.detailEditingState, .editingTaskName, "Enter on task name should start editing")
     }
 
     // MARK: - Helpers

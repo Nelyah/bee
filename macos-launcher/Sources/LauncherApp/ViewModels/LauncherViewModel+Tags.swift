@@ -25,8 +25,8 @@ extension LauncherViewModel {
 
         // Start adding mode with the old tag name pre-filled for editing
         tagAddQuery = oldTag
-        isAddingTag = true
         selectedTagIndex = nil
+        detailEditingState = .addingTag
     }
 
     /// Set the selected tag index for keyboard navigation.
@@ -37,15 +37,14 @@ extension LauncherViewModel {
     /// Begin adding a new tag (shows the CompletionField).
     func startAddingTag() {
         tagAddQuery = ""
-        isAddingTag = true
-        // Clear tag selection when adding
         selectedTagIndex = nil
+        detailEditingState = .addingTag
     }
 
     /// Cancel adding a tag (hides the CompletionField).
     func cancelAddingTag() {
-        isAddingTag = false
         tagAddQuery = ""
+        detailEditingState = .none
     }
 
     /// Add a tag to the current task.
@@ -86,8 +85,8 @@ extension LauncherViewModel {
                 )
 
                 // Success - clear state and update
-                isAddingTag = false
                 tagAddQuery = ""
+                detailEditingState = .none
                 showToast(message: "Tag added: \(trimmed)", icon: .success)
 
                 // Update the task in the local list

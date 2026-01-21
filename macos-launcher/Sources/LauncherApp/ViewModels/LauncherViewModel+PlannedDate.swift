@@ -26,12 +26,12 @@ extension LauncherViewModel {
             plannedDateEditSelection = calendar.date(from: components) ?? now
         }
 
-        isEditingPlannedDate = true
+        detailEditingState = .editingPlannedDate
     }
 
     /// Cancel editing the planned date.
     func cancelEditingPlannedDate() {
-        isEditingPlannedDate = false
+        detailEditingState = .none
     }
 
     /// Submit the edited planned date to the backend.
@@ -66,7 +66,7 @@ extension LauncherViewModel {
                 )
 
                 await MainActor.run {
-                    isEditingPlannedDate = false
+                    detailEditingState = .none
                     showToast(message: "Planned date updated", icon: .success)
 
                     // Update the local task
@@ -110,7 +110,7 @@ extension LauncherViewModel {
                 )
 
                 await MainActor.run {
-                    isEditingPlannedDate = false
+                    detailEditingState = .none
                     showToast(message: "Planned date cleared", icon: .success)
 
                     // Update the local task

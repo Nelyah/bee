@@ -52,31 +52,42 @@ extension LauncherViewModel {
             showingSaveReportSheet = false
             return true
         }
-        if isAddingAnnotation {
-            cancelAddingAnnotation()
+
+        switch detailEditingState {
+        case .none:
+            return false
+        case .addingAnnotation:
+            annotationInput = ""
+            detailEditingState = .none
+            return true
+        case .editingAnnotation:
+            annotationEditInput = ""
+            detailEditingState = .none
+            return true
+        case .editingTaskName:
+            taskNameEditInput = ""
+            detailEditingState = .none
+            return true
+        case .editingProject:
+            projectEditInput = ""
+            detailEditingState = .none
+            return true
+        case .addingTag:
+            tagAddQuery = ""
+            detailEditingState = .none
+            return true
+        case .editingDueDate:
+            detailEditingState = .none
+            return true
+        case .editingPlannedDate:
+            detailEditingState = .none
+            return true
+        case .addingImportantLink:
+            importantLinkUrlInput = ""
+            importantLinkTitleInput = ""
+            detailEditingState = .none
             return true
         }
-        if isEditingTaskName {
-            cancelEditingTaskName()
-            return true
-        }
-        if isEditingProject {
-            cancelEditingProject()
-            return true
-        }
-        if isAddingTag {
-            cancelAddingTag()
-            return true
-        }
-        if editingAnnotationId != nil {
-            cancelEditingAnnotation()
-            return true
-        }
-        if isEditingDueDate {
-            cancelEditingDueDate()
-            return true
-        }
-        return false
     }
 
     @discardableResult

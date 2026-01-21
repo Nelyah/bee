@@ -26,12 +26,12 @@ extension LauncherViewModel {
             dueDateEditSelection = calendar.date(from: components) ?? now
         }
 
-        isEditingDueDate = true
+        detailEditingState = .editingDueDate
     }
 
     /// Cancel editing the due date.
     func cancelEditingDueDate() {
-        isEditingDueDate = false
+        detailEditingState = .none
     }
 
     /// Submit the edited due date to the backend.
@@ -66,7 +66,7 @@ extension LauncherViewModel {
                 )
 
                 await MainActor.run {
-                    isEditingDueDate = false
+                    detailEditingState = .none
                     showToast(message: "Due date updated", icon: .success)
 
                     // Update the local task
@@ -110,7 +110,7 @@ extension LauncherViewModel {
                 )
 
                 await MainActor.run {
-                    isEditingDueDate = false
+                    detailEditingState = .none
                     showToast(message: "Due date cleared", icon: .success)
 
                     // Update the local task

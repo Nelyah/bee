@@ -183,13 +183,13 @@ final class ImportantLinksSectionUITests: XCTestCase {
         viewModel.importantLinkUrlInput = "https://test.com"
         viewModel.importantLinkTitleInput = "Test"
 
-        XCTAssertTrue(viewModel.isAddingImportantLink)
+        XCTAssertEqual(viewModel.detailEditingState, .addingImportantLink)
         XCTAssertEqual(viewModel.importantLinkUrlInput, "https://test.com")
 
         // Cancel
         viewModel.cancelAddingImportantLink()
 
-        XCTAssertFalse(viewModel.isAddingImportantLink)
+        XCTAssertEqual(viewModel.detailEditingState, .none)
         XCTAssertEqual(viewModel.importantLinkUrlInput, "")
         XCTAssertEqual(viewModel.importantLinkTitleInput, "")
     }
@@ -205,18 +205,18 @@ final class ImportantLinksSectionUITests: XCTestCase {
 
         // Start adding but don't enter a URL
         viewModel.startAddingImportantLink()
-        XCTAssertTrue(viewModel.isAddingImportantLink)
+        XCTAssertEqual(viewModel.detailEditingState, .addingImportantLink)
         XCTAssertTrue(viewModel.importantLinkUrlInput.isEmpty)
 
         // Simulate what ContentView.onClearFocus does: clear focus AND cancel if URL empty
         viewModel.clearDetailFocus()
-        if viewModel.isAddingImportantLink,
+        if viewModel.detailEditingState == .addingImportantLink,
            viewModel.importantLinkUrlInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             viewModel.cancelAddingImportantLink()
         }
 
         // Should have cancelled
-        XCTAssertFalse(viewModel.isAddingImportantLink, "Should cancel adding when URL is empty")
+        XCTAssertEqual(viewModel.detailEditingState, .none, "Should cancel adding when URL is empty")
     }
 
     /// Test that clicking elsewhere does NOT cancel when URL has content.
@@ -227,17 +227,17 @@ final class ImportantLinksSectionUITests: XCTestCase {
         // Start adding WITH a URL
         viewModel.startAddingImportantLink()
         viewModel.importantLinkUrlInput = "https://example.com"
-        XCTAssertTrue(viewModel.isAddingImportantLink)
+        XCTAssertEqual(viewModel.detailEditingState, .addingImportantLink)
 
         // Simulate what ContentView.onClearFocus does
         viewModel.clearDetailFocus()
-        if viewModel.isAddingImportantLink,
+        if viewModel.detailEditingState == .addingImportantLink,
            viewModel.importantLinkUrlInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             viewModel.cancelAddingImportantLink()
         }
 
         // Should NOT have cancelled because URL has content
-        XCTAssertTrue(viewModel.isAddingImportantLink, "Should NOT cancel when URL has content")
+        XCTAssertEqual(viewModel.detailEditingState, .addingImportantLink, "Should NOT cancel when URL has content")
         XCTAssertEqual(viewModel.importantLinkUrlInput, "https://example.com")
     }
 

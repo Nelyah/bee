@@ -46,7 +46,7 @@ public struct ContentView: View {
                         viewModel.closeDetail()
                     },
                     focusedItem: viewModel.focusedDetailItem,
-                    isAddingAnnotation: viewModel.isAddingAnnotation,
+                    editingState: viewModel.detailEditingState,
                     annotationInput: $viewModel.annotationInput,
                     isSubmittingAnnotation: viewModel.isSubmittingAnnotation,
                     onSubmitAnnotation: {
@@ -59,7 +59,6 @@ public struct ContentView: View {
                         viewModel.startAddingAnnotation()
                     },
                     // Task name editing
-                    isEditingTaskName: viewModel.isEditingTaskName,
                     taskNameEditInput: $viewModel.taskNameEditInput,
                     isSubmittingTaskName: viewModel.isSubmittingTaskName,
                     onStartEditingTaskName: {
@@ -72,7 +71,6 @@ public struct ContentView: View {
                         viewModel.cancelEditingTaskName()
                     },
                     // Annotation editing
-                    editingAnnotationId: viewModel.editingAnnotationId,
                     annotationEditInput: $viewModel.annotationEditInput,
                     isSubmittingAnnotationEdit: viewModel.isSubmittingAnnotationEdit,
                     onStartEditingAnnotation: { annotationId in
@@ -85,7 +83,6 @@ public struct ContentView: View {
                         viewModel.cancelEditingAnnotation()
                     },
                     // Project editing
-                    isEditingProject: viewModel.isEditingProject,
                     projectEditInput: $viewModel.projectEditInput,
                     isSubmittingProject: viewModel.isSubmittingProject,
                     filteredProjects: viewModel.filteredProjects,
@@ -103,7 +100,6 @@ public struct ContentView: View {
                     },
                     // Tag editing
                     selectedTagIndex: viewModel.selectedTagIndex,
-                    isAddingTag: viewModel.isAddingTag,
                     tagAddQuery: $viewModel.tagAddQuery,
                     isSubmittingTag: viewModel.isSubmittingTag,
                     allTagCompletions: viewModel.allTagCompletions,
@@ -126,7 +122,6 @@ public struct ContentView: View {
                         viewModel.startEditingTag(at: index)
                     },
                     // Due date editing
-                    isEditingDueDate: viewModel.isEditingDueDate,
                     dueDateEditSelection: $viewModel.dueDateEditSelection,
                     isSubmittingDueDate: viewModel.isSubmittingDueDate,
                     onStartEditingDueDate: {
@@ -145,7 +140,6 @@ public struct ContentView: View {
                         viewModel.applyQuickDueDateAction(action)
                     },
                     // Planned date editing
-                    isEditingPlannedDate: viewModel.isEditingPlannedDate,
                     plannedDateEditSelection: $viewModel.plannedDateEditSelection,
                     isSubmittingPlannedDate: viewModel.isSubmittingPlannedDate,
                     onStartEditingPlannedDate: {
@@ -203,7 +197,6 @@ public struct ContentView: View {
                     onStartAddingImportantLink: {
                         viewModel.startAddingImportantLink()
                     },
-                    isAddingImportantLink: viewModel.isAddingImportantLink,
                     importantLinkUrlInput: $viewModel.importantLinkUrlInput,
                     importantLinkTitleInput: $viewModel.importantLinkTitleInput,
                     isSubmittingImportantLink: viewModel.isSubmittingImportantLink,
@@ -227,7 +220,7 @@ public struct ContentView: View {
                     onClearFocus: {
                         viewModel.clearDetailFocus()
                         // Cancel adding important link if URL is empty (click-away-to-cancel behavior)
-                        if viewModel.isAddingImportantLink,
+                        if viewModel.detailEditingState == .addingImportantLink,
                            viewModel.importantLinkUrlInput.trimmingCharacters(in: .whitespacesAndNewlines)
                            .isEmpty {
                             viewModel.cancelAddingImportantLink()

@@ -12,11 +12,11 @@ struct TaskDetailView: View {
     let onClose: () -> Void
     /// The currently keyboard-focused item (for j/k navigation).
     var focusedItem: DetailFocusableItem?
+    /// The current editing state (which field/element is being edited).
+    var editingState: DetailEditingState = .none
 
     // MARK: - Annotation Input
 
-    /// Whether the annotation input field is visible.
-    var isAddingAnnotation: Bool = false
     /// Binding to the annotation input text.
     @Binding var annotationInput: String
     /// Whether annotation submission is in progress.
@@ -30,8 +30,6 @@ struct TaskDetailView: View {
 
     // MARK: - Task Name Editing
 
-    /// Whether the task name is being edited.
-    var isEditingTaskName: Bool = false
     /// Binding to the task name edit input.
     @Binding var taskNameEditInput: String
     /// Whether task name submission is in progress.
@@ -45,9 +43,6 @@ struct TaskDetailView: View {
 
     // MARK: - Annotation Editing
 
-    /// ID of the annotation being edited (nil = not editing).
-    /// Uses annotation ID instead of index to avoid mismatch when annotations are sorted.
-    var editingAnnotationId: String?
     /// Binding to the annotation edit input.
     @Binding var annotationEditInput: String
     /// Whether annotation edit submission is in progress.
@@ -61,8 +56,6 @@ struct TaskDetailView: View {
 
     // MARK: - Project Editing
 
-    /// Whether the project field is being edited.
-    var isEditingProject: Bool = false
     /// Binding to the project edit input.
     @Binding var projectEditInput: String
     /// Whether project submission is in progress.
@@ -82,8 +75,6 @@ struct TaskDetailView: View {
 
     /// Index of the currently selected tag for keyboard navigation (nil = no selection).
     var selectedTagIndex: Int?
-    /// Whether the user is adding a new tag.
-    var isAddingTag: Bool = false
     /// Binding to the tag add query.
     @Binding var tagAddQuery: String
     /// Whether a tag operation is in progress.
@@ -105,8 +96,6 @@ struct TaskDetailView: View {
 
     // MARK: - Due Date Editing
 
-    /// Whether the due date field is being edited.
-    var isEditingDueDate: Bool = false
     /// Binding to the date picker selection.
     @Binding var dueDateEditSelection: Date
     /// Whether due date submission is in progress.
@@ -124,8 +113,6 @@ struct TaskDetailView: View {
 
     // MARK: - Planned Date Editing
 
-    /// Whether the planned date field is being edited.
-    var isEditingPlannedDate: Bool = false
     /// Binding to the planned date picker selection.
     @Binding var plannedDateEditSelection: Date
     /// Whether planned date submission is in progress.
@@ -169,8 +156,6 @@ struct TaskDetailView: View {
     var onRemoveImportantLink: (ImportantLinkDto) -> Void = { _ in }
     /// Called when the user starts adding an important link.
     var onStartAddingImportantLink: () -> Void = {}
-    /// Whether the user is adding a new important link.
-    var isAddingImportantLink: Bool = false
     /// URL input for the new important link.
     @Binding var importantLinkUrlInput: String
     /// Title input for the new important link (optional).
@@ -276,7 +261,7 @@ struct TaskDetailView: View {
             }
 
             HStack(alignment: .top) {
-                if isEditingTaskName {
+                if editingState == .editingTaskName {
                     ExpandingTextEditor(
                         text: $taskNameEditInput,
                         placeholder: "Task name...",
@@ -374,7 +359,7 @@ struct TaskDetailView: View {
                     selectedTagIndex: selectedTagIndex,
                     keyboardFocusedTagIndex: keyboardFocusedTagIndex,
                     isAddButtonFocused: isAddButtonFocused,
-                    isAddingTag: isAddingTag,
+                    isAddingTag: editingState == .addingTag,
                     tagAddQuery: $tagAddQuery,
                     allTagCompletions: allTagCompletions,
                     isSubmitting: isSubmittingTag,
@@ -399,7 +384,7 @@ struct TaskDetailView: View {
                 EditableDueDateRow(
                     label: "DUE",
                     currentDueDate: task.dateDue,
-                    isEditing: isEditingDueDate,
+                    isEditing: editingState == .editingDueDate,
                     selectedDate: $dueDateEditSelection,
                     isSubmitting: isSubmittingDueDate,
                     isFocused: isDueDateFocused,
@@ -414,7 +399,7 @@ struct TaskDetailView: View {
                 EditableDueDateRow(
                     label: "PLANNED",
                     currentDueDate: task.datePlanned,
-                    isEditing: isEditingPlannedDate,
+                    isEditing: editingState == .editingPlannedDate,
                     selectedDate: $plannedDateEditSelection,
                     isSubmitting: isSubmittingPlannedDate,
                     isFocused: isPlannedDateFocused,
@@ -462,7 +447,7 @@ struct TaskDetailView: View {
         ) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                 // New annotation input field
-                if isAddingAnnotation {
+                if editingState == .addingAnnotation {
                     ExpandingTextEditor(
                         text: $annotationInput,
                         placeholder: "Enter annotation...",
@@ -474,13 +459,13 @@ struct TaskDetailView: View {
 
                 // Existing annotations
                 let annotations = sortedAnnotations(detailForTask?.annotations ?? [])
-                if annotations.isEmpty, !isAddingAnnotation {
+                if annotations.isEmpty, editingState != .addingAnnotation {
                     Text("—")
                         .font(.system(size: DesignTokens.TypeScale.body, weight: .medium))
                         .foregroundColor(ThemeManager.current.overlay0)
                 } else {
                     ForEach(annotations) { annotation in
-                        if editingAnnotationId == annotation.id {
+                        if case let .editingAnnotation(editId) = editingState, editId == annotation.id {
                             // Edit mode for this annotation
                             ExpandingTextEditor(
                                 text: $annotationEditInput,
@@ -535,7 +520,7 @@ struct TaskDetailView: View {
                 onOpen: onOpenImportantLink,
                 onRemove: onRemoveImportantLink,
                 onStartAdding: onStartAddingImportantLink,
-                isAdding: isAddingImportantLink,
+                isAdding: editingState == .addingImportantLink,
                 urlInput: $importantLinkUrlInput,
                 titleInput: $importantLinkTitleInput,
                 isSubmitting: isSubmittingImportantLink,
@@ -642,7 +627,7 @@ struct TaskDetailView: View {
     private var projectRow: some View {
         EditableProjectRow(
             currentProject: task.project,
-            isEditing: isEditingProject,
+            isEditing: editingState == .editingProject,
             editInput: $projectEditInput,
             isSubmitting: isSubmittingProject,
             allProjects: filteredProjects,

@@ -249,7 +249,7 @@ final class TaskDetailUITests: XCTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            isAddingAnnotation: true,
+            editingState: .addingAnnotation,
             annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 }),
             taskNameEditInput: .constant(""),
             annotationEditInput: .constant(""),
@@ -263,7 +263,7 @@ final class TaskDetailUITests: XCTestCase {
 
         let view = try sut.inspect()
 
-        // When isAddingAnnotation is true, the annotation input section should be visible
+        // When editingState is .addingAnnotation, the annotation input section should be visible
         // Look for the "Add annotation" placeholder or input area
         XCTAssertNotNil(view)
     }
@@ -285,7 +285,7 @@ final class TaskDetailUITests: XCTestCase {
             onCopyLink: { _ in },
             onCopyUUID: { _ in },
             onClose: {},
-            isAddingAnnotation: true,
+            editingState: .addingAnnotation,
             annotationInput: .init(get: { annotationInput }, set: { annotationInput = $0 }),
             onSubmitAnnotation: { callbackInvoked = true },
             taskNameEditInput: .constant(""),

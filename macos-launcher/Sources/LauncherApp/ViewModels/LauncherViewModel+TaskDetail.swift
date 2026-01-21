@@ -135,14 +135,14 @@ extension LauncherViewModel {
     /// Begin adding an annotation (shows the input field).
     func startAddingAnnotation() {
         guard selectedTask != nil else { return }
-        isAddingAnnotation = true
         annotationInput = ""
+        detailEditingState = .addingAnnotation
     }
 
     /// Cancel adding an annotation (hides the input field).
     func cancelAddingAnnotation() {
-        isAddingAnnotation = false
         annotationInput = ""
+        detailEditingState = .none
     }
 
     /// Submit the current annotation text.
@@ -180,8 +180,8 @@ extension LauncherViewModel {
                 )
 
                 // Success - clear input and reload detail
-                isAddingAnnotation = false
                 annotationInput = ""
+                detailEditingState = .none
                 showToast(message: "Annotation added", icon: .success)
 
                 // Refresh the detail to show the new annotation
@@ -198,13 +198,13 @@ extension LauncherViewModel {
     func startEditingTaskName() {
         guard let task = selectedTask else { return }
         taskNameEditInput = task.summary
-        isEditingTaskName = true
+        detailEditingState = .editingTaskName
     }
 
     /// Cancel editing the task name.
     func cancelEditingTaskName() {
-        isEditingTaskName = false
         taskNameEditInput = ""
+        detailEditingState = .none
     }
 
     /// Submit the edited task name.
@@ -239,8 +239,8 @@ extension LauncherViewModel {
                 )
 
                 // Success - clear state and reload
-                isEditingTaskName = false
                 taskNameEditInput = ""
+                detailEditingState = .none
                 showToast(message: "Task name updated", icon: .success)
 
                 // Update the task in the local list
@@ -274,13 +274,13 @@ extension LauncherViewModel {
     func startEditingProject() {
         guard let task = selectedTask else { return }
         projectEditInput = task.project ?? ""
-        isEditingProject = true
+        detailEditingState = .editingProject
     }
 
     /// Cancel editing the project.
     func cancelEditingProject() {
-        isEditingProject = false
         projectEditInput = ""
+        detailEditingState = .none
     }
 
     /// All available projects for autocomplete.
@@ -336,8 +336,8 @@ extension LauncherViewModel {
                 )
 
                 // Success - clear state and reload
-                isEditingProject = false
                 projectEditInput = ""
+                detailEditingState = .none
                 showToast(message: newProject.isEmpty ? "Project cleared" : "Project updated", icon: .success)
 
                 // Update the task in the local list
@@ -392,13 +392,13 @@ extension LauncherViewModel {
         else { return }
 
         annotationEditInput = annotation.value
-        editingAnnotationId = id
+        detailEditingState = .editingAnnotation(id: id)
     }
 
     /// Cancel editing an annotation.
     func cancelEditingAnnotation() {
-        editingAnnotationId = nil
         annotationEditInput = ""
+        detailEditingState = .none
     }
 
     /// Submit the edited annotation.
@@ -460,8 +460,8 @@ extension LauncherViewModel {
                 )
 
                 // Success
-                editingAnnotationId = nil
                 annotationEditInput = ""
+                detailEditingState = .none
                 showToast(message: "Annotation updated", icon: .success)
 
                 loadTaskDetail(taskUUID: task.uuid)
@@ -479,9 +479,9 @@ extension LauncherViewModel {
         else { return }
 
         // Clear edit state if we're deleting the one being edited
-        if editingAnnotationId == id {
-            editingAnnotationId = nil
+        if case let .editingAnnotation(editId) = detailEditingState, editId == id {
             annotationEditInput = ""
+            detailEditingState = .none
         }
 
         isSubmittingAnnotationEdit = true

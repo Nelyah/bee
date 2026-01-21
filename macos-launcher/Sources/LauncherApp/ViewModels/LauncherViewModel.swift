@@ -5,6 +5,22 @@ import OSLog
 
 import SwiftUI
 
+/// Represents the single active editing state in the detail view.
+/// Only one editing state can be active at a time, enforcing mutual exclusivity.
+enum DetailEditingState: Equatable {
+    case none
+    case addingAnnotation
+    case editingAnnotation(id: String)
+    case editingTaskName
+    case editingProject
+    case addingTag
+    case editingDueDate
+    case editingPlannedDate
+    case addingImportantLink
+
+    var isEditing: Bool { self != .none }
+}
+
 @MainActor
 public final class LauncherViewModel: ObservableObject {
     private enum Constants {
@@ -87,29 +103,41 @@ public final class LauncherViewModel: ObservableObject {
     /// Loaded expanded content per task UUID.
     @Published var taskExpandedData: [String: TaskExpandedContent] = [:]
 
+    // MARK: - Detail Editing State
+
+    /// The single source of truth for which editing state is active.
+    /// Uses didSet to resign text field focus when transitioning to .none.
+    @Published var detailEditingState: DetailEditingState = .none {
+        didSet {
+            if oldValue != .none, detailEditingState == .none {
+                resignTextFieldFocus()
+            }
+        }
+    }
+
+    /// Computed property to extract annotation ID when editing an annotation.
+    /// Returns nil if not in the `.editingAnnotation` state.
+    var editingAnnotationId: String? {
+        if case let .editingAnnotation(id) = detailEditingState {
+            return id
+        }
+        return nil
+    }
+
     // MARK: - Editing State (Annotations & Task Name)
 
-    /// Whether the annotation input field is active.
-    @Published var isAddingAnnotation: Bool = false
     /// The text currently being entered in the annotation input field.
     @Published var annotationInput: String = ""
     /// Whether an annotation submission is in progress.
     @Published var isSubmittingAnnotation: Bool = false
-    /// Whether the task name is being edited.
-    @Published var isEditingTaskName: Bool = false
     /// The text currently being entered for the task name.
     @Published var taskNameEditInput: String = ""
     /// Whether a task name submission is in progress.
     @Published var isSubmittingTaskName: Bool = false
-    /// ID of the annotation being edited (nil = not editing any annotation).
-    /// Using ID instead of index avoids mismatch when annotations are sorted for display.
-    @Published var editingAnnotationId: String?
     /// The text currently being entered for the annotation edit.
     @Published var annotationEditInput: String = ""
     /// Whether an annotation edit submission is in progress.
     @Published var isSubmittingAnnotationEdit: Bool = false
-    /// Whether the project field is being edited in task detail.
-    @Published var isEditingProject: Bool = false
     /// The text currently being entered for the project edit.
     @Published var projectEditInput: String = ""
     /// Whether a project submission is in progress.
@@ -117,15 +145,12 @@ public final class LauncherViewModel: ObservableObject {
 
     // MARK: - Due Date Editing State
 
-    /// Whether the due date field is being edited in task detail.
-    @Published var isEditingDueDate: Bool = false
     /// The date currently selected in the date picker.
     @Published var dueDateEditSelection: Date = .init()
     /// Whether a due date submission is in progress.
     @Published var isSubmittingDueDate: Bool = false
 
     // Planned date editing (mirrors due date pattern)
-    @Published var isEditingPlannedDate: Bool = false
     @Published var plannedDateEditSelection: Date = .init()
     @Published var isSubmittingPlannedDate: Bool = false
 
@@ -133,8 +158,6 @@ public final class LauncherViewModel: ObservableObject {
 
     /// Index of the currently selected tag for keyboard navigation (nil = no selection).
     @Published var selectedTagIndex: Int?
-    /// Whether the user is adding a new tag (CompletionField is shown).
-    @Published var isAddingTag: Bool = false
     /// Query text for the tag completion field.
     @Published var tagAddQuery: String = ""
     /// Whether a tag operation (add/remove) is in progress.
@@ -151,8 +174,6 @@ public final class LauncherViewModel: ObservableObject {
 
     // MARK: - Important Links State
 
-    /// Whether the user is adding a new important link.
-    @Published var isAddingImportantLink: Bool = false
     /// URL input for new important link.
     @Published var importantLinkUrlInput: String = ""
     /// Title input for new important link (optional).
@@ -327,16 +348,8 @@ public final class LauncherViewModel: ObservableObject {
             )
         }
 
-        // Combine editing states into a single isEditing boolean
-        let isEditingPublisher = Publishers.CombineLatest4(
-            $isEditingTaskName,
-            $isEditingProject,
-            $isAddingAnnotation,
-            $editingAnnotationId
-        )
-        .map { isEditingTaskName, isEditingProject, isAddingAnnotation, editingAnnotationId in
-            isEditingTaskName || isEditingProject || isAddingAnnotation || editingAnnotationId != nil
-        }
+        // Map detailEditingState to single isEditing boolean
+        let isEditingPublisher = $detailEditingState.map(\.isEditing)
 
         Publishers.CombineLatest(
             Publishers.CombineLatest4(

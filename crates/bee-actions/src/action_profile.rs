@@ -356,8 +356,22 @@ mod tests {
         fn print_raw(&self, _message: &str) {}
     }
 
+    fn setup_test_env() -> (tempfile::TempDir, bee_core::profile::ProfilePathsGuard) {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_home = tmp.path().join("config");
+        let data_home = tmp.path().join("data");
+        std::fs::create_dir_all(&config_home).unwrap();
+        std::fs::create_dir_all(&data_home).unwrap();
+        let guard = bee_core::profile::override_profile_paths(bee_core::profile::ProfilePaths {
+            config_home,
+            data_home,
+        });
+        (tmp, guard)
+    }
+
     #[test]
     fn test_profile_action_no_args_shows_usage() {
+        let (_tmp, _guard) = setup_test_env();
         let mut action = ProfileTaskAction::default();
         let printer = TestPrinter::new();
 
@@ -370,6 +384,7 @@ mod tests {
 
     #[test]
     fn test_profile_action_unknown_subcommand() {
+        let (_tmp, _guard) = setup_test_env();
         let mut action = ProfileTaskAction::default();
         action.base.set_arguments(vec!["unknown".to_string()]);
         let printer = TestPrinter::new();
@@ -383,6 +398,7 @@ mod tests {
 
     #[test]
     fn test_profile_action_show_no_profile() {
+        let (_tmp, _guard) = setup_test_env();
         let mut action = ProfileTaskAction::default();
         action.base.set_arguments(vec!["show".to_string()]);
         let printer = TestPrinter::new();
@@ -402,6 +418,7 @@ mod tests {
 
     #[test]
     fn test_profile_action_create_no_name() {
+        let (_tmp, _guard) = setup_test_env();
         let mut action = ProfileTaskAction::default();
         action.base.set_arguments(vec!["create".to_string()]);
         let printer = TestPrinter::new();
@@ -415,6 +432,7 @@ mod tests {
 
     #[test]
     fn test_profile_action_delete_no_name() {
+        let (_tmp, _guard) = setup_test_env();
         let mut action = ProfileTaskAction::default();
         action.base.set_arguments(vec!["delete".to_string()]);
         let printer = TestPrinter::new();
@@ -428,6 +446,7 @@ mod tests {
 
     #[test]
     fn test_profile_action_init_no_name() {
+        let (_tmp, _guard) = setup_test_env();
         let mut action = ProfileTaskAction::default();
         action.base.set_arguments(vec!["init".to_string()]);
         let printer = TestPrinter::new();

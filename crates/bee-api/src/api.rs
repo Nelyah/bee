@@ -2681,8 +2681,25 @@ mod tests {
 
     // MARK: - Profile Tests
 
+    /// Creates an isolated temporary environment for profile tests.
+    /// Returns the TempDir (must be kept alive) and a guard that resets
+    /// the profile paths override on drop.
+    fn setup_test_profile_env() -> (tempfile::TempDir, bee_core::profile::ProfilePathsGuard) {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_home = tmp.path().join("config");
+        let data_home = tmp.path().join("data");
+        std::fs::create_dir_all(&config_home).unwrap();
+        std::fs::create_dir_all(&data_home).unwrap();
+        let guard = bee_core::profile::override_profile_paths(bee_core::profile::ProfilePaths {
+            config_home,
+            data_home,
+        });
+        (tmp, guard)
+    }
+
     #[tokio::test]
     async fn test_list_profiles_endpoint() {
+        let (_tmp, _guard) = setup_test_profile_env();
         let state = AppState::from_config(ApiConfig::default());
         let app = router(state);
         let response = app
@@ -2699,12 +2716,13 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let parsed: ProfilesListResponse = serde_json::from_slice(&body).unwrap();
-        // Response should be valid JSON (may have 0 profiles if not configured)
-        assert!(parsed.profiles.is_empty() || !parsed.profiles.is_empty());
+        // Isolated temp directory has no profiles
+        assert!(parsed.profiles.is_empty());
     }
 
     #[tokio::test]
     async fn test_validate_profile_returns_not_found_for_invalid_profile() {
+        let (_tmp, _guard) = setup_test_profile_env();
         let state = AppState::from_config(ApiConfig::default());
         let app = router(state);
 
@@ -2726,6 +2744,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_profile_task_detail_requires_valid_profile() {
+        let (_tmp, _guard) = setup_test_profile_env();
         let state = AppState::from_config(ApiConfig::default());
         let app = router(state);
 
@@ -2746,6 +2765,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_profile_action_requires_valid_profile() {
+        let (_tmp, _guard) = setup_test_profile_env();
         let state = AppState::from_config(ApiConfig::default());
         let app = router(state);
 
@@ -2769,6 +2789,7 @@ mod tests {
 
     #[test]
     fn test_validate_profile_function() {
+        let (_tmp, _guard) = setup_test_profile_env();
         // Test validate_profile with invalid profile names
         let result = validate_profile("nonexistent-profile");
         assert!(result.is_err());
@@ -2780,18 +2801,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_profile_endpoint() {
+        let (_tmp, _guard) = setup_test_profile_env();
         let state = AppState::from_config(ApiConfig::default());
         let app = router(state);
-
-        // Use a unique name based on timestamp to avoid conflicts between test runs
-        let unique_name = format!(
-            "test-profile-{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-                % 1000000
-        );
 
         let response = app
             .oneshot(
@@ -2801,7 +2813,7 @@ mod tests {
                     .header("content-type", "application/json")
                     .body(Body::from(
                         serde_json::to_vec(&json!({
-                            "key": unique_name,
+                            "key": "test-profile",
                             "name": "Test Profile",
                             "description": "A test profile"
                         }))
@@ -2812,21 +2824,12 @@ mod tests {
             .await
             .expect("create profile response");
 
-        // 201 (created) or 409 (already exists) are acceptable
-        // 400 might occur if the profiles.toml directory doesn't exist in the test environment
-        let status = response.status();
-        assert!(
-            status == StatusCode::CREATED
-                || status == StatusCode::OK
-                || status == StatusCode::CONFLICT
-                || status == StatusCode::BAD_REQUEST, // May fail in CI without proper setup
-            "Unexpected status: {:?}",
-            status
-        );
+        assert_eq!(response.status(), StatusCode::CREATED);
     }
 
     #[tokio::test]
     async fn test_create_profile_rejects_invalid_name() {
+        let (_tmp, _guard) = setup_test_profile_env();
         let state = AppState::from_config(ApiConfig::default());
         let app = router(state);
 

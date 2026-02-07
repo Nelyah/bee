@@ -11,6 +11,7 @@
 
 use log::debug;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -19,6 +20,49 @@ use std::path::PathBuf;
 use crate::{CoreError, CoreResult};
 
 const PROFILES_FILENAME: &str = "profiles.toml";
+
+/// Override paths for profile operations. Used by tests to redirect
+/// filesystem operations to temporary directories instead of production paths.
+#[derive(Clone, Debug)]
+pub struct ProfilePaths {
+    pub config_home: PathBuf,
+    pub data_home: PathBuf,
+}
+
+thread_local! {
+    static PROFILE_PATHS_OVERRIDE: RefCell<Option<ProfilePaths>> = const { RefCell::new(None) };
+}
+
+/// RAII guard that clears the profile paths override when dropped.
+/// Ensures cleanup even on test panic.
+pub struct ProfilePathsGuard;
+
+impl Drop for ProfilePathsGuard {
+    fn drop(&mut self) {
+        PROFILE_PATHS_OVERRIDE.with(|cell| {
+            cell.borrow_mut().take();
+        });
+    }
+}
+
+/// Sets a thread-local override for profile path resolution.
+///
+/// While the returned guard is alive, all profile functions in this module
+/// will use the provided paths instead of reading from environment variables.
+///
+/// Safe for `#[tokio::test]` (uses `current_thread` by default) and standard
+/// `#[test]` (each test gets its own thread). Do NOT use with
+/// `#[tokio::test(flavor = "multi_thread")]`.
+pub fn override_profile_paths(paths: ProfilePaths) -> ProfilePathsGuard {
+    PROFILE_PATHS_OVERRIDE.with(|cell| {
+        *cell.borrow_mut() = Some(paths);
+    });
+    ProfilePathsGuard
+}
+
+fn current_override() -> Option<ProfilePaths> {
+    PROFILE_PATHS_OVERRIDE.with(|cell| cell.borrow().clone())
+}
 
 /// A single profile definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,6 +131,10 @@ pub fn validate_profile_name(name: &str) -> bool {
 /// 1. `$XDG_CONFIG_HOME/bee/profiles.toml`
 /// 2. `~/.config/bee/profiles.toml`
 pub fn get_profiles_config_path() -> PathBuf {
+    if let Some(ovr) = current_override() {
+        return ovr.config_home.join("bee").join(PROFILES_FILENAME);
+    }
+
     let home_dir = env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let xdg_config_home =
         env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home_dir));
@@ -241,6 +289,11 @@ pub fn delete_profile(name: &str) -> CoreResult<()> {
 /// Default: `~/.local/share/bee/{profile}/`
 /// Can be overridden via the profile's `data_dir` field.
 pub fn get_profile_data_dir(profile: &str) -> PathBuf {
+    // Thread-local test override takes priority to prevent sandbox escape
+    if let Some(ovr) = current_override() {
+        return ovr.data_home.join("bee").join(profile);
+    }
+
     // Check if profile has a custom data_dir
     if let Some(config) = load_profiles_config()
         && let Some(p) = config.profiles.get(profile)
@@ -262,6 +315,11 @@ pub fn get_profile_data_dir(profile: &str) -> PathBuf {
 /// Default: `~/.config/bee/{profile}/`
 /// Can be overridden via the profile's `config_dir` field.
 pub fn get_profile_config_dir(profile: &str) -> PathBuf {
+    // Thread-local test override takes priority to prevent sandbox escape
+    if let Some(ovr) = current_override() {
+        return ovr.config_home.join("bee").join(profile);
+    }
+
     // Check if profile has a custom config_dir
     if let Some(config) = load_profiles_config()
         && let Some(p) = config.profiles.get(profile)
@@ -394,6 +452,19 @@ fn find_existing_database() -> Option<PathBuf> {
 mod tests {
     use super::*;
 
+    fn setup_test_env() -> (tempfile::TempDir, ProfilePathsGuard) {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_home = tmp.path().join("config");
+        let data_home = tmp.path().join("data");
+        std::fs::create_dir_all(&config_home).unwrap();
+        std::fs::create_dir_all(&data_home).unwrap();
+        let guard = override_profile_paths(ProfilePaths {
+            config_home,
+            data_home,
+        });
+        (tmp, guard)
+    }
+
     #[test]
     fn test_validate_profile_name_valid() {
         assert!(validate_profile_name("personal"));
@@ -481,13 +552,14 @@ config_dir = "/custom/config"
 
     #[test]
     fn test_profile_database_path() {
-        // This tests the path generation logic, not actual file system access
+        let (_tmp, _guard) = setup_test_env();
         let path = get_profile_database_path("test-profile");
         assert!(path.ends_with("test-profile/bee.sqlite"));
     }
 
     #[test]
     fn test_profile_config_path() {
+        let (_tmp, _guard) = setup_test_env();
         let path = get_profile_config_path("test-profile");
         assert!(path.ends_with("test-profile/config.toml"));
     }
@@ -527,6 +599,7 @@ config_dir = "/custom/config"
 
     #[test]
     fn test_profile_data_isolation_paths() {
+        let (_tmp, _guard) = setup_test_env();
         // Verify different profiles get different paths
         let personal_data = get_profile_data_dir("personal");
         let work_data = get_profile_data_dir("work");
@@ -538,6 +611,7 @@ config_dir = "/custom/config"
 
     #[test]
     fn test_profile_config_isolation_paths() {
+        let (_tmp, _guard) = setup_test_env();
         let personal_config = get_profile_config_dir("personal");
         let work_config = get_profile_config_dir("work");
 

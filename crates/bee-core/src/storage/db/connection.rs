@@ -8,33 +8,39 @@ use crate::profile;
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5_000;
 
 /// Returns the database URL using a fallback chain:
-/// 1. `BEE_DATABASE_URL` env var (full connection string)
-/// 2. `BEE_DATA_HOME` env var + `/bee.sqlite`
-/// 3. `XDG_DATA_HOME/bee/bee.sqlite`
-/// 4. `~/.local/share/bee/bee.sqlite`
-/// 5. `./bee.sqlite` (fallback)
+/// 1. `BEE_DATABASE_URL` env var (full connection string, highest priority override)
+/// 2. `BEE_PROFILE` env var (profile-specific database)
+/// 3. `BEE_DATA_HOME` env var + `/bee.sqlite`
+/// 4. `XDG_DATA_HOME/bee/bee.sqlite`
+/// 5. `~/.local/share/bee/bee.sqlite`
+/// 6. `./bee.sqlite` (fallback)
 fn get_database_url() -> String {
-    // 1. Check BEE_DATABASE_URL for a full connection string
+    // 1. Check BEE_DATABASE_URL for explicit override (highest priority)
     if let Ok(url) = std::env::var("BEE_DATABASE_URL") {
         return url;
+    }
+
+    // 2. Check BEE_PROFILE for profile-specific database
+    if let Some(profile_name) = profile::get_active_profile_from_env() {
+        return get_database_url_for_profile(&profile_name);
     }
 
     // Helper to build SQLite URL from path
     let build_url = |path: PathBuf| -> String { format!("sqlite://{}?mode=rwc", path.display()) };
 
-    // 2. Check BEE_DATA_HOME
+    // 3. Check BEE_DATA_HOME
     if let Ok(data_home) = std::env::var("BEE_DATA_HOME") {
         let path = PathBuf::from(data_home).join("bee.sqlite");
         return build_url(path);
     }
 
-    // 3. Check XDG_DATA_HOME
+    // 4. Check XDG_DATA_HOME
     if let Ok(xdg_data) = std::env::var("XDG_DATA_HOME") {
         let path = PathBuf::from(xdg_data).join("bee").join("bee.sqlite");
         return build_url(path);
     }
 
-    // 4. Use ~/.local/share/bee/bee.sqlite
+    // 5. Use ~/.local/share/bee/bee.sqlite
     if let Some(home) = std::env::var_os("HOME") {
         let path = PathBuf::from(home)
             .join(".local")
@@ -44,7 +50,7 @@ fn get_database_url() -> String {
         return build_url(path);
     }
 
-    // 5. Fallback to current directory
+    // 6. Fallback to current directory
     build_url(PathBuf::from("bee.sqlite"))
 }
 

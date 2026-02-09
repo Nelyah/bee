@@ -4,5 +4,8 @@ tarpaulin-report.html
 .env
 *.sqlite
 
+# Local Xcode build output (used by Makefile)
+/build/
+
 # macOS
 .DS_Store
